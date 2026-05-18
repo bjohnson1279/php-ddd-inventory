@@ -7,8 +7,48 @@ on:
     branches: [ master ]
 
 jobs:
-  phpunit:
+  unit:
+    name: Unit tests
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          extensions: mbstring, xml, intl
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Run PHPUnit (unit)
+        run: vendor/bin/phpunit --testdox --exclude-group integration
+
+  integration:
+    name: Integration tests (with Postgres)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: ddd_user
+          POSTGRES_PASSWORD: secret
+          POSTGRES_DB: ddd_inventory
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U $${POSTGRES_USER}"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - uses: actions/checkout@v4
@@ -29,5 +69,22 @@ jobs:
       - name: Install Composer dependencies
         run: composer install --no-interaction --prefer-dist
 
-      - name: Run PHPUnit
-        run: vendor/bin/phpunit --testdox
+      - name: Install psql client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Wait for Postgres
+        env:
+          PGPASSWORD: secret
+        run: |
+          until pg_isready -h localhost -p 5432 -U ddd_user; do
+            echo "Waiting for Postgres...";
+            sleep 1;
+          done
+
+      - name: Apply DB schema
+        env:
+          PGPASSWORD: secret
+        run: psql -h localhost -U ddd_user -d ddd_inventory -f docker/postgres/init/init.sql
+
+      - name: Run PHPUnit (integration)
+        run: vendor/bin/phpunit tests/Integration --testdox

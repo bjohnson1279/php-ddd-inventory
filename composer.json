@@ -1,0 +1,14 @@
+{
+  "name": "ddd/inventory",
+  "description": "DDD Inventory app",
+  "require": {
+    "php": ">=8.1",
+    "illuminate/database": "^10.0",
+    "vlucas/phpdotenv": "^5.5"
+  },
+  "autoload": {
+    "psr-4": {
+      "InventoryApp\\": "src/"
+    }
+  }
+}

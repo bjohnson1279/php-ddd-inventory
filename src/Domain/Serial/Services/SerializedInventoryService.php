@@ -10,7 +10,7 @@ use InventoryApp\Domain\Inventory\Repositories\LedgerRepositoryInterface;
 
 class SerializedInventoryService
 {
-    public function __construct(private readonly $serialRepo, private readonly LedgerRepositoryInterface $ledger, private readonly \Psr\EventDispatcher\EventDispatcherInterface $events) {}
+    public function __construct(private readonly object $serialRepo, private readonly LedgerRepositoryInterface $ledger, private readonly \Psr\EventDispatcher\EventDispatcherInterface $events) {}
 
     public function register(SerialNumber $serialNumber, string $variantId, string $tenantId, string $locationId, string $actorId): SerializedItem
     {

@@ -9,15 +9,14 @@ $dotenv->safeLoad();
 
 $capsule = new Capsule;
 $capsule->addConnection([
-    'driver' => getenv('DB_CONNECTION') ?: 'pgsql',
-    'host' => getenv('DB_HOST') ?: 'db',
-    'database' => getenv('DB_DATABASE') ?: 'ddd_inventory',
-    'username' => getenv('DB_USERNAME') ?: 'ddd_user',
-    'password' => getenv('DB_PASSWORD') ?: 'secret',
-    'port' => getenv('DB_PORT') ?: 5432,
-    'charset' => 'utf8',
-    'collation' => 'utf8_unicode_ci',
-    'prefix' => '',
+    'driver'   => getenv('DB_CONNECTION') ?: 'pgsql',
+    'host'     => getenv('DB_HOST')       ?: 'localhost',
+    'database' => getenv('DB_DATABASE')   ?: 'ddd_inventory',
+    'username' => getenv('DB_USERNAME')   ?: 'ddd_user',
+    'password' => getenv('DB_PASSWORD')   ?: 'secret',
+    'port'     => getenv('DB_PORT')       ?: 5432,
+    'charset'  => 'utf8',
+    'prefix'   => '',
 ]);
 $capsule->setAsGlobal();
 $capsule->bootEloquent();

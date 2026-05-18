@@ -91,4 +91,10 @@ jobs:
           done
 
       - name: Run PHPUnit (integration)
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_DATABASE: ddd_inventory
+          DB_USERNAME: ddd_user
+          DB_PASSWORD: secret
         run: php vendor/bin/phpunit tests/Integration --testdox

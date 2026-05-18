@@ -23,7 +23,7 @@ final class EloquentProductRepositoryTest extends TestCase
     {
         $repo = new EloquentProductRepository();
 
-        $id = bin2hex(random_bytes(8));
+        $id = uuidv4();
         $sku = new SKU('INTSKU1');
         $product = Product::create($id, $sku, 'Integration Product', new Department('GEN'), new LocationId('LOC-INT'), new Quantity(5));
 

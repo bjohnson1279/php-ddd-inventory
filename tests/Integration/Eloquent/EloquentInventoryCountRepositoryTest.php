@@ -15,7 +15,7 @@ final class EloquentInventoryCountRepositoryTest extends TestCase
     public function test_save_and_find(): void
     {
         $repo = new EloquentInventoryCountRepository();
-        $id = bin2hex(random_bytes(8));
+        $id = uuidv4();
         $count = InventoryCount::start($id);
         $count->recordCount(new SKU('INTSKU-A'), new Quantity(7));
 

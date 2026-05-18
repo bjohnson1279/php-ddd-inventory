@@ -8,7 +8,7 @@ use InventoryApp\Domain\Inventory\Entities\InventoryCount;
 
 use InventoryApp\Infrastructure\Models\InventoryCountModel;
 use InventoryApp\Infrastructure\Models\InventoryCountItemModel;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Capsule\Manager as Capsule;
 
 class EloquentInventoryCountRepository implements InventoryCountRepositoryInterface
 {
@@ -34,7 +34,7 @@ class EloquentInventoryCountRepository implements InventoryCountRepositoryInterf
     
     public function save(InventoryCount $inventoryCount): void
     {
-        DB::transaction(function () use ($inventoryCount) {
+        Capsule::connection()->transaction(function () use ($inventoryCount) {
             $model = InventoryCountModel::updateOrCreate(
                 ['id' => $inventoryCount->getId()],
                 ['status' => $inventoryCount->getStatus()->getValue(), 'created_at' => date('Y-m-d H:i:s')]

@@ -60,6 +60,23 @@ This repository contains a small Domain-Driven Design inventory example (PHP 8.1
 
 Integration tests are annotated with `@group integration` (see tests/Integration) so unit CI stays fast.
 
+## API
+
+A short API summary is available in docs/ENDPOINTS.md and a machine-readable OpenAPI 3.0 specification is shipped at docs/openapi.yaml.
+
+Quick endpoints summary:
+
+- POST /api/inventory/receive — receive stock for a SKU at a location. Payload: { sku, quantity, location_id }
+- POST /api/inventory/dispatch — dispatch stock for a SKU at a location. Payload: { sku, quantity, location_id }
+- GET  /api/inventory/{sku}/stock — get stock level; optional query ?location_id=
+- POST /api/inventory-counts — start an inventory count (returns count_id)
+- POST /api/inventory-counts/{count_id}/items — record item counts. Payload: { sku, quantity }
+- POST /api/inventory-counts/{count_id}/complete — complete a count and reconcile stock
+- POST /api/catalog/products — create catalog product. Payload: { name, description, department }
+- POST /api/catalog/products/{productId}/variants — add variant to a product. Payload: { sku, attributes, price }
+
+For full details and example curl commands see docs/ENDPOINTS.md.
+
 ## Repositories & switching implementations
 
 - ServiceContainer provides factory methods to get repositories. By default:

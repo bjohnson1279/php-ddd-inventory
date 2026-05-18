@@ -1,0 +1,200 @@
+openapi: 3.0.0
+info:
+  title: DDD Inventory API
+  version: 1.0.0
+  description: API surface for the sample DDD Inventory application (minimal spec)
+servers:
+  - url: http://localhost:8000
+paths:
+  /api/inventory/receive:
+    post:
+      summary: Receive stock for a SKU
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReceiveRequest'
+      responses:
+        '200':
+          description: Stock received
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /api/inventory/dispatch:
+    post:
+      summary: Dispatch stock for a SKU
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DispatchRequest'
+      responses:
+        '200':
+          description: Stock dispatched
+  /api/inventory/{sku}/stock:
+    get:
+      summary: Get stock level for SKU
+      parameters:
+        - name: sku
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: location_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Stock level
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockResponse'
+  /api/inventory-counts:
+    post:
+      summary: Start an inventory count
+      responses:
+        '201':
+          description: Count started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CountStartResponse'
+  /api/inventory-counts/{count_id}/items:
+    post:
+      summary: Record item count
+      parameters:
+        - name: count_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CountItemRequest'
+      responses:
+        '200':
+          description: Item recorded
+  /api/inventory-counts/{count_id}/complete:
+    post:
+      summary: Complete inventory count and reconcile
+      parameters:
+        - name: count_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Count completed and reconciled
+  /api/catalog/products:
+    post:
+      summary: Create catalog product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CatalogProductRequest'
+      responses:
+        '201':
+          description: Product created
+  /api/catalog/products/{productId}/variants:
+    post:
+      summary: Add variant to product
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddVariantRequest'
+      responses:
+        '201':
+          description: Variant added
+components:
+  schemas:
+    ReceiveRequest:
+      type: object
+      required: [sku, quantity, location_id]
+      properties:
+        sku:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+        location_id:
+          type: string
+    DispatchRequest:
+      type: object
+      required: [sku, quantity, location_id]
+      properties:
+        sku:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+        location_id:
+          type: string
+    StockResponse:
+      type: object
+      properties:
+        sku:
+          type: string
+        location_id:
+          type: string
+        stock:
+          type: integer
+    CountStartResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        count_id:
+          type: string
+    CountItemRequest:
+      type: object
+      required: [sku, quantity]
+      properties:
+        sku:
+          type: string
+        quantity:
+          type: integer
+          minimum: 0
+    CatalogProductRequest:
+      type: object
+      required: [name, description, department]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        department:
+          type: string
+    AddVariantRequest:
+      type: object
+      required: [sku, attributes, price]
+      properties:
+        sku:
+          type: string
+        attributes:
+          type: object
+        price:
+          type: number
+          format: float

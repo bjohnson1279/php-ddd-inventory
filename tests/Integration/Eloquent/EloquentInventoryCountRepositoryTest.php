@@ -10,6 +10,7 @@ use InventoryApp\Domain\Inventory\ValueObjects\Quantity;
 
 require_once __DIR__ . '/../bootstrap.php';
 
+/** @group integration */
 final class EloquentInventoryCountRepositoryTest extends TestCase
 {
     public function test_save_and_find(): void

@@ -12,6 +12,7 @@ use InventoryApp\Domain\Inventory\Entities\Product;
 
 require_once __DIR__ . '/../bootstrap.php';
 
+/** @group integration */
 final class EloquentProductRepositoryTest extends TestCase
 {
     protected function setUp(): void

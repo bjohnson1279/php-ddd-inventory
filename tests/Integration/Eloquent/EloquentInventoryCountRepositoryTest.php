@@ -8,7 +8,7 @@ use InventoryApp\Domain\Inventory\Entities\InventoryCount;
 use InventoryApp\Domain\Inventory\ValueObjects\SKU;
 use InventoryApp\Domain\Inventory\ValueObjects\Quantity;
 
-require_once __DIR__ . '/../../bootstrap.php';
+require_once __DIR__ . '/../bootstrap.php';
 
 final class EloquentInventoryCountRepositoryTest extends TestCase
 {

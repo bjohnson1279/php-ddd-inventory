@@ -16,8 +16,8 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.1'
-          extensions: mbstring, xml, intl
+          php-version: '8.2'
+          extensions: mbstring, xml, intl, pdo, pdo_pgsql
 
       - name: Cache Composer
         uses: actions/cache@v4
@@ -27,10 +27,10 @@ jobs:
           restore-keys: ${{ runner.os }}-composer-
 
       - name: Install Composer dependencies
-        run: composer install --no-interaction --prefer-dist
+        run: composer install --no-interaction --prefer-dist --no-scripts
 
       - name: Run PHPUnit (unit)
-        run: vendor/bin/phpunit --testdox --exclude-group integration
+        run: php vendor/bin/phpunit --testdox --exclude-group integration
 
   integration:
     name: Integration tests (with Postgres)
@@ -45,7 +45,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U $${POSTGRES_USER}"
+          --health-cmd "pg_isready -U ddd_user"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -56,8 +56,8 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.1'
-          extensions: mbstring, xml, intl
+          php-version: '8.2'
+          extensions: mbstring, xml, intl, pdo, pdo_pgsql
 
       - name: Cache Composer
         uses: actions/cache@v4
@@ -67,7 +67,7 @@ jobs:
           restore-keys: ${{ runner.os }}-composer-
 
       - name: Install Composer dependencies
-        run: composer install --no-interaction --prefer-dist
+        run: composer install --no-interaction --prefer-dist --no-scripts
 
       - name: Install psql client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
@@ -84,7 +84,11 @@ jobs:
       - name: Apply DB schema
         env:
           PGPASSWORD: secret
-        run: psql -h localhost -U ddd_user -d ddd_inventory -f docker/postgres/init/init.sql
+        run: |
+          for f in docker/postgres/init/*.sql; do
+            echo "Applying $f..."
+            psql -h localhost -U ddd_user -d ddd_inventory -f "$f"
+          done
 
       - name: Run PHPUnit (integration)
-        run: vendor/bin/phpunit tests/Integration --testdox
+        run: php vendor/bin/phpunit tests/Integration --testdox

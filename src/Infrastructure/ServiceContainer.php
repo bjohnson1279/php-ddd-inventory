@@ -8,25 +8,29 @@ use InventoryApp\Infrastructure\Persistence\Repositories\InMemoryBarcodeReposito
 use InventoryApp\Infrastructure\Persistence\Repositories\InMemoryJournalRepository;
 use InventoryApp\Infrastructure\Persistence\Repositories\InMemoryStockOnboardingRepository;
 
+use InventoryApp\Domain\Inventory\Repositories\LedgerRepositoryInterface;
+use InventoryApp\Domain\Serial\Repositories\SerializedItemRepositoryInterface;
+use InventoryApp\Domain\Barcode\Repositories\BarcodeRepositoryInterface;
+
 class ServiceContainer
 {
-    private static ?InMemoryLedgerRepository $ledger = null;
-    private static ?InMemorySerializedItemRepository $serials = null;
-    private static ?InMemoryBarcodeRepository $barcodes = null;
+    private static ?LedgerRepositoryInterface $ledger = null;
+    private static ?SerializedItemRepositoryInterface $serials = null;
+    private static ?BarcodeRepositoryInterface $barcodes = null;
     private static ?InMemoryJournalRepository $journal = null;
     private static ?InMemoryStockOnboardingRepository $onboards = null;
 
-    public static function ledgerRepo(): InMemoryLedgerRepository
+    public static function ledgerRepo(): LedgerRepositoryInterface
     {
         return self::$ledger ??= new InMemoryLedgerRepository();
     }
 
-    public static function serializedRepo(): InMemorySerializedItemRepository
+    public static function serializedRepo(): SerializedItemRepositoryInterface
     {
         return self::$serials ??= new InMemorySerializedItemRepository();
     }
 
-    public static function barcodeRepo(): InMemoryBarcodeRepository
+    public static function barcodeRepo(): BarcodeRepositoryInterface
     {
         return self::$barcodes ??= new InMemoryBarcodeRepository();
     }

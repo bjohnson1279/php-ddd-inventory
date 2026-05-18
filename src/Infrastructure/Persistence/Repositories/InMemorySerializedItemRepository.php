@@ -5,8 +5,9 @@ namespace InventoryApp\Infrastructure\Persistence\Repositories;
 use InventoryApp\Domain\Serial\Aggregates\SerializedItem;
 use InventoryApp\Domain\Serial\ValueObjects\SerialNumber;
 use InventoryApp\Domain\Serial\Enums\SerializedItemStatus;
+use InventoryApp\Domain\Serial\Repositories\SerializedItemRepositoryInterface;
 
-class InMemorySerializedItemRepository
+class InMemorySerializedItemRepository implements SerializedItemRepositoryInterface
 {
     private string $path;
 

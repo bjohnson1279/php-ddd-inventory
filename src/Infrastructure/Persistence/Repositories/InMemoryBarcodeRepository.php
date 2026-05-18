@@ -6,8 +6,9 @@ use InventoryApp\Domain\Barcode\Aggregates\VariantBarcodeSet;
 use InventoryApp\Domain\Barcode\ValueObjects\Barcode;
 use InventoryApp\Domain\Barcode\Enums\BarcodeSource;
 use InventoryApp\Domain\Barcode\Enums\BarcodeSymbology;
+use InventoryApp\Domain\Barcode\Repositories\BarcodeRepositoryInterface;
 
-class InMemoryBarcodeRepository
+class InMemoryBarcodeRepository implements BarcodeRepositoryInterface
 {
     private string $path;
 

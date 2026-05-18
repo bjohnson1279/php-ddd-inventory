@@ -7,10 +7,11 @@ use InventoryApp\Domain\Serial\Aggregates\SerializedItem;
 use InventoryApp\Domain\Inventory\Entities\LedgerEntry;
 use InventoryApp\Domain\Inventory\Enums\ReasonCode;
 use InventoryApp\Domain\Inventory\Repositories\LedgerRepositoryInterface;
+use InventoryApp\Domain\Serial\Repositories\SerializedItemRepositoryInterface;
 
 class SerializedInventoryService
 {
-    public function __construct(private readonly object $serialRepo, private readonly LedgerRepositoryInterface $ledger, private readonly \Psr\EventDispatcher\EventDispatcherInterface $events) {}
+    public function __construct(private readonly SerializedItemRepositoryInterface $serialRepo, private readonly LedgerRepositoryInterface $ledger, private readonly \Psr\EventDispatcher\EventDispatcherInterface $events) {}
 
     public function register(SerialNumber $serialNumber, string $variantId, string $tenantId, string $locationId, string $actorId): SerializedItem
     {

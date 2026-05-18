@@ -3,8 +3,9 @@
 namespace InventoryApp\Infrastructure\Persistence\Repositories;
 
 use InventoryApp\Domain\Accounting\Aggregates\JournalEntry;
+use InventoryApp\Domain\Accounting\Repositories\JournalRepositoryInterface;
 
-class InMemoryJournalRepository
+class InMemoryJournalRepository implements JournalRepositoryInterface
 {
     private string $path;
 

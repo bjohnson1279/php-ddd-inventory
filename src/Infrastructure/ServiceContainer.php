@@ -11,14 +11,16 @@ use InventoryApp\Infrastructure\Persistence\Repositories\InMemoryStockOnboarding
 use InventoryApp\Domain\Inventory\Repositories\LedgerRepositoryInterface;
 use InventoryApp\Domain\Serial\Repositories\SerializedItemRepositoryInterface;
 use InventoryApp\Domain\Barcode\Repositories\BarcodeRepositoryInterface;
+use InventoryApp\Domain\Accounting\Repositories\JournalRepositoryInterface;
+use InventoryApp\Domain\Inventory\Repositories\StockOnboardingRepositoryInterface;
 
 class ServiceContainer
 {
     private static ?LedgerRepositoryInterface $ledger = null;
     private static ?SerializedItemRepositoryInterface $serials = null;
     private static ?BarcodeRepositoryInterface $barcodes = null;
-    private static ?InMemoryJournalRepository $journal = null;
-    private static ?InMemoryStockOnboardingRepository $onboards = null;
+    private static ?JournalRepositoryInterface $journal = null;
+    private static ?StockOnboardingRepositoryInterface $onboards = null;
 
     public static function ledgerRepo(): LedgerRepositoryInterface
     {
@@ -35,12 +37,12 @@ class ServiceContainer
         return self::$barcodes ??= new InMemoryBarcodeRepository();
     }
 
-    public static function journalRepo(): InMemoryJournalRepository
+    public static function journalRepo(): JournalRepositoryInterface
     {
         return self::$journal ??= new InMemoryJournalRepository();
     }
 
-    public static function stockOnboardingRepo(): InMemoryStockOnboardingRepository
+    public static function stockOnboardingRepo(): StockOnboardingRepositoryInterface
     {
         return self::$onboards ??= new InMemoryStockOnboardingRepository();
     }

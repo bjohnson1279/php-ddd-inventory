@@ -3,8 +3,9 @@
 namespace InventoryApp\Infrastructure\Persistence\Repositories;
 
 use InventoryApp\Domain\Inventory\Aggregates\StockOnboarding;
+use InventoryApp\Domain\Inventory\Repositories\StockOnboardingRepositoryInterface;
 
-class InMemoryStockOnboardingRepository
+class InMemoryStockOnboardingRepository implements StockOnboardingRepositoryInterface
 {
     private string $path;
 

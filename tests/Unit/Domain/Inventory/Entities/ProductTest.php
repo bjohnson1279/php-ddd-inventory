@@ -13,7 +13,7 @@ use InventoryApp\Domain\Inventory\Exceptions\InsufficientStockException;
 
 class ProductTest extends TestCase
 {
-    private function createProduct(): Product
+    private function createProduct()
     {
         return Product::create(
             'prod_123',

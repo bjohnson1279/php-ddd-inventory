@@ -39,13 +39,13 @@ class InventoryController // extends Controller
 
             $useCase->execute($validated['sku'], $validated['location_id'], $validated['quantity']);
 
-            return new JsonResponse(['message' => 'Stock dispatched successfully'], 200);
+            return new Response(['message' => 'Stock dispatched successfully'], 200);
         } catch (Exception $e) {
-            return new JsonResponse(['error' => $e->getMessage()], 400);
+            return new Response(['error' => $e->getMessage()], 400);
         }
     }
 
-    public function stockLevel($request, string $sku, GetStockLevel $useCase): JsonResponse
+    public function stockLevel($request, string $sku, GetStockLevel $useCase)
     {
         try {
             $locationId = $request->query('location_id');

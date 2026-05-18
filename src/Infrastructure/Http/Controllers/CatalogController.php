@@ -19,7 +19,7 @@ class CatalogController
                 'department' => 'required|string'
             ]);
 
-            $id = uniqid('prod_'); // Using uniqid for simplicity in this example
+            $id = \uuidv4(); // Use UUID to match DB UUID columns
             $useCase->execute($id, $validated['name'], $validated['description'], $validated['department']);
 
             return new Response(['message' => 'Catalog product created successfully', 'id' => $id], 201);

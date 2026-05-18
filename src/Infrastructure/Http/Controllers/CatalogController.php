@@ -2,7 +2,7 @@
 
 namespace InventoryApp\Infrastructure\Http\Controllers;
 
-use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use InventoryApp\Application\Catalog\UseCases\CreateProductCatalog;
 use InventoryApp\Application\Catalog\UseCases\AddVariant;
 use Exception;

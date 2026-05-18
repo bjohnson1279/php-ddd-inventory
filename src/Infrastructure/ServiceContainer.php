@@ -17,6 +17,7 @@ use InventoryApp\Domain\Inventory\Repositories\ProductRepositoryInterface;
 use InventoryApp\Domain\Inventory\Repositories\InventoryCountRepositoryInterface;
 use InventoryApp\Infrastructure\Persistence\Repositories\EloquentProductRepository;
 use InventoryApp\Infrastructure\Persistence\Repositories\EloquentInventoryCountRepository;
+use InventoryApp\Infrastructure\Persistence\Repositories\EloquentCatalogProductRepository;
 
 class ServiceContainer
 {

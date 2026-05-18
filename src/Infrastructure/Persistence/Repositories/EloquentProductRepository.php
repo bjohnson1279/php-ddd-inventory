@@ -9,17 +9,18 @@ use InventoryApp\Domain\Inventory\ValueObjects\SKU;
 use InventoryApp\Domain\Inventory\ValueObjects\Quantity;
 use InventoryApp\Domain\Inventory\ValueObjects\Department;
 use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
+use InventoryApp\Infrastructure\Models\ProductModel;
+use InventoryApp\Infrastructure\Models\ProductLocationModel;
+use InventoryApp\Infrastructure\Models\InventoryTransactionModel;
 use Illuminate\Support\Facades\DB;
-// use App\Models\ProductModel; // Assuming an Eloquent model exists
 
 class EloquentProductRepository implements ProductRepositoryInterface
 {
     public function findById(string $id): ?Product
     {
-        /* Example Eloquent implementation:
         $model = ProductModel::with('locations')->find($id);
         if (!$model) return null;
-        
+
         $product = new Product(
             $model->id,
             new SKU($model->sku),
@@ -27,7 +28,7 @@ class EloquentProductRepository implements ProductRepositoryInterface
             new Department($model->department),
             new Quantity($model->reorder_threshold)
         );
-        
+
         foreach ($model->locations as $locModel) {
             $product->loadLocationStock(new LocationStock(
                 new LocationId($locModel->location_id),
@@ -37,16 +38,13 @@ class EloquentProductRepository implements ProductRepositoryInterface
             ));
         }
         return $product;
-        */
-        return null; // Placeholder
     }
     
     public function findBySku(SKU $sku): ?Product
     {
-        /* Example Eloquent implementation:
         $model = ProductModel::with('locations')->where('sku', $sku->getValue())->first();
         if (!$model) return null;
-        
+
         $product = new Product(
             $model->id,
             new SKU($model->sku),
@@ -54,7 +52,7 @@ class EloquentProductRepository implements ProductRepositoryInterface
             new Department($model->department),
             new Quantity($model->reorder_threshold)
         );
-        
+
         foreach ($model->locations as $locModel) {
             $product->loadLocationStock(new LocationStock(
                 new LocationId($locModel->location_id),
@@ -64,13 +62,10 @@ class EloquentProductRepository implements ProductRepositoryInterface
             ));
         }
         return $product;
-        */
-        return null; // Placeholder
     }
     
     public function save(Product $product): void
     {
-        /* Example Eloquent implementation:
         ProductModel::updateOrCreate(
             ['id' => $product->getId()],
             [
@@ -78,12 +73,13 @@ class EloquentProductRepository implements ProductRepositoryInterface
                 'name' => $product->getName(),
                 'department' => $product->getDepartment()->getValue(),
                 'reorder_threshold' => $product->getReorderThreshold()->getValue(),
+                'updated_at' => date('Y-m-d H:i:s')
             ]
         );
         
         // Save locations
         foreach ($product->getLocationStocks() as $locationStock) {
-            DB::table('product_locations')->updateOrInsert(
+            ProductLocationModel::updateOrCreate(
                 [
                     'product_id' => $product->getId(),
                     'location_id' => $locationStock->getLocationId()->getValue()
@@ -92,14 +88,14 @@ class EloquentProductRepository implements ProductRepositoryInterface
                     'stock_quantity' => $locationStock->getStockQuantity()->getValue(),
                     'open_box_quantity' => $locationStock->getOpenBoxQuantity()->getValue(),
                     'damaged_quantity' => $locationStock->getDamagedQuantity()->getValue(),
-                    'updated_at' => now(),
+                    'updated_at' => date('Y-m-d H:i:s'),
                 ]
             );
         }
 
         // Save pending transactions (Ledger)
         foreach ($product->getPendingTransactions() as $transaction) {
-            DB::table('inventory_transactions')->insert([
+            InventoryTransactionModel::create([
                 'id' => $transaction->getId(),
                 'product_id' => $transaction->getProductId(),
                 'type' => $transaction->getType()->getValue(),
@@ -109,14 +105,12 @@ class EloquentProductRepository implements ProductRepositoryInterface
                 'reference_id' => $transaction->getReference(),
             ]);
         }
-        */
+
         $product->clearPendingTransactions();
     }
     
     public function delete(Product $product): void
     {
-        /* Example Eloquent implementation:
         ProductModel::where('id', $product->getId())->delete();
-        */
     }
 }

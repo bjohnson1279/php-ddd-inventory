@@ -2,7 +2,7 @@
 
 namespace InventoryApp\Infrastructure\Http\Controllers;
 
-use Symfony\Component\HttpFoundation\JsonResponse;
+use InventoryApp\Infrastructure\Http\Response;
 use InventoryApp\Application\Catalog\UseCases\CreateProductCatalog;
 use InventoryApp\Application\Catalog\UseCases\AddVariant;
 use Exception;
@@ -10,7 +10,7 @@ use Exception;
 
 class CatalogController
 {
-    public function createProduct($request, CreateProductCatalog $useCase): JsonResponse
+    public function createProduct($request, CreateProductCatalog $useCase)
     {
         try {
             $validated = $request->validate([
@@ -28,7 +28,7 @@ class CatalogController
         }
     }
 
-    public function addVariant(Request $request, string $productId, AddVariant $useCase): JsonResponse
+    public function addVariant($request, string $productId, AddVariant $useCase)
     {
         try {
             $validated = $request->validate([

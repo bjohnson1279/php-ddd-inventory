@@ -3,7 +3,6 @@
 namespace InventoryApp\Infrastructure\Http\Controllers;
 
 // use App\Http\Controllers\Controller; // Laravel base controller
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use InventoryApp\Application\Inventory\UseCases\DispatchStock;
 use InventoryApp\Application\Inventory\UseCases\ReceiveStock;
@@ -12,7 +11,7 @@ use Exception;
 
 class InventoryController // extends Controller
 {
-    public function receive(Request $request, ReceiveStock $useCase): JsonResponse
+    public function receive($request, ReceiveStock $useCase): JsonResponse
     {
         try {
             $validated = $request->validate([

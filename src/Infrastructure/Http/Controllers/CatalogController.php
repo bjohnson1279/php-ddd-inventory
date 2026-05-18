@@ -2,7 +2,6 @@
 
 namespace InventoryApp\Infrastructure\Http\Controllers;
 
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use InventoryApp\Application\Catalog\UseCases\CreateProductCatalog;
 use InventoryApp\Application\Catalog\UseCases\AddVariant;
@@ -11,7 +10,7 @@ use Exception;
 
 class CatalogController
 {
-    public function createProduct(Request $request, CreateProductCatalog $useCase): JsonResponse
+    public function createProduct($request, CreateProductCatalog $useCase): JsonResponse
     {
         try {
             $validated = $request->validate([

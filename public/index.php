@@ -39,11 +39,49 @@ use InventoryApp\Infrastructure\Http\Controllers\InventoryController;
 use InventoryApp\Application\Catalog\UseCases\CreateProductCatalog;
 use InventoryApp\Application\Inventory\UseCases\ReceiveStock;
 use InventoryApp\Application\Inventory\UseCases\GetStockLevel;
-use Illuminate\Http\Request;
+
+// Simple Request adapter for controllers (minimal validate/query API)
+class RequestAdapter
+{
+    private array $body;
+    private array $query;
+
+    public function __construct()
+    {
+        $this->body = json_decode(file_get_contents('php://input'), true) ?: [];
+        $this->query = $_GET;
+    }
+
+    public function validate(array $rules): array
+    {
+        // Very small validation: ensure required keys exist and basic type checks for integer
+        foreach ($rules as $key => $rule) {
+            $parts = explode('|', $rule);
+            if (in_array('required', $parts) && !isset($this->body[$key])) {
+                throw new \Exception("Validation failed: {$key} is required");
+            }
+            if (isset($this->body[$key]) && in_array('integer', $parts)) {
+                if (!is_int($this->body[$key])) {
+                    // allow numeric strings
+                    if (!ctype_digit(strval($this->body[$key]))) {
+                        throw new \Exception("Validation failed: {$key} must be integer");
+                    }
+                    $this->body[$key] = (int)$this->body[$key];
+                }
+            }
+        }
+        return $this->body;
+    }
+
+    public function query(string $key): ?string
+    {
+        return $this->query[$key] ?? null;
+    }
+}
 
 // POST /api/catalog/products -> create catalog product
 if ($method === 'POST' && $uri === '/api/catalog/products') {
-    $request = Request::createFromGlobals();
+    $request = new RequestAdapter();
     $controller = new CatalogController();
     $useCase = new CreateProductCatalog(ServiceContainer::catalogProductRepo());
     $response = $controller->createProduct($request, $useCase);
@@ -55,7 +93,7 @@ if ($method === 'POST' && $uri === '/api/catalog/products') {
 
 // POST /api/inventory/receive -> record inventory transaction
 if ($method === 'POST' && $uri === '/api/inventory/receive') {
-    $request = Request::createFromGlobals();
+    $request = new RequestAdapter();
     $controller = new InventoryController();
     $useCase = new ReceiveStock(ServiceContainer::productRepo());
     $response = $controller->receive($request, $useCase);
@@ -68,7 +106,7 @@ if ($method === 'POST' && $uri === '/api/inventory/receive') {
 // GET /api/inventory/{sku}/stock -> return computed stock from use-case
 if ($method === 'GET' && preg_match('#^/api/inventory/([^/]+)/stock$#', $uri, $m)) {
     $sku = urldecode($m[1]);
-    $request = Request::createFromGlobals();
+    $request = new RequestAdapter();
     $controller = new InventoryController();
     $useCase = new GetStockLevel(ServiceContainer::productRepo());
     $response = $controller->stockLevel($request, $sku, $useCase);

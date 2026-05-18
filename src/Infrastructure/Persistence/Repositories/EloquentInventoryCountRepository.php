@@ -6,14 +6,17 @@ use InventoryApp\Domain\Inventory\Repositories\InventoryCountRepositoryInterface
 use InventoryApp\Domain\Inventory\Entities\InventoryCount;
 // use App\Models\InventoryCountModel; // Assuming an Eloquent model exists
 
+use InventoryApp\Infrastructure\Models\InventoryCountModel;
+use InventoryApp\Infrastructure\Models\InventoryCountItemModel;
+use Illuminate\Support\Facades\DB;
+
 class EloquentInventoryCountRepository implements InventoryCountRepositoryInterface
 {
     public function findById(string $id): ?InventoryCount
     {
-        /* Example Eloquent implementation:
         $model = InventoryCountModel::with('items')->find($id);
         if (!$model) return null;
-        
+
         $items = [];
         foreach ($model->items as $itemModel) {
             $items[] = new \InventoryApp\Domain\Inventory\Entities\InventoryCountItem(
@@ -24,30 +27,26 @@ class EloquentInventoryCountRepository implements InventoryCountRepositoryInterf
 
         return new InventoryCount(
             $model->id,
-            new \InventoryApp\Domain\Inventory\ValueObjects\CountStatus($model->status),
+            \InventoryApp\Domain\Inventory\ValueObjects\CountStatus::from($model->status),
             $items
         );
-        */
-        return null; // Placeholder
     }
     
     public function save(InventoryCount $inventoryCount): void
     {
-        /* Example Eloquent implementation:
         DB::transaction(function () use ($inventoryCount) {
             $model = InventoryCountModel::updateOrCreate(
                 ['id' => $inventoryCount->getId()],
-                ['status' => $inventoryCount->getStatus()->getValue()]
+                ['status' => $inventoryCount->getStatus()->getValue(), 'created_at' => date('Y-m-d H:i:s')]
             );
             
-            // Sync items (this depends on your exact Eloquent relationships)
+            // Sync items
             foreach ($inventoryCount->getItems() as $item) {
-                $model->items()->updateOrCreate(
-                    ['sku' => $item->getSku()->getValue()],
-                    ['counted_quantity' => $item->getCountedQuantity()->getValue()]
+                InventoryCountItemModel::updateOrCreate(
+                    ['inventory_count_id' => $model->id, 'sku' => $item->getSku()->getValue()],
+                    ['product_id' => null, 'counted_quantity' => $item->getCountedQuantity()->getValue(), 'created_at' => date('Y-m-d H:i:s')]
                 );
             }
         });
-        */
     }
 }

@@ -35,7 +35,7 @@ final class EloquentProductRepositoryTest extends TestCase
         $this->assertEquals('Integration Product', $found->getName());
 
         // Verify inventory transaction (initial stock) was recorded
-        $tx = \Illuminate\Support\Facades\DB::table('inventory_transactions')->where('product_id', $id)->first();
+        $tx = \Illuminate\Database\Capsule\Manager::connection()->table('inventory_transactions')->where('product_id', $id)->first();
         $this->assertNotNull($tx);
         $this->assertEquals(5, $tx->quantity_change);
     }

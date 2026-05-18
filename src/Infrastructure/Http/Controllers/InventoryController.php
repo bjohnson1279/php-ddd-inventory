@@ -23,9 +23,9 @@ class InventoryController // extends Controller
 
             $useCase->execute($validated['sku'], $validated['location_id'], $validated['quantity']);
 
-            return response()->json(['message' => 'Stock received successfully']);
+            return new JsonResponse(['message' => 'Stock received successfully'], 200);
         } catch (Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+            return new JsonResponse(['error' => $e->getMessage()], 400);
         }
     }
 
@@ -40,9 +40,9 @@ class InventoryController // extends Controller
 
             $useCase->execute($validated['sku'], $validated['location_id'], $validated['quantity']);
 
-            return response()->json(['message' => 'Stock dispatched successfully']);
+            return new JsonResponse(['message' => 'Stock dispatched successfully'], 200);
         } catch (Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+            return new JsonResponse(['error' => $e->getMessage()], 400);
         }
     }
 
@@ -52,13 +52,13 @@ class InventoryController // extends Controller
             $locationId = $request->query('location_id');
             $stock = $useCase->execute($sku, $locationId);
 
-            return response()->json([
+            return new JsonResponse([
                 'sku' => $sku,
                 'location_id' => $locationId ?? 'ALL',
                 'stock' => $stock
-            ]);
+            ], 200);
         } catch (Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 404);
+            return new JsonResponse(['error' => $e->getMessage()], 404);
         }
     }
 }

@@ -62,4 +62,10 @@ class ServiceContainer
     {
         return self::$inventoryCounts ??= new EloquentInventoryCountRepository();
     }
+
+    public static function catalogProductRepo(): \InventoryApp\Domain\Catalog\Repositories\CatalogProductRepositoryInterface
+    {
+        return new EloquentCatalogProductRepository();
+    }
 }
+

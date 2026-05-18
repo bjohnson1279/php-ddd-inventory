@@ -32,85 +32,49 @@ $body = json_decode(file_get_contents('php://input'), true) ?: [];
 
 header('Content-Type: application/json');
 
+// Delegate to controllers and use-cases via ServiceContainer
+use InventoryApp\Infrastructure\ServiceContainer;
+use InventoryApp\Infrastructure\Http\Controllers\CatalogController;
+use InventoryApp\Infrastructure\Http\Controllers\InventoryController;
+use InventoryApp\Application\Catalog\UseCases\CreateProductCatalog;
+use InventoryApp\Application\Inventory\UseCases\ReceiveStock;
+use InventoryApp\Application\Inventory\UseCases\GetStockLevel;
+use Illuminate\Http\Request;
+
 // POST /api/catalog/products -> create catalog product
 if ($method === 'POST' && $uri === '/api/catalog/products') {
-    if (empty($body['name']) || empty($body['description']) || empty($body['department'])) {
-        http_response_code(400);
-        echo json_encode(['error' => 'name, description and department are required']);
-        exit;
-    }
+    $request = Request::createFromGlobals();
+    $controller = new CatalogController();
+    $useCase = new CreateProductCatalog(ServiceContainer::catalogProductRepo());
+    $response = $controller->createProduct($request, $useCase);
 
-    $insertData = [
-        'name' => $body['name'],
-        'description' => $body['description'],
-        'department' => $body['department'],
-        'created_at' => date('c'),
-    ];
-
-    try {
-        $id = $connection->table('catalog_products')->insertGetId($insertData, 'id');
-        http_response_code(201);
-        echo json_encode(['message' => 'Catalog product created successfully', 'id' => $id]);
-    } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['error' => $e->getMessage()]);
-    }
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
     exit;
 }
 
 // POST /api/inventory/receive -> record inventory transaction
 if ($method === 'POST' && $uri === '/api/inventory/receive') {
-    if (empty($body['sku']) || empty($body['quantity']) || empty($body['location_id'])) {
-        http_response_code(400);
-        echo json_encode(['error' => 'sku, quantity and location_id are required']);
-        exit;
-    }
+    $request = Request::createFromGlobals();
+    $controller = new InventoryController();
+    $useCase = new ReceiveStock(ServiceContainer::productRepo());
+    $response = $controller->receive($request, $useCase);
 
-    $sku = $body['sku'];
-    $qty = (int)$body['quantity'];
-    $location = $body['location_id'];
-
-    // Find product by SKU
-    $product = $connection->table('products')->where('sku', $sku)->first();
-    if (!$product) {
-        http_response_code(400);
-        echo json_encode(['error' => 'Product not found for SKU: ' . $sku]);
-        exit;
-    }
-
-    try {
-        $connection->table('inventory_transactions')->insert([
-            'product_id' => $product->id,
-            'type' => 'receive',
-            'quantity_change' => $qty,
-            'condition' => 'good',
-            'created_at' => date('c'),
-            'reference_id' => $body['reference_id'] ?? null,
-        ]);
-
-        http_response_code(200);
-        echo json_encode(['message' => 'Stock received', 'sku' => $sku, 'quantity' => $qty]);
-    } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['error' => $e->getMessage()]);
-    }
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
     exit;
 }
 
-// GET /api/inventory/{sku}/stock -> return computed stock from transactions
+// GET /api/inventory/{sku}/stock -> return computed stock from use-case
 if ($method === 'GET' && preg_match('#^/api/inventory/([^/]+)/stock$#', $uri, $m)) {
     $sku = urldecode($m[1]);
-    $product = $connection->table('products')->where('sku', $sku)->first();
-    if (!$product) {
-        http_response_code(404);
-        echo json_encode(['error' => 'Product not found']);
-        exit;
-    }
+    $request = Request::createFromGlobals();
+    $controller = new InventoryController();
+    $useCase = new GetStockLevel(ServiceContainer::productRepo());
+    $response = $controller->stockLevel($request, $sku, $useCase);
 
-    $sum = $connection->table('inventory_transactions')->where('product_id', $product->id)->sum('quantity_change');
-    $stock = (int)$sum;
-
-    echo json_encode(['sku' => $sku, 'product_id' => $product->id, 'stock' => $stock]);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
     exit;
 }
 

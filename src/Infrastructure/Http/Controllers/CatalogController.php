@@ -23,9 +23,9 @@ class CatalogController
             $id = uniqid('prod_'); // Using uniqid for simplicity in this example
             $useCase->execute($id, $validated['name'], $validated['description'], $validated['department']);
 
-            return response()->json(['message' => 'Catalog product created successfully', 'id' => $id], 201);
+            return new JsonResponse(['message' => 'Catalog product created successfully', 'id' => $id], 201);
         } catch (Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+            return new JsonResponse(['error' => $e->getMessage()], 400);
         }
     }
 
@@ -41,9 +41,9 @@ class CatalogController
             $variantId = uniqid('var_'); // Using uniqid for simplicity in this example
             $useCase->execute($productId, $variantId, $validated['sku'], $validated['attributes'], $validated['price']);
 
-            return response()->json(['message' => 'Variant added successfully', 'id' => $variantId], 201);
+            return new JsonResponse(['message' => 'Variant added successfully', 'id' => $variantId], 201);
         } catch (Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+            return new JsonResponse(['error' => $e->getMessage()], 400);
         }
     }
 }

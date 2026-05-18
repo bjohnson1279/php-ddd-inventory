@@ -22,7 +22,8 @@ class ProcessReturn
     {
         $sku = new SKU($skuValue);
         $quantity = new Quantity($quantityValue);
-        $condition = new Condition($conditionValue);
+        // Accept condition input case-insensitively (tests may pass UPPERCASE)
+        $condition = new Condition(strtolower($conditionValue));
         $locationId = new LocationId($locationValue);
 
         $product = $this->productRepository->findBySku($sku);

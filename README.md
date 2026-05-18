@@ -1,5 +1,7 @@
 # DDD Inventory — README
 
+[![CI](https://github.com/bjohnson1279/php-ddd-inventory/actions/workflows/phpunit.yml/badge.svg)](https://github.com/bjohnson1279/php-ddd-inventory/actions/workflows/phpunit.yml)
+
 This repository contains a small Domain-Driven Design inventory example (PHP 8.1) with in-memory and Eloquent implementations and unit + integration tests.
 
 ## Requirements

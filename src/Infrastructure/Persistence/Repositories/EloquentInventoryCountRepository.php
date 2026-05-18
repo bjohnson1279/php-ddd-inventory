@@ -27,7 +27,7 @@ class EloquentInventoryCountRepository implements InventoryCountRepositoryInterf
 
         return new InventoryCount(
             $model->id,
-            \InventoryApp\Domain\Inventory\ValueObjects\CountStatus::from($model->status),
+            new \InventoryApp\Domain\Inventory\ValueObjects\CountStatus($model->status),
             $items
         );
     }

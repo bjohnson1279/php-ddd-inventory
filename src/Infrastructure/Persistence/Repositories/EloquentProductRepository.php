@@ -96,7 +96,6 @@ class EloquentProductRepository implements ProductRepositoryInterface
         // Save pending transactions (Ledger)
         foreach ($product->getPendingTransactions() as $transaction) {
             InventoryTransactionModel::create([
-                'id' => $transaction->getId(),
                 'product_id' => $transaction->getProductId(),
                 'type' => $transaction->getType()->getValue(),
                 'quantity_change' => $transaction->getQuantityChange(),

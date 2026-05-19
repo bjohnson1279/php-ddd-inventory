@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StockPilot — Setup</title>
+  <meta name="description" content="Initial setup and configuration for StockPilot inventory management." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <style>
+    /*
+     * SRI does not apply to CSS @import rules (only to <link> and <script> tags).
+     * Google Fonts cannot use SRI anyway — it returns dynamically generated CSS
+     * per browser UA (woff2/woff/etc.) so no stable hash can be computed.
+     * The stylesheet only declares @font-face rules; it cannot execute scripts.
+     */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+  </style>
+  <link rel="stylesheet" href="setup.css" />
+</head>
+<body>
+  <!-- Background orbs -->
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <div class="wizard-shell">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="40" height="40" rx="10" fill="url(#bg)"/>
+            <path d="M8 16l12-8 12 8v14H8V16z" stroke="url(#s1)" stroke-width="1.8" fill="none"/>
+            <path d="M16 30v-8h8v8" stroke="url(#s1)" stroke-width="1.8"/>
+            <path d="M22 10l8 12" stroke="#06b6d4" stroke-width="1.5" stroke-linecap="round"/>
+            <circle cx="30" cy="22" r="2" fill="#06b6d4"/>
+            <defs>
+              <linearGradient id="bg" x1="0" y1="0" x2="40" y2="40">
+                <stop stop-color="#1e1b4b"/><stop offset="1" stop-color="#0f0f23"/>
+              </linearGradient>
+              <linearGradient id="s1" x1="8" y1="8" x2="32" y2="32">
+                <stop stop-color="#818cf8"/><stop offset="1" stop-color="#6366f1"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-name">StockPilot</div>
+          <div class="brand-sub">Setup Wizard</div>
+        </div>
+      </div>
+
+      <nav class="step-nav" id="stepNav">
+        <div class="step-item active" data-step="0">
+          <div class="step-dot"><span>1</span></div>
+          <div class="step-label">Welcome</div>
+        </div>
+        <div class="step-item" data-step="1">
+          <div class="step-dot"><span>2</span></div>
+          <div class="step-label">Your Organization</div>
+        </div>
+        <div class="step-item" data-step="2">
+          <div class="step-dot"><span>3</span></div>
+          <div class="step-label">Admin Account</div>
+        </div>
+        <div class="step-item" data-step="3">
+          <div class="step-dot"><span>4</span></div>
+          <div class="step-label">Locations</div>
+        </div>
+        <div class="step-item" data-step="4">
+          <div class="step-dot"><span>5</span></div>
+          <div class="step-label">Integrations</div>
+        </div>
+        <div class="step-item" data-step="5">
+          <div class="step-dot"><span>6</span></div>
+          <div class="step-label">Complete</div>
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" id="progressBar"></div>
+        </div>
+        <div class="progress-label" id="progressLabel">Step 1 of 6</div>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="wizard-main">
+      <!-- Step 0: Welcome -->
+      <section class="step-panel active" id="panel-0">
+        <div class="panel-inner">
+          <div class="welcome-icon">🚀</div>
+          <h1>Welcome to StockPilot</h1>
+          <p class="lead">Let's get your inventory management platform up and running in just a few minutes. We'll walk you through setting up your organization, locations, and optional integrations.</p>
+          <div class="feature-grid">
+            <div class="feature-card"><span>📦</span><div><strong>Multi-Location Tracking</strong><p>Manage stock across storefronts, backrooms, and warehouses.</p></div></div>
+            <div class="feature-card"><span>🔗</span><div><strong>Shopify Integration</strong><p>Sync inventory levels automatically with your online store.</p></div></div>
+            <div class="feature-card"><span>👥</span><div><strong>Role-Based Access</strong><p>Admin, Manager, and Staff permissions out of the box.</p></div></div>
+            <div class="feature-card"><span>📊</span><div><strong>Audit Ledger</strong><p>Every stock movement logged and traceable forever.</p></div></div>
+          </div>
+          <button class="btn-primary btn-lg" onclick="goTo(1)">Get Started <span class="btn-arrow">→</span></button>
+        </div>
+      </section>
+
+      <!-- Step 1: Organization -->
+      <section class="step-panel" id="panel-1">
+        <div class="panel-inner">
+          <div class="step-icon">🏢</div>
+          <h1>Your Organization</h1>
+          <p class="lead">Tell us about your store or business. This becomes your tenant workspace.</p>
+          <form id="orgForm" class="form-stack" novalidate>
+            <div class="field-group">
+              <label for="orgName">Store / Business Name <span class="required">*</span></label>
+              <input id="orgName" type="text" placeholder="e.g. Riverside Apparel Co." autocomplete="organization" />
+              <div class="field-error" id="orgName-err"></div>
+            </div>
+            <div class="field-group">
+              <label for="orgId">Tenant ID <span class="required">*</span></label>
+              <input id="orgId" type="text" placeholder="e.g. riverside-apparel" autocomplete="off" />
+              <div class="field-hint">Lowercase letters, numbers, and hyphens only. Used internally.</div>
+              <div class="field-error" id="orgId-err"></div>
+            </div>
+            <div class="field-group">
+              <label for="industry">Industry</label>
+              <select id="industry">
+                <option value="">Select industry…</option>
+                <option>Apparel &amp; Fashion</option>
+                <option>Electronics</option>
+                <option>Food &amp; Beverage</option>
+                <option>Hardware &amp; Tools</option>
+                <option>Health &amp; Beauty</option>
+                <option>Home &amp; Garden</option>
+                <option>Sporting Goods</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div class="btn-row">
+              <button type="button" class="btn-ghost" onclick="goTo(0)">← Back</button>
+              <button type="button" class="btn-primary" onclick="submitOrg()">Continue →</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- Step 2: Admin Account -->
+      <section class="step-panel" id="panel-2">
+        <div class="panel-inner">
+          <div class="step-icon">🔐</div>
+          <h1>Admin Account</h1>
+          <p class="lead">Create the first administrator account for your organization.</p>
+          <form id="adminForm" class="form-stack" novalidate>
+            <div class="field-row">
+              <div class="field-group">
+                <label for="adminName">Full Name <span class="required">*</span></label>
+                <input id="adminName" type="text" placeholder="Jane Smith" autocomplete="name" />
+                <div class="field-error" id="adminName-err"></div>
+              </div>
+              <div class="field-group">
+                <label for="adminEmail">Email Address <span class="required">*</span></label>
+                <input id="adminEmail" type="email" placeholder="jane@yourstore.com" autocomplete="email" />
+                <div class="field-error" id="adminEmail-err"></div>
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field-group">
+                <label for="adminPass">Password <span class="required">*</span></label>
+                <div class="input-wrap">
+                  <input id="adminPass" type="password" placeholder="Min 8 characters" autocomplete="new-password" oninput="checkStrength(this.value)" />
+                  <button type="button" class="toggle-pass" aria-label="Show or hide password" onclick="togglePass('adminPass')">👁</button>
+                </div>
+                <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+                <div class="field-error" id="adminPass-err"></div>
+              </div>
+              <div class="field-group">
+                <label for="adminPassConf">Confirm Password <span class="required">*</span></label>
+                <div class="input-wrap">
+                  <input id="adminPassConf" type="password" placeholder="Repeat password" autocomplete="new-password" />
+                  <button type="button" class="toggle-pass" aria-label="Show or hide confirm password" onclick="togglePass('adminPassConf')">👁</button>
+                </div>
+                <div class="field-error" id="adminPassConf-err"></div>
+              </div>
+            </div>
+            <div class="btn-row">
+              <button type="button" class="btn-ghost" onclick="goTo(1)">← Back</button>
+              <button type="button" class="btn-primary" onclick="submitAdmin()">Continue →</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- Step 3: Locations -->
+      <section class="step-panel" id="panel-3">
+        <div class="panel-inner">
+          <div class="step-icon">📍</div>
+          <h1>Locations</h1>
+          <p class="lead">Define the physical spaces where you'll track inventory. You can add more later.</p>
+          <div id="locationsList" class="locations-list"></div>
+          <button type="button" class="btn-outline" onclick="addLocationRow()">+ Add Location</button>
+          <div class="btn-row" style="margin-top:2rem">
+            <button type="button" class="btn-ghost" onclick="goTo(2)">← Back</button>
+            <button type="button" class="btn-primary" onclick="submitLocations()">Continue →</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Step 4: Integrations -->
+      <section class="step-panel" id="panel-4">
+        <div class="panel-inner">
+          <div class="step-icon">🔗</div>
+          <h1>Integrations</h1>
+          <p class="lead">Connect your sales channels. All integrations are optional and can be configured later.</p>
+          <div class="integration-card" id="shopifyCard">
+            <div class="integration-header">
+              <div class="integration-logo">🛒</div>
+              <div>
+                <strong>Shopify</strong>
+                <p>Sync inventory levels automatically when orders are placed or refunded.</p>
+              </div>
+              <label class="toggle-switch" aria-label="Enable Shopify integration">
+                <input type="checkbox" id="shopifyToggle" onchange="toggleShopify(this.checked)" />
+                <span class="toggle-thumb"></span>
+              </label>
+            </div>
+            <div class="integration-fields" id="shopifyFields" style="display:none">
+              <div class="field-group">
+                <label for="shopDomain">Shop Domain</label>
+                <input id="shopDomain" type="text" placeholder="your-store.myshopify.com" />
+              </div>
+              <div class="field-group">
+                <label for="shopToken">Admin API Access Token</label>
+                <div class="input-wrap">
+                  <input id="shopToken" type="password" placeholder="shpat_…" />
+                  <button type="button" class="toggle-pass" aria-label="Show or hide API token" onclick="togglePass('shopToken')">👁</button>
+                </div>
+                <div class="field-hint">Found in Shopify Admin → Apps → develop apps → API credentials.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="integration-card coming-soon">
+            <div class="integration-header">
+              <div class="integration-logo">🏬</div>
+              <div><strong>Square POS</strong><p>Coming soon.</p></div>
+              <span class="badge">Soon</span>
+            </div>
+          </div>
+          <div class="integration-card coming-soon">
+            <div class="integration-header">
+              <div class="integration-logo">📦</div>
+              <div><strong>Amazon Seller</strong><p>Coming soon.</p></div>
+              <span class="badge">Soon</span>
+            </div>
+          </div>
+
+          <div class="btn-row">
+            <button type="button" class="btn-ghost" onclick="goTo(3)">← Back</button>
+            <button type="button" class="btn-primary" onclick="submitIntegrations()">Continue →</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Step 5: Complete -->
+      <section class="step-panel" id="panel-5">
+        <div class="panel-inner complete-panel">
+          <div class="success-ring">
+            <div class="success-inner">✓</div>
+          </div>
+          <h1>You're all set!</h1>
+          <p class="lead">StockPilot is configured and ready to use. Here's a summary of what was created:</p>
+          <div id="summaryList" class="summary-list"></div>
+          <div class="btn-row center">
+            <button class="btn-primary btn-lg" onclick="goToDashboard()">Go to Dashboard →</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- API error toast -->
+      <div class="toast" id="toast"></div>
+    </main>
+  </div>
+
+  <script src="setup.js"></script>
+</body>
+</html>

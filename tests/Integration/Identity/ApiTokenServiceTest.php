@@ -24,7 +24,7 @@ final class ApiTokenServiceTest extends TestCase
         DB::table('users')->insertOrIgnore([
             'id' => $this->userId,
             'tenant_id' => $this->tenantId,
-            'email' => 'test@example.com',
+            'email' => "test_{$this->userId}@example.com",
             'password_hash' => 'hash',
             'name' => 'Test User'
         ]);

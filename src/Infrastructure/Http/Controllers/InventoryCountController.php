@@ -2,8 +2,7 @@
 
 namespace InventoryApp\Infrastructure\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
+use InventoryApp\Infrastructure\Http\Response;
 use InventoryApp\Application\Inventory\UseCases\StartInventoryCount;
 use InventoryApp\Application\Inventory\UseCases\RecordCountItem;
 use InventoryApp\Application\Inventory\UseCases\CompleteInventoryCount;
@@ -12,47 +11,47 @@ use Exception;
 
 class InventoryCountController
 {
-    public function start(Request $request, StartInventoryCount $useCase): JsonResponse
+    public function start($request, StartInventoryCount $useCase): Response
     {
         try {
             // Generate a UUID for the new count session
-            $countId = Str::uuid()->toString();
+            $countId = (string) Str::uuid();
             
             $useCase->execute($countId);
 
-            return response()->json([
+            return new Response([
                 'message' => 'Inventory count started successfully.',
                 'count_id' => $countId
             ], 201);
         } catch (Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+            return new Response(['error' => $e->getMessage()], 400);
         }
     }
 
-    public function recordItem(string $countId, Request $request, RecordCountItem $useCase): JsonResponse
+    public function recordItem(string $countId, $request, RecordCountItem $useCase): Response
     {
         try {
             $validated = $request->validate([
                 'sku' => 'required|string',
-                'quantity' => 'required|integer|min:0'
+                'quantity' => 'required|integer'
             ]);
 
             $useCase->execute($countId, $validated['sku'], $validated['quantity']);
 
-            return response()->json(['message' => 'Item count recorded successfully.']);
+            return new Response(['message' => 'Item count recorded successfully.']);
         } catch (Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+            return new Response(['error' => $e->getMessage()], 400);
         }
     }
 
-    public function complete(string $countId, CompleteInventoryCount $useCase): JsonResponse
+    public function complete(string $countId, CompleteInventoryCount $useCase): Response
     {
         try {
             $useCase->execute($countId);
 
-            return response()->json(['message' => 'Inventory count completed and stock reconciled.']);
+            return new Response(['message' => 'Inventory count completed and stock reconciled.']);
         } catch (Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+            return new Response(['error' => $e->getMessage()], 400);
         }
     }
 }

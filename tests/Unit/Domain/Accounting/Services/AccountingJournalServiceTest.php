@@ -9,6 +9,7 @@ use InventoryApp\Domain\Accounting\Enums\AccountingMethod;
 use InventoryApp\Domain\Accounting\Enums\DebitCredit;
 use InventoryApp\Domain\Accounting\ValueObjects\AccountCode;
 use InventoryApp\Domain\Accounting\Aggregates\JournalEntry;
+use InventoryApp\Domain\Accounting\Services\CostLayerService;
 
 class AccountingJournalServiceTest extends TestCase
 {

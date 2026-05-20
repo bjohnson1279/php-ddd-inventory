@@ -23,7 +23,31 @@ $capsule->bootEloquent();
 
 // Clean tables before each integration run
 $connection = $capsule->getConnection();
-$connection->statement('TRUNCATE TABLE inventory_transactions, product_locations, products, inventory_count_items, inventory_counts, ledger_entries, serialized_items, barcodes, stock_onboarding_items, stock_onboardings, journal_entries, api_tokens, users, tenants RESTART IDENTITY CASCADE');
+$connection->statement('TRUNCATE TABLE 
+    inventory_transactions, 
+    product_locations, 
+    products, 
+    inventory_count_items, 
+    inventory_counts, 
+    ledger_entries, 
+    serialized_items, 
+    barcodes, 
+    stock_onboarding_items, 
+    stock_onboardings, 
+    journal_entries, 
+    api_tokens, 
+    users, 
+    tenants,
+    shopify_location_mappings,
+    shopify_sku_mappings,
+    product_uom_configurations,
+    uom_conversion_rules,
+    kits,
+    kit_components,
+    roles,
+    user_roles,
+    role_permissions
+RESTART IDENTITY CASCADE');
 
 // Ensure standard locations exist
 $connection->table('locations')->insertOrIgnore([

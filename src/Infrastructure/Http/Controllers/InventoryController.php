@@ -2,9 +2,8 @@
 
 namespace InventoryApp\Infrastructure\Http\Controllers;
 
-// use App\Http\Controllers\Controller; // Laravel base controller
 use InventoryApp\Infrastructure\Http\Response;
-use InventoryApp\Infrastructure\Http\Request;
+use InventoryApp\Infrastructure\Http\RequestInterface;
 use InventoryApp\Application\Inventory\UseCases\DispatchStock;
 use InventoryApp\Application\Inventory\UseCases\ReceiveStock;
 use InventoryApp\Application\Inventory\UseCases\GetStockLevel;
@@ -12,7 +11,7 @@ use Exception;
 
 class InventoryController // extends Controller
 {
-    public function receive(Request $request, ReceiveStock $useCase)
+    public function receive(RequestInterface $request, ReceiveStock $useCase)
     {
         try {
             $validated = $request->validate([
@@ -29,7 +28,7 @@ class InventoryController // extends Controller
         }
     }
 
-    public function dispatch(Request $request, DispatchStock $useCase)
+    public function dispatch(RequestInterface $request, DispatchStock $useCase)
     {
         try {
             $validated = $request->validate([
@@ -46,7 +45,7 @@ class InventoryController // extends Controller
         }
     }
 
-    public function stockLevel(Request $request, string $sku, GetStockLevel $useCase)
+    public function stockLevel(RequestInterface $request, string $sku, GetStockLevel $useCase)
     {
         try {
             $locationId = $request->query('location_id');

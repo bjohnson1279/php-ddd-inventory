@@ -20,8 +20,8 @@ final class ApiTokenServiceTest extends TestCase
     {
         $this->userId = uuidv4();
         
-        DB::table('tenants')->insert(['id' => $this->tenantId, 'name' => 'Test Tenant']);
-        DB::table('users')->insert([
+        DB::table('tenants')->insertOrIgnore(['id' => $this->tenantId, 'name' => 'Test Tenant']);
+        DB::table('users')->insertOrIgnore([
             'id' => $this->userId,
             'tenant_id' => $this->tenantId,
             'email' => 'test@example.com',

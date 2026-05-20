@@ -4,6 +4,7 @@ namespace Tests\Unit\Infrastructure\Http\Controllers;
 
 use PHPUnit\Framework\TestCase;
 use InventoryApp\Infrastructure\Http\Controllers\InventoryCountController;
+use InventoryApp\Infrastructure\Http\RequestInterface;
 use InventoryApp\Application\Inventory\UseCases\StartInventoryCount;
 use InventoryApp\Application\Inventory\UseCases\RecordCountItem;
 use InventoryApp\Application\Inventory\UseCases\CompleteInventoryCount;
@@ -24,7 +25,7 @@ class InventoryCountControllerTest extends TestCase
         $useCase = $this->createMock(StartInventoryCount::class);
         $useCase->expects($this->once())->method('execute');
         
-        $request = new \stdClass(); // Minimal mock request
+        $request = $this->createMock(RequestInterface::class);
 
         $response = $this->controller->start($request, $useCase);
 
@@ -39,9 +40,7 @@ class InventoryCountControllerTest extends TestCase
         $useCase->expects($this->once())->method('execute')
             ->with('c-1', 'SKU-A', 10);
 
-        $request = $this->getMockBuilder(\stdClass::class)
-            ->addMethods(['validate'])
-            ->getMock();
+        $request = $this->createMock(RequestInterface::class);
         $request->method('validate')->willReturn(['sku' => 'SKU-A', 'quantity' => 10]);
 
         $response = $this->controller->recordItem('c-1', $request, $useCase);

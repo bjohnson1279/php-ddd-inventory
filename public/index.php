@@ -34,6 +34,7 @@ header('Content-Type: application/json');
 
 // Delegate to controllers and use-cases via ServiceContainer
 use InventoryApp\Infrastructure\ServiceContainer;
+use InventoryApp\Infrastructure\Http\RequestInterface;
 use InventoryApp\Infrastructure\Http\Controllers\CatalogController;
 use InventoryApp\Infrastructure\Http\Controllers\InventoryController;
 use InventoryApp\Application\Catalog\UseCases\CreateProductCatalog;
@@ -41,7 +42,7 @@ use InventoryApp\Application\Inventory\UseCases\ReceiveStock;
 use InventoryApp\Application\Inventory\UseCases\GetStockLevel;
 
 // Simple Request adapter for controllers (minimal validate/query API)
-class RequestAdapter
+class RequestAdapter implements RequestInterface
 {
     private array $body;
     private array $query;
@@ -73,9 +74,9 @@ class RequestAdapter
         return $this->body;
     }
 
-    public function query(string $key): ?string
+    public function query(string $key, $default = null)
     {
-        return $this->query[$key] ?? null;
+        return $this->query[$key] ?? $default;
     }
 }
 

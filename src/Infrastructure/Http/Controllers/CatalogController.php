@@ -3,6 +3,7 @@
 namespace InventoryApp\Infrastructure\Http\Controllers;
 
 use InventoryApp\Infrastructure\Http\Response;
+use InventoryApp\Infrastructure\Http\RequestInterface;
 use InventoryApp\Application\Catalog\UseCases\CreateProductCatalog;
 use InventoryApp\Application\Catalog\UseCases\AddVariant;
 use Exception;
@@ -10,7 +11,7 @@ use Exception;
 
 class CatalogController
 {
-    public function createProduct($request, CreateProductCatalog $useCase)
+    public function createProduct(RequestInterface $request, CreateProductCatalog $useCase)
     {
         try {
             $validated = $request->validate([
@@ -28,7 +29,7 @@ class CatalogController
         }
     }
 
-    public function addVariant($request, string $productId, AddVariant $useCase)
+    public function addVariant(RequestInterface $request, string $productId, AddVariant $useCase)
     {
         try {
             $validated = $request->validate([

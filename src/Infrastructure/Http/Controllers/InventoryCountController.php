@@ -3,6 +3,7 @@
 namespace InventoryApp\Infrastructure\Http\Controllers;
 
 use InventoryApp\Infrastructure\Http\Response;
+use InventoryApp\Infrastructure\Http\RequestInterface;
 use InventoryApp\Application\Inventory\UseCases\StartInventoryCount;
 use InventoryApp\Application\Inventory\UseCases\RecordCountItem;
 use InventoryApp\Application\Inventory\UseCases\CompleteInventoryCount;
@@ -11,7 +12,7 @@ use Exception;
 
 class InventoryCountController
 {
-    public function start($request, StartInventoryCount $useCase): Response
+    public function start(RequestInterface $request, StartInventoryCount $useCase): Response
     {
         try {
             // Generate a UUID for the new count session
@@ -28,7 +29,7 @@ class InventoryCountController
         }
     }
 
-    public function recordItem(string $countId, $request, RecordCountItem $useCase): Response
+    public function recordItem(string $countId, RequestInterface $request, RecordCountItem $useCase): Response
     {
         try {
             $validated = $request->validate([

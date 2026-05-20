@@ -87,7 +87,7 @@ jobs:
         run: |
           for f in docker/postgres/init/*.sql; do
             echo "Applying $f..."
-            psql -h localhost -U ddd_user -d ddd_inventory -f "$f"
+            psql -v ON_ERROR_STOP=1 -h localhost -U ddd_user -d ddd_inventory -f "$f"
           done
 
       - name: Run PHPUnit (integration)

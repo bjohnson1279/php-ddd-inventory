@@ -2,7 +2,7 @@
 
 namespace InventoryApp\Infrastructure\Integration\Shopify;
 
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Capsule\Manager as DB;
 
 /**
  * Resolves the mapping between Shopify's location IDs and our internal LocationIds,

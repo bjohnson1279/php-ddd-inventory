@@ -2,7 +2,7 @@
 
 namespace InventoryApp\Infrastructure\Identity;
 
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Capsule\Manager as DB;
 use DateTimeImmutable;
 
 /**
@@ -39,7 +39,7 @@ class ApiTokenService
             'tenant_id'  => $tenantId,
             'token_hash' => $hash,
             'expires_at' => $expiresAt->format('Y-m-d H:i:s'),
-            'created_at' => now(),
+            'created_at' => date('Y-m-d H:i:s'),
         ]);
 
         return $plaintext;
@@ -55,7 +55,7 @@ class ApiTokenService
 
         return DB::table('api_tokens')
             ->where('token_hash', $hash)
-            ->where('expires_at', '>', now())
+            ->where('expires_at', '>', date('Y-m-d H:i:s'))
             ->first(['user_id', 'tenant_id', 'expires_at']);
     }
 

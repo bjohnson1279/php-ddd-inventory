@@ -6,7 +6,7 @@ namespace Tests\Integration\Identity;
 
 use PHPUnit\Framework\TestCase;
 use InventoryApp\Infrastructure\Identity\ApiTokenService;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Capsule\Manager as DB;
 
 require_once __DIR__ . '/../bootstrap.php';
 

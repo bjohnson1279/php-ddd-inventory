@@ -12,7 +12,7 @@ use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
 use InventoryApp\Infrastructure\Models\ProductModel;
 use InventoryApp\Infrastructure\Models\ProductLocationModel;
 use InventoryApp\Infrastructure\Models\InventoryTransactionModel;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Capsule\Manager as DB;
 
 class EloquentProductRepository implements ProductRepositoryInterface
 {

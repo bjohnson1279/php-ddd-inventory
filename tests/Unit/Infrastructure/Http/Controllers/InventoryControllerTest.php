@@ -5,6 +5,7 @@ namespace Tests\Unit\Infrastructure\Http\Controllers;
 use PHPUnit\Framework\TestCase;
 use InventoryApp\Infrastructure\Http\Controllers\InventoryController;
 use InventoryApp\Infrastructure\Http\Response;
+use InventoryApp\Infrastructure\Http\Request;
 use InventoryApp\Application\Inventory\UseCases\ReceiveStock;
 use InventoryApp\Application\Inventory\UseCases\DispatchStock;
 use InventoryApp\Application\Inventory\UseCases\GetStockLevel;
@@ -30,7 +31,7 @@ class InventoryControllerTest extends TestCase
      */
     public function testReceiveStockWithValidRequest(): void
     {
-        $requestMock = $this->createMock(\stdClass::class);
+        $requestMock = $this->createMock(Request::class);
         $requestMock->expects($this->once())
             ->method('validate')
             ->with([
@@ -60,7 +61,7 @@ class InventoryControllerTest extends TestCase
      */
     public function testReceiveStockWithMissingRequiredFields(): void
     {
-        $requestMock = $this->createMock(\stdClass::class);
+        $requestMock = $this->createMock(Request::class);
         $requestMock->expects($this->once())
             ->method('validate')
             ->willThrowException(new Exception('Validation failed: Missing required field'));
@@ -77,7 +78,7 @@ class InventoryControllerTest extends TestCase
      */
     public function testReceiveStockWhenUseCaseThrowsException(): void
     {
-        $requestMock = $this->createMock(\stdClass::class);
+        $requestMock = $this->createMock(Request::class);
         $requestMock->expects($this->once())
             ->method('validate')
             ->willReturn([
@@ -102,7 +103,7 @@ class InventoryControllerTest extends TestCase
      */
     public function testReceiveStockWithInvalidQuantity(): void
     {
-        $requestMock = $this->createMock(\stdClass::class);
+        $requestMock = $this->createMock(Request::class);
         $requestMock->expects($this->once())
             ->method('validate')
             ->willThrowException(new Exception('Validation failed: Quantity must be at least 1'));
@@ -119,7 +120,7 @@ class InventoryControllerTest extends TestCase
      */
     public function testDispatchStockWithValidRequest(): void
     {
-        $requestMock = $this->createMock(\stdClass::class);
+        $requestMock = $this->createMock(Request::class);
         $requestMock->expects($this->once())
             ->method('validate')
             ->with([
@@ -149,7 +150,7 @@ class InventoryControllerTest extends TestCase
      */
     public function testDispatchStockWithMissingRequiredFields(): void
     {
-        $requestMock = $this->createMock(\stdClass::class);
+        $requestMock = $this->createMock(Request::class);
         $requestMock->expects($this->once())
             ->method('validate')
             ->willThrowException(new Exception('Validation failed: Missing location_id'));
@@ -166,7 +167,7 @@ class InventoryControllerTest extends TestCase
      */
     public function testDispatchStockWithInsufficientStock(): void
     {
-        $requestMock = $this->createMock(\stdClass::class);
+        $requestMock = $this->createMock(Request::class);
         $requestMock->expects($this->once())
             ->method('validate')
             ->willReturn([
@@ -191,7 +192,7 @@ class InventoryControllerTest extends TestCase
      */
     public function testGetStockLevelForAllLocations(): void
     {
-        $requestMock = $this->createMock(\stdClass::class);
+        $requestMock = $this->createMock(Request::class);
         $requestMock->expects($this->once())
             ->method('query')
             ->with('location_id')
@@ -217,7 +218,7 @@ class InventoryControllerTest extends TestCase
      */
     public function testGetStockLevelForSpecificLocation(): void
     {
-        $requestMock = $this->createMock(\stdClass::class);
+        $requestMock = $this->createMock(Request::class);
         $requestMock->expects($this->once())
             ->method('query')
             ->with('location_id')
@@ -243,7 +244,7 @@ class InventoryControllerTest extends TestCase
      */
     public function testGetStockLevelForNonexistentProduct(): void
     {
-        $requestMock = $this->createMock(\stdClass::class);
+        $requestMock = $this->createMock(Request::class);
         $requestMock->expects($this->once())
             ->method('query')
             ->with('location_id')
@@ -266,7 +267,7 @@ class InventoryControllerTest extends TestCase
      */
     public function testGetStockLevelWithException(): void
     {
-        $requestMock = $this->createMock(\stdClass::class);
+        $requestMock = $this->createMock(Request::class);
         $requestMock->expects($this->once())
             ->method('query')
             ->with('location_id')
@@ -288,7 +289,7 @@ class InventoryControllerTest extends TestCase
      */
     public function testGetStockLevelReturnsZeroStock(): void
     {
-        $requestMock = $this->createMock(\stdClass::class);
+        $requestMock = $this->createMock(Request::class);
         $requestMock->expects($this->once())
             ->method('query')
             ->willReturn('LOC-STOREFRONT');

@@ -3,7 +3,7 @@
         'name' => 'ddd/inventory',
         'pretty_version' => 'dev-master',
         'version' => 'dev-master',
-        'reference' => '3e9ad4e44964fc981e2961d6318984b204e1ab6b',
+        'reference' => '6f9d1a7095c7f61dfdeee67f3fb66ddee2dc6af3',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -31,7 +31,7 @@
         'ddd/inventory' => array(
             'pretty_version' => 'dev-master',
             'version' => 'dev-master',
-            'reference' => '3e9ad4e44964fc981e2961d6318984b204e1ab6b',
+            'reference' => '6f9d1a7095c7f61dfdeee67f3fb66ddee2dc6af3',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
@@ -282,6 +282,30 @@
             'install_path' => __DIR__ . '/../psr/simple-cache',
             'aliases' => array(),
             'dev_requirement' => false,
+        ),
+        'ramsey/collection' => array(
+            'pretty_version' => '2.0.0',
+            'version' => '2.0.0.0',
+            'reference' => 'a4b48764bfbb8f3a6a4d1aeb1a35bb5e9ecac4a5',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../ramsey/collection',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'ramsey/uuid' => array(
+            'pretty_version' => '4.7.6',
+            'version' => '4.7.6.0',
+            'reference' => '91039bc1faa45ba123c4328958e620d382ec7088',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../ramsey/uuid',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'rhumsaa/uuid' => array(
+            'dev_requirement' => false,
+            'replaced' => array(
+                0 => '4.7.6',
+            ),
         ),
         'sebastian/cli-parser' => array(
             'pretty_version' => '1.0.2',

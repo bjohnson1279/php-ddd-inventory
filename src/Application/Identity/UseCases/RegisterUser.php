@@ -5,16 +5,15 @@ namespace InventoryApp\Application\Identity\UseCases;
 use InventoryApp\Domain\Identity\Entities\User;
 use InventoryApp\Domain\Identity\Repositories\UserRepositoryInterface;
 use InventoryApp\Domain\Identity\ValueObjects\TenantId;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Exception;
 
 class RegisterUser
 {
-    private UserRepositoryInterface $userRepository;
-
-    public function __construct(UserRepositoryInterface $userRepository)
-    {
-        $this->userRepository = $userRepository;
-    }
+    public function __construct(
+        private readonly UserRepositoryInterface  $userRepository,
+        private readonly EventDispatcherInterface $events,
+    ) {}
 
     public function execute(
         string $id,
@@ -31,5 +30,9 @@ class RegisterUser
 
         $user = User::register($id, $tenantId, $email, $password, $name);
         $this->userRepository->save($user);
+
+        foreach ($user->releaseEvents() as $event) {
+            $this->events->dispatch($event);
+        }
     }
 }

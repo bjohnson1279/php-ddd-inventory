@@ -7,6 +7,7 @@ use InventoryApp\Infrastructure\Persistence\Repositories\InMemorySerializedItemR
 use InventoryApp\Infrastructure\Persistence\Repositories\InMemoryBarcodeRepository;
 use InventoryApp\Infrastructure\Persistence\Repositories\InMemoryJournalRepository;
 use InventoryApp\Infrastructure\Persistence\Repositories\InMemoryStockOnboardingRepository;
+use InventoryApp\Domain\Shared\Events\EventDispatcher;
 
 use InventoryApp\Domain\Inventory\Repositories\LedgerRepositoryInterface;
 use InventoryApp\Domain\Serial\Repositories\SerializedItemRepositoryInterface;
@@ -28,6 +29,16 @@ class ServiceContainer
     private static ?StockOnboardingRepositoryInterface $onboards = null;
     private static ?ProductRepositoryInterface $products = null;
     private static ?InventoryCountRepositoryInterface $inventoryCounts = null;
+    private static ?EventDispatcher $dispatcher = null;
+
+    /**
+     * Shared event dispatcher singleton.
+     * Wire listeners here (or in a bootstrap file) before the first request.
+     */
+    public static function dispatcher(): EventDispatcher
+    {
+        return self::$dispatcher ??= new EventDispatcher();
+    }
 
     public static function ledgerRepo(): LedgerRepositoryInterface
     {

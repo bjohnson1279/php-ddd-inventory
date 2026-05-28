@@ -2,6 +2,7 @@
 
 namespace InventoryApp\Domain\Inventory\Entities;
 
+use InventoryApp\Domain\Shared\Entities\AggregateRoot;
 use InventoryApp\Domain\Inventory\ValueObjects\SKU;
 use InventoryApp\Domain\Inventory\ValueObjects\Quantity;
 use InventoryApp\Domain\Inventory\ValueObjects\Department;
@@ -9,9 +10,16 @@ use InventoryApp\Domain\Inventory\ValueObjects\Condition;
 use InventoryApp\Domain\Inventory\ValueObjects\TransactionType;
 use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
 use InventoryApp\Domain\Inventory\Exceptions\InsufficientStockException;
+use InventoryApp\Domain\Inventory\Events\StockReceived;
+use InventoryApp\Domain\Inventory\Events\StockDispatched;
+use InventoryApp\Domain\Inventory\Events\SaleProcessed;
+use InventoryApp\Domain\Inventory\Events\ReturnProcessed;
+use InventoryApp\Domain\Inventory\Events\StockReconciled;
+use InventoryApp\Domain\Inventory\Events\StockTransferred;
+use InventoryApp\Domain\Inventory\Events\LowStockDetected;
 use DateTimeImmutable;
 
-class Product
+class Product extends AggregateRoot
 {
     private string $id;
     private SKU $sku;
@@ -129,12 +137,29 @@ class Product
         );
     }
 
+    // -----------------------------------------------------------------
+    // Stock mutations — each fires a typed domain event
+    // -----------------------------------------------------------------
+
     public function receiveStockAt(LocationId $locationId, Quantity $quantity, ?string $reference = null): void
     {
         $stock = $this->getOrCreateLocationStock($locationId);
         $stock->addStock($quantity, new Condition(Condition::NEW));
         
-        $this->recordTransaction(new TransactionType(TransactionType::RECEIPT), $quantity->getValue(), new Condition(Condition::NEW), $reference);
+        $this->recordTransaction(
+            new TransactionType(TransactionType::RECEIPT),
+            $quantity->getValue(),
+            new Condition(Condition::NEW),
+            $reference
+        );
+
+        $this->recordEvent(new StockReceived(
+            $this->sku,
+            $locationId,
+            $quantity->getValue(),
+            $reference,
+            new DateTimeImmutable(),
+        ));
     }
 
     public function dispatchStockAt(LocationId $locationId, Quantity $quantity, ?string $reference = null): void
@@ -142,7 +167,22 @@ class Product
         $stock = $this->getOrCreateLocationStock($locationId);
         $stock->subtractStock($this->sku->getValue(), $quantity, new Condition(Condition::NEW));
         
-        $this->recordTransaction(new TransactionType(TransactionType::DISPATCH), -$quantity->getValue(), new Condition(Condition::NEW), $reference);
+        $this->recordTransaction(
+            new TransactionType(TransactionType::DISPATCH),
+            -$quantity->getValue(),
+            new Condition(Condition::NEW),
+            $reference
+        );
+
+        $this->recordEvent(new StockDispatched(
+            $this->sku,
+            $locationId,
+            $quantity->getValue(),
+            $reference,
+            new DateTimeImmutable(),
+        ));
+
+        $this->recordLowStockIfNeeded();
     }
 
     public function processSaleAt(LocationId $locationId, Quantity $quantity, ?string $reference = null): void
@@ -150,11 +190,22 @@ class Product
         $stock = $this->getOrCreateLocationStock($locationId);
         $stock->subtractStock($this->sku->getValue(), $quantity, new Condition(Condition::NEW));
         
-        $this->recordTransaction(new TransactionType(TransactionType::SALE), -$quantity->getValue(), new Condition(Condition::NEW), $reference);
-        
-        if ($this->isLowStock()) {
-            // Low stock event
-        }
+        $this->recordTransaction(
+            new TransactionType(TransactionType::SALE),
+            -$quantity->getValue(),
+            new Condition(Condition::NEW),
+            $reference
+        );
+
+        $this->recordEvent(new SaleProcessed(
+            $this->sku,
+            $locationId,
+            $quantity->getValue(),
+            $reference,
+            new DateTimeImmutable(),
+        ));
+
+        $this->recordLowStockIfNeeded();
     }
 
     public function reconcileStockAt(LocationId $locationId, Quantity $actualQuantity, ?string $reference = null): void
@@ -169,6 +220,21 @@ class Product
             $stock->subtractStock($this->sku->getValue(), new Quantity(-$difference), new Condition(Condition::NEW));
             $this->recordTransaction(new TransactionType(TransactionType::ADJUSTMENT), $difference, new Condition(Condition::NEW), $reference);
         }
+
+        if ($difference !== 0) {
+            $this->recordEvent(new StockReconciled(
+                $this->sku,
+                $locationId,
+                $actualQuantity->getValue(),
+                $difference,
+                $reference,
+                new DateTimeImmutable(),
+            ));
+
+            if ($difference < 0) {
+                $this->recordLowStockIfNeeded();
+            }
+        }
     }
 
     public function processReturnAt(LocationId $locationId, Quantity $quantity, Condition $condition, ?string $reference = null): void
@@ -177,11 +243,64 @@ class Product
         $stock->addStock($quantity, $condition);
         
         $this->recordTransaction(new TransactionType(TransactionType::RETURN), $quantity->getValue(), $condition, $reference);
+
+        $this->recordEvent(new ReturnProcessed(
+            $this->sku,
+            $locationId,
+            $quantity->getValue(),
+            $condition,
+            $reference,
+            new DateTimeImmutable(),
+        ));
     }
 
     public function transferStock(LocationId $from, LocationId $to, Quantity $quantity, ?string $reference = null): void
     {
-        $this->dispatchStockAt($from, $quantity, $reference ? "TRANSFER_OUT_$reference" : "TRANSFER_OUT");
-        $this->receiveStockAt($to, $quantity, $reference ? "TRANSFER_IN_$reference" : "TRANSFER_IN");
+        // Mutate stock directly without firing individual StockDispatched/StockReceived events,
+        // then emit a single semantically-rich StockTransferred event instead.
+        $fromStock = $this->getOrCreateLocationStock($from);
+        $fromStock->subtractStock($this->sku->getValue(), $quantity, new Condition(Condition::NEW));
+        $this->recordTransaction(
+            new TransactionType(TransactionType::DISPATCH),
+            -$quantity->getValue(),
+            new Condition(Condition::NEW),
+            $reference ? "TRANSFER_OUT_$reference" : "TRANSFER_OUT"
+        );
+
+        $toStock = $this->getOrCreateLocationStock($to);
+        $toStock->addStock($quantity, new Condition(Condition::NEW));
+        $this->recordTransaction(
+            new TransactionType(TransactionType::RECEIPT),
+            $quantity->getValue(),
+            new Condition(Condition::NEW),
+            $reference ? "TRANSFER_IN_$reference" : "TRANSFER_IN"
+        );
+
+        $this->recordEvent(new StockTransferred(
+            $this->sku,
+            $from,
+            $to,
+            $quantity->getValue(),
+            $reference,
+            new DateTimeImmutable(),
+        ));
+
+        $this->recordLowStockIfNeeded();
+    }
+
+    // -----------------------------------------------------------------
+    // Helpers
+    // -----------------------------------------------------------------
+
+    private function recordLowStockIfNeeded(): void
+    {
+        if ($this->isLowStock()) {
+            $this->recordEvent(new LowStockDetected(
+                $this->sku,
+                $this->getTotalStockQuantity()->getValue(),
+                $this->reorderThreshold->getValue(),
+                new DateTimeImmutable(),
+            ));
+        }
     }
 }

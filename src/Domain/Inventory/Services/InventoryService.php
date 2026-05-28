@@ -5,6 +5,7 @@ namespace InventoryApp\Domain\Inventory\Services;
 use InventoryApp\Domain\Inventory\Repositories\LedgerRepositoryInterface;
 use InventoryApp\Domain\Inventory\Entities\LedgerEntry;
 use InventoryApp\Domain\Inventory\Enums\ReasonCode;
+use InventoryApp\Domain\Inventory\Events\StockDecremented;
 
 class InventoryService
 {
@@ -29,7 +30,14 @@ class InventoryService
         );
 
         $this->ledger->append($entry);
-        $this->events->dispatch(new \stdClass()); // lightweight placeholder event
+        $this->events->dispatch(new StockDecremented(
+            variantId:   $variantId,
+            quantity:    $quantity,
+            reason:      ReasonCode::Sale,
+            actorId:     $actorId,
+            referenceId: $saleId,
+            occurredOn:  new \DateTimeImmutable(),
+        ));
     }
 
     public function decrementForKitSale(object $kit, int $kitQuantity, string $saleId, string $actorId): void
@@ -43,17 +51,17 @@ class InventoryService
             throw new \DomainException('Cannot sell a kit with no components.');
         }
 
-        // Pass 1: validate
+        // Pass 1: validate all components have sufficient stock
         foreach ($components as $component) {
-            $needed = ($component->quantity ?? $component['quantity'] ?? 0) * $kitQuantity;
+            $needed    = ($component->quantity ?? $component['quantity'] ?? 0) * $kitQuantity;
             $variantId = $component->variantId ?? $component['variantId'] ?? null;
             if ($variantId === null) throw new \InvalidArgumentException('Component missing variantId');
             $this->assertSufficientStock($variantId, $needed);
         }
 
-        // Pass 2: append entries
+        // Pass 2: append ledger entries and dispatch events
         foreach ($components as $component) {
-            $compQty = ($component->quantity ?? $component['quantity'] ?? 0) * $kitQuantity;
+            $compQty   = ($component->quantity ?? $component['quantity'] ?? 0) * $kitQuantity;
             $variantId = $component->variantId ?? $component['variantId'];
 
             $entry = new LedgerEntry(
@@ -67,7 +75,14 @@ class InventoryService
             );
 
             $this->ledger->append($entry);
-            $this->events->dispatch(new \stdClass());
+            $this->events->dispatch(new StockDecremented(
+                variantId:   $variantId,
+                quantity:    $compQty,
+                reason:      ReasonCode::KitSale,
+                actorId:     $actorId,
+                referenceId: $saleId,
+                occurredOn:  new \DateTimeImmutable(),
+            ));
         }
     }
 

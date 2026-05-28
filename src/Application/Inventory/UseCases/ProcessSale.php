@@ -6,21 +6,20 @@ use InventoryApp\Domain\Inventory\Repositories\ProductRepositoryInterface;
 use InventoryApp\Domain\Inventory\ValueObjects\SKU;
 use InventoryApp\Domain\Inventory\ValueObjects\Quantity;
 use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Exception;
 
 class ProcessSale
 {
-    private ProductRepositoryInterface $productRepository;
-
-    public function __construct(ProductRepositoryInterface $productRepository)
-    {
-        $this->productRepository = $productRepository;
-    }
+    public function __construct(
+        private readonly ProductRepositoryInterface $productRepository,
+        private readonly EventDispatcherInterface   $events,
+    ) {}
 
     public function execute(string $skuValue, string $locationValue, int $quantityValue, ?string $orderId = null): void
     {
-        $sku = new SKU($skuValue);
-        $quantity = new Quantity($quantityValue);
+        $sku        = new SKU($skuValue);
+        $quantity   = new Quantity($quantityValue);
         $locationId = new LocationId($locationValue);
 
         $product = $this->productRepository->findBySku($sku);
@@ -30,7 +29,10 @@ class ProcessSale
         }
 
         $product->processSaleAt($locationId, $quantity, $orderId);
-        
         $this->productRepository->save($product);
+
+        foreach ($product->releaseEvents() as $event) {
+            $this->events->dispatch($event);
+        }
     }
 }

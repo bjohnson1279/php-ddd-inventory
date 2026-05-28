@@ -4,20 +4,34 @@ namespace InventoryApp\Domain\Serial\Aggregates;
 
 use InventoryApp\Domain\Serial\ValueObjects\SerialNumber;
 use InventoryApp\Domain\Serial\Enums\SerializedItemStatus;
+use InventoryApp\Domain\Serial\Events\SerialStatusChanged;
 
 final class StatusTransition
 {
-    public function __construct(public readonly SerializedItemStatus $from, public readonly SerializedItemStatus $to, public readonly string $reason, public readonly string $actorId, public readonly ?string $referenceId, public readonly \DateTimeImmutable $occurredAt) {}
+    public function __construct(
+        public readonly SerializedItemStatus $from,
+        public readonly SerializedItemStatus $to,
+        public readonly string $reason,
+        public readonly string $actorId,
+        public readonly ?string $referenceId,
+        public readonly \DateTimeImmutable $occurredAt,
+    ) {}
 }
 
 class SerializedItem
 {
     private SerializedItemStatus $status;
-    private array $history = [];
+    private array $history      = [];
     private array $domainEvents = [];
 
-    public function __construct(public readonly string $id, public readonly string $variantId, public readonly SerialNumber $serialNumber, public readonly string $tenantId, private string $locationId, SerializedItemStatus $initialStatus = SerializedItemStatus::Pending)
-    {
+    public function __construct(
+        public readonly string               $id,
+        public readonly string               $variantId,
+        public readonly SerialNumber         $serialNumber,
+        public readonly string               $tenantId,
+        private string                       $locationId,
+        SerializedItemStatus                 $initialStatus = SerializedItemStatus::Pending,
+    ) {
         $this->status = $initialStatus;
     }
 
@@ -47,22 +61,50 @@ class SerializedItem
         $this->transitionTo(SerializedItemStatus::WrittenOff, $reason, $actorId, $referenceId);
     }
 
-    public function status(): SerializedItemStatus { return $this->status; }
-    public function locationId(): string { return $this->locationId; }
-    public function isAvailable(): bool { return $this->status === SerializedItemStatus::InStock; }
-    public function history(): array { return $this->history; }
+    public function status(): SerializedItemStatus     { return $this->status; }
+    public function locationId(): string               { return $this->locationId; }
+    public function isAvailable(): bool                { return $this->status === SerializedItemStatus::InStock; }
+    public function history(): array                   { return $this->history; }
     public function lastTransition(): ?StatusTransition { return !empty($this->history) ? end($this->history) : null; }
-    public function releaseEvents(): array { $e = $this->domainEvents; $this->domainEvents = []; return $e; }
 
-    private function transitionTo(SerializedItemStatus $target, string $reason, string $actorId, ?string $referenceId): void
+    public function releaseEvents(): array
     {
+        $events = $this->domainEvents;
+        $this->domainEvents = [];
+        return $events;
+    }
+
+    private function transitionTo(
+        SerializedItemStatus $target,
+        string $reason,
+        string $actorId,
+        ?string $referenceId,
+    ): void {
         if (!$this->status->canTransitionTo($target)) {
-            throw new \DomainException('Invalid serial status transition');
+            throw new \DomainException(sprintf(
+                'Invalid serial status transition from %s to %s',
+                $this->status->value,
+                $target->value,
+            ));
         }
 
-        $transition = new StatusTransition($this->status, $target, $reason, $actorId, $referenceId, new \DateTimeImmutable());
+        $now        = new \DateTimeImmutable();
+        $transition = new StatusTransition($this->status, $target, $reason, $actorId, $referenceId, $now);
         $this->history[] = $transition;
+
+        $this->domainEvents[] = new SerialStatusChanged(
+            serializedItemId: $this->id,
+            variantId:        $this->variantId,
+            serialNumber:     $this->serialNumber->getValue(),
+            locationId:       $this->locationId,
+            from:             $this->status,
+            to:               $target,
+            reason:           $reason,
+            actorId:          $actorId,
+            referenceId:      $referenceId,
+            occurredOn:       $now,
+        );
+
         $this->status = $target;
-        $this->domainEvents[] = new \stdClass();
     }
 }

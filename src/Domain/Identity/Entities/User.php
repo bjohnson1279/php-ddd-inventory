@@ -3,6 +3,8 @@
 namespace InventoryApp\Domain\Identity\Entities;
 
 use InventoryApp\Domain\Identity\ValueObjects\TenantId;
+use InventoryApp\Domain\Identity\Events\UserRegistered;
+use InventoryApp\Domain\Identity\Events\UserDeactivated;
 use InventoryApp\Domain\Shared\Entities\AggregateRoot;
 use DateTimeImmutable;
 use InvalidArgumentException;
@@ -71,7 +73,14 @@ class User extends AggregateRoot
             [Role::createDefault(Role::STAFF)] // default role
         );
 
-        // Domain event hook: UserRegistered (for welcome email, etc.)
+        $user->recordEvent(new UserRegistered(
+            userId:    $id,
+            tenantId:  $tenantId,
+            email:     strtolower(trim($email)),
+            name:      trim($name),
+            occurredOn: new DateTimeImmutable(),
+        ));
+
         return $user;
     }
 
@@ -122,7 +131,11 @@ class User extends AggregateRoot
     public function deactivate(): void
     {
         $this->active = false;
-        // Domain event hook: UserDeactivated
+        $this->recordEvent(new UserDeactivated(
+            userId:    $this->id,
+            tenantId:  $this->tenantId,
+            occurredOn: new DateTimeImmutable(),
+        ));
     }
 
     public function reactivate(): void

@@ -6,20 +6,19 @@ use InventoryApp\Domain\Inventory\Repositories\ProductRepositoryInterface;
 use InventoryApp\Domain\Inventory\ValueObjects\SKU;
 use InventoryApp\Domain\Inventory\ValueObjects\Quantity;
 use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Exception;
 
 class TransferStock
 {
-    private ProductRepositoryInterface $productRepository;
-
-    public function __construct(ProductRepositoryInterface $productRepository)
-    {
-        $this->productRepository = $productRepository;
-    }
+    public function __construct(
+        private readonly ProductRepositoryInterface $productRepository,
+        private readonly EventDispatcherInterface   $events,
+    ) {}
 
     public function execute(string $skuValue, string $fromLocation, string $toLocation, int $quantityValue): void
     {
-        $sku = new SKU($skuValue);
+        $sku     = new SKU($skuValue);
         $product = $this->productRepository->findBySku($sku);
         
         if (!$product) {
@@ -33,5 +32,9 @@ class TransferStock
         );
 
         $this->productRepository->save($product);
+
+        foreach ($product->releaseEvents() as $event) {
+            $this->events->dispatch($event);
+        }
     }
 }

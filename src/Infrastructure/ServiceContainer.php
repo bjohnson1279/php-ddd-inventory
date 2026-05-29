@@ -2,13 +2,15 @@
 
 namespace InventoryApp\Infrastructure;
 
-use InventoryApp\Infrastructure\Persistence\Repositories\InMemoryLedgerRepository;
+use InventoryApp\Infrastructure\Persistence\Repositories\EloquentLedgerRepository;
+use InventoryApp\Infrastructure\Persistence\Repositories\EloquentUserRepository;
 use InventoryApp\Infrastructure\Persistence\Repositories\InMemorySerializedItemRepository;
 use InventoryApp\Infrastructure\Persistence\Repositories\InMemoryBarcodeRepository;
 use InventoryApp\Infrastructure\Persistence\Repositories\InMemoryJournalRepository;
 use InventoryApp\Infrastructure\Persistence\Repositories\InMemoryStockOnboardingRepository;
 use InventoryApp\Domain\Shared\Events\EventDispatcher;
 
+use InventoryApp\Domain\Identity\Repositories\UserRepositoryInterface;
 use InventoryApp\Domain\Inventory\Repositories\LedgerRepositoryInterface;
 use InventoryApp\Domain\Serial\Repositories\SerializedItemRepositoryInterface;
 use InventoryApp\Domain\Barcode\Repositories\BarcodeRepositoryInterface;
@@ -23,6 +25,7 @@ use InventoryApp\Infrastructure\Persistence\Repositories\EloquentCatalogProductR
 class ServiceContainer
 {
     private static ?LedgerRepositoryInterface $ledger = null;
+    private static ?UserRepositoryInterface $users = null;
     private static ?SerializedItemRepositoryInterface $serials = null;
     private static ?BarcodeRepositoryInterface $barcodes = null;
     private static ?JournalRepositoryInterface $journal = null;
@@ -42,7 +45,12 @@ class ServiceContainer
 
     public static function ledgerRepo(): LedgerRepositoryInterface
     {
-        return self::$ledger ??= new InMemoryLedgerRepository();
+        return self::$ledger ??= new EloquentLedgerRepository();
+    }
+
+    public static function userRepo(): UserRepositoryInterface
+    {
+        return self::$users ??= new EloquentUserRepository();
     }
 
     public static function serializedRepo(): SerializedItemRepositoryInterface

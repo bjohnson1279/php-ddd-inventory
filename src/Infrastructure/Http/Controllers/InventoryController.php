@@ -6,6 +6,7 @@ use InventoryApp\Infrastructure\Http\Response;
 use InventoryApp\Infrastructure\Http\RequestInterface;
 use InventoryApp\Application\Inventory\UseCases\DispatchStock;
 use InventoryApp\Application\Inventory\UseCases\ReceiveStock;
+use InventoryApp\Application\Inventory\UseCases\TransferStock;
 use InventoryApp\Application\Inventory\UseCases\GetStockLevel;
 use Exception;
 
@@ -32,14 +33,37 @@ class InventoryController // extends Controller
     {
         try {
             $validated = $request->validate([
-                'sku' => 'required|string',
-                'quantity' => 'required|integer|min:1',
+                'sku'         => 'required|string',
+                'quantity'    => 'required|integer|min:1',
                 'location_id' => 'required|string'
             ]);
 
             $useCase->execute($validated['sku'], $validated['location_id'], $validated['quantity']);
 
             return new Response(['message' => 'Stock dispatched successfully'], 200);
+        } catch (Exception $e) {
+            return new Response(['error' => $e->getMessage()], 400);
+        }
+    }
+
+    public function transfer(RequestInterface $request, TransferStock $useCase)
+    {
+        try {
+            $validated = $request->validate([
+                'sku'             => 'required|string',
+                'from_location'   => 'required|string',
+                'to_location'     => 'required|string',
+                'quantity'        => 'required|integer|min:1',
+            ]);
+
+            $useCase->execute(
+                $validated['sku'],
+                $validated['from_location'],
+                $validated['to_location'],
+                $validated['quantity']
+            );
+
+            return new Response(['message' => 'Stock transferred successfully'], 200);
         } catch (Exception $e) {
             return new Response(['error' => $e->getMessage()], 400);
         }

@@ -6,8 +6,8 @@ use InventoryApp\Infrastructure\Http\Response;
 use InventoryApp\Infrastructure\Http\RequestInterface;
 use InventoryApp\Application\Catalog\UseCases\CreateProductCatalog;
 use InventoryApp\Application\Catalog\UseCases\AddVariant;
+use Ramsey\Uuid\Uuid;
 use Exception;
-// use Ramsey\Uuid\Uuid; // Assuming UUID generator is available
 
 class CatalogController
 {
@@ -20,7 +20,7 @@ class CatalogController
                 'department' => 'required|string'
             ]);
 
-            $id = \uuidv4(); // Use UUID to match DB UUID columns
+            $id = Uuid::uuid4()->toString();
             $useCase->execute($id, $validated['name'], $validated['description'], $validated['department']);
 
             return new Response(['message' => 'Catalog product created successfully', 'id' => $id], 201);

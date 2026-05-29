@@ -4,44 +4,54 @@ require __DIR__ . '/../vendor/autoload.php';
 
 use Illuminate\Database\Capsule\Manager as Capsule;
 
-// Load env
+// ── Environment ──────────────────────────────────────────────────────────────
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../');
 $dotenv->safeLoad();
 
-// Boot Eloquent (Capsule)
+// ── Eloquent (Capsule) ────────────────────────────────────────────────────────
 $capsule = new Capsule;
 $capsule->addConnection([
-    'driver' => getenv('DB_CONNECTION') ?: 'pgsql',
-    'host' => getenv('DB_HOST') ?: 'db',
-    'database' => getenv('DB_DATABASE') ?: 'ddd_inventory',
-    'username' => getenv('DB_USERNAME') ?: 'ddd_user',
-    'password' => getenv('DB_PASSWORD') ?: 'secret',
-    'port' => getenv('DB_PORT') ?: 5432,
-    'charset' => 'utf8',
+    'driver'    => getenv('DB_CONNECTION') ?: 'pgsql',
+    'host'      => getenv('DB_HOST')       ?: 'db',
+    'database'  => getenv('DB_DATABASE')   ?: 'ddd_inventory',
+    'username'  => getenv('DB_USERNAME')   ?: 'ddd_user',
+    'password'  => getenv('DB_PASSWORD')   ?: 'secret',
+    'port'      => getenv('DB_PORT')       ?: 5432,
+    'charset'   => 'utf8',
     'collation' => 'utf8_unicode_ci',
-    'prefix' => '',
+    'prefix'    => '',
 ]);
 $capsule->setAsGlobal();
 $capsule->bootEloquent();
 
-$connection = $capsule->getConnection();
+// ── Event listeners ──────────────────────────────────────────────────────────
+use InventoryApp\Infrastructure\ServiceContainer;
+use InventoryApp\Application\Inventory\Listeners\SyncStockToShopify;
+use InventoryApp\Application\Inventory\Listeners\CreateInventoryItemOnVariantAdded;
+use InventoryApp\Domain\Inventory\Events\StockReceived;
+use InventoryApp\Domain\Inventory\Events\StockDecremented;
+use InventoryApp\Domain\Catalog\Events\VariantAddedToCatalog;
+use InventoryApp\Infrastructure\Integration\Shopify\ShopifyInventorySyncClient;
 
+$dispatcher = ServiceContainer::dispatcher();
+$syncClient = new ShopifyInventorySyncClient(
+    getenv('SHOPIFY_STORE_DOMAIN') ?: '',
+    getenv('SHOPIFY_ACCESS_TOKEN') ?: ''
+);
+
+$dispatcher->subscribe(StockReceived::class,   new SyncStockToShopify($syncClient, ServiceContainer::barcodeRepo()));
+$dispatcher->subscribe(StockDecremented::class, new SyncStockToShopify($syncClient, ServiceContainer::barcodeRepo()));
+$dispatcher->subscribe(VariantAddedToCatalog::class, new CreateInventoryItemOnVariantAdded(ServiceContainer::productRepo()));
+
+// ── Request parsing ───────────────────────────────────────────────────────────
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-$uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
-$body = json_decode(file_get_contents('php://input'), true) ?: [];
+$uri    = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 
 header('Content-Type: application/json');
 
-// Delegate to controllers and use-cases via ServiceContainer
-use InventoryApp\Infrastructure\ServiceContainer;
+// ── Request adapter ───────────────────────────────────────────────────────────
 use InventoryApp\Infrastructure\Http\RequestInterface;
-use InventoryApp\Infrastructure\Http\Controllers\CatalogController;
-use InventoryApp\Infrastructure\Http\Controllers\InventoryController;
-use InventoryApp\Application\Catalog\UseCases\CreateProductCatalog;
-use InventoryApp\Application\Inventory\UseCases\ReceiveStock;
-use InventoryApp\Application\Inventory\UseCases\GetStockLevel;
 
-// Simple Request adapter for controllers (minimal validate/query API)
 class RequestAdapter implements RequestInterface
 {
     private array $body;
@@ -49,13 +59,12 @@ class RequestAdapter implements RequestInterface
 
     public function __construct()
     {
-        $this->body = json_decode(file_get_contents('php://input'), true) ?: [];
+        $this->body  = json_decode(file_get_contents('php://input'), true) ?: [];
         $this->query = $_GET;
     }
 
     public function validate(array $rules): array
     {
-        // Very small validation: ensure required keys exist and basic type checks for integer
         foreach ($rules as $key => $rule) {
             $parts = explode('|', $rule);
             if (in_array('required', $parts) && !isset($this->body[$key])) {
@@ -63,11 +72,15 @@ class RequestAdapter implements RequestInterface
             }
             if (isset($this->body[$key]) && in_array('integer', $parts)) {
                 if (!is_int($this->body[$key])) {
-                    // allow numeric strings
                     if (!ctype_digit(strval($this->body[$key]))) {
                         throw new \Exception("Validation failed: {$key} must be integer");
                     }
-                    $this->body[$key] = (int)$this->body[$key];
+                    $this->body[$key] = (int) $this->body[$key];
+                }
+            }
+            if (isset($this->body[$key]) && in_array('min:1', $parts)) {
+                if ((int) $this->body[$key] < 1) {
+                    throw new \Exception("Validation failed: {$key} must be at least 1");
                 }
             }
         }
@@ -80,43 +93,174 @@ class RequestAdapter implements RequestInterface
     }
 }
 
-// POST /api/catalog/products -> create catalog product
-if ($method === 'POST' && $uri === '/api/catalog/products') {
-    $request = new RequestAdapter();
-    $controller = new CatalogController();
-    $useCase = new CreateProductCatalog(ServiceContainer::catalogProductRepo());
-    $response = $controller->createProduct($request, $useCase);
+// ── Auth middleware helper ────────────────────────────────────────────────────
+use InventoryApp\Infrastructure\Identity\ApiTokenService;
 
+function requireAuth(): void
+{
+    $headers    = getallheaders();
+    $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+    $token      = null;
+
+    if (str_starts_with($authHeader, 'Bearer ')) {
+        $token = trim(substr($authHeader, 7));
+    }
+
+    if (!$token) {
+        http_response_code(401);
+        echo json_encode(['error' => 'Missing or malformed Authorization header']);
+        exit;
+    }
+
+    $tokenData = (new ApiTokenService())->validate($token);
+
+    if ($tokenData === null) {
+        http_response_code(401);
+        echo json_encode(['error' => 'Invalid or expired token']);
+        exit;
+    }
+
+    // Make the resolved identity available to the rest of the request
+    $_SERVER['auth.user_id']   = $tokenData->user_id;
+    $_SERVER['auth.tenant_id'] = $tokenData->tenant_id;
+}
+
+
+// ── Controllers & use-cases ───────────────────────────────────────────────────
+use InventoryApp\Infrastructure\Http\Controllers\AuthController;
+use InventoryApp\Infrastructure\Http\Controllers\CatalogController;
+use InventoryApp\Infrastructure\Http\Controllers\InventoryController;
+use InventoryApp\Infrastructure\Http\Controllers\InventoryCountController;
+use InventoryApp\Application\Identity\UseCases\RegisterUser;
+use InventoryApp\Application\Identity\UseCases\AuthenticateUser;
+use InventoryApp\Application\Catalog\UseCases\CreateProductCatalog;
+use InventoryApp\Application\Catalog\UseCases\AddVariant;
+use InventoryApp\Application\Inventory\UseCases\ReceiveStock;
+use InventoryApp\Application\Inventory\UseCases\DispatchStock;
+use InventoryApp\Application\Inventory\UseCases\TransferStock;
+use InventoryApp\Application\Inventory\UseCases\GetStockLevel;
+use InventoryApp\Application\Inventory\UseCases\StartInventoryCount;
+use InventoryApp\Application\Inventory\UseCases\RecordCountItem;
+use InventoryApp\Application\Inventory\UseCases\CompleteInventoryCount;
+
+$request = new RequestAdapter();
+
+// ── Route: POST /auth/register ────────────────────────────────────────────────
+if ($method === 'POST' && $uri === '/auth/register') {
+    $useCase  = new RegisterUser(ServiceContainer::userRepo(), $dispatcher);
+    $response = (new AuthController())->register($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
 }
 
-// POST /api/inventory/receive -> record inventory transaction
+// ── Route: POST /auth/login ───────────────────────────────────────────────────
+if ($method === 'POST' && $uri === '/auth/login') {
+    $useCase  = new AuthenticateUser(ServiceContainer::userRepo(), new ApiTokenService());
+    $response = (new AuthController())->login($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/inventory/receive ───────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/inventory/receive') {
-    $request = new RequestAdapter();
-    $controller = new InventoryController();
-    $useCase = new ReceiveStock(ServiceContainer::productRepo());
-    $response = $controller->receive($request, $useCase);
-
+    requireAuth();
+    $useCase  = new ReceiveStock(ServiceContainer::productRepo(), $dispatcher);
+    $response = (new InventoryController())->receive($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
 }
 
-// GET /api/inventory/{sku}/stock -> return computed stock from use-case
+// ── Route: POST /api/inventory/dispatch ──────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/inventory/dispatch') {
+    requireAuth();
+    $useCase  = new DispatchStock(ServiceContainer::productRepo(), $dispatcher);
+    $response = (new InventoryController())->dispatch($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/inventory/transfer ──────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/inventory/transfer') {
+    requireAuth();
+    $useCase  = new TransferStock(ServiceContainer::productRepo(), $dispatcher);
+    $response = (new InventoryController())->transfer($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: GET /api/inventory/{sku}/stock ────────────────────────────────────
 if ($method === 'GET' && preg_match('#^/api/inventory/([^/]+)/stock$#', $uri, $m)) {
-    $sku = urldecode($m[1]);
-    $request = new RequestAdapter();
-    $controller = new InventoryController();
-    $useCase = new GetStockLevel(ServiceContainer::productRepo());
-    $response = $controller->stockLevel($request, $sku, $useCase);
-
+    requireAuth();
+    $sku      = urldecode($m[1]);
+    $useCase  = new GetStockLevel(ServiceContainer::productRepo());
+    $response = (new InventoryController())->stockLevel($request, $sku, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
 }
 
-// Fallback: simple status page
+// ── Route: POST /api/inventory/counts ────────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/inventory/counts') {
+    requireAuth();
+    $useCase  = new StartInventoryCount(ServiceContainer::inventoryCountRepo());
+    $response = (new InventoryCountController())->start($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/inventory/counts/{id}/items ─────────────────────────────
+if ($method === 'POST' && preg_match('#^/api/inventory/counts/([^/]+)/items$#', $uri, $m)) {
+    requireAuth();
+    $countId  = urldecode($m[1]);
+    $useCase  = new RecordCountItem(ServiceContainer::inventoryCountRepo());
+    $response = (new InventoryCountController())->recordItem($countId, $request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/inventory/counts/{id}/complete ──────────────────────────
+if ($method === 'POST' && preg_match('#^/api/inventory/counts/([^/]+)/complete$#', $uri, $m)) {
+    requireAuth();
+    $countId  = urldecode($m[1]);
+    $useCase  = new CompleteInventoryCount(
+        ServiceContainer::inventoryCountRepo(),
+        ServiceContainer::productRepo(),
+        $dispatcher
+    );
+    $response = (new InventoryCountController())->complete($countId, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/catalog/products ────────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/catalog/products') {
+    requireAuth();
+    $useCase  = new CreateProductCatalog(ServiceContainer::catalogProductRepo());
+    $response = (new CatalogController())->createProduct($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/catalog/products/{id}/variants ──────────────────────────
+if ($method === 'POST' && preg_match('#^/api/catalog/products/([^/]+)/variants$#', $uri, $m)) {
+    requireAuth();
+    $productId = urldecode($m[1]);
+    $useCase   = new AddVariant(ServiceContainer::catalogProductRepo(), $dispatcher);
+    $response  = (new CatalogController())->addVariant($request, $productId, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Fallback ──────────────────────────────────────────────────────────────────
 http_response_code(200);
 echo json_encode(['message' => 'DDD Inventory API is running', 'uri' => $uri]);

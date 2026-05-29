@@ -42,6 +42,9 @@ final class ApiEndpointsTest extends TestCase
             'password'  => $this->password,
         ]);
 
+        var_dump('SETUP RES:', $setupRes);
+        var_dump('LOGIN RES:', $loginRes);
+
         $this->assertEquals(200, $loginRes['status'], json_encode($loginRes));
         $this->assertNotEmpty($loginRes['body']['token']);
         $this->token = $loginRes['body']['token'];

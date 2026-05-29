@@ -26,7 +26,7 @@ class ProductUomConfiguration
         foreach ($this->conversionRules as $existing) {
             if ($existing->unit->equals($unit)) throw new \DomainException('Conversion rule exists');
         }
-        $this->conversionRules[] = new ConversionRule(bin2hex(random_bytes(8)), $unit, $factorToBase, $label);
+        $this->conversionRules[] = new ConversionRule(\Ramsey\Uuid\Uuid::uuid4()->toString(), $unit, $factorToBase, $label);
     }
 
     public function setPurchaseUnit(UnitOfMeasure $unit): void { $this->assertUnitIsKnown($unit); $this->purchaseUnit = $unit; }

@@ -21,6 +21,10 @@ use InventoryApp\Domain\Inventory\Repositories\InventoryCountRepositoryInterface
 use InventoryApp\Infrastructure\Persistence\Repositories\EloquentProductRepository;
 use InventoryApp\Infrastructure\Persistence\Repositories\EloquentInventoryCountRepository;
 use InventoryApp\Infrastructure\Persistence\Repositories\EloquentCatalogProductRepository;
+use InventoryApp\Domain\Uom\Repositories\ProductUomConfigurationRepositoryInterface;
+use InventoryApp\Domain\Kit\Repositories\KitRepositoryInterface;
+use InventoryApp\Infrastructure\Persistence\Repositories\EloquentProductUomConfigurationRepository;
+use InventoryApp\Infrastructure\Persistence\Repositories\EloquentKitRepository;
 
 class ServiceContainer
 {
@@ -32,6 +36,8 @@ class ServiceContainer
     private static ?JournalRepositoryInterface $journal = null;
     private static ?StockOnboardingRepositoryInterface $onboards = null;
     private static ?InventoryCountRepositoryInterface $inventoryCounts = null;
+    private static ?ProductUomConfigurationRepositoryInterface $uomConfig = null;
+    private static ?KitRepositoryInterface $kits = null;
     private static ?EventDispatcher $dispatcher = null;
 
     /**
@@ -92,6 +98,16 @@ class ServiceContainer
     public static function catalogProductRepo(): \InventoryApp\Domain\Catalog\Repositories\CatalogProductRepositoryInterface
     {
         return new EloquentCatalogProductRepository();
+    }
+
+    public static function uomConfigRepo(): ProductUomConfigurationRepositoryInterface
+    {
+        return self::$uomConfig ??= new EloquentProductUomConfigurationRepository();
+    }
+
+    public static function kitRepo(): KitRepositoryInterface
+    {
+        return self::$kits ??= new EloquentKitRepository();
     }
 }
 

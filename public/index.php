@@ -52,6 +52,8 @@ header('Content-Type: application/json');
 // ── Request adapter ───────────────────────────────────────────────────────────
 use InventoryApp\Infrastructure\Http\RequestInterface;
 
+class ValidationException extends \Exception {}
+
 class RequestAdapter implements RequestInterface
 {
     private array $body;
@@ -66,25 +68,49 @@ class RequestAdapter implements RequestInterface
     public function validate(array $rules): array
     {
         foreach ($rules as $key => $rule) {
-            $parts = explode('|', $rule);
-            if (in_array('required', $parts) && !isset($this->body[$key])) {
-                throw new \Exception("Validation failed: {$key} is required");
-            }
-            if (isset($this->body[$key]) && in_array('integer', $parts)) {
-                if (!is_int($this->body[$key])) {
-                    if (!ctype_digit(strval($this->body[$key]))) {
-                        throw new \Exception("Validation failed: {$key} must be integer");
-                    }
-                    $this->body[$key] = (int) $this->body[$key];
-                }
-            }
-            if (isset($this->body[$key]) && in_array('min:1', $parts)) {
-                if ((int) $this->body[$key] < 1) {
-                    throw new \Exception("Validation failed: {$key} must be at least 1");
-                }
-            }
+            $this->validateField($key, $rule);
         }
         return $this->body;
+    }
+
+    private function validateField(string $key, string $rule): void
+    {
+        $parts = explode('|', $rule);
+
+        if (in_array('required', $parts) && !isset($this->body[$key])) {
+            throw new ValidationException("Validation failed: {$key} is required");
+        }
+
+        if (!isset($this->body[$key])) {
+            return;
+        }
+
+        if (in_array('integer', $parts)) {
+            $this->validateInteger($key);
+        }
+
+        if (in_array('min:1', $parts)) {
+            $this->validateMinOne($key);
+        }
+    }
+
+    private function validateInteger(string $key): void
+    {
+        $value = $this->body[$key];
+        if (is_int($value)) {
+            return;
+        }
+        if (!ctype_digit(strval($value))) {
+            throw new ValidationException("Validation failed: {$key} must be integer");
+        }
+        $this->body[$key] = (int) $value;
+    }
+
+    private function validateMinOne(string $key): void
+    {
+        if ((int) $this->body[$key] < 1) {
+            throw new ValidationException("Validation failed: {$key} must be at least 1");
+        }
     }
 
     public function query(string $key, $default = null)
@@ -219,7 +245,7 @@ if ($method === 'GET' && $uri === '/api/users') {
             
         $users = $userModels->map(function($model) {
             $roles = $model->userRoles->pluck('id')->all();
-            $role = count($roles) > 0 ? $roles[0] : 'staff';
+            $role = !empty($roles) ? $roles[0] : 'staff';
             return [
                 'id' => $model->id,
                 'email' => $model->email,

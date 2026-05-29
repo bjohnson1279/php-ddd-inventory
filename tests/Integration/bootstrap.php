@@ -23,7 +23,7 @@ $capsule->bootEloquent();
 
 // Clean tables before each integration run
 $connection = $capsule->getConnection();
-$connection->statement('TRUNCATE TABLE 
+$connection->statement('TRUNCATE TABLE
     inventory_transactions, 
     product_locations, 
     products, 

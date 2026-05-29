@@ -11,7 +11,7 @@ class InventoryCountModel extends Model
     protected $keyType = 'string';
     public $timestamps = false;
 
-    protected $fillable = ['id','status','created_at','completed_at'];
+    protected $fillable = ['id', 'tenant_id', 'status', 'created_at', 'completed_at'];
 
     public function items()
     {

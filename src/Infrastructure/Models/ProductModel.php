@@ -10,7 +10,7 @@ class ProductModel extends Model
     public $incrementing = false;
     protected $keyType = 'string';
 
-    protected $fillable = ['id', 'sku', 'name', 'department', 'reorder_threshold'];
+    protected $fillable = ['id', 'tenant_id', 'sku', 'name', 'department', 'reorder_threshold'];
 
     public function locations()
     {

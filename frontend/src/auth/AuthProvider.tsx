@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 import api from '../api/client';
 
 type User = { email: string } | null;
-type AuthContextType = { user: User; login: (email:string,password:string)=>Promise<void>; logout: ()=>void };
+type AuthContextType = { user: User; login: (email:string,password:string,tenantId:string)=>Promise<void>; logout: ()=>void };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -17,8 +17,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const login = async (email:string, password:string) => {
-    const res = await api.post('/auth/login', { email, password });
+  const login = async (email:string, password:string, tenantId:string) => {
+    const res = await api.post('/auth/login', { email, password, tenant_id: tenantId });
     const token = res.token;
     if (!token) throw new Error('No token returned');
     localStorage.setItem('token', token);

@@ -159,8 +159,115 @@ if ($method === 'POST' && $uri === '/auth/register') {
     exit;
 }
 
+// ── Route: POST /api/setup ───────────────────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/setup') {
+    $body = json_decode(file_get_contents('php://input'), true) ?: [];
+    
+    $orgName = $body['orgName'] ?? '';
+    $tenantId = $body['tenantId'] ?? '';
+    $adminName = $body['adminName'] ?? '';
+    $adminEmail = $body['adminEmail'] ?? '';
+    $adminPassword = $body['adminPassword'] ?? '';
+    
+    if (empty($orgName) || empty($tenantId) || empty($adminName) || empty($adminEmail) || empty($adminPassword)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'All fields (orgName, tenantId, adminName, adminEmail, adminPassword) are required.']);
+        exit;
+    }
+    
+    try {
+        // 1. Insert tenant
+        Capsule::table('tenants')->insertOrIgnore([
+            'id' => $tenantId,
+            'name' => $orgName,
+            'created_at' => date('Y-m-d H:i:s')
+        ]);
+        
+        // 2. Register admin user
+        $userRepo = ServiceContainer::userRepo();
+        $adminId = \Ramsey\Uuid\Uuid::uuid4()->toString();
+        
+        $existing = $userRepo->findByEmail($adminEmail, new \InventoryApp\Domain\Identity\ValueObjects\TenantId($tenantId));
+        if (!$existing) {
+            $user = \InventoryApp\Domain\Identity\Entities\User::register(
+                $adminId,
+                new \InventoryApp\Domain\Identity\ValueObjects\TenantId($tenantId),
+                $adminEmail,
+                $adminPassword,
+                $adminName
+            );
+            $user->assignRole(\InventoryApp\Domain\Identity\Entities\Role::createDefault('admin'));
+            $userRepo->save($user);
+        }
+        
+        http_response_code(200);
+        echo json_encode(['message' => 'Organization and admin account set up successfully.']);
+    } catch (\Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ── Route: GET /api/users ─────────────────────────────────────────────────────
+if ($method === 'GET' && $uri === '/api/users') {
+    requireAuth();
+    try {
+        $userModels = \InventoryApp\Infrastructure\Models\UserModel::with('userRoles')
+            ->where('tenant_id', tenantId())
+            ->get();
+            
+        $users = $userModels->map(function($model) {
+            $roles = $model->userRoles->pluck('id')->all();
+            $role = count($roles) > 0 ? $roles[0] : 'staff';
+            return [
+                'id' => $model->id,
+                'email' => $model->email,
+                'role' => $role
+            ];
+        })->all();
+        
+        http_response_code(200);
+        echo json_encode(['users' => $users]);
+    } catch (\Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ── Route: POST /api/users ────────────────────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/users') {
+    requireAuth();
+    $body = json_decode(file_get_contents('php://input'), true) ?: [];
+    
+    $email = $body['email'] ?? '';
+    if (empty($email)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Email is required.']);
+        exit;
+    }
+    
+    try {
+        $tenantId = tenantId();
+        $userId = \Ramsey\Uuid\Uuid::uuid4()->toString();
+        $password = 'password123'; // Default password for invited users
+        $name = explode('@', $email)[0];
+        
+        $useCase = new RegisterUser(ServiceContainer::userRepo(), $dispatcher);
+        $useCase->execute($userId, $tenantId, $email, $password, $name);
+        
+        http_response_code(201);
+        echo json_encode(['message' => 'User invited successfully.']);
+    } catch (\Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
 // ── Route: POST /auth/login ───────────────────────────────────────────────────
-if ($method === 'POST' && $uri === '/auth/login') {
+if ($method === 'POST' && ($uri === '/auth/login' || $uri === '/api/auth/login')) {
     $useCase  = new AuthenticateUser(ServiceContainer::userRepo(), new ApiTokenService());
     $response = (new AuthController())->login($request, $useCase);
     http_response_code($response->getStatusCode());

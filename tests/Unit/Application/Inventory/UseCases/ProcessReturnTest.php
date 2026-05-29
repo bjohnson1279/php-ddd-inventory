@@ -10,6 +10,7 @@ use InventoryApp\Domain\Inventory\ValueObjects\SKU;
 use InventoryApp\Domain\Inventory\ValueObjects\Quantity;
 use InventoryApp\Domain\Inventory\ValueObjects\Department;
 use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
+use Psr\EventDispatcher\EventDispatcherInterface;
 
 class ProcessReturnTest extends TestCase
 {
@@ -36,7 +37,7 @@ class ProcessReturnTest extends TestCase
                 return $p->getStockAt(new LocationId('LOC-STOREFRONT'))->getOpenBoxQuantity()->getValue() === 1;
             }));
 
-        $useCase = new ProcessReturn($repositoryMock);
+        $useCase = new ProcessReturn($repositoryMock, $this->createStub(EventDispatcherInterface::class));
         $useCase->execute('TSHIRT-L-RED', 'LOC-STOREFRONT', 1, 'OPEN_BOX');
     }
 }

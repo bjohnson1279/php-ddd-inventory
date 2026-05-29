@@ -95,7 +95,7 @@ class SerializedItem
         $this->domainEvents[] = new SerialStatusChanged(
             serializedItemId: $this->id,
             variantId:        $this->variantId,
-            serialNumber:     $this->serialNumber->getValue(),
+            serialNumber:     $this->serialNumber->value,
             locationId:       $this->locationId,
             from:             $this->status,
             to:               $target,

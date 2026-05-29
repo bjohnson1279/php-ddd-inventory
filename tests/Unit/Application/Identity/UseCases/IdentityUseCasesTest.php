@@ -10,6 +10,7 @@ use InventoryApp\Domain\Identity\Entities\User;
 use InventoryApp\Domain\Identity\Entities\Role;
 use InventoryApp\Domain\Identity\ValueObjects\TenantId;
 use InventoryApp\Domain\Identity\ValueObjects\Permission;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Exception;
 
 class IdentityUseCasesTest extends TestCase
@@ -32,7 +33,7 @@ class IdentityUseCasesTest extends TestCase
         $repo->expects($this->once())->method('save')
             ->with($this->callback(fn(User $u) => $u->getEmail() === 'new@store.com'));
 
-        (new RegisterUser($repo))->execute('u1', 't1', 'new@store.com', 'password123', 'New User');
+        (new RegisterUser($repo, $this->createStub(EventDispatcherInterface::class)))->execute('u1', 't1', 'new@store.com', 'password123', 'New User');
     }
 
     public function testRegisterUserThrowsWhenEmailAlreadyExists(): void
@@ -44,7 +45,7 @@ class IdentityUseCasesTest extends TestCase
 
         $this->expectException(Exception::class);
         $this->expectExceptionMessageMatches('/already exists/i');
-        (new RegisterUser($repo))->execute('u2', 't1', 'new@store.com', 'password123', 'Dupe');
+        (new RegisterUser($repo, $this->createStub(EventDispatcherInterface::class)))->execute('u2', 't1', 'new@store.com', 'password123', 'Dupe');
     }
 
     // ── AssignRoleToUser ──────────────────────────────────────────────────────

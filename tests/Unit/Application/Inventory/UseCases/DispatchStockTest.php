@@ -10,6 +10,7 @@ use InventoryApp\Domain\Inventory\ValueObjects\SKU;
 use InventoryApp\Domain\Inventory\ValueObjects\Quantity;
 use InventoryApp\Domain\Inventory\ValueObjects\Department;
 use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
+use Psr\EventDispatcher\EventDispatcherInterface;
 
 class DispatchStockTest extends TestCase
 {
@@ -37,7 +38,7 @@ class DispatchStockTest extends TestCase
                 return $p->getTotalStockQuantity()->getValue() === 5;
             }));
 
-        $useCase = new DispatchStock($repositoryMock);
+        $useCase = new DispatchStock($repositoryMock, $this->createStub(EventDispatcherInterface::class));
         $useCase->execute('TSHIRT-L-RED', 'LOC-STOREFRONT', 5);
     }
 }

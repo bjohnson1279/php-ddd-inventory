@@ -15,6 +15,7 @@ use InventoryApp\Domain\Inventory\ValueObjects\Quantity;
 use InventoryApp\Domain\Inventory\ValueObjects\CountStatus;
 use InventoryApp\Domain\Inventory\ValueObjects\Department;
 use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Exception;
 
 class InventoryCountingUseCasesTest extends TestCase
@@ -74,7 +75,7 @@ class InventoryCountingUseCasesTest extends TestCase
         $this->productRepo->expects($this->once())->method('save')
             ->with($this->callback(fn(Product $p) => count($p->getPendingTransactions()) === 1));
 
-        (new CompleteInventoryCount($this->countRepo, $this->productRepo))->execute('c-1');
+        (new CompleteInventoryCount($this->countRepo, $this->productRepo, $this->createStub(EventDispatcherInterface::class)))->execute('c-1');
         
         $txns = $product->getPendingTransactions();
         $this->assertEquals(5, $txns[0]->getQuantityChange()); // 15 counted - 10 current = +5 adjustment

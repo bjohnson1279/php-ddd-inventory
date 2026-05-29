@@ -10,6 +10,7 @@ use InventoryApp\Domain\Inventory\ValueObjects\SKU;
 use InventoryApp\Domain\Inventory\ValueObjects\Quantity;
 use InventoryApp\Domain\Inventory\ValueObjects\Department;
 use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Exception;
 
 class TransferStockTest extends TestCase
@@ -39,7 +40,7 @@ class TransferStockTest extends TestCase
                 return $storefront === 6 && $backroom === 4;
             }));
 
-        $useCase = new TransferStock($repositoryMock);
+        $useCase = new TransferStock($repositoryMock, $this->createStub(EventDispatcherInterface::class));
         $useCase->execute('TSHIRT-L-RED', 'LOC-STOREFRONT', 'LOC-BACKROOM', 4);
     }
 
@@ -51,7 +52,7 @@ class TransferStockTest extends TestCase
         $this->expectException(Exception::class);
         $this->expectExceptionMessageMatches('/not found/i');
 
-        $useCase = new TransferStock($repositoryMock);
+        $useCase = new TransferStock($repositoryMock, $this->createStub(EventDispatcherInterface::class));
         $useCase->execute('GHOST-SKU', 'LOC-A', 'LOC-B', 1);
     }
 }

@@ -53,10 +53,22 @@ class ApiTokenService
     {
         $hash = hash('sha256', $plaintext);
 
-        return DB::table('api_tokens')
+        $token = DB::table('api_tokens')
             ->where('token_hash', $hash)
-            ->where('expires_at', '>', date('Y-m-d H:i:s'))
             ->first(['user_id', 'tenant_id', 'expires_at']);
+
+        if (!$token) {
+            error_log("Token hash not found in DB: " . $hash . " for plaintext prefix " . substr($plaintext, 0, 10));
+            return null;
+        }
+
+        $now = date('Y-m-d H:i:s');
+        if ($token->expires_at <= $now) {
+            error_log("Token expired: expires_at=" . $token->expires_at . ", now=" . $now);
+            return null;
+        }
+
+        return $token;
     }
 
     /**

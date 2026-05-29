@@ -59,6 +59,13 @@ $connection->table('tenants')->insertOrIgnore([
     ['id' => 'test-tenant', 'name' => 'Test Tenant']
 ]);
 
+// Ensure standard roles exist
+$connection->table('roles')->insertOrIgnore([
+    ['id' => 'admin',   'name' => 'Administrator'],
+    ['id' => 'manager', 'name' => 'Manager'],
+    ['id' => 'staff',   'name' => 'Staff']
+]);
+
 function uuidv4(): string {
     $data = random_bytes(16);
     $data[6] = chr((ord($data[6]) & 0x0f) | 0x40);

@@ -11,10 +11,38 @@ require_once __DIR__ . '/../bootstrap.php';
 /** @group integration */
 final class ApiEndpointsTest extends TestCase
 {
+    private static ?int $pid = null;
     private string $tenantId;
     private string $email;
     private string $password;
     private ?string $token = null;
+
+    public static function setUpBeforeClass(): void
+    {
+        // Start built-in PHP development server in the background on port 8085
+        $output = [];
+        $command = "php -S 127.0.0.1:8085 public/index.php > /dev/null 2>&1 & echo $!";
+        
+        exec($command, $output);
+        self::$pid = (int)($output[0] ?? 0);
+        
+        // Wait for server to bind
+        for ($i = 0; $i < 50; $i++) {
+            $fp = @fsockopen('127.0.0.1', 8085, $errno, $errstr, 0.1);
+            if ($fp) {
+                fclose($fp);
+                break;
+            }
+            usleep(50000); // 50ms
+        }
+    }
+
+    public static function tearDownAfterClass(): void
+    {
+        if (self::$pid) {
+            exec("kill " . self::$pid . " > /dev/null 2>&1");
+        }
+    }
 
     protected function setUp(): void
     {
@@ -42,9 +70,6 @@ final class ApiEndpointsTest extends TestCase
             'password'  => $this->password,
         ]);
 
-        var_dump('SETUP RES:', $setupRes);
-        var_dump('LOGIN RES:', $loginRes);
-
         $this->assertEquals(200, $loginRes['status'], json_encode($loginRes));
         $this->assertNotEmpty($loginRes['body']['token']);
         $this->token = $loginRes['body']['token'];
@@ -53,11 +78,12 @@ final class ApiEndpointsTest extends TestCase
     public function testBarcodeRegistryEndpoints(): void
     {
         $variantId = uuidv4();
+        $barcodeValue = '978' . strval(rand(1000000000, 9999999999));
 
         // 1. Assign Barcode
         $assignRes = $this->request('POST', '/api/barcodes/assign', [
             'variant_id' => $variantId,
-            'value'      => '9780201379624',
+            'value'      => $barcodeValue,
             'symbology'  => 'ean_13',
             'source'     => 'internal',
             'is_primary' => true,
@@ -66,7 +92,7 @@ final class ApiEndpointsTest extends TestCase
         $this->assertEquals(201, $assignRes['status'], json_encode($assignRes));
 
         // 2. Lookup Barcode
-        $lookupRes = $this->request('GET', '/api/barcodes/lookup?value=9780201379624', [], $this->token);
+        $lookupRes = $this->request('GET', "/api/barcodes/lookup?value={$barcodeValue}", [], $this->token);
         $this->assertEquals(200, $lookupRes['status'], json_encode($lookupRes));
         $this->assertEquals($variantId, $lookupRes['body']['variant_id']);
 
@@ -74,7 +100,7 @@ final class ApiEndpointsTest extends TestCase
         $setRes = $this->request('GET', "/api/barcodes/variants/{$variantId}", [], $this->token);
         $this->assertEquals(200, $setRes['status'], json_encode($setRes));
         $this->assertCount(1, $setRes['body']['assignments']);
-        $this->assertEquals('9780201379624', $setRes['body']['assignments'][0]['value']);
+        $this->assertEquals($barcodeValue, $setRes['body']['assignments'][0]['value']);
         $this->assertTrue($setRes['body']['assignments'][0]['is_primary']);
     }
 
@@ -208,7 +234,7 @@ final class ApiEndpointsTest extends TestCase
 
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
     {
-        $url = 'http://web' . $path;
+        $url = 'http://127.0.0.1:8085' . $path;
         $options = [
             'http' => [
                 'header'        => "Content-Type: application/json\r\n",

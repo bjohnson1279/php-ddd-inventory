@@ -33,7 +33,7 @@ class VariantBarcodeSet
         }
 
         $shouldBePrimary = $makePrimary || empty($this->assignments);
-        $assignment = new BarcodeAssignment(bin2hex(random_bytes(8)), $this->variantId, $barcode, $source, $shouldBePrimary, new \DateTimeImmutable());
+        $assignment = new BarcodeAssignment(\Ramsey\Uuid\Uuid::uuid4()->toString(), $this->variantId, $barcode, $source, $shouldBePrimary, new \DateTimeImmutable());
         $this->assignments[$assignment->id] = $assignment;
         $this->domainEvents[] = new \stdClass();
         return $assignment;

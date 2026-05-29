@@ -22,7 +22,7 @@ class OpeningBalanceService
         }
 
         foreach ($onboarding->items() as $item) {
-            $entry = new LedgerEntry(bin2hex(random_bytes(8)), $item->variantId, $item->quantity, ReasonCode::OpeningBalance, $actorId, $onboarding->id, $onboarding->asOfDate, ['unitCostCents' => $item->unitCostCents, 'locationId' => $onboarding->locationId]);
+            $entry = new LedgerEntry(\Ramsey\Uuid\Uuid::uuid4()->toString(), $item->variantId, $item->quantity, ReasonCode::OpeningBalance, $actorId, $onboarding->id, $onboarding->asOfDate, ['unitCostCents' => $item->unitCostCents, 'locationId' => $onboarding->locationId]);
             $this->ledger->append($entry);
             $this->events->dispatch(new \stdClass());
         }

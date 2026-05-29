@@ -19,7 +19,7 @@ class SerializedInventoryService
             throw new \DomainException('Serial already registered');
         }
 
-        $item = new SerializedItem(bin2hex(random_bytes(8)), $variantId, $serialNumber, $tenantId, $locationId);
+        $item = new SerializedItem(\Ramsey\Uuid\Uuid::uuid4()->toString(), $variantId, $serialNumber, $tenantId, $locationId);
         $this->serialRepo->save($item);
         return $item;
     }
@@ -29,7 +29,7 @@ class SerializedInventoryService
         $item = $this->serialRepo->findBySerialOrFail($serialNumber, $tenantId);
         $item->receive($location, $actorId, $purchaseOrderId);
 
-        $this->ledger->append(new LedgerEntry(bin2hex(random_bytes(8)), $item->variantId, 1, ReasonCode::PurchaseReceipt, $actorId, $purchaseOrderId, new \DateTimeImmutable(), ['serialNumber' => $serialNumber->value, 'unitCostCents' => $unitCostCents]));
+        $this->ledger->append(new LedgerEntry(\Ramsey\Uuid\Uuid::uuid4()->toString(), $item->variantId, 1, ReasonCode::PurchaseReceipt, $actorId, $purchaseOrderId, new \DateTimeImmutable(), ['serialNumber' => $serialNumber->value, 'unitCostCents' => $unitCostCents]));
 
         $this->serialRepo->save($item);
         foreach ($item->releaseEvents() as $e) $this->events->dispatch($e);
@@ -39,7 +39,7 @@ class SerializedInventoryService
     {
         $item = $this->serialRepo->findBySerialOrFail($serialNumber, $tenantId);
         $item->sell($saleId, $actorId);
-        $this->ledger->append(new LedgerEntry(bin2hex(random_bytes(8)), $item->variantId, -1, ReasonCode::Sale, $actorId, $saleId, new \DateTimeImmutable(), ['serialNumber' => $serialNumber->value]));
+        $this->ledger->append(new LedgerEntry(\Ramsey\Uuid\Uuid::uuid4()->toString(), $item->variantId, -1, ReasonCode::Sale, $actorId, $saleId, new \DateTimeImmutable(), ['serialNumber' => $serialNumber->value]));
         $this->serialRepo->save($item);
         foreach ($item->releaseEvents() as $e) $this->events->dispatch($e);
     }
@@ -56,7 +56,7 @@ class SerializedInventoryService
     {
         $item = $this->serialRepo->findBySerialOrFail($serialNumber, $tenantId);
         $item->restock($actorId, $returnId);
-        $this->ledger->append(new LedgerEntry(bin2hex(random_bytes(8)), $item->variantId, 1, ReasonCode::Return, $actorId, $returnId, new \DateTimeImmutable(), ['serialNumber' => $serialNumber->value, 'restockedUnitCostCents' => $restockedUnitCostCents]));
+        $this->ledger->append(new LedgerEntry(\Ramsey\Uuid\Uuid::uuid4()->toString(), $item->variantId, 1, ReasonCode::Return, $actorId, $returnId, new \DateTimeImmutable(), ['serialNumber' => $serialNumber->value, 'restockedUnitCostCents' => $restockedUnitCostCents]));
         $this->serialRepo->save($item);
         foreach ($item->releaseEvents() as $e) $this->events->dispatch($e);
     }
@@ -67,7 +67,7 @@ class SerializedInventoryService
         $wasInStock = $item->status()->isCountedInStock();
         $item->writeOff($reason, $actorId, $referenceId);
         if ($wasInStock) {
-            $this->ledger->append(new LedgerEntry(bin2hex(random_bytes(8)), $item->variantId, -1, ReasonCode::WriteOff, $actorId, $referenceId, new \DateTimeImmutable(), ['serialNumber' => $serialNumber->value]));
+            $this->ledger->append(new LedgerEntry(\Ramsey\Uuid\Uuid::uuid4()->toString(), $item->variantId, -1, ReasonCode::WriteOff, $actorId, $referenceId, new \DateTimeImmutable(), ['serialNumber' => $serialNumber->value]));
         }
         $this->serialRepo->save($item);
         foreach ($item->releaseEvents() as $e) $this->events->dispatch($e);

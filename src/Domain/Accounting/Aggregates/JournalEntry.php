@@ -19,7 +19,7 @@ class JournalEntry
     public function addLine(AccountCode $account, int $amountCents, DebitCredit $type, string $memo = ''): void
     {
         if ($amountCents <= 0) throw new \InvalidArgumentException('Journal line amount must be positive.');
-        $this->lines[] = new JournalLine(bin2hex(random_bytes(8)), $account, $amountCents, $type, $memo);
+        $this->lines[] = new JournalLine(\Ramsey\Uuid\Uuid::uuid4()->toString(), $account, $amountCents, $type, $memo);
     }
 
     public function assertBalanced(): void

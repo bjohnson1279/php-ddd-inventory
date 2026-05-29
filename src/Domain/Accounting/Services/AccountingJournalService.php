@@ -124,7 +124,7 @@ class AccountingJournalService
 
     private function createEntry(string $tenantId, \DateTimeImmutable $date, string $description, ?string $referenceId, AccountingMethod $method, array $lines): JournalEntry
     {
-        $entry = new JournalEntry(bin2hex(random_bytes(8)), $tenantId, $date, $description, $referenceId, $method);
+        $entry = new JournalEntry(\Ramsey\Uuid\Uuid::uuid4()->toString(), $tenantId, $date, $description, $referenceId, $method);
         foreach ($lines as [$account, $amount, $type, $memo]) {
             $entry->addLine($account, $amount, $type, $memo);
         }

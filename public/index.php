@@ -176,6 +176,8 @@ use InventoryApp\Infrastructure\Http\Controllers\BarcodeController;
 use InventoryApp\Infrastructure\Http\Controllers\SerializedItemController;
 use InventoryApp\Infrastructure\Http\Controllers\StockOnboardingController;
 use InventoryApp\Infrastructure\Http\Controllers\JournalController;
+use InventoryApp\Infrastructure\Http\Controllers\UomController;
+use InventoryApp\Infrastructure\Http\Controllers\KitController;
 use InventoryApp\Application\Identity\UseCases\RegisterUser;
 use InventoryApp\Application\Identity\UseCases\AuthenticateUser;
 use InventoryApp\Application\Catalog\UseCases\CreateProductCatalog;
@@ -629,6 +631,120 @@ if ($method === 'POST' && $uri === '/api/journal/entries') {
 if ($method === 'GET' && $uri === '/api/journal/entries') {
     requireAuth();
     $response = (new JournalController())->list($request, ServiceContainer::journalRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Unit of Measure (UoM) ────────────────────────────────────────────────────
+// Route: POST /api/uom/configurations
+if ($method === 'POST' && $uri === '/api/uom/configurations') {
+    requireAuth();
+    $response = (new UomController())->create($request, ServiceContainer::uomConfigRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: POST /api/uom/configurations/{id}/rules
+if ($method === 'POST' && preg_match('#^/api/uom/configurations/([^/]+)/rules$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $response = (new UomController())->addRule($request, $id, ServiceContainer::uomConfigRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: DELETE /api/uom/configurations/{id}/rules
+if ($method === 'DELETE' && preg_match('#^/api/uom/configurations/([^/]+)/rules$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $response = (new UomController())->removeRule($request, $id, ServiceContainer::uomConfigRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: POST /api/uom/configurations/{id}/units
+if ($method === 'POST' && preg_match('#^/api/uom/configurations/([^/]+)/units$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $response = (new UomController())->setUnits($request, $id, ServiceContainer::uomConfigRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: GET /api/uom/configurations/variants/{variantId}
+if ($method === 'GET' && preg_match('#^/api/uom/configurations/variants/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    $variantId = urldecode($m[1]);
+    $response = (new UomController())->show($request, $variantId, ServiceContainer::uomConfigRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: GET /api/uom/configurations/{id}
+if ($method === 'GET' && preg_match('#^/api/uom/configurations/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $response = (new UomController())->showById($request, $id, ServiceContainer::uomConfigRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Kitting & Bundles ────────────────────────────────────────────────────────
+// Route: POST /api/kits
+if ($method === 'POST' && $uri === '/api/kits') {
+    requireAuth();
+    $response = (new KitController())->create($request, ServiceContainer::kitRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: POST /api/kits/{id}/components
+if ($method === 'POST' && preg_match('#^/api/kits/([^/]+)/components$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $response = (new KitController())->addComponent($request, $id, ServiceContainer::kitRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: GET /api/kits/{id}
+if ($method === 'GET' && preg_match('#^/api/kits/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $response = (new KitController())->show($request, $id, ServiceContainer::kitRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: GET /api/kits/sku/{sku}
+if ($method === 'GET' && preg_match('#^/api/kits/sku/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    $sku = urldecode($m[1]);
+    $response = (new KitController())->showBySku($request, $sku, ServiceContainer::kitRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: POST /api/kits/{id}/sell
+if ($method === 'POST' && preg_match('#^/api/kits/([^/]+)/sell$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $inventoryService = new \InventoryApp\Domain\Inventory\Services\InventoryService(
+        ServiceContainer::ledgerRepo(tenantId()),
+        $dispatcher
+    );
+    $response = (new KitController())->sell($request, $id, ServiceContainer::kitRepo(), $inventoryService);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;

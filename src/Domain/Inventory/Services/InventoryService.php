@@ -19,7 +19,7 @@ class InventoryService
         $this->assertSufficientStock($variantId, $quantity);
 
         $entry = new LedgerEntry(
-            id: bin2hex(random_bytes(16)),
+            id: \Ramsey\Uuid\Uuid::uuid4()->toString(),
             variantId: $variantId,
             quantity: -$quantity,
             reason: ReasonCode::Sale,
@@ -65,7 +65,7 @@ class InventoryService
             $variantId = $component->variantId ?? $component['variantId'];
 
             $entry = new LedgerEntry(
-                id: bin2hex(random_bytes(16)),
+                id: \Ramsey\Uuid\Uuid::uuid4()->toString(),
                 variantId: $variantId,
                 quantity: -$compQty,
                 reason: ReasonCode::KitSale,

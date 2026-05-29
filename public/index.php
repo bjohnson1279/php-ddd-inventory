@@ -31,17 +31,26 @@ use InventoryApp\Application\Inventory\Listeners\CreateInventoryItemOnVariantAdd
 use InventoryApp\Domain\Inventory\Events\StockReceived;
 use InventoryApp\Domain\Inventory\Events\StockDecremented;
 use InventoryApp\Domain\Catalog\Events\VariantAddedToCatalog;
-use InventoryApp\Infrastructure\Integration\Shopify\ShopifyInventorySyncClient;
+use InventoryApp\Infrastructure\Integration\Shopify\ShopifyInventorySync;
+use InventoryApp\Infrastructure\Integration\Shopify\ShopifyMappingRepository;
 
 $dispatcher = ServiceContainer::dispatcher();
-$syncClient = new ShopifyInventorySyncClient(
+$syncClient = new ShopifyInventorySync(
     getenv('SHOPIFY_STORE_DOMAIN') ?: '',
     getenv('SHOPIFY_ACCESS_TOKEN') ?: ''
 );
+$mappingRepo = new ShopifyMappingRepository();
 
-$dispatcher->subscribe(StockReceived::class,   new SyncStockToShopify($syncClient, ServiceContainer::barcodeRepo()));
-$dispatcher->subscribe(StockDecremented::class, new SyncStockToShopify($syncClient, ServiceContainer::barcodeRepo()));
-$dispatcher->subscribe(VariantAddedToCatalog::class, new CreateInventoryItemOnVariantAdded(ServiceContainer::productRepo(tenantId())));
+$shopifyListener = new SyncStockToShopify($syncClient, $mappingRepo, ServiceContainer::productRepo('system'));
+$dispatcher->subscribe(StockReceived::class,   [$shopifyListener, 'handle']);
+$dispatcher->subscribe(StockDecremented::class, [$shopifyListener, 'handle']);
+
+$registerProductUseCase = new \InventoryApp\Application\Inventory\UseCases\RegisterProduct(
+    ServiceContainer::productRepo('system'),
+    $dispatcher
+);
+$createInventoryListener = new CreateInventoryItemOnVariantAdded($registerProductUseCase);
+$dispatcher->subscribe(VariantAddedToCatalog::class, [$createInventoryListener, 'handle']);
 
 // ── Request parsing ───────────────────────────────────────────────────────────
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';

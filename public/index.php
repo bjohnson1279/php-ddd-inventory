@@ -185,10 +185,13 @@ use InventoryApp\Application\Catalog\UseCases\AddVariant;
 use InventoryApp\Application\Inventory\UseCases\ReceiveStock;
 use InventoryApp\Application\Inventory\UseCases\DispatchStock;
 use InventoryApp\Application\Inventory\UseCases\TransferStock;
+use InventoryApp\Application\Inventory\UseCases\ProcessSale;
+use InventoryApp\Application\Inventory\UseCases\ProcessReturn;
 use InventoryApp\Application\Inventory\UseCases\GetStockLevel;
 use InventoryApp\Application\Inventory\UseCases\StartInventoryCount;
 use InventoryApp\Application\Inventory\UseCases\RecordCountItem;
 use InventoryApp\Application\Inventory\UseCases\CompleteInventoryCount;
+use InventoryApp\Application\Identity\UseCases\AssignRoleToUser;
 
 $request = new RequestAdapter();
 
@@ -747,6 +750,117 @@ if ($method === 'POST' && preg_match('#^/api/kits/([^/]+)/sell$#', $uri, $m)) {
     $response = (new KitController())->sell($request, $id, ServiceContainer::kitRepo(), $inventoryService);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/inventory/sale ──────────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/inventory/sale') {
+    requireAuth();
+    $body      = json_decode(file_get_contents('php://input'), true) ?: [];
+    $sku       = $body['sku']         ?? '';
+    $locationId = $body['location_id'] ?? '';
+    $quantity  = (int)($body['quantity']  ?? 0);
+    $orderId   = $body['order_id']    ?? null;
+
+    if (!$sku || !$locationId || $quantity < 1) {
+        http_response_code(400);
+        echo json_encode(['error' => 'sku, location_id, and quantity (min 1) are required']);
+        exit;
+    }
+
+    try {
+        $useCase = new ProcessSale(ServiceContainer::productRepo(tenantId()), $dispatcher);
+        $useCase->execute($sku, $locationId, $quantity, $orderId);
+        http_response_code(200);
+        echo json_encode(['message' => 'Sale processed successfully']);
+    } catch (Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ── Route: POST /api/inventory/return ────────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/inventory/return') {
+    requireAuth();
+    $body       = json_decode(file_get_contents('php://input'), true) ?: [];
+    $sku        = $body['sku']         ?? '';
+    $locationId = $body['location_id'] ?? '';
+    $quantity   = (int)($body['quantity']   ?? 0);
+    $condition  = $body['condition']   ?? 'new';
+    $orderId    = $body['order_id']    ?? null;
+
+    if (!$sku || !$locationId || $quantity < 1) {
+        http_response_code(400);
+        echo json_encode(['error' => 'sku, location_id, and quantity (min 1) are required']);
+        exit;
+    }
+
+    try {
+        $useCase = new ProcessReturn(ServiceContainer::productRepo(tenantId()), $dispatcher);
+        $useCase->execute($sku, $locationId, $quantity, $condition, $orderId);
+        http_response_code(200);
+        echo json_encode(['message' => 'Return processed successfully']);
+    } catch (Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ── Route: GET /api/inventory/counts/{id} ────────────────────────────────────
+if ($method === 'GET' && preg_match('#^/api/inventory/counts/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    $countId = urldecode($m[1]);
+
+    try {
+        $count = ServiceContainer::inventoryCountRepo(tenantId())->findById($countId);
+        if (!$count) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Inventory count not found']);
+            exit;
+        }
+        $items = array_map(fn($item) => [
+            'sku'      => $item->getSku()->getValue(),
+            'quantity' => $item->getCountedQuantity()->getValue(),
+        ], $count->getItems());
+
+        http_response_code(200);
+        echo json_encode([
+            'id'     => $count->getId(),
+            'status' => $count->getStatus()->getValue(),
+            'items'  => $items,
+        ]);
+    } catch (Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ── Route: PATCH /api/users/{id}/role ────────────────────────────────────────
+if ($method === 'PATCH' && preg_match('#^/api/users/([^/]+)/role$#', $uri, $m)) {
+    requireAuth();
+    $targetUserId = urldecode($m[1]);
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $body         = json_decode(file_get_contents('php://input'), true) ?: [];
+    $roleSlug     = $body['role'] ?? '';
+
+    if (!$roleSlug) {
+        http_response_code(400);
+        echo json_encode(['error' => 'role is required (admin|manager|staff)']);
+        exit;
+    }
+
+    try {
+        $useCase = new AssignRoleToUser(ServiceContainer::userRepo());
+        $useCase->execute($targetUserId, $roleSlug, $actingUserId);
+        http_response_code(200);
+        echo json_encode(['message' => "Role '{$roleSlug}' assigned successfully"]);
+    } catch (Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
     exit;
 }
 

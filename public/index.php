@@ -61,7 +61,8 @@ class RequestAdapter implements RequestInterface
 
     public function __construct()
     {
-        $this->body  = json_decode(file_get_contents('php://input'), true) ?: [];
+        $testBody = $GLOBALS['__TEST_BODY__'] ?? null;
+        $this->body  = is_array($testBody) ? $testBody : (json_decode(file_get_contents('php://input'), true) ?: []);
         $this->query = $_GET;
     }
 
@@ -124,8 +125,8 @@ use InventoryApp\Infrastructure\Identity\ApiTokenService;
 
 function requireAuth(): void
 {
-    $headers    = getallheaders();
-    $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+    $headers    = function_exists('getallheaders') ? getallheaders() : [];
+    $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? ($GLOBALS['__TEST_AUTH_HEADER__'] ?? '');
     $token      = null;
 
     if (str_starts_with($authHeader, 'Bearer ')) {
@@ -162,6 +163,10 @@ use InventoryApp\Infrastructure\Http\Controllers\AuthController;
 use InventoryApp\Infrastructure\Http\Controllers\CatalogController;
 use InventoryApp\Infrastructure\Http\Controllers\InventoryController;
 use InventoryApp\Infrastructure\Http\Controllers\InventoryCountController;
+use InventoryApp\Infrastructure\Http\Controllers\BarcodeController;
+use InventoryApp\Infrastructure\Http\Controllers\SerializedItemController;
+use InventoryApp\Infrastructure\Http\Controllers\StockOnboardingController;
+use InventoryApp\Infrastructure\Http\Controllers\JournalController;
 use InventoryApp\Application\Identity\UseCases\RegisterUser;
 use InventoryApp\Application\Identity\UseCases\AuthenticateUser;
 use InventoryApp\Application\Catalog\UseCases\CreateProductCatalog;
@@ -394,6 +399,227 @@ if ($method === 'POST' && preg_match('#^/api/catalog/products/([^/]+)/variants$#
     $productId = urldecode($m[1]);
     $useCase   = new AddVariant(ServiceContainer::catalogProductRepo(), $dispatcher);
     $response  = (new CatalogController())->addVariant($request, $productId, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Barcode Registry ──────────────────────────────────────────────────────────
+// Route: GET /api/barcodes/lookup
+if ($method === 'GET' && $uri === '/api/barcodes/lookup') {
+    $response = (new BarcodeController())->lookup($request, ServiceContainer::barcodeRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: POST /api/barcodes/assign
+if ($method === 'POST' && $uri === '/api/barcodes/assign') {
+    requireAuth();
+    $response = (new BarcodeController())->assign($request, ServiceContainer::barcodeRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: GET /api/barcodes/variants/{variantId}
+if ($method === 'GET' && preg_match('#^/api/barcodes/variants/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    $variantId = urldecode($m[1]);
+    $response = (new BarcodeController())->getVariantSet($request, $variantId, ServiceContainer::barcodeRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Serial Number Tracking ─────────────────────────────────────────────────────
+// Route: POST /api/serials
+if ($method === 'POST' && $uri === '/api/serials') {
+    requireAuth();
+    $service = new \InventoryApp\Domain\Serial\Services\SerializedInventoryService(
+        ServiceContainer::serializedRepo(),
+        ServiceContainer::ledgerRepo(tenantId()),
+        $dispatcher
+    );
+    $response = (new SerializedItemController())->register($request, $service);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: POST /api/serials/{id}/receive
+if ($method === 'POST' && preg_match('#^/api/serials/([^/]+)/receive$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $service = new \InventoryApp\Domain\Serial\Services\SerializedInventoryService(
+        ServiceContainer::serializedRepo(),
+        ServiceContainer::ledgerRepo(tenantId()),
+        $dispatcher
+    );
+    $response = (new SerializedItemController())->receive($request, $id, $service, ServiceContainer::serializedRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: POST /api/serials/{id}/sell
+if ($method === 'POST' && preg_match('#^/api/serials/([^/]+)/sell$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $service = new \InventoryApp\Domain\Serial\Services\SerializedInventoryService(
+        ServiceContainer::serializedRepo(),
+        ServiceContainer::ledgerRepo(tenantId()),
+        $dispatcher
+    );
+    $response = (new SerializedItemController())->sell($request, $id, $service, ServiceContainer::serializedRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: POST /api/serials/{id}/return
+if ($method === 'POST' && preg_match('#^/api/serials/([^/]+)/return$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $service = new \InventoryApp\Domain\Serial\Services\SerializedInventoryService(
+        ServiceContainer::serializedRepo(),
+        ServiceContainer::ledgerRepo(tenantId()),
+        $dispatcher
+    );
+    $response = (new SerializedItemController())->acceptReturn($request, $id, $service, ServiceContainer::serializedRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: POST /api/serials/{id}/restock
+if ($method === 'POST' && preg_match('#^/api/serials/([^/]+)/restock$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $service = new \InventoryApp\Domain\Serial\Services\SerializedInventoryService(
+        ServiceContainer::serializedRepo(),
+        ServiceContainer::ledgerRepo(tenantId()),
+        $dispatcher
+    );
+    $response = (new SerializedItemController())->restock($request, $id, $service, ServiceContainer::serializedRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: POST /api/serials/{id}/write-off
+if ($method === 'POST' && preg_match('#^/api/serials/([^/]+)/write-off$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $service = new \InventoryApp\Domain\Serial\Services\SerializedInventoryService(
+        ServiceContainer::serializedRepo(),
+        ServiceContainer::ledgerRepo(tenantId()),
+        $dispatcher
+    );
+    $response = (new SerializedItemController())->writeOff($request, $id, $service, ServiceContainer::serializedRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: GET /api/serials/lookup
+if ($method === 'GET' && $uri === '/api/serials/lookup') {
+    requireAuth();
+    $response = (new SerializedItemController())->lookup($request, ServiceContainer::serializedRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: GET /api/serials/variants/{variantId}
+if ($method === 'GET' && preg_match('#^/api/serials/variants/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    $variantId = urldecode($m[1]);
+    $response = (new SerializedItemController())->listByVariant($request, $variantId, ServiceContainer::serializedRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: GET /api/serials/variants/{variantId}/count
+if ($method === 'GET' && preg_match('#^/api/serials/variants/([^/]+)/count$#', $uri, $m)) {
+    requireAuth();
+    $variantId = urldecode($m[1]);
+    $response = (new SerializedItemController())->countByStatus($request, $variantId, ServiceContainer::serializedRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Opening Balances (Stock Onboarding) ───────────────────────────────────────
+// Route: POST /api/onboardings
+if ($method === 'POST' && $uri === '/api/onboardings') {
+    requireAuth();
+    $response = (new StockOnboardingController())->create($request, ServiceContainer::stockOnboardingRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: POST /api/onboardings/{id}/items
+if ($method === 'POST' && preg_match('#^/api/onboardings/([^/]+)/items$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $response = (new StockOnboardingController())->setItem($request, $id, ServiceContainer::stockOnboardingRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: DELETE /api/onboardings/{id}/items/{variantId}
+if ($method === 'DELETE' && preg_match('#^/api/onboardings/([^/]+)/items/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $variantId = urldecode($m[2]);
+    $response = (new StockOnboardingController())->removeItem($request, $id, $variantId, ServiceContainer::stockOnboardingRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: POST /api/onboardings/{id}/submit
+if ($method === 'POST' && preg_match('#^/api/onboardings/([^/]+)/submit$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $service = new \InventoryApp\Domain\Inventory\Services\OpeningBalanceService(
+        ServiceContainer::ledgerRepo(tenantId()),
+        $dispatcher
+    );
+    $response = (new StockOnboardingController())->submit($request, $id, $service, ServiceContainer::stockOnboardingRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: GET /api/onboardings/{id}
+if ($method === 'GET' && preg_match('#^/api/onboardings/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $response = (new StockOnboardingController())->show($request, $id, ServiceContainer::stockOnboardingRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Accounting Journal ────────────────────────────────────────────────────────
+// Route: POST /api/journal/entries
+if ($method === 'POST' && $uri === '/api/journal/entries') {
+    requireAuth();
+    $response = (new JournalController())->record($request, ServiceContainer::journalRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: GET /api/journal/entries
+if ($method === 'GET' && $uri === '/api/journal/entries') {
+    requireAuth();
+    $response = (new JournalController())->list($request, ServiceContainer::journalRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;

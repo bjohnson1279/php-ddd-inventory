@@ -44,6 +44,35 @@ class SerializedInventoryService
         foreach ($item->releaseEvents() as $e) $this->events->dispatch($e);
     }
 
+    public function acceptReturn(SerialNumber $serialNumber, string $tenantId, string $returnId, string $actorId): void
+    {
+        $item = $this->serialRepo->findBySerialOrFail($serialNumber, $tenantId);
+        $item->acceptReturn($returnId, $actorId);
+        $this->serialRepo->save($item);
+        foreach ($item->releaseEvents() as $e) $this->events->dispatch($e);
+    }
+
+    public function restock(SerialNumber $serialNumber, string $tenantId, string $returnId, int $restockedUnitCostCents, string $actorId): void
+    {
+        $item = $this->serialRepo->findBySerialOrFail($serialNumber, $tenantId);
+        $item->restock($actorId, $returnId);
+        $this->ledger->append(new LedgerEntry(bin2hex(random_bytes(8)), $item->variantId, 1, ReasonCode::Return, $actorId, $returnId, new \DateTimeImmutable(), ['serialNumber' => $serialNumber->value, 'restockedUnitCostCents' => $restockedUnitCostCents]));
+        $this->serialRepo->save($item);
+        foreach ($item->releaseEvents() as $e) $this->events->dispatch($e);
+    }
+
+    public function writeOff(SerialNumber $serialNumber, string $tenantId, string $reason, string $actorId, ?string $referenceId = null): void
+    {
+        $item = $this->serialRepo->findBySerialOrFail($serialNumber, $tenantId);
+        $wasInStock = $item->status()->isCountedInStock();
+        $item->writeOff($reason, $actorId, $referenceId);
+        if ($wasInStock) {
+            $this->ledger->append(new LedgerEntry(bin2hex(random_bytes(8)), $item->variantId, -1, ReasonCode::WriteOff, $actorId, $referenceId, new \DateTimeImmutable(), ['serialNumber' => $serialNumber->value]));
+        }
+        $this->serialRepo->save($item);
+        foreach ($item->releaseEvents() as $e) $this->events->dispatch($e);
+    }
+
     public function isConsistentWithLedger(string $variantId): bool
     {
         $ledgerQty = $this->ledger->currentQuantity($variantId);

@@ -20,6 +20,7 @@ class LedgerEntryModel extends Model
 
     protected $fillable = [
         'id',
+        'tenant_id',
         'variant_id',
         'quantity',
         'reason',

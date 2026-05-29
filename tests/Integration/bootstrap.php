@@ -54,6 +54,11 @@ $connection->table('locations')->insertOrIgnore([
     ['id' => 'LOC-INT', 'name' => 'Integration Location', 'type' => 'TEST']
 ]);
 
+// Ensure standard test tenant exists
+$connection->table('tenants')->insertOrIgnore([
+    ['id' => 'test-tenant', 'name' => 'Test Tenant']
+]);
+
 function uuidv4(): string {
     $data = random_bytes(16);
     $data[6] = chr((ord($data[6]) & 0x0f) | 0x40);

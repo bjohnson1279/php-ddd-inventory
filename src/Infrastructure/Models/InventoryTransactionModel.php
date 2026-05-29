@@ -11,5 +11,5 @@ class InventoryTransactionModel extends Model
     protected $keyType = 'string';
     public $timestamps = false;
 
-    protected $fillable = ['id','product_id','type','quantity_change','condition','created_at','reference_id'];
+    protected $fillable = ['id', 'tenant_id', 'product_id', 'type', 'quantity_change', 'condition', 'created_at', 'reference_id'];
 }

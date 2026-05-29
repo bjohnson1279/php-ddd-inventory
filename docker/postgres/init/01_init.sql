@@ -2,6 +2,13 @@
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Tenants table
+CREATE TABLE IF NOT EXISTS tenants (
+  id         VARCHAR(50) PRIMARY KEY,
+  name       TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
 -- Catalog Context
 CREATE TABLE IF NOT EXISTS catalog_products (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -31,12 +38,14 @@ CREATE TABLE IF NOT EXISTS locations (
 -- Products table
 CREATE TABLE IF NOT EXISTS products (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  sku TEXT NOT NULL UNIQUE,
+  tenant_id VARCHAR(50) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  sku TEXT NOT NULL,
   name TEXT NOT NULL,
   department TEXT NOT NULL,
   reorder_threshold INTEGER NOT NULL DEFAULT 10,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  UNIQUE(tenant_id, sku)
 );
 
 -- Product Locations (Stock)
@@ -53,6 +62,7 @@ CREATE TABLE IF NOT EXISTS product_locations (
 -- Inventory transactions (Ledger)
 CREATE TABLE IF NOT EXISTS inventory_transactions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  tenant_id VARCHAR(50) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   type VARCHAR(50) NOT NULL,
   quantity_change INTEGER NOT NULL,
@@ -64,6 +74,7 @@ CREATE TABLE IF NOT EXISTS inventory_transactions (
 -- Inventory counts
 CREATE TABLE IF NOT EXISTS inventory_counts (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  tenant_id VARCHAR(50) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   status VARCHAR(50) NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   completed_at TIMESTAMP WITH TIME ZONE
@@ -89,6 +100,7 @@ INSERT INTO locations (id, name, type) VALUES ('LOC-BACKROOM', 'Backroom Storage
 -- Ledger entries (append-only)
 CREATE TABLE IF NOT EXISTS ledger_entries (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  tenant_id VARCHAR(50) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   variant_id TEXT NOT NULL,
   quantity INTEGER NOT NULL,
   reason VARCHAR(50) NOT NULL,
@@ -99,13 +111,14 @@ CREATE TABLE IF NOT EXISTS ledger_entries (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_ledger_variant ON ledger_entries(variant_id);
+CREATE INDEX IF NOT EXISTS idx_ledger_tenant ON ledger_entries(tenant_id);
 
 -- Serialized item tracking
 CREATE TABLE IF NOT EXISTS serialized_items (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   variant_id TEXT NOT NULL,
   serial_number TEXT NOT NULL,
-  tenant_id TEXT NOT NULL,
+  tenant_id VARCHAR(50) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   location_id VARCHAR(50),
   status VARCHAR(50) NOT NULL,
   history JSONB DEFAULT '[]',
@@ -129,7 +142,7 @@ CREATE INDEX IF NOT EXISTS idx_barcodes_variant ON barcodes(variant_id);
 -- Stock onboarding (opening balance)
 CREATE TABLE IF NOT EXISTS stock_onboardings (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  tenant_id TEXT NOT NULL,
+  tenant_id VARCHAR(50) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   location_id VARCHAR(50) NOT NULL,
   as_of_date DATE NOT NULL,
   status VARCHAR(50) NOT NULL DEFAULT 'draft',
@@ -148,7 +161,7 @@ CREATE INDEX IF NOT EXISTS idx_onboarding_variant ON stock_onboarding_items(vari
 -- Accounting journal entries (simple storage of lines as JSON)
 CREATE TABLE IF NOT EXISTS journal_entries (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  tenant_id TEXT NOT NULL,
+  tenant_id VARCHAR(50) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   entry_date DATE NOT NULL,
   description TEXT,
   reference_id TEXT,

@@ -22,7 +22,7 @@ final class EloquentProductRepositoryTest extends TestCase
 
     public function test_save_and_find_by_sku(): void
     {
-        $repo = new EloquentProductRepository();
+        $repo = new EloquentProductRepository('test-tenant');
 
         $id = uuidv4();
         $sku = new SKU('INTSKU1');
@@ -39,5 +39,6 @@ final class EloquentProductRepositoryTest extends TestCase
         $tx = \Illuminate\Database\Capsule\Manager::connection()->table('inventory_transactions')->where('product_id', $id)->first();
         $this->assertNotNull($tx);
         $this->assertEquals(5, $tx->quantity_change);
+        $this->assertEquals('test-tenant', $tx->tenant_id);
     }
 }

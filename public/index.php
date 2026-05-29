@@ -2,6 +2,27 @@
 
 require __DIR__ . '/../vendor/autoload.php';
 
+// ── Global exception / error handler ─────────────────────────────────────────
+// Must be registered before anything else can throw so that all unhandled
+// exceptions return JSON instead of an HTML error page.
+set_exception_handler(function (Throwable $e): void {
+    if (!headers_sent()) {
+        http_response_code(500);
+        header('Content-Type: application/json');
+    }
+    error_log('[UNHANDLED] ' . get_class($e) . ': ' . $e->getMessage()
+        . ' in ' . $e->getFile() . ':' . $e->getLine());
+    echo json_encode(['error' => 'Internal server error']);
+    exit;
+});
+
+set_error_handler(function (int $errno, string $errstr, string $errfile, int $errline): bool {
+    if (!(error_reporting() & $errno)) {
+        return false; // Respect the @ operator
+    }
+    throw new \ErrorException($errstr, 0, $errno, $errfile, $errline);
+});
+
 use Illuminate\Database\Capsule\Manager as Capsule;
 
 // ── Environment ──────────────────────────────────────────────────────────────
@@ -285,25 +306,31 @@ if ($method === 'GET' && $uri === '/api/users') {
 if ($method === 'POST' && $uri === '/api/users') {
     requireAuth();
     $body = json_decode(file_get_contents('php://input'), true) ?: [];
-    
+
     $email = $body['email'] ?? '';
     if (empty($email)) {
         http_response_code(400);
         echo json_encode(['error' => 'Email is required.']);
         exit;
     }
-    
+
     try {
-        $tenantId = tenantId();
-        $userId = \Ramsey\Uuid\Uuid::uuid4()->toString();
-        $password = 'password123'; // Default password for invited users
-        $name = explode('@', $email)[0];
-        
+        $tenantId        = tenantId();
+        $userId          = \Ramsey\Uuid\Uuid::uuid4()->toString();
+        // Generate a secure random temporary password (returned once to the caller).
+        // The invited user must change it on first login.
+        $temporaryPassword = bin2hex(random_bytes(12)); // 24 hex chars
+        $name            = explode('@', $email)[0];
+
         $useCase = new RegisterUser(ServiceContainer::userRepo(), $dispatcher);
-        $useCase->execute($userId, $tenantId, $email, $password, $name);
-        
+        $useCase->execute($userId, $tenantId, $email, $temporaryPassword, $name);
+
         http_response_code(201);
-        echo json_encode(['message' => 'User invited successfully.']);
+        echo json_encode([
+            'message'            => 'User invited successfully.',
+            'user_id'            => $userId,
+            'temporary_password' => $temporaryPassword,
+        ]);
     } catch (\Exception $e) {
         http_response_code(400);
         echo json_encode(['error' => $e->getMessage()]);
@@ -861,6 +888,67 @@ if ($method === 'PATCH' && preg_match('#^/api/users/([^/]+)/role$#', $uri, $m)) 
         http_response_code(400);
         echo json_encode(['error' => $e->getMessage()]);
     }
+    exit;
+}
+
+// ── Shopify Webhooks ──────────────────────────────────────────────────────────
+// The raw body MUST be read before any JSON decoding; the HMAC is computed over
+// the exact bytes Shopify sent, not the re-encoded JSON.
+
+if ($method === 'POST' && str_starts_with($uri, '/webhooks/shopify/')) {
+    $rawBody    = file_get_contents('php://input');
+    $hmacHeader = $_SERVER['HTTP_X_SHOPIFY_HMAC_SHA256'] ?? '';
+    $secret     = getenv('SHOPIFY_WEBHOOK_SECRET') ?: '';
+
+    $verifier = new \InventoryApp\Infrastructure\Integration\Shopify\ShopifyWebhookVerifier($secret);
+
+    if (!$verifier->verify($rawBody, $hmacHeader)) {
+        http_response_code(401);
+        echo json_encode(['error' => 'Unauthorized: invalid HMAC signature']);
+        exit;
+    }
+
+    $payload = json_decode($rawBody, true) ?: [];
+
+    $mapper = new \InventoryApp\Infrastructure\Integration\Shopify\ShopifyOrderMapper(
+        new \InventoryApp\Application\Inventory\UseCases\ProcessSale(
+            ServiceContainer::productRepo('system'), $dispatcher
+        ),
+        new \InventoryApp\Application\Inventory\UseCases\ProcessReturn(
+            ServiceContainer::productRepo('system'), $dispatcher
+        ),
+        new \InventoryApp\Infrastructure\Integration\Shopify\ShopifyMappingRepository()
+    );
+
+    // ── POST /webhooks/shopify/orders/paid ────────────────────────────────────
+    if ($uri === '/webhooks/shopify/orders/paid') {
+        try {
+            $mapper->handleOrderPaid($payload);
+        } catch (\Exception $e) {
+            // Log but always return 200 — Shopify retries on non-200 responses,
+            // which could cause duplicate stock decrements on transient errors.
+            error_log('[Shopify webhook] orders/paid error: ' . $e->getMessage());
+        }
+        http_response_code(200);
+        echo json_encode(['message' => 'Accepted']);
+        exit;
+    }
+
+    // ── POST /webhooks/shopify/refunds/create ─────────────────────────────────
+    if ($uri === '/webhooks/shopify/refunds/create') {
+        try {
+            $mapper->handleRefundCreated($payload);
+        } catch (\Exception $e) {
+            error_log('[Shopify webhook] refunds/create error: ' . $e->getMessage());
+        }
+        http_response_code(200);
+        echo json_encode(['message' => 'Accepted']);
+        exit;
+    }
+
+    // Unknown Shopify topic — still verified, just not handled yet
+    http_response_code(200);
+    echo json_encode(['message' => 'Webhook topic not handled']);
     exit;
 }
 

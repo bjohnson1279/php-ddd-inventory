@@ -4,10 +4,10 @@ namespace InventoryApp\Infrastructure;
 
 use InventoryApp\Infrastructure\Persistence\Repositories\EloquentLedgerRepository;
 use InventoryApp\Infrastructure\Persistence\Repositories\EloquentUserRepository;
-use InventoryApp\Infrastructure\Persistence\Repositories\InMemorySerializedItemRepository;
-use InventoryApp\Infrastructure\Persistence\Repositories\InMemoryBarcodeRepository;
-use InventoryApp\Infrastructure\Persistence\Repositories\InMemoryJournalRepository;
-use InventoryApp\Infrastructure\Persistence\Repositories\InMemoryStockOnboardingRepository;
+use InventoryApp\Infrastructure\Persistence\Repositories\EloquentSerializedItemRepository;
+use InventoryApp\Infrastructure\Persistence\Repositories\EloquentBarcodeRepository;
+use InventoryApp\Infrastructure\Persistence\Repositories\EloquentJournalRepository;
+use InventoryApp\Infrastructure\Persistence\Repositories\EloquentStockOnboardingRepository;
 use InventoryApp\Domain\Shared\Events\EventDispatcher;
 
 use InventoryApp\Domain\Identity\Repositories\UserRepositoryInterface;
@@ -55,22 +55,22 @@ class ServiceContainer
 
     public static function serializedRepo(): SerializedItemRepositoryInterface
     {
-        return self::$serials ??= new InMemorySerializedItemRepository();
+        return self::$serials ??= new EloquentSerializedItemRepository();
     }
 
     public static function barcodeRepo(): BarcodeRepositoryInterface
     {
-        return self::$barcodes ??= new InMemoryBarcodeRepository();
+        return self::$barcodes ??= new EloquentBarcodeRepository();
     }
 
     public static function journalRepo(): JournalRepositoryInterface
     {
-        return self::$journal ??= new InMemoryJournalRepository();
+        return self::$journal ??= new EloquentJournalRepository();
     }
 
     public static function stockOnboardingRepo(): StockOnboardingRepositoryInterface
     {
-        return self::$onboards ??= new InMemoryStockOnboardingRepository();
+        return self::$onboards ??= new EloquentStockOnboardingRepository();
     }
 
     /**

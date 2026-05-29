@@ -16,100 +16,99 @@ use Illuminate\Database\Capsule\Manager as DB;
 
 class EloquentProductRepository implements ProductRepositoryInterface
 {
+    public function __construct(private readonly string $tenantId) {}
+
     public function findById(string $id): ?Product
     {
-        $model = ProductModel::with('locations')->find($id);
-        if (!$model) return null;
+        $model = ProductModel::with('locations')
+            ->where('tenant_id', $this->tenantId)
+            ->find($id);
 
-        $product = new Product(
-            $model->id,
-            new SKU($model->sku),
-            $model->name,
-            new Department($model->department),
-            new Quantity($model->reorder_threshold)
-        );
-
-        foreach ($model->locations as $locModel) {
-            $product->loadLocationStock(new LocationStock(
-                new LocationId($locModel->location_id),
-                new Quantity($locModel->stock_quantity),
-                new Quantity($locModel->open_box_quantity),
-                new Quantity($locModel->damaged_quantity)
-            ));
-        }
-        return $product;
+        return $model ? $this->hydrate($model) : null;
     }
-    
+
     public function findBySku(SKU $sku): ?Product
     {
-        $model = ProductModel::with('locations')->where('sku', $sku->getValue())->first();
-        if (!$model) return null;
+        $model = ProductModel::with('locations')
+            ->where('tenant_id', $this->tenantId)
+            ->where('sku', $sku->getValue())
+            ->first();
 
-        $product = new Product(
-            $model->id,
-            new SKU($model->sku),
-            $model->name,
-            new Department($model->department),
-            new Quantity($model->reorder_threshold)
-        );
-
-        foreach ($model->locations as $locModel) {
-            $product->loadLocationStock(new LocationStock(
-                new LocationId($locModel->location_id),
-                new Quantity($locModel->stock_quantity),
-                new Quantity($locModel->open_box_quantity),
-                new Quantity($locModel->damaged_quantity)
-            ));
-        }
-        return $product;
+        return $model ? $this->hydrate($model) : null;
     }
-    
+
     public function save(Product $product): void
     {
         ProductModel::updateOrCreate(
             ['id' => $product->getId()],
             [
-                'sku' => $product->getSku()->getValue(),
-                'name' => $product->getName(),
-                'department' => $product->getDepartment()->getValue(),
+                'tenant_id'         => $this->tenantId,
+                'sku'               => $product->getSku()->getValue(),
+                'name'              => $product->getName(),
+                'department'        => $product->getDepartment()->getValue(),
                 'reorder_threshold' => $product->getReorderThreshold()->getValue(),
-                'updated_at' => date('Y-m-d H:i:s')
+                'updated_at'        => date('Y-m-d H:i:s'),
             ]
         );
-        
-        // Save locations
+
         foreach ($product->getLocationStocks() as $locationStock) {
             ProductLocationModel::updateOrCreate(
                 [
-                    'product_id' => $product->getId(),
-                    'location_id' => $locationStock->getLocationId()->getValue()
+                    'product_id'  => $product->getId(),
+                    'location_id' => $locationStock->getLocationId()->getValue(),
                 ],
                 [
-                    'stock_quantity' => $locationStock->getStockQuantity()->getValue(),
-                    'open_box_quantity' => $locationStock->getOpenBoxQuantity()->getValue(),
-                    'damaged_quantity' => $locationStock->getDamagedQuantity()->getValue(),
-                    'updated_at' => date('Y-m-d H:i:s'),
+                    'stock_quantity'     => $locationStock->getStockQuantity()->getValue(),
+                    'open_box_quantity'  => $locationStock->getOpenBoxQuantity()->getValue(),
+                    'damaged_quantity'   => $locationStock->getDamagedQuantity()->getValue(),
+                    'updated_at'        => date('Y-m-d H:i:s'),
                 ]
             );
         }
 
-        // Save pending transactions (Ledger)
         foreach ($product->getPendingTransactions() as $transaction) {
             InventoryTransactionModel::create([
-                'product_id' => $transaction->getProductId(),
-                'type' => $transaction->getType()->getValue(),
+                'tenant_id'       => $this->tenantId,
+                'product_id'      => $transaction->getProductId(),
+                'type'            => $transaction->getType()->getValue(),
                 'quantity_change' => $transaction->getQuantityChange(),
-                'condition' => $transaction->getCondition()->getValue(),
-                'created_at' => $transaction->getCreatedAt()->format('Y-m-d H:i:s'),
-                'reference_id' => $transaction->getReference(),
+                'condition'       => $transaction->getCondition()->getValue(),
+                'created_at'      => $transaction->getCreatedAt()->format('Y-m-d H:i:s'),
+                'reference_id'    => $transaction->getReference(),
             ]);
         }
 
         $product->clearPendingTransactions();
     }
-    
+
     public function delete(Product $product): void
     {
-        ProductModel::where('id', $product->getId())->delete();
+        ProductModel::where('tenant_id', $this->tenantId)
+            ->where('id', $product->getId())
+            ->delete();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private function hydrate(ProductModel $model): Product
+    {
+        $product = new Product(
+            $model->id,
+            new SKU($model->sku),
+            $model->name,
+            new Department($model->department),
+            new Quantity($model->reorder_threshold)
+        );
+
+        foreach ($model->locations as $locModel) {
+            $product->loadLocationStock(new LocationStock(
+                new LocationId($locModel->location_id),
+                new Quantity($locModel->stock_quantity),
+                new Quantity($locModel->open_box_quantity),
+                new Quantity($locModel->damaged_quantity)
+            ));
+        }
+
+        return $product;
     }
 }

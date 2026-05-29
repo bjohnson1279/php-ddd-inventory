@@ -41,7 +41,7 @@ $syncClient = new ShopifyInventorySyncClient(
 
 $dispatcher->subscribe(StockReceived::class,   new SyncStockToShopify($syncClient, ServiceContainer::barcodeRepo()));
 $dispatcher->subscribe(StockDecremented::class, new SyncStockToShopify($syncClient, ServiceContainer::barcodeRepo()));
-$dispatcher->subscribe(VariantAddedToCatalog::class, new CreateInventoryItemOnVariantAdded(ServiceContainer::productRepo()));
+$dispatcher->subscribe(VariantAddedToCatalog::class, new CreateInventoryItemOnVariantAdded(ServiceContainer::productRepo(tenantId())));
 
 // ── Request parsing ───────────────────────────────────────────────────────────
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
@@ -125,6 +125,11 @@ function requireAuth(): void
     $_SERVER['auth.tenant_id'] = $tokenData->tenant_id;
 }
 
+function tenantId(): string
+{
+    return $_SERVER['auth.tenant_id'] ?? 'system';
+}
+
 
 // ── Controllers & use-cases ───────────────────────────────────────────────────
 use InventoryApp\Infrastructure\Http\Controllers\AuthController;
@@ -166,7 +171,7 @@ if ($method === 'POST' && $uri === '/auth/login') {
 // ── Route: POST /api/inventory/receive ───────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/inventory/receive') {
     requireAuth();
-    $useCase  = new ReceiveStock(ServiceContainer::productRepo(), $dispatcher);
+    $useCase  = new ReceiveStock(ServiceContainer::productRepo(tenantId()), $dispatcher);
     $response = (new InventoryController())->receive($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
@@ -176,7 +181,7 @@ if ($method === 'POST' && $uri === '/api/inventory/receive') {
 // ── Route: POST /api/inventory/dispatch ──────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/inventory/dispatch') {
     requireAuth();
-    $useCase  = new DispatchStock(ServiceContainer::productRepo(), $dispatcher);
+    $useCase  = new DispatchStock(ServiceContainer::productRepo(tenantId()), $dispatcher);
     $response = (new InventoryController())->dispatch($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
@@ -186,7 +191,7 @@ if ($method === 'POST' && $uri === '/api/inventory/dispatch') {
 // ── Route: POST /api/inventory/transfer ──────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/inventory/transfer') {
     requireAuth();
-    $useCase  = new TransferStock(ServiceContainer::productRepo(), $dispatcher);
+    $useCase  = new TransferStock(ServiceContainer::productRepo(tenantId()), $dispatcher);
     $response = (new InventoryController())->transfer($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
@@ -197,7 +202,7 @@ if ($method === 'POST' && $uri === '/api/inventory/transfer') {
 if ($method === 'GET' && preg_match('#^/api/inventory/([^/]+)/stock$#', $uri, $m)) {
     requireAuth();
     $sku      = urldecode($m[1]);
-    $useCase  = new GetStockLevel(ServiceContainer::productRepo());
+    $useCase  = new GetStockLevel(ServiceContainer::productRepo(tenantId()));
     $response = (new InventoryController())->stockLevel($request, $sku, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
@@ -207,7 +212,7 @@ if ($method === 'GET' && preg_match('#^/api/inventory/([^/]+)/stock$#', $uri, $m
 // ── Route: POST /api/inventory/counts ────────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/inventory/counts') {
     requireAuth();
-    $useCase  = new StartInventoryCount(ServiceContainer::inventoryCountRepo());
+    $useCase  = new StartInventoryCount(ServiceContainer::inventoryCountRepo(tenantId()));
     $response = (new InventoryCountController())->start($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
@@ -218,7 +223,7 @@ if ($method === 'POST' && $uri === '/api/inventory/counts') {
 if ($method === 'POST' && preg_match('#^/api/inventory/counts/([^/]+)/items$#', $uri, $m)) {
     requireAuth();
     $countId  = urldecode($m[1]);
-    $useCase  = new RecordCountItem(ServiceContainer::inventoryCountRepo());
+    $useCase  = new RecordCountItem(ServiceContainer::inventoryCountRepo(tenantId()));
     $response = (new InventoryCountController())->recordItem($countId, $request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
@@ -230,8 +235,8 @@ if ($method === 'POST' && preg_match('#^/api/inventory/counts/([^/]+)/complete$#
     requireAuth();
     $countId  = urldecode($m[1]);
     $useCase  = new CompleteInventoryCount(
-        ServiceContainer::inventoryCountRepo(),
-        ServiceContainer::productRepo(),
+        ServiceContainer::inventoryCountRepo(tenantId()),
+        ServiceContainer::productRepo(tenantId()),
         $dispatcher
     );
     $response = (new InventoryCountController())->complete($countId, $useCase);

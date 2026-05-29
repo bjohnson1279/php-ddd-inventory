@@ -24,13 +24,13 @@ use InventoryApp\Infrastructure\Persistence\Repositories\EloquentCatalogProductR
 
 class ServiceContainer
 {
+    // Tenant-scoped repos are NOT singletons — they carry a tenantId per request
     private static ?LedgerRepositoryInterface $ledger = null;
     private static ?UserRepositoryInterface $users = null;
     private static ?SerializedItemRepositoryInterface $serials = null;
     private static ?BarcodeRepositoryInterface $barcodes = null;
     private static ?JournalRepositoryInterface $journal = null;
     private static ?StockOnboardingRepositoryInterface $onboards = null;
-    private static ?ProductRepositoryInterface $products = null;
     private static ?InventoryCountRepositoryInterface $inventoryCounts = null;
     private static ?EventDispatcher $dispatcher = null;
 
@@ -43,9 +43,9 @@ class ServiceContainer
         return self::$dispatcher ??= new EventDispatcher();
     }
 
-    public static function ledgerRepo(): LedgerRepositoryInterface
+    public static function ledgerRepo(string $tenantId): LedgerRepositoryInterface
     {
-        return self::$ledger ??= new EloquentLedgerRepository();
+        return new EloquentLedgerRepository($tenantId);
     }
 
     public static function userRepo(): UserRepositoryInterface
@@ -73,14 +73,20 @@ class ServiceContainer
         return self::$onboards ??= new InMemoryStockOnboardingRepository();
     }
 
-    public static function productRepo(): ProductRepositoryInterface
+    /**
+     * Returns a tenant-scoped product repository (fresh instance per call).
+     */
+    public static function productRepo(string $tenantId): ProductRepositoryInterface
     {
-        return self::$products ??= new EloquentProductRepository();
+        return new EloquentProductRepository($tenantId);
     }
 
-    public static function inventoryCountRepo(): InventoryCountRepositoryInterface
+    /**
+     * Returns a tenant-scoped inventory count repository (fresh instance per call).
+     */
+    public static function inventoryCountRepo(string $tenantId): InventoryCountRepositoryInterface
     {
-        return self::$inventoryCounts ??= new EloquentInventoryCountRepository();
+        return new EloquentInventoryCountRepository($tenantId);
     }
 
     public static function catalogProductRepo(): \InventoryApp\Domain\Catalog\Repositories\CatalogProductRepositoryInterface

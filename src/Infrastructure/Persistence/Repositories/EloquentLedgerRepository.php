@@ -12,14 +12,17 @@ use Ramsey\Uuid\Uuid;
  * Durable, Postgres-backed implementation of LedgerRepositoryInterface.
  *
  * The ledger is append-only. Rows are never updated or deleted.
- * All reads use indexed queries on `variant_id` for performance.
+ * All reads are scoped to the tenant passed at construction time.
  */
 class EloquentLedgerRepository implements LedgerRepositoryInterface
 {
+    public function __construct(private readonly string $tenantId) {}
+
     public function append(LedgerEntry $entry): void
     {
         LedgerEntryModel::create([
             'id'           => $entry->id ?: Uuid::uuid4()->toString(),
+            'tenant_id'    => $this->tenantId,
             'variant_id'   => $entry->variantId,
             'quantity'     => $entry->quantity,
             'reason'       => $entry->reason->value,
@@ -33,14 +36,16 @@ class EloquentLedgerRepository implements LedgerRepositoryInterface
 
     public function currentQuantity(string $variantId): int
     {
-        return (int) LedgerEntryModel::where('variant_id', $variantId)
+        return (int) LedgerEntryModel::where('tenant_id', $this->tenantId)
+            ->where('variant_id', $variantId)
             ->sum('quantity');
     }
 
     /** @return LedgerEntry[] */
     public function entriesFor(string $variantId): array
     {
-        return LedgerEntryModel::where('variant_id', $variantId)
+        return LedgerEntryModel::where('tenant_id', $this->tenantId)
+            ->where('variant_id', $variantId)
             ->orderBy('occurred_at')
             ->get()
             ->map(fn($row) => new LedgerEntry(
@@ -58,8 +63,8 @@ class EloquentLedgerRepository implements LedgerRepositoryInterface
 
     public function hasAnyEntries(string $variantId, string $locationId): bool
     {
-        // metadata->locationId is stored as a JSONB key in Postgres
-        return LedgerEntryModel::where('variant_id', $variantId)
+        return LedgerEntryModel::where('tenant_id', $this->tenantId)
+            ->where('variant_id', $variantId)
             ->whereRaw("metadata->>'locationId' = ?", [$locationId])
             ->exists();
     }

@@ -232,6 +232,141 @@ final class ApiEndpointsTest extends TestCase
         $this->assertGreaterThanOrEqual(1, count($listRes['body']['entries']));
     }
 
+    public function testUomEndpoints(): void
+    {
+        $variantId = uuidv4();
+
+        // 1. Create Product UoM Configuration
+        $createRes = $this->request('POST', '/api/uom/configurations', [
+            'variant_id' => $variantId,
+            'base_unit'  => [
+                'name'         => 'Each',
+                'abbreviation' => 'ea',
+                'category'     => 'discrete',
+            ],
+        ], $this->token);
+
+        $this->assertEquals(201, $createRes['status'], json_encode($createRes));
+        $configId = $createRes['body']['id'];
+        $this->assertNotEmpty($configId);
+
+        // 2. Add Conversion Rule
+        $ruleRes = $this->request('POST', "/api/uom/configurations/{$configId}/rules", [
+            'unit' => [
+                'name'         => 'Case',
+                'abbreviation' => 'cs',
+                'category'     => 'discrete',
+            ],
+            'factor_to_base' => 24.0,
+            'label'          => 'Case of 24',
+        ], $this->token);
+        $this->assertEquals(200, $ruleRes['status'], json_encode($ruleRes));
+
+        // 3. Set Purchase and Sale Units
+        $unitRes = $this->request('POST', "/api/uom/configurations/{$configId}/units", [
+            'purchase_unit' => [
+                'name'         => 'Case',
+                'abbreviation' => 'cs',
+                'category'     => 'discrete',
+            ],
+            'sale_unit' => [
+                'name'         => 'Each',
+                'abbreviation' => 'ea',
+                'category'     => 'discrete',
+            ],
+        ], $this->token);
+        $this->assertEquals(200, $unitRes['status'], json_encode($unitRes));
+
+        // 4. Show Details by Variant
+        $showRes = $this->request('GET', "/api/uom/configurations/variants/{$variantId}", [], $this->token);
+        $this->assertEquals(200, $showRes['status'], json_encode($showRes));
+        $this->assertEquals($configId, $showRes['body']['id']);
+        $this->assertEquals('Case', $showRes['body']['purchase_unit']['name']);
+        $this->assertEquals('Each', $showRes['body']['sale_unit']['name']);
+        $this->assertCount(1, $showRes['body']['rules']);
+
+        // 5. Show Details by ID
+        $showIdRes = $this->request('GET', "/api/uom/configurations/{$configId}", [], $this->token);
+        $this->assertEquals(200, $showIdRes['status'], json_encode($showIdRes));
+        $this->assertEquals($variantId, $showIdRes['body']['variant_id']);
+
+        // 6. Remove Conversion Rule
+        $removeRes = $this->request('DELETE', "/api/uom/configurations/{$configId}/rules", [
+            'unit' => [
+                'name'         => 'Case',
+                'abbreviation' => 'cs',
+                'category'     => 'discrete',
+            ],
+        ], $this->token);
+        $this->assertEquals(200, $removeRes['status'], json_encode($removeRes));
+
+        // 7. Show Details again
+        $showRes2 = $this->request('GET', "/api/uom/configurations/{$configId}", [], $this->token);
+        $this->assertCount(0, $showRes2['body']['rules']);
+    }
+
+    public function testKitEndpoints(): void
+    {
+        // 1. Create Kit
+        $sku = 'KIT-' . strtoupper(bin2hex(random_bytes(4)));
+        $createRes = $this->request('POST', '/api/kits', [
+            'sku'  => $sku,
+            'name' => 'Test Bundle Kit',
+        ], $this->token);
+
+        $this->assertEquals(201, $createRes['status'], json_encode($createRes));
+        $kitId = $createRes['body']['id'];
+        $this->assertNotEmpty($kitId);
+
+        // 2. Add Component
+        $variantId1 = uuidv4();
+        $compRes = $this->request('POST', "/api/kits/{$kitId}/components", [
+            'variant_id' => $variantId1,
+            'quantity'   => 3,
+        ], $this->token);
+        $this->assertEquals(200, $compRes['status'], json_encode($compRes));
+
+        // 3. Show Details by ID
+        $showRes = $this->request('GET', "/api/kits/{$kitId}", [], $this->token);
+        $this->assertEquals(200, $showRes['status'], json_encode($showRes));
+        $this->assertEquals($sku, $showRes['body']['sku']);
+        $this->assertCount(1, $showRes['body']['components']);
+        $this->assertEquals($variantId1, $showRes['body']['components'][0]['variant_id']);
+        $this->assertEquals(3, $showRes['body']['components'][0]['quantity']);
+
+        // 4. Show Details by SKU
+        $showSkuRes = $this->request('GET', "/api/kits/sku/{$sku}", [], $this->token);
+        $this->assertEquals(200, $showSkuRes['status'], json_encode($showSkuRes));
+        $this->assertEquals($kitId, $showSkuRes['body']['id']);
+
+        // 5. Sell Kit (Inventory decrement verification)
+        // First, let's put some stock in the ledger for variantId1 so decrement doesn't fail
+        $ledgerEntryId = uuidv4();
+        \Illuminate\Database\Capsule\Manager::table('ledger_entries')->insert([
+            'id'          => $ledgerEntryId,
+            'tenant_id'   => $this->tenantId,
+            'variant_id'  => $variantId1,
+            'quantity'    => 10,
+            'reason'      => 'purchase_receipt',
+            'actor_id'    => 'system',
+            'occurred_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        $sellRes = $this->request('POST', "/api/kits/{$kitId}/sell", [
+            'quantity' => 2,
+            'sale_id'  => 'SALE-KIT-E2E-100',
+        ], $this->token);
+        $this->assertEquals(200, $sellRes['status'], json_encode($sellRes));
+
+        // Verify ledger was decremented: variant1 component quantity 3 * 2 kit sales = 6 decremented.
+        // Starting with 10 base units, remaining should be 4.
+        $qty = (int)\Illuminate\Database\Capsule\Manager::table('ledger_entries')
+            ->where('tenant_id', $this->tenantId)
+            ->where('variant_id', $variantId1)
+            ->sum('quantity');
+        $this->assertEquals(4, $qty);
+    }
+
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
     {
         $url = 'http://127.0.0.1:8085' . $path;

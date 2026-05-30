@@ -29,6 +29,14 @@ class ProductUomConfiguration
         $this->conversionRules[] = new ConversionRule(\Ramsey\Uuid\Uuid::uuid4()->toString(), $unit, $factorToBase, $label);
     }
 
+    public function removeConversionRule(UnitOfMeasure $unit): void
+    {
+        $this->conversionRules = array_values(array_filter(
+            $this->conversionRules,
+            fn(ConversionRule $r) => !$r->unit->equals($unit),
+        ));
+    }
+
     public function setPurchaseUnit(UnitOfMeasure $unit): void { $this->assertUnitIsKnown($unit); $this->purchaseUnit = $unit; }
     public function setSaleUnit(UnitOfMeasure $unit): void { $this->assertUnitIsKnown($unit); $this->saleUnit = $unit; }
 

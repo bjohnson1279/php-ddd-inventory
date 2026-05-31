@@ -2,7 +2,6 @@
 
 namespace InventoryApp\Application\Inventory\Listeners;
 
-use InventoryApp\Domain\Shared\Events\DomainEvent;
 use InventoryApp\Infrastructure\Integration\Shopify\ShopifyInventorySync;
 use InventoryApp\Infrastructure\Integration\Shopify\ShopifyMappingRepository;
 use InventoryApp\Domain\Inventory\Repositories\ProductRepositoryInterface;

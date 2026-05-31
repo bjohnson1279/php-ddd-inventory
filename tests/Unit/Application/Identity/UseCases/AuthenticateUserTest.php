@@ -1,0 +1,120 @@
+<?php
+
+namespace Tests\Unit\Application\Identity\UseCases;
+
+use PHPUnit\Framework\TestCase;
+use InventoryApp\Application\Identity\UseCases\AuthenticateUser;
+use InventoryApp\Domain\Identity\Repositories\UserRepositoryInterface;
+use InventoryApp\Infrastructure\Identity\ApiTokenService;
+use InventoryApp\Domain\Identity\Entities\User;
+use InventoryApp\Domain\Identity\ValueObjects\TenantId;
+use Exception;
+
+class AuthenticateUserTest extends TestCase
+{
+    private function makeUser(string $id, string $email, string $password, bool $active = true): User
+    {
+        $user = User::register($id, new TenantId('t1'), $email, $password, 'Test User');
+        if (!$active) {
+            $user->deactivate();
+        }
+        return $user;
+    }
+
+    public function testExecuteReturnsTokenOnSuccess(): void
+    {
+        $email = 'user@store.com';
+        $password = 'password123';
+        $tenantId = 't1';
+        $user = $this->makeUser('u1', $email, $password);
+
+        $repo = $this->createMock(UserRepositoryInterface::class);
+        $repo->expects($this->once())
+            ->method('findByEmail')
+            ->with($email, $this->equalTo(new TenantId($tenantId)))
+            ->willReturn($user);
+
+        $tokenService = $this->createMock(ApiTokenService::class);
+        $tokenService->expects($this->once())
+            ->method('issue')
+            ->with('u1', $tenantId)
+            ->willReturn('generated_token');
+
+        $useCase = new AuthenticateUser($repo, $tokenService);
+        $token = $useCase->execute($email, $password, $tenantId);
+
+        $this->assertEquals('generated_token', $token);
+    }
+
+    public function testExecuteThrowsWhenUserNotFound(): void
+    {
+        $email = 'unknown@store.com';
+        $password = 'password123';
+        $tenantId = 't1';
+
+        $repo = $this->createMock(UserRepositoryInterface::class);
+        $repo->expects($this->once())
+            ->method('findByEmail')
+            ->with($email, $this->equalTo(new TenantId($tenantId)))
+            ->willReturn(null);
+
+        $tokenService = $this->createMock(ApiTokenService::class);
+        $tokenService->expects($this->never())->method('issue');
+
+        $useCase = new AuthenticateUser($repo, $tokenService);
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('Invalid credentials.');
+
+        $useCase->execute($email, $password, $tenantId);
+    }
+
+    public function testExecuteThrowsWhenUserIsInactive(): void
+    {
+        $email = 'user@store.com';
+        $password = 'password123';
+        $tenantId = 't1';
+        $user = $this->makeUser('u1', $email, $password, false);
+
+        $repo = $this->createMock(UserRepositoryInterface::class);
+        $repo->expects($this->once())
+            ->method('findByEmail')
+            ->with($email, $this->equalTo(new TenantId($tenantId)))
+            ->willReturn($user);
+
+        $tokenService = $this->createMock(ApiTokenService::class);
+        $tokenService->expects($this->never())->method('issue');
+
+        $useCase = new AuthenticateUser($repo, $tokenService);
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('Account is deactivated. Contact your administrator.');
+
+        $useCase->execute($email, $password, $tenantId);
+    }
+
+    public function testExecuteThrowsWhenPasswordIsInvalid(): void
+    {
+        $email = 'user@store.com';
+        $password = 'password123';
+        $wrongPassword = 'wrongpassword';
+        $tenantId = 't1';
+        $user = $this->makeUser('u1', $email, $password);
+
+        $repo = $this->createMock(UserRepositoryInterface::class);
+        $repo->expects($this->once())
+            ->method('findByEmail')
+            ->with($email, $this->equalTo(new TenantId($tenantId)))
+            ->willReturn($user);
+
+        $tokenService = $this->createMock(ApiTokenService::class);
+        $tokenService->expects($this->never())->method('issue');
+
+        $useCase = new AuthenticateUser($repo, $tokenService);
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('Invalid credentials.');
+
+        $useCase->execute($email, $wrongPassword, $tenantId);
+    }
+}

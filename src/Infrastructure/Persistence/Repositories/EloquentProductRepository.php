@@ -70,6 +70,7 @@ class EloquentProductRepository implements ProductRepositoryInterface
 
         foreach ($product->getPendingTransactions() as $transaction) {
             InventoryTransactionModel::create([
+                'id'              => $transaction->getId(),
                 'tenant_id'       => $this->tenantId,
                 'product_id'      => $transaction->getProductId(),
                 'type'            => $transaction->getType()->getValue(),

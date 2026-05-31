@@ -68,16 +68,22 @@ class EloquentProductRepository implements ProductRepositoryInterface
             );
         }
 
-        foreach ($product->getPendingTransactions() as $transaction) {
-            InventoryTransactionModel::create([
-                'tenant_id'       => $this->tenantId,
-                'product_id'      => $transaction->getProductId(),
-                'type'            => $transaction->getType()->getValue(),
-                'quantity_change' => $transaction->getQuantityChange(),
-                'condition'       => $transaction->getCondition()->getValue(),
-                'created_at'      => $transaction->getCreatedAt()->format('Y-m-d H:i:s'),
-                'reference_id'    => $transaction->getReference(),
-            ]);
+        $pendingTransactions = $product->getPendingTransactions();
+        if (!empty($pendingTransactions)) {
+            $transactionData = [];
+            foreach ($pendingTransactions as $transaction) {
+                $transactionData[] = [
+                    'id'              => $transaction->getId(),
+                    'tenant_id'       => $this->tenantId,
+                    'product_id'      => $transaction->getProductId(),
+                    'type'            => $transaction->getType()->getValue(),
+                    'quantity_change' => $transaction->getQuantityChange(),
+                    'condition'       => $transaction->getCondition()->getValue(),
+                    'created_at'      => $transaction->getCreatedAt()->format('Y-m-d H:i:s'),
+                    'reference_id'    => $transaction->getReference(),
+                ];
+            }
+            InventoryTransactionModel::insert($transactionData);
         }
 
         $product->clearPendingTransactions();

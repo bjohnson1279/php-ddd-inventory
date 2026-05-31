@@ -127,7 +127,7 @@ class Product extends AggregateRoot
         ?string $reference = null
     ): void {
         $this->pendingTransactions[] = new InventoryTransaction(
-            uniqid('txn_', true),
+            \Ramsey\Uuid\Uuid::uuid4()->toString(),
             $this->id,
             $type,
             $quantityChange,

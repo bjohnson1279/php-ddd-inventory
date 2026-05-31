@@ -29,22 +29,44 @@ class CompleteInventoryCount
         $this->countRepository->save($inventoryCount);
 
         // Reconcile physical counted stock to the actual Products
-        foreach ($inventoryCount->getItems() as $item) {
-            $product = $this->productRepository->findBySku($item->getSku());
 
-            if ($product) {
+        // Batch load products
+        $skus = [];
+        foreach ($inventoryCount->getItems() as $item) {
+            $skus[] = $item->getSku();
+        }
+
+        $productsBySku = $this->productRepository->findBySkus($skus);
+        $productsToSave = [];
+        $eventsToDispatch = [];
+
+        foreach ($inventoryCount->getItems() as $item) {
+            $skuValue = $item->getSku()->getValue();
+            if (isset($productsBySku[$skuValue])) {
+                $product = $productsBySku[$skuValue];
+
                 // Hardcoded to LOC-STOREFRONT until InventoryCount items support locations
                 $product->reconcileStockAt(
                     new LocationId('LOC-STOREFRONT'),
                     $item->getCountedQuantity(),
                     'COUNT_' . $inventoryCount->getId()
                 );
-                $this->productRepository->save($product);
+
+                // Group by ID to avoid duplicate saves/transactions if the same SKU appears multiple times
+                $productsToSave[$product->getId()] = $product;
 
                 foreach ($product->releaseEvents() as $event) {
-                    $this->events->dispatch($event);
+                    $eventsToDispatch[] = $event;
                 }
             }
+        }
+
+        if (!empty($productsToSave)) {
+            $this->productRepository->saveAll(array_values($productsToSave));
+        }
+
+        foreach ($eventsToDispatch as $event) {
+            $this->events->dispatch($event);
         }
     }
 }

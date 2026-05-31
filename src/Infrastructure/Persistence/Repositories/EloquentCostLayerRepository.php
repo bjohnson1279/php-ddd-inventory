@@ -42,6 +42,44 @@ class EloquentCostLayerRepository implements CostLayerRepositoryInterface
         );
     }
 
+    /** @param InventoryCostLayer[] $layers */
+    public function saveBatch(array $layers): void
+    {
+        if (empty($layers)) {
+            return;
+        }
+
+        $values = [];
+        foreach ($layers as $layer) {
+            $values[] = [
+                'id'                 => $layer->id,
+                'tenant_id'          => $layer->tenantId,
+                'variant_id'         => $layer->variantId,
+                'original_quantity'  => $layer->originalQuantity,
+                'remaining_quantity' => $layer->remainingQuantity(),
+                'unit_cost_cents'    => $layer->unitCostCents,
+                'purchase_order_id'  => $layer->purchaseOrderId,
+                'received_at'        => $layer->receivedAt->format('Y-m-d H:i:s'),
+                'serial_number'      => $layer->serialNumber,
+            ];
+        }
+
+        CostLayerModel::upsert(
+            $values,
+            ['id'],
+            [
+                'tenant_id',
+                'variant_id',
+                'original_quantity',
+                'remaining_quantity',
+                'unit_cost_cents',
+                'purchase_order_id',
+                'received_at',
+                'serial_number',
+            ]
+        );
+    }
+
     public function findBySerial(string $variantId, string $serialNumber): ?InventoryCostLayer
     {
         $model = CostLayerModel::where('tenant_id', $this->tenantId)

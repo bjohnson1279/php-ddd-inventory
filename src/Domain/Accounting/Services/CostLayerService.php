@@ -18,9 +18,7 @@ class CostLayerService
         $activeLayers = $this->layers->getActiveLayers($variantId, 'received_at ASC');
         $breakdown = $this->consumeLayers($activeLayers, $quantity);
 
-        foreach ($activeLayers as $layer) {
-            $this->layers->save($layer);
-        }
+        $this->layers->saveBatch($activeLayers);
 
         return $breakdown;
     }
@@ -30,9 +28,7 @@ class CostLayerService
         $activeLayers = $this->layers->getActiveLayers($variantId, 'received_at DESC');
         $breakdown = $this->consumeLayers($activeLayers, $quantity);
 
-        foreach ($activeLayers as $layer) {
-            $this->layers->save($layer);
-        }
+        $this->layers->saveBatch($activeLayers);
 
         return $breakdown;
     }
@@ -56,9 +52,7 @@ class CostLayerService
             $affectedLayers[$layer->id] = $layer;
         }
 
-        foreach ($affectedLayers as $layer) {
-            $this->layers->save($layer);
-        }
+        $this->layers->saveBatch(array_values($affectedLayers));
 
         return new CostBreakdown(count($serialNumbers), $totalCost);
     }

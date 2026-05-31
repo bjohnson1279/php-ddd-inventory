@@ -26,7 +26,7 @@ class CostLayerServiceTest extends TestCase
         $layer2 = new InventoryCostLayer('l2', 'v1', 't1', 10, 1200, new \DateTimeImmutable('2026-02-01')); // $12.00
 
         $this->repo->method('getActiveLayers')->willReturn([$layer1, $layer2]);
-        $this->repo->expects($this->exactly(2))->method('save');
+        $this->repo->expects($this->once())->method('saveBatch')->with([$layer1, $layer2]);
 
         // Consume 15 units: 10 from layer 1 ($100), 5 from layer 2 ($60) -> $160
         $breakdown = $this->service->consumeFifoLayers('v1', 15);
@@ -76,7 +76,7 @@ class CostLayerServiceTest extends TestCase
         $layer2 = new InventoryCostLayer('l2', 'v1', 't1', 10, 1200, new \DateTimeImmutable('2026-02-01')); // $12.00
 
         $this->repo->method('getActiveLayers')->willReturn([$layer2, $layer1]);
-        $this->repo->expects($this->exactly(2))->method('save');
+        $this->repo->expects($this->once())->method('saveBatch')->with([$layer2, $layer1]);
 
         // Consume 15 units: 10 from layer 2 ($120), 5 from layer 1 ($50) -> $170
         $breakdown = $this->service->consumeLifoLayers('v1', 15);
@@ -109,7 +109,7 @@ class CostLayerServiceTest extends TestCase
                 ['v1', 'SN-200', $layer2],
             ]));
 
-        $this->repo->expects($this->exactly(2))->method('save');
+        $this->repo->expects($this->once())->method('saveBatch')->with([$layer1, $layer2]);
 
         $breakdown = $this->service->consumeSpecificLayers('v1', ['SN-100', 'SN-200']);
 

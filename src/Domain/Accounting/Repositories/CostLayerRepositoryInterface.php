@@ -10,6 +10,11 @@ interface CostLayerRepositoryInterface
     public function getActiveLayers(string $variantId, string $orderBy = 'received_at ASC'): array;
     
     public function save(InventoryCostLayer $layer): void;
+
+    /**
+     * @param InventoryCostLayer[] $layers
+     */
+    public function saveBatch(array $layers): void;
     
     public function findBySerial(string $variantId, string $serialNumber): ?InventoryCostLayer;
 }

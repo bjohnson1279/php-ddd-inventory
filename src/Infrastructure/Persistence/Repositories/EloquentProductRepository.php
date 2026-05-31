@@ -39,6 +39,28 @@ class EloquentProductRepository implements ProductRepositoryInterface
         return $model ? $this->hydrate($model) : null;
     }
 
+    public function findBySkus(array $skus): array
+    {
+        if (empty($skus)) {
+            return [];
+        }
+
+        $skuValues = array_map(fn(SKU $sku) => $sku->getValue(), $skus);
+
+        $models = ProductModel::with('locations')
+            ->where('tenant_id', $this->tenantId)
+            ->whereIn('sku', $skuValues)
+            ->get();
+
+        $products = [];
+        foreach ($models as $model) {
+            $product = $this->hydrate($model);
+            $products[$product->getSku()->getValue()] = $product;
+        }
+
+        return $products;
+    }
+
     public function save(Product $product): void
     {
         ProductModel::updateOrCreate(
@@ -81,6 +103,94 @@ class EloquentProductRepository implements ProductRepositoryInterface
         }
 
         $product->clearPendingTransactions();
+    }
+
+    public function saveAll(array $products): void
+    {
+        if (empty($products)) {
+            return;
+        }
+
+        DB::transaction(function () use ($products) {
+            $productData = [];
+            $locationData = [];
+            $transactionData = [];
+
+            $now = date('Y-m-d H:i:s');
+
+            foreach ($products as $product) {
+                $productData[] = [
+                    'id'                => $product->getId(),
+                    'tenant_id'         => $this->tenantId,
+                    'sku'               => $product->getSku()->getValue(),
+                    'name'              => $product->getName(),
+                    'department'        => $product->getDepartment()->getValue(),
+                    'reorder_threshold' => $product->getReorderThreshold()->getValue(),
+                    'updated_at'        => $now,
+                ];
+
+                foreach ($product->getLocationStocks() as $locationStock) {
+                    $locationData[] = [
+                        'product_id'        => $product->getId(),
+                        'location_id'       => $locationStock->getLocationId()->getValue(),
+                        'stock_quantity'    => $locationStock->getStockQuantity()->getValue(),
+                        'open_box_quantity' => $locationStock->getOpenBoxQuantity()->getValue(),
+                        'damaged_quantity'  => $locationStock->getDamagedQuantity()->getValue(),
+                        'updated_at'        => $now,
+                    ];
+                }
+
+                foreach ($product->getPendingTransactions() as $transaction) {
+                    $transactionData[] = [
+                        'tenant_id'       => $this->tenantId,
+                        'product_id'      => $transaction->getProductId(),
+                        'type'            => $transaction->getType()->getValue(),
+                        'quantity_change' => $transaction->getQuantityChange(),
+                        'condition'       => $transaction->getCondition()->getValue(),
+                        'created_at'      => $transaction->getCreatedAt()->format('Y-m-d H:i:s'),
+                        'reference_id'    => $transaction->getReference(),
+                    ];
+                }
+            }
+
+            if (!empty($productData)) {
+                ProductModel::upsert(
+                    $productData,
+                    ['id'],
+                    ['tenant_id', 'sku', 'name', 'department', 'reorder_threshold', 'updated_at']
+                );
+            }
+
+            if (!empty($locationData)) {
+                // SQLite in memory test does not have a composite primary key or unique constraint set
+                // up for product_id + location_id, causing upsert to fail.
+                // We'll fallback to updateOrCreate for locations, but wrapped in the transaction it's still fast.
+                // Or try checking connection driver. For production postgres it works if unique constraint exists.
+                // Let's use updateOrCreate for locationData to be safe since it's a pivot-like table
+                foreach ($locationData as $loc) {
+                    ProductLocationModel::updateOrCreate(
+                        [
+                            'product_id' => $loc['product_id'],
+                            'location_id' => $loc['location_id'],
+                        ],
+                        [
+                            'stock_quantity'     => $loc['stock_quantity'],
+                            'open_box_quantity'  => $loc['open_box_quantity'],
+                            'damaged_quantity'   => $loc['damaged_quantity'],
+                            'updated_at'        => $loc['updated_at'],
+                        ]
+                    );
+                }
+            }
+
+            if (!empty($transactionData)) {
+                InventoryTransactionModel::insert($transactionData);
+            }
+
+            foreach ($products as $product) {
+                $product->clearPendingTransactions();
+            }
+        });
     }
 
     public function delete(Product $product): void

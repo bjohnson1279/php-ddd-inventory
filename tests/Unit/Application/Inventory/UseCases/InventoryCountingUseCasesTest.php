@@ -67,13 +67,15 @@ class InventoryCountingUseCasesTest extends TestCase
         $product->clearPendingTransactions();
 
         $this->countRepo->method('findById')->willReturn($count);
-        $this->productRepo->method('findBySku')->willReturn($product);
+        $this->productRepo->method('findBySkus')->willReturn(['SKU-1' => $product]);
         
         $this->countRepo->expects($this->once())->method('save')
             ->with($this->callback(fn(InventoryCount $c) => $c->getStatus()->isCompleted()));
         
-        $this->productRepo->expects($this->once())->method('save')
-            ->with($this->callback(fn(Product $p) => count($p->getPendingTransactions()) === 1));
+        $this->productRepo->expects($this->once())->method('saveAll')
+            ->with($this->callback(function (array $products) {
+                return count($products) === 1 && count($products[0]->getPendingTransactions()) === 1;
+            }));
 
         (new CompleteInventoryCount($this->countRepo, $this->productRepo, $this->createStub(EventDispatcherInterface::class)))->execute('c-1');
         

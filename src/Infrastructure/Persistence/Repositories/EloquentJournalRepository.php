@@ -35,6 +35,10 @@ class EloquentJournalRepository implements JournalRepositoryInterface
                 'created_at'   => date('Y-m-d H:i:s'),
             ]
         );
+
+        \InventoryApp\Infrastructure\ServiceContainer::dispatcher()->dispatch(
+            new \InventoryApp\Domain\Accounting\Events\JournalEntryRecorded($entry)
+        );
     }
 
     public function all(): array

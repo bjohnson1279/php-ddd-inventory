@@ -33,6 +33,10 @@ class InMemoryJournalRepository implements JournalRepositoryInterface
             'lines' => array_map(fn($l) => ['account' => $l->account->code, 'amount' => $l->amountCents, 'type' => $l->type->value, 'memo' => $l->memo], $entry->lines()),
         ];
         $this->write($rows);
+
+        \InventoryApp\Infrastructure\ServiceContainer::dispatcher()->dispatch(
+            new \InventoryApp\Domain\Accounting\Events\JournalEntryRecorded($entry)
+        );
     }
 
     public function all(): array { return $this->read(); }

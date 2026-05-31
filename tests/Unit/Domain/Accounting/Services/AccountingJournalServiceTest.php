@@ -140,4 +140,69 @@ class AccountingJournalServiceTest extends TestCase
         $this->assertNotNull($entry);
         $this->assertCount(2, $entry->lines()); // DR Cash, CR Revenue
     }
+
+    public function testOnStockSoldLifoCreatesEntry(): void
+    {
+        $this->costLayerService->expects($this->once())->method('consumeLifoLayers')
+            ->with('v1', 2)
+            ->willReturn(new \InventoryApp\Domain\Accounting\ValueObjects\CostBreakdown(2, 900));
+
+        $this->repo->expects($this->once())->method('save');
+
+        $entry = $this->service->onStockSold(
+            't1', 'v1', 2, 2000, true, 'S-2', new \DateTimeImmutable(),
+            AccountingMethod::Accrual, \InventoryApp\Domain\Accounting\Enums\CostingMethod::LIFO
+        );
+
+        $this->assertNotNull($entry);
+        $this->assertCount(4, $entry->lines());
+        $lines = $entry->lines();
+        $this->assertEquals(AccountCode::costOfGoodsSold()->code, $lines[2]->account->code);
+        $this->assertEquals(900, $lines[2]->amountCents);
+    }
+
+    public function testOnStockSoldSpecificIdentificationCreatesEntry(): void
+    {
+        $this->costLayerService->expects($this->once())->method('consumeSpecificLayers')
+            ->with('v1', ['SN-100', 'SN-200'])
+            ->willReturn(new \InventoryApp\Domain\Accounting\ValueObjects\CostBreakdown(2, 3500));
+
+        $this->repo->expects($this->once())->method('save');
+
+        $entry = $this->service->onStockSold(
+            't1', 'v1', 2, 5000, true, 'S-3', new \DateTimeImmutable(),
+            AccountingMethod::Accrual, \InventoryApp\Domain\Accounting\Enums\CostingMethod::SpecificIdentification,
+            ['SN-100', 'SN-200']
+        );
+
+        $this->assertNotNull($entry);
+        $this->assertCount(4, $entry->lines());
+        $lines = $entry->lines();
+        $this->assertEquals(AccountCode::costOfGoodsSold()->code, $lines[2]->account->code);
+        $this->assertEquals(3500, $lines[2]->amountCents);
+    }
+
+    public function testOnStockSoldSpecificIdentificationThrowsWhenNoSerials(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessageMatches('/requires serial numbers/');
+
+        $this->service->onStockSold(
+            't1', 'v1', 2, 5000, true, 'S-3', new \DateTimeImmutable(),
+            AccountingMethod::Accrual, \InventoryApp\Domain\Accounting\Enums\CostingMethod::SpecificIdentification,
+            null
+        );
+    }
+
+    public function testOnStockSoldSpecificIdentificationThrowsWhenQuantityMismatch(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessageMatches('/must match the quantity sold/');
+
+        $this->service->onStockSold(
+            't1', 'v1', 2, 5000, true, 'S-3', new \DateTimeImmutable(),
+            AccountingMethod::Accrual, \InventoryApp\Domain\Accounting\Enums\CostingMethod::SpecificIdentification,
+            ['SN-100']
+        );
+    }
 }

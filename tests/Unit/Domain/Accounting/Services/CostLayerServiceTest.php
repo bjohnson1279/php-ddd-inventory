@@ -69,4 +69,76 @@ class CostLayerServiceTest extends TestCase
         $this->expectException(DomainException::class);
         $this->service->calculateWeightedAverageCost('v1', 1);
     }
+
+    public function testConsumeLifoLayersUsesNewestFirst(): void
+    {
+        $layer1 = new InventoryCostLayer('l1', 'v1', 't1', 10, 1000, new \DateTimeImmutable('2026-01-01')); // $10.00
+        $layer2 = new InventoryCostLayer('l2', 'v1', 't1', 10, 1200, new \DateTimeImmutable('2026-02-01')); // $12.00
+
+        $this->repo->method('getActiveLayers')->willReturn([$layer2, $layer1]);
+        $this->repo->expects($this->exactly(2))->method('save');
+
+        // Consume 15 units: 10 from layer 2 ($120), 5 from layer 1 ($50) -> $170
+        $breakdown = $this->service->consumeLifoLayers('v1', 15);
+
+        $this->assertEquals(15, $breakdown->units);
+        $this->assertEquals(17000, $breakdown->totalCostCents);
+        $this->assertEquals(5, $layer1->remainingQuantity());
+        $this->assertEquals(0, $layer2->remainingQuantity());
+    }
+
+    public function testConsumeLifoLayersThrowsWhenInsufficientStock(): void
+    {
+        $layer1 = new InventoryCostLayer('l1', 'v1', 't1', 5, 1000, new \DateTimeImmutable());
+        $this->repo->method('getActiveLayers')->willReturn([$layer1]);
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessageMatches('/Insufficient cost layers/');
+
+        $this->service->consumeLifoLayers('v1', 10);
+    }
+
+    public function testConsumeSpecificLayers(): void
+    {
+        $layer1 = new InventoryCostLayer('l1', 'v1', 't1', 1, 1500, new \DateTimeImmutable());
+        $layer2 = new InventoryCostLayer('l2', 'v1', 't1', 1, 2000, new \DateTimeImmutable());
+
+        $this->repo->method('findBySerial')
+            ->will($this->returnValueMap([
+                ['v1', 'SN-100', $layer1],
+                ['v1', 'SN-200', $layer2],
+            ]));
+
+        $this->repo->expects($this->exactly(2))->method('save');
+
+        $breakdown = $this->service->consumeSpecificLayers('v1', ['SN-100', 'SN-200']);
+
+        $this->assertEquals(2, $breakdown->units);
+        $this->assertEquals(3500, $breakdown->totalCostCents);
+        $this->assertEquals(0, $layer1->remainingQuantity());
+        $this->assertEquals(0, $layer2->remainingQuantity());
+    }
+
+    public function testConsumeSpecificLayersThrowsWhenNotFound(): void
+    {
+        $this->repo->method('findBySerial')->willReturn(null);
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessageMatches('/No cost layer found for serial number/');
+
+        $this->service->consumeSpecificLayers('v1', ['SN-999']);
+    }
+
+    public function testConsumeSpecificLayersThrowsWhenAlreadyConsumed(): void
+    {
+        $layer = new InventoryCostLayer('l1', 'v1', 't1', 1, 1500, new \DateTimeImmutable());
+        $layer->consume(1); // Already consumed
+
+        $this->repo->method('findBySerial')->willReturn($layer);
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessageMatches('/already been consumed/');
+
+        $this->service->consumeSpecificLayers('v1', ['SN-100']);
+    }
 }

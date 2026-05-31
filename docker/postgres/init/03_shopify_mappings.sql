@@ -19,3 +19,19 @@ CREATE TABLE IF NOT EXISTS shopify_sku_mappings (
 
 CREATE INDEX IF NOT EXISTS idx_shopify_location_mappings_shopify_id ON shopify_location_mappings(shopify_location_id);
 CREATE INDEX IF NOT EXISTS idx_shopify_sku_mappings_sku             ON shopify_sku_mappings(sku);
+
+CREATE TABLE IF NOT EXISTS shopify_sync_failures (
+  id                        UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  tenant_id                 VARCHAR(50) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  sku                       TEXT NOT NULL,
+  location_id               VARCHAR(50) NOT NULL,
+  quantity                  INTEGER NOT NULL,
+  attempts                  INTEGER NOT NULL DEFAULT 0,
+  last_error                TEXT,
+  status                    VARCHAR(50) NOT NULL DEFAULT 'pending',
+  created_at                TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at                TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_shopify_sync_failures_tenant ON shopify_sync_failures(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_shopify_sync_failures_status ON shopify_sync_failures(status);
+

@@ -5,6 +5,7 @@ namespace InventoryApp\Domain\Accounting\Entities;
 class InventoryCostLayer
 {
     private int $remainingQuantity;
+    public ?string $serialNumber = null;
 
     public function __construct(
         public readonly string $id,
@@ -38,5 +39,10 @@ class InventoryCostLayer
     public function isExhausted(): bool
     {
         return $this->remainingQuantity === 0;
+    }
+
+    public function setRemainingQuantity(int $quantity): void
+    {
+        $this->remainingQuantity = $quantity;
     }
 }

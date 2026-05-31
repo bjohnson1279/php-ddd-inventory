@@ -21,7 +21,7 @@ final class ApiEndpointsTest extends TestCase
     {
         // Start built-in PHP development server in the background on port 8085
         $output = [];
-        $command = "php -S 127.0.0.1:8085 public/index.php > /dev/null 2>&1 & echo $!";
+        $command = "php -S 127.0.0.1:8085 public/index.php > tests/Integration/Http/server.log 2>&1 & echo $!";
         
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
@@ -365,6 +365,177 @@ final class ApiEndpointsTest extends TestCase
             ->where('variant_id', $variantId1)
             ->sum('quantity');
         $this->assertEquals(4, $qty);
+    }
+
+    public function testShopifyWebhook(): void
+    {
+        $productId = uuidv4();
+        $sku = 'SHPFY-SKU-100';
+
+        // 1. Seed Product
+        \Illuminate\Database\Capsule\Manager::table('products')->insert([
+            'id'                => $productId,
+            'tenant_id'         => $this->tenantId,
+            'sku'               => $sku,
+            'name'              => 'Shopify Webhook Test Product',
+            'department'        => 'APP',
+            'reorder_threshold' => 10,
+            'created_at'        => date('Y-m-d H:i:s'),
+            'updated_at'        => date('Y-m-d H:i:s')
+        ]);
+
+        // 2. Seed Location Stock
+        \Illuminate\Database\Capsule\Manager::table('product_locations')->insert([
+            'product_id'        => $productId,
+            'location_id'       => 'LOC-INT',
+            'stock_quantity'    => 50,
+            'open_box_quantity' => 0,
+            'damaged_quantity'  => 0,
+            'updated_at'        => date('Y-m-d H:i:s')
+        ]);
+
+        // 3. Register Location mapping so webhook resolves LOC-INT
+        \Illuminate\Database\Capsule\Manager::table('shopify_location_mappings')->insert([
+            'id'                  => uuidv4(),
+            'our_location_id'     => 'LOC-INT',
+            'shopify_location_id' => 'shopify-loc-1234',
+            'created_at'          => date('Y-m-d H:i:s')
+        ]);
+
+        // 4. Send orders/create Webhook Request (without Bearer token)
+        $payload = [
+            'id' => 9988776655,
+            'line_items' => [
+                [
+                    'sku' => $sku,
+                    'quantity' => 5
+                ]
+            ]
+        ];
+
+        $url = 'http://127.0.0.1:8085/api/webhooks/shopify?tenant_id=' . $this->tenantId;
+        
+        $options = [
+            'http' => [
+                'header' => "Content-Type: application/json\r\n" .
+                            "X-Shopify-Topic: orders/create\r\n" .
+                            "X-Shopify-Hmac-Sha256: dummy-signature\r\n",
+                'method' => 'POST',
+                'content' => json_encode($payload),
+                'ignore_errors' => true
+            ]
+        ];
+
+        $context = stream_context_create($options);
+        $result = file_get_contents($url, false, $context);
+
+        preg_match('{HTTP\/\S*\s(\d{3})}', $http_response_header[0], $match);
+        $statusCode = (int)$match[1];
+
+        $this->assertEquals(200, $statusCode, $result);
+        
+        // 5. Verify stock decreased from 50 to 45
+        $stockQty = (int)\Illuminate\Database\Capsule\Manager::table('product_locations')
+            ->where('product_id', $productId)
+            ->where('location_id', 'LOC-INT')
+            ->value('stock_quantity');
+        
+        $this->assertEquals(45, $stockQty);
+
+        // 6. Test cancellation webhook (orders/cancelled) to restock 5 items
+        $cancelOptions = [
+            'http' => [
+                'header' => "Content-Type: application/json\r\n" .
+                            "X-Shopify-Topic: orders/cancelled\r\n" .
+                            "X-Shopify-Hmac-Sha256: dummy-signature\r\n",
+                'method' => 'POST',
+                'content' => json_encode($payload),
+                'ignore_errors' => true
+            ]
+        ];
+
+        $cancelContext = stream_context_create($cancelOptions);
+        $cancelResult = file_get_contents($url, false, $cancelContext);
+
+        preg_match('{HTTP\/\S*\s(\d{3})}', $http_response_header[0], $match);
+        $cancelStatusCode = (int)$match[1];
+
+        $this->assertEquals(200, $cancelStatusCode, $cancelResult);
+
+        // Verify stock restocked back to 50
+        $newStockQty = (int)\Illuminate\Database\Capsule\Manager::table('product_locations')
+            ->where('product_id', $productId)
+            ->where('location_id', 'LOC-INT')
+            ->value('stock_quantity');
+        
+        $this->assertEquals(50, $newStockQty);
+    }
+
+    public function testNotificationEndpoints(): void
+    {
+        // 1. Check notifications initially empty
+        $listRes = $this->request('GET', '/api/notifications', [], $this->token);
+        $this->assertEquals(200, $listRes['status']);
+        $this->assertEmpty($listRes['body']['notifications']);
+
+        // 2. Trigger an event that creates a notification (e.g. Receive stock)
+        $productId = uuidv4();
+        $sku = 'SKU-' . strtoupper(bin2hex(random_bytes(4)));
+
+        \Illuminate\Database\Capsule\Manager::table('products')->insert([
+            'id'                => $productId,
+            'tenant_id'         => $this->tenantId,
+            'sku'               => $sku,
+            'name'              => 'Notif Prod',
+            'department'        => 'GEN',
+            'reorder_threshold' => 10,
+            'created_at'        => date('Y-m-d H:i:s'),
+            'updated_at'        => date('Y-m-d H:i:s')
+        ]);
+
+        \Illuminate\Database\Capsule\Manager::table('product_locations')->insert([
+            'product_id'        => $productId,
+            'location_id'       => 'LOC-INT',
+            'stock_quantity'    => 0,
+            'open_box_quantity' => 0,
+            'damaged_quantity'  => 0,
+            'updated_at'        => date('Y-m-d H:i:s')
+        ]);
+
+        // Receive stock
+        $receiveRes = $this->request('POST', '/api/inventory/receive', [
+            'sku'         => $sku,
+            'quantity'    => 10,
+            'location_id' => 'LOC-INT',
+        ], $this->token);
+        $this->assertEquals(200, $receiveRes['status'], json_encode($receiveRes));
+
+        // 3. Check notifications now has 1 item
+        $listRes2 = $this->request('GET', '/api/notifications', [], $this->token);
+        $this->assertEquals(200, $listRes2['status']);
+        $this->assertCount(1, $listRes2['body']['notifications']);
+        $notif = $listRes2['body']['notifications'][0];
+        $this->assertEquals('Stock Received', $notif['title']);
+        $this->assertFalse((bool)$notif['is_read']);
+
+        // 4. Test SSE subscribe endpoint
+        $stream = @fopen("http://127.0.0.1:8085/api/notifications/subscribe?token={$this->token}", 'r');
+        $this->assertNotFalse($stream, "Should connect to SSE stream");
+        $firstLine = fgets($stream);
+        fclose($stream);
+        $this->assertStringContainsString('event: connected', $firstLine);
+
+        // 5. Mark as read
+        $readRes = $this->request('POST', "/api/notifications/{$notif['id']}/read", [], $this->token);
+        $this->assertEquals(200, $readRes['status']);
+
+        // Check is_read is true
+        $listRes3 = $this->request('GET', '/api/notifications', [], $this->token);
+        $this->assertTrue((bool)$listRes3['body']['notifications'][0]['is_read']);
+
+        // 6. Mark all as read
+        $readAllRes = $this->request('POST', '/api/notifications/read-all', [], $this->token);
+        $this->assertEquals(200, $readAllRes['status']);
     }
 
     private function request(string $method, string $path, array $body = [], ?string $token = null): array

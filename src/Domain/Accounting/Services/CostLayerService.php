@@ -25,6 +25,45 @@ class CostLayerService
         return $breakdown;
     }
 
+    public function consumeLifoLayers(string $variantId, int $quantity): CostBreakdown
+    {
+        $activeLayers = $this->layers->getActiveLayers($variantId, 'received_at DESC');
+        $breakdown = $this->consumeLayers($activeLayers, $quantity);
+
+        foreach ($activeLayers as $layer) {
+            $this->layers->save($layer);
+        }
+
+        return $breakdown;
+    }
+
+    public function consumeSpecificLayers(string $variantId, array $serialNumbers): CostBreakdown
+    {
+        $totalCost = 0;
+        $affectedLayers = [];
+
+        foreach ($serialNumbers as $sn) {
+            $layer = $this->layers->findBySerial($variantId, $sn);
+            if (!$layer) {
+                throw new DomainException("No cost layer found for serial number {$sn}");
+            }
+            if ($layer->remainingQuantity() < 1) {
+                throw new DomainException("Cost layer for serial number {$sn} has already been consumed");
+            }
+
+            $layer->consume(1);
+            $totalCost += $layer->unitCostCents;
+            $affectedLayers[$layer->id] = $layer;
+        }
+
+        foreach ($affectedLayers as $layer) {
+            $this->layers->save($layer);
+        }
+
+        return new CostBreakdown(count($serialNumbers), $totalCost);
+    }
+
+
     public function calculateWeightedAverageCost(string $variantId, int $quantity): CostBreakdown
     {
         $activeLayers = $this->layers->getActiveLayers($variantId);

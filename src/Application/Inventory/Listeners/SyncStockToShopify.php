@@ -8,6 +8,8 @@ use InventoryApp\Infrastructure\Integration\Shopify\ShopifyMappingRepository;
 use InventoryApp\Domain\Inventory\Repositories\ProductRepositoryInterface;
 use InventoryApp\Domain\Inventory\ValueObjects\SKU;
 
+use InventoryApp\Domain\Shared\Events\QueuedListenerInterface;
+
 /**
  * Listens to any of our stock-mutation domain events and pushes the updated
  * inventory level to Shopify's inventory_levels/set API.
@@ -25,7 +27,7 @@ use InventoryApp\Domain\Inventory\ValueObjects\SKU;
  * must never roll back the domain operation that triggered it. Wrap in a
  * try/catch and push failures to a retry queue in production.
  */
-class SyncStockToShopify
+class SyncStockToShopify implements QueuedListenerInterface
 {
     private ShopifyInventorySync $sync;
     private ShopifyMappingRepository $mappings;
@@ -78,8 +80,28 @@ class SyncStockToShopify
         try {
             $this->sync->setInventoryLevel($shopifyInventoryItemId, $shopifyLocationId, $currentQty);
         } catch (\Throwable $e) {
-            // TODO: push to retry queue (e.g., a `shopify_sync_failures` table or queue job)
             error_log("Shopify sync failed for SKU {$sku}: " . $e->getMessage());
+            
+            $tenantId = method_exists($this->productRepository, 'getTenantId') 
+                ? $this->productRepository->getTenantId() 
+                : 'system';
+                
+            try {
+                \Illuminate\Database\Capsule\Manager::table('shopify_sync_failures')->insert([
+                    'id'          => \Ramsey\Uuid\Uuid::uuid4()->toString(),
+                    'tenant_id'   => $tenantId,
+                    'sku'         => $sku,
+                    'location_id' => $locationId,
+                    'quantity'    => $currentQty,
+                    'attempts'    => 1,
+                    'last_error'  => $e->getMessage(),
+                    'status'      => 'pending',
+                    'created_at'  => date('Y-m-d H:i:s'),
+                    'updated_at'  => date('Y-m-d H:i:s')
+                ]);
+            } catch (\Throwable $dbEx) {
+                error_log("Failed logging Shopify sync failure to DB: " . $dbEx->getMessage());
+            }
         }
     }
 }

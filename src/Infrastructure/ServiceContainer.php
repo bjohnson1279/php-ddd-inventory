@@ -8,6 +8,7 @@ use InventoryApp\Infrastructure\Persistence\Repositories\EloquentSerializedItemR
 use InventoryApp\Infrastructure\Persistence\Repositories\EloquentBarcodeRepository;
 use InventoryApp\Infrastructure\Persistence\Repositories\EloquentJournalRepository;
 use InventoryApp\Infrastructure\Persistence\Repositories\EloquentStockOnboardingRepository;
+use InventoryApp\Infrastructure\Persistence\Repositories\EloquentCostLayerRepository;
 use InventoryApp\Domain\Shared\Events\EventDispatcher;
 
 use InventoryApp\Domain\Identity\Repositories\UserRepositoryInterface;
@@ -15,6 +16,7 @@ use InventoryApp\Domain\Inventory\Repositories\LedgerRepositoryInterface;
 use InventoryApp\Domain\Serial\Repositories\SerializedItemRepositoryInterface;
 use InventoryApp\Domain\Barcode\Repositories\BarcodeRepositoryInterface;
 use InventoryApp\Domain\Accounting\Repositories\JournalRepositoryInterface;
+use InventoryApp\Domain\Accounting\Repositories\CostLayerRepositoryInterface;
 use InventoryApp\Domain\Inventory\Repositories\StockOnboardingRepositoryInterface;
 use InventoryApp\Domain\Inventory\Repositories\ProductRepositoryInterface;
 use InventoryApp\Domain\Inventory\Repositories\InventoryCountRepositoryInterface;
@@ -85,6 +87,14 @@ class ServiceContainer
     public static function productRepo(string $tenantId): ProductRepositoryInterface
     {
         return new EloquentProductRepository($tenantId);
+    }
+
+    /**
+     * Returns a tenant-scoped cost layer repository (fresh instance per call).
+     */
+    public static function costLayerRepo(string $tenantId): CostLayerRepositoryInterface
+    {
+        return new EloquentCostLayerRepository($tenantId);
     }
 
     /**

@@ -28,6 +28,19 @@ class EloquentCatalogProductRepository implements CatalogProductRepositoryInterf
                 'created_at' => date('c')
             ]
         );
+
+        foreach ($product->getVariants() as $variant) {
+            Capsule::connection()->table('catalog_variants')->updateOrInsert(
+                ['id' => $variant->getId()],
+                [
+                    'product_id' => $variant->getProductId(),
+                    'sku'        => $variant->getSku()->getValue(),
+                    'attributes' => json_encode($variant->getAttributes()),
+                    'price'      => $variant->getPrice(),
+                    'created_at' => date('c')
+                ]
+            );
+        }
     }
 
     public function delete(CatalogProduct $product): void

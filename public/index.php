@@ -49,6 +49,7 @@ $capsule->bootEloquent();
 use InventoryApp\Infrastructure\ServiceContainer;
 use InventoryApp\Application\Inventory\Listeners\SyncStockToShopify;
 use InventoryApp\Application\Inventory\Listeners\CreateInventoryItemOnVariantAdded;
+use InventoryApp\Application\Catalog\Listeners\SyncCatalogToShopify;
 use InventoryApp\Domain\Inventory\Events\StockReceived;
 use InventoryApp\Domain\Inventory\Events\StockDecremented;
 use InventoryApp\Domain\Catalog\Events\VariantAddedToCatalog;
@@ -66,12 +67,38 @@ $shopifyListener = new SyncStockToShopify($syncClient, $mappingRepo, ServiceCont
 $dispatcher->subscribe(StockReceived::class,   [$shopifyListener, 'handle']);
 $dispatcher->subscribe(StockDecremented::class, [$shopifyListener, 'handle']);
 
+$catalogSyncListener = new SyncCatalogToShopify($syncClient, $mappingRepo);
+$dispatcher->subscribe(VariantAddedToCatalog::class, [$catalogSyncListener, 'handle']);
+
+// Register QuickBooks Journal Entry Sync Listener
+$qboSyncClient = new \InventoryApp\Infrastructure\Integration\QuickBooks\QuickBooksJournalSync(
+    getenv('QUICKBOOKS_COMPANY_ID') ?: 'mock-company',
+    getenv('QUICKBOOKS_ACCESS_TOKEN') ?: 'mock-token'
+);
+$qboMappingRepo = new \InventoryApp\Infrastructure\Integration\QuickBooks\QuickBooksMappingRepository();
+$qboListener = new \InventoryApp\Application\Accounting\Listeners\SyncJournalToQuickBooks($qboSyncClient, $qboMappingRepo);
+$dispatcher->subscribe(\InventoryApp\Domain\Accounting\Events\JournalEntryRecorded::class, [$qboListener, 'handle']);
+
 $registerProductUseCase = new \InventoryApp\Application\Inventory\UseCases\RegisterProduct(
     ServiceContainer::productRepo('system'),
     $dispatcher
 );
 $createInventoryListener = new CreateInventoryItemOnVariantAdded($registerProductUseCase);
 $dispatcher->subscribe(VariantAddedToCatalog::class, [$createInventoryListener, 'handle']);
+
+// Register Realtime Notification Listener
+$notificationService = new \InventoryApp\Application\Notification\Services\NotificationService();
+$notificationListener = new \InventoryApp\Application\Notification\Listeners\NotificationListener($notificationService);
+$dispatcher->subscribe(\InventoryApp\Domain\Inventory\Events\LowStockDetected::class, [$notificationListener, 'handleLowStock']);
+$dispatcher->subscribe(\InventoryApp\Domain\Inventory\Events\StockReceived::class, [$notificationListener, 'handleStockReceived']);
+$dispatcher->subscribe(\InventoryApp\Domain\Inventory\Events\StockOnboardingSubmitted::class, [$notificationListener, 'handleOnboardingSubmitted']);
+$dispatcher->subscribe(\InventoryApp\Domain\Inventory\Events\StockReconciled::class, [$notificationListener, 'handleStockReconciled']);
+$dispatcher->subscribe(\InventoryApp\Domain\Inventory\Events\OpeningBalancePosted::class, [$notificationListener, 'handleOpeningBalancePosted']);
+
+// Register Cost Layer Creation Listener
+$costLayerListener = new \InventoryApp\Application\Inventory\Listeners\CreateCostLayerListener();
+$dispatcher->subscribe(StockReceived::class, [$costLayerListener, 'handleStockReceived']);
+$dispatcher->subscribe(\InventoryApp\Domain\Inventory\Events\OpeningBalancePosted::class, [$costLayerListener, 'handleOpeningBalancePosted']);
 
 // ── Request parsing ───────────────────────────────────────────────────────────
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
@@ -215,6 +242,93 @@ use InventoryApp\Application\Inventory\UseCases\CompleteInventoryCount;
 use InventoryApp\Application\Identity\UseCases\AssignRoleToUser;
 
 $request = new RequestAdapter();
+
+// ── Route: GET /api/notifications/subscribe (Server-Sent Events) ──────────────
+if ($method === 'GET' && $uri === '/api/notifications/subscribe') {
+    $token = $request->query('token');
+    if (!$token) {
+        http_response_code(401);
+        echo json_encode(['error' => 'Unauthorized: Missing auth token']);
+        exit;
+    }
+    $tokenData = (new \InventoryApp\Infrastructure\Identity\ApiTokenService())->validate($token);
+    if ($tokenData === null) {
+        http_response_code(401);
+        echo json_encode(['error' => 'Unauthorized: Invalid token']);
+        exit;
+    }
+
+    $tenantId = $tokenData->tenant_id;
+
+    header('Content-Type: text/event-stream');
+    header('Cache-Control: no-cache');
+    header('Connection: keep-alive');
+    header('X-Accel-Buffering: no');
+
+    echo "event: connected\ndata: " . json_encode(['message' => 'Subscribed to notifications']) . "\n\n";
+    while (ob_get_level() > 0) {
+        ob_end_flush();
+    }
+    flush();
+
+    $lastChecked = date('Y-m-d H:i:s');
+    $sentIds = [];
+
+    $start = time();
+    while (time() - $start < 50) {
+        if (connection_aborted()) {
+            break;
+        }
+
+        $notifications = \InventoryApp\Infrastructure\Models\NotificationModel::where('tenant_id', $tenantId)
+            ->where('created_at', '>=', $lastChecked)
+            ->get();
+
+        foreach ($notifications as $n) {
+            if (in_array($n->id, $sentIds)) {
+                continue;
+            }
+            echo "event: notification\ndata: " . json_encode($n->toArray()) . "\n\n";
+            $sentIds[] = $n->id;
+        }
+
+        while (ob_get_level() > 0) {
+            ob_end_flush();
+        }
+        flush();
+
+        sleep(1);
+    }
+    exit;
+}
+
+// ── Route: GET /api/notifications ─────────────────────────────────────────────
+if ($method === 'GET' && $uri === '/api/notifications') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\NotificationController())->list($request, tenantId());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/notifications/read-all ──────────────────────────────────
+if ($method === 'POST' && $uri === '/api/notifications/read-all') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\NotificationController())->readAll($request, tenantId());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/notifications/{id}/read ──────────────────────────────────
+if ($method === 'POST' && preg_match('#^/api/notifications/([^/]+)/read$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\NotificationController())->read($request, tenantId(), $id);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
 
 // ── Route: POST /auth/register ────────────────────────────────────────────────
 if ($method === 'POST' && $uri === '/auth/register') {
@@ -434,6 +548,39 @@ if ($method === 'POST' && $uri === '/api/catalog/products') {
     exit;
 }
 
+// ── Route: GET /api/catalog/products ─────────────────────────────────────────
+if ($method === 'GET' && $uri === '/api/catalog/products') {
+    requireAuth();
+    try {
+        $products = Capsule::table('catalog_products')->get()->toArray();
+        $variants = Capsule::table('catalog_variants')->get()->toArray();
+        
+        $productsMap = [];
+        foreach ($products as $p) {
+            $pData = (array)$p;
+            $pData['variants'] = [];
+            $productsMap[$p->id] = $pData;
+        }
+        
+        foreach ($variants as $v) {
+            $vData = (array)$v;
+            $vData['attributes'] = json_decode($v->attributes, true) ?: [];
+            $vData['price'] = (float)$v->price;
+            if (isset($productsMap[$v->product_id])) {
+                $productsMap[$v->product_id]['variants'][] = $vData;
+            }
+        }
+        
+        http_response_code(200);
+        echo json_encode(['products' => array_values($productsMap)]);
+    } catch (\Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+
 // ── Route: POST /api/catalog/products/{id}/variants ──────────────────────────
 if ($method === 'POST' && preg_match('#^/api/catalog/products/([^/]+)/variants$#', $uri, $m)) {
     requireAuth();
@@ -485,6 +632,28 @@ if ($method === 'POST' && $uri === '/api/serials') {
     $response = (new SerializedItemController())->register($request, $service);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
+    exit;
+}
+
+// Route: GET /api/serials
+if ($method === 'GET' && $uri === '/api/serials') {
+    requireAuth();
+    try {
+        $serials = Capsule::table('serialized_items')
+            ->where('tenant_id', tenantId())
+            ->get()
+            ->toArray();
+        $items = array_map(function ($s) {
+            $data = (array)$s;
+            $data['history'] = json_decode($s->history, true) ?: [];
+            return $data;
+        }, $serials);
+        http_response_code(200);
+        echo json_encode(['items' => $items]);
+    } catch (\Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
     exit;
 }
 
@@ -602,6 +771,23 @@ if ($method === 'POST' && $uri === '/api/onboardings') {
     exit;
 }
 
+// Route: GET /api/onboardings
+if ($method === 'GET' && $uri === '/api/onboardings') {
+    requireAuth();
+    try {
+        $onboardings = Capsule::table('stock_onboardings')
+            ->where('tenant_id', tenantId())
+            ->get()
+            ->toArray();
+        http_response_code(200);
+        echo json_encode(['onboardings' => $onboardings]);
+    } catch (\Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
 // Route: POST /api/onboardings/{id}/items
 if ($method === 'POST' && preg_match('#^/api/onboardings/([^/]+)/items$#', $uri, $m)) {
     requireAuth();
@@ -661,6 +847,15 @@ if ($method === 'POST' && $uri === '/api/journal/entries') {
 if ($method === 'GET' && $uri === '/api/journal/entries') {
     requireAuth();
     $response = (new JournalController())->list($request, ServiceContainer::journalRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: GET /api/reports/valuation
+if ($method === 'GET' && $uri === '/api/reports/valuation') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReportController())->valuation($request, tenantId());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
@@ -736,6 +931,36 @@ if ($method === 'POST' && $uri === '/api/kits') {
     exit;
 }
 
+// Route: GET /api/kits
+if ($method === 'GET' && $uri === '/api/kits') {
+    requireAuth();
+    try {
+        $kits = Capsule::table('kits')->get()->toArray();
+        $components = Capsule::table('kit_components')->get()->toArray();
+        
+        $kitsMap = [];
+        foreach ($kits as $k) {
+            $kData = (array)$k;
+            $kData['components'] = [];
+            $kitsMap[$k->id] = $kData;
+        }
+        
+        foreach ($components as $c) {
+            $cData = (array)$c;
+            if (isset($kitsMap[$c->kit_id])) {
+                $kitsMap[$c->kit_id]['components'][] = $cData;
+            }
+        }
+        
+        http_response_code(200);
+        echo json_encode(['kits' => array_values($kitsMap)]);
+    } catch (\Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
 // Route: POST /api/kits/{id}/components
 if ($method === 'POST' && preg_match('#^/api/kits/([^/]+)/components$#', $uri, $m)) {
     requireAuth();
@@ -775,6 +1000,15 @@ if ($method === 'POST' && preg_match('#^/api/kits/([^/]+)/sell$#', $uri, $m)) {
         $dispatcher
     );
     $response = (new KitController())->sell($request, $id, ServiceContainer::kitRepo(), $inventoryService);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/webhooks/shopify ────────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/webhooks/shopify') {
+    // Note: Do not call requireAuth() here because Shopify uses HMAC signature headers instead of API bearer tokens
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ShopifyWebhookController())->handle($request);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;

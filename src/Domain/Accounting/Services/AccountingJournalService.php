@@ -83,7 +83,8 @@ class AccountingJournalService
         string $saleId,
         \DateTimeImmutable $date,
         AccountingMethod $method,
-        \InventoryApp\Domain\Accounting\Enums\CostingMethod $costingMethod
+        \InventoryApp\Domain\Accounting\Enums\CostingMethod $costingMethod,
+        ?array $serialNumbers = null
     ): ?JournalEntry {
         if ($method === AccountingMethod::Cash) {
             if (!$paymentReceivedNow) return null;
@@ -103,9 +104,28 @@ class AccountingJournalService
         // Accrual Method
         $receivableAccount = $paymentReceivedNow ? AccountCode::cash() : AccountCode::accountsReceivable();
         
-        $cogsBreakdown = $costingMethod === \InventoryApp\Domain\Accounting\Enums\CostingMethod::FIFO
-            ? $this->costLayerService->consumeFifoLayers($variantId, $quantity)
-            : $this->costLayerService->calculateWeightedAverageCost($variantId, $quantity);
+        switch ($costingMethod) {
+            case \InventoryApp\Domain\Accounting\Enums\CostingMethod::FIFO:
+                $cogsBreakdown = $this->costLayerService->consumeFifoLayers($variantId, $quantity);
+                break;
+            case \InventoryApp\Domain\Accounting\Enums\CostingMethod::LIFO:
+                $cogsBreakdown = $this->costLayerService->consumeLifoLayers($variantId, $quantity);
+                break;
+            case \InventoryApp\Domain\Accounting\Enums\CostingMethod::WeightedAverageCost:
+                $cogsBreakdown = $this->costLayerService->calculateWeightedAverageCost($variantId, $quantity);
+                break;
+            case \InventoryApp\Domain\Accounting\Enums\CostingMethod::SpecificIdentification:
+                if (empty($serialNumbers)) {
+                    throw new \InvalidArgumentException("Specific Identification costing method requires serial numbers.");
+                }
+                if (count($serialNumbers) !== $quantity) {
+                    throw new \InvalidArgumentException("The number of serial numbers must match the quantity sold.");
+                }
+                $cogsBreakdown = $this->costLayerService->consumeSpecificLayers($variantId, $serialNumbers);
+                break;
+            default:
+                throw new \InvalidArgumentException("Unsupported costing method.");
+        }
 
         return $this->createEntry(
             $tenantId,

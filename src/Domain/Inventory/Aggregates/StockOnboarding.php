@@ -40,7 +40,13 @@ class StockOnboarding
         $this->assertDraft();
         if (empty($this->items)) throw new \DomainException('Cannot submit empty onboarding');
         $this->status = StockOnboardingStatus::Submitted;
-        $this->domainEvents[] = new \stdClass();
+        $this->domainEvents[] = new \InventoryApp\Domain\Inventory\Events\StockOnboardingSubmitted(
+            $this->id,
+            $this->tenantId,
+            $this->locationId,
+            $this->asOfDate,
+            new \DateTimeImmutable()
+        );
     }
 
     public function isSubmitted(): bool { return $this->status === StockOnboardingStatus::Submitted; }

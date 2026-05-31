@@ -24,7 +24,15 @@ class OpeningBalanceService
         foreach ($onboarding->items() as $item) {
             $entry = new LedgerEntry(\Ramsey\Uuid\Uuid::uuid4()->toString(), $item->variantId, $item->quantity, ReasonCode::OpeningBalance, $actorId, $onboarding->id, $onboarding->asOfDate, ['unitCostCents' => $item->unitCostCents, 'locationId' => $onboarding->locationId]);
             $this->ledger->append($entry);
-            $this->events->dispatch(new \stdClass());
+            $this->events->dispatch(new \InventoryApp\Domain\Inventory\Events\OpeningBalancePosted(
+                $onboarding->id,
+                $item->variantId,
+                $item->quantity,
+                $item->unitCostCents,
+                $onboarding->locationId,
+                $onboarding->asOfDate,
+                new \DateTimeImmutable()
+            ));
         }
     }
 }

@@ -18,6 +18,8 @@ class EloquentProductRepository implements ProductRepositoryInterface
 {
     public function __construct(private readonly string $tenantId) {}
 
+    public function getTenantId(): string { return $this->tenantId; }
+
     public function findById(string $id): ?Product
     {
         $model = ProductModel::with('locations')

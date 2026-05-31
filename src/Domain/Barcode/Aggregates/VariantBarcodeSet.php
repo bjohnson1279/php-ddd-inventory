@@ -35,7 +35,14 @@ class VariantBarcodeSet
         $shouldBePrimary = $makePrimary || empty($this->assignments);
         $assignment = new BarcodeAssignment(\Ramsey\Uuid\Uuid::uuid4()->toString(), $this->variantId, $barcode, $source, $shouldBePrimary, new \DateTimeImmutable());
         $this->assignments[$assignment->id] = $assignment;
-        $this->domainEvents[] = new \stdClass();
+        $this->domainEvents[] = new \InventoryApp\Domain\Barcode\Events\BarcodeAssigned(
+            $this->variantId,
+            $barcode->value,
+            $barcode->symbology->value,
+            $source->value,
+            $shouldBePrimary,
+            new \DateTimeImmutable()
+        );
         return $assignment;
     }
 
@@ -45,7 +52,12 @@ class VariantBarcodeSet
         if ($assignment === null) throw new \DomainException('Assignment not found');
         if ($assignment->isPrimary && count($this->assignments) > 1) throw new \DomainException('Cannot revoke primary while others exist');
         unset($this->assignments[$assignmentId]);
-        $this->domainEvents[] = new \stdClass();
+        $this->domainEvents[] = new \InventoryApp\Domain\Barcode\Events\BarcodeRevoked(
+            $this->variantId,
+            $assignment->barcode->value,
+            $assignment->barcode->symbology->value,
+            new \DateTimeImmutable()
+        );
     }
 
     public function primaryBarcode(): ?BarcodeAssignment

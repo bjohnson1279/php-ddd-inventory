@@ -61,4 +61,72 @@ class ShopifyInventorySync
             );
         }
     }
+
+    /**
+     * Create a product and return its details, including variant id and inventory item id.
+     *
+     * @param string $title
+     * @param string $sku
+     * @param float  $price
+     * @param string $productType
+     * @return array
+     */
+    public function createProduct(string $title, string $sku, float $price, string $productType): array
+    {
+        if (empty($this->shopDomain) || str_contains($this->shopDomain, 'example.com') || str_contains($this->shopDomain, 'token') || str_contains($this->shopDomain, 'mock')) {
+            return [
+                'shopify_product_id'        => 'mock-prod-999',
+                'shopify_variant_id'        => 'mock-var-999',
+                'shopify_inventory_item_id' => 'mock-inv-item-' . $sku
+            ];
+        }
+
+        $url  = "{$this->shopDomain}/admin/api/2024-01/products.json";
+        $body = json_encode([
+            'product' => [
+                'title'        => $title,
+                'product_type' => $productType,
+                'status'       => 'active',
+                'variants'     => [
+                    [
+                        'sku'   => $sku,
+                        'price' => (string)$price,
+                    ]
+                ]
+            ]
+        ]);
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $body,
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'X-Shopify-Access-Token: ' . $this->accessToken,
+            ],
+        ]);
+
+        $response   = curl_exec($ch);
+        $httpStatus = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpStatus !== 201) {
+            throw new \RuntimeException(
+                "Shopify product creation failed (HTTP {$httpStatus}): {$response}"
+            );
+        }
+
+        $data = json_decode($response, true);
+        $variant = $data['product']['variants'][0] ?? null;
+        if (!$variant) {
+            throw new \RuntimeException("No variant returned in Shopify product creation: {$response}");
+        }
+
+        return [
+            'shopify_product_id'        => (string)$data['product']['id'],
+            'shopify_variant_id'        => (string)$variant['id'],
+            'shopify_inventory_item_id' => (string)$variant['inventory_item_id']
+        ];
+    }
 }

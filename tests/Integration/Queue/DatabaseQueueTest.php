@@ -26,7 +26,11 @@ final class DatabaseQueueTest extends TestCase
         DB::table('catalog_variants')->delete();
         DB::table('catalog_products')->delete();
         DB::table('quickbooks_journal_mappings')->delete();
+        DB::table('xero_journal_mappings')->delete();
+        DB::table('netsuite_journal_mappings')->delete();
         DB::table('journal_entries')->delete();
+
+        ServiceContainer::resetDispatcher();
     }
 
     public function testEventDispatchQueuesListenerAndWorkerProcessesIt(): void

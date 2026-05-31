@@ -79,6 +79,24 @@ $qboMappingRepo = new \InventoryApp\Infrastructure\Integration\QuickBooks\QuickB
 $qboListener = new \InventoryApp\Application\Accounting\Listeners\SyncJournalToQuickBooks($qboSyncClient, $qboMappingRepo);
 $dispatcher->subscribe(\InventoryApp\Domain\Accounting\Events\JournalEntryRecorded::class, [$qboListener, 'handle']);
 
+// Register Xero Journal Entry Sync Listener
+$xeroSyncClient = new \InventoryApp\Infrastructure\Integration\Xero\XeroJournalSync(
+    getenv('XERO_TENANT_ID') ?: 'mock-tenant',
+    getenv('XERO_ACCESS_TOKEN') ?: 'mock-token'
+);
+$xeroMappingRepo = new \InventoryApp\Infrastructure\Integration\Xero\XeroMappingRepository();
+$xeroListener = new \InventoryApp\Application\Accounting\Listeners\SyncJournalToXero($xeroSyncClient, $xeroMappingRepo);
+$dispatcher->subscribe(\InventoryApp\Domain\Accounting\Events\JournalEntryRecorded::class, [$xeroListener, 'handle']);
+
+// Register NetSuite Journal Entry Sync Listener
+$nsSyncClient = new \InventoryApp\Infrastructure\Integration\NetSuite\NetSuiteJournalSync(
+    getenv('NETSUITE_ACCOUNT_ID') ?: 'mock-account',
+    getenv('NETSUITE_TOKEN') ?: 'mock-token'
+);
+$nsMappingRepo = new \InventoryApp\Infrastructure\Integration\NetSuite\NetSuiteMappingRepository();
+$nsListener = new \InventoryApp\Application\Accounting\Listeners\SyncJournalToNetSuite($nsSyncClient, $nsMappingRepo);
+$dispatcher->subscribe(\InventoryApp\Domain\Accounting\Events\JournalEntryRecorded::class, [$nsListener, 'handle']);
+
 $registerProductUseCase = new \InventoryApp\Application\Inventory\UseCases\RegisterProduct(
     ServiceContainer::productRepo('system'),
     $dispatcher

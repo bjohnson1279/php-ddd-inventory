@@ -254,6 +254,20 @@ class SqliteSetup
               quickbooks_journal_id VARCHAR(50) NOT NULL UNIQUE,
               created_at           DATETIME DEFAULT CURRENT_TIMESTAMP,
               FOREIGN KEY (journal_entry_id) REFERENCES journal_entries (id)
+            )",
+            "CREATE TABLE IF NOT EXISTS xero_journal_mappings (
+              id                   TEXT PRIMARY KEY,
+              journal_entry_id     TEXT NOT NULL UNIQUE,
+              xero_journal_id      VARCHAR(50) NOT NULL UNIQUE,
+              created_at           DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (journal_entry_id) REFERENCES journal_entries (id)
+            )",
+            "CREATE TABLE IF NOT EXISTS netsuite_journal_mappings (
+              id                  TEXT PRIMARY KEY,
+              journal_entry_id    TEXT NOT NULL UNIQUE,
+              netsuite_journal_id VARCHAR(50) NOT NULL UNIQUE,
+              created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (journal_entry_id) REFERENCES journal_entries (id)
             )"
         ];
 

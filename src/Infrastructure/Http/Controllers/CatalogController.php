@@ -38,7 +38,7 @@ class CatalogController
                 'price' => 'required|numeric|min:0'
             ]);
 
-            $variantId = uniqid('var_'); // Using uniqid for simplicity in this example
+            $variantId = Uuid::uuid4()->toString();
             $useCase->execute($productId, $variantId, $validated['sku'], $validated['attributes'], $validated['price']);
 
             return new Response(['message' => 'Variant added successfully', 'id' => $variantId], 201);

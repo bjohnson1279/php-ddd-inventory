@@ -43,14 +43,18 @@ class EloquentProductUomConfigurationRepository implements ProductUomConfigurati
             // Re-sync rules
             UomConversionRuleModel::where('configuration_id', $config->id)->delete();
 
+            $rulesData = [];
             foreach ($config->conversionRules() as $rule) {
-                UomConversionRuleModel::create([
+                $rulesData[] = [
                     'id'               => $rule->id,
                     'configuration_id' => $config->id,
                     'unit'             => $this->serializeUnit($rule->unit),
                     'factor_to_base'   => $rule->factorToBase,
                     'label'            => $rule->label,
-                ]);
+                ];
+            }
+            if (!empty($rulesData)) {
+                UomConversionRuleModel::insert($rulesData);
             }
         });
     }

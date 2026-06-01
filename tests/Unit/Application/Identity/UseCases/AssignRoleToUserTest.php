@@ -11,7 +11,7 @@ use InventoryApp\Domain\Identity\ValueObjects\TenantId;
 use InventoryApp\Domain\Identity\ValueObjects\Permission;
 use Exception;
 
-class IdentityUseCasesTest extends TestCase
+class AssignRoleToUserTest extends TestCase
 {
     private function makeUser(string $id, string $roleSlug = Role::STAFF): User
     {

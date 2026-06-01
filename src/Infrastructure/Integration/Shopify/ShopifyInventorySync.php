@@ -2,8 +2,6 @@
 
 namespace InventoryApp\Infrastructure\Integration\Shopify;
 
-use InventoryApp\Domain\Shared\Events\DomainEvent;
-
 /**
  * Shopify Admin REST API client for pushing inventory level updates outbound.
  *

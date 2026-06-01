@@ -8,6 +8,7 @@ use InventoryApp\Domain\Identity\Repositories\UserRepositoryInterface;
 use InventoryApp\Infrastructure\Identity\ApiTokenService;
 use InventoryApp\Domain\Identity\Entities\User;
 use InventoryApp\Domain\Identity\ValueObjects\TenantId;
+use InvalidArgumentException;
 use Exception;
 
 class AuthenticateUserTest extends TestCase

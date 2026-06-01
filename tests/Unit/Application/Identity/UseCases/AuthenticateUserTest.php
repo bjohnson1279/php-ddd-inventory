@@ -8,6 +8,7 @@ use InventoryApp\Domain\Identity\Repositories\UserRepositoryInterface;
 use InventoryApp\Infrastructure\Identity\ApiTokenService;
 use InventoryApp\Domain\Identity\Entities\User;
 use InventoryApp\Domain\Identity\ValueObjects\TenantId;
+use InvalidArgumentException;
 use Exception;
 
 class AuthenticateUserTest extends TestCase
@@ -116,5 +117,22 @@ class AuthenticateUserTest extends TestCase
         $this->expectExceptionMessage('Invalid credentials.');
 
         $useCase->execute($email, $wrongPassword, $tenantId);
+    }
+
+    public function testExecuteThrowsWhenTenantIdIsEmpty(): void
+    {
+        $email = 'user@store.com';
+        $password = 'password123';
+        $tenantId = '';
+
+        $repo = $this->createMock(UserRepositoryInterface::class);
+        $tokenService = $this->createMock(ApiTokenService::class);
+
+        $useCase = new AuthenticateUser($repo, $tokenService);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('TenantId cannot be empty');
+
+        $useCase->execute($email, $password, $tenantId);
     }
 }

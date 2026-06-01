@@ -9,7 +9,6 @@ use InventoryApp\Domain\Inventory\ValueObjects\Department;
 use InventoryApp\Domain\Inventory\ValueObjects\Condition;
 use InventoryApp\Domain\Inventory\ValueObjects\TransactionType;
 use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
-use InventoryApp\Domain\Inventory\Exceptions\InsufficientStockException;
 use InventoryApp\Domain\Inventory\Events\StockReceived;
 use InventoryApp\Domain\Inventory\Events\StockDispatched;
 use InventoryApp\Domain\Inventory\Events\SaleProcessed;

@@ -12,6 +12,7 @@ use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
 use InventoryApp\Infrastructure\Models\ProductModel;
 use InventoryApp\Infrastructure\Models\ProductLocationModel;
 use InventoryApp\Infrastructure\Models\InventoryTransactionModel;
+use InventoryApp\Domain\Inventory\Exceptions\ConcurrencyException;
 use Illuminate\Database\Capsule\Manager as DB;
 
 class EloquentProductRepository implements ProductRepositoryInterface
@@ -41,17 +42,38 @@ class EloquentProductRepository implements ProductRepositoryInterface
 
     public function save(Product $product): void
     {
-        ProductModel::updateOrCreate(
-            ['id' => $product->getId()],
-            [
+        $existing = ProductModel::where('id', $product->getId())->first();
+
+        if ($existing) {
+            $updated = ProductModel::where('id', $product->getId())
+                ->where('version_id', $product->getVersionId())
+                ->update([
+                    'tenant_id'         => $this->tenantId,
+                    'sku'               => $product->getSku()->getValue(),
+                    'name'              => $product->getName(),
+                    'department'        => $product->getDepartment()->getValue(),
+                    'reorder_threshold' => $product->getReorderThreshold()->getValue(),
+                    'version_id'        => $product->getVersionId() + 1,
+                    'updated_at'        => date('Y-m-d H:i:s'),
+                ]);
+
+            if ($updated === 0) {
+                throw new ConcurrencyException("Concurrency error: The product has been modified by another process.");
+            }
+        } else {
+            ProductModel::create([
+                'id'                => $product->getId(),
                 'tenant_id'         => $this->tenantId,
                 'sku'               => $product->getSku()->getValue(),
                 'name'              => $product->getName(),
                 'department'        => $product->getDepartment()->getValue(),
                 'reorder_threshold' => $product->getReorderThreshold()->getValue(),
+                'version_id'        => $product->getVersionId() + 1,
                 'updated_at'        => date('Y-m-d H:i:s'),
-            ]
-        );
+            ]);
+        }
+
+        $product->incrementVersion();
 
         foreach ($product->getLocationStocks() as $locationStock) {
             ProductLocationModel::updateOrCreate(
@@ -99,7 +121,8 @@ class EloquentProductRepository implements ProductRepositoryInterface
             new SKU($model->sku),
             $model->name,
             new Department($model->department),
-            new Quantity($model->reorder_threshold)
+            new Quantity($model->reorder_threshold),
+            $model->version_id ?? 1
         );
 
         foreach ($model->locations as $locModel) {

@@ -40,6 +40,7 @@ class SqliteSetup
               name TEXT NOT NULL,
               department TEXT NOT NULL,
               reorder_threshold INTEGER NOT NULL DEFAULT 10,
+              version_id INTEGER NOT NULL DEFAULT 1,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               UNIQUE(tenant_id, sku)
@@ -254,6 +255,13 @@ class SqliteSetup
               quickbooks_journal_id VARCHAR(50) NOT NULL UNIQUE,
               created_at           DATETIME DEFAULT CURRENT_TIMESTAMP,
               FOREIGN KEY (journal_entry_id) REFERENCES journal_entries (id)
+            )",
+            "CREATE TABLE IF NOT EXISTS outbox_messages (
+              id            TEXT PRIMARY KEY,
+              event_type    VARCHAR(255) NOT NULL,
+              payload       TEXT NOT NULL,
+              occurred_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+              processed_at  DATETIME
             )"
         ];
 

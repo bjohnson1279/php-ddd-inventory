@@ -16,19 +16,18 @@ class TransferStock
         private readonly EventDispatcherInterface   $events,
     ) {}
 
-    public function execute(string $skuValue, string $fromLocation, string $toLocation, int $quantityValue): void
+    public function execute(SKU $sku, LocationId $fromLocation, LocationId $toLocation, Quantity $quantity): void
     {
-        $sku     = new SKU($skuValue);
         $product = $this->productRepository->findBySku($sku);
         
         if (!$product) {
-            throw new Exception("Product not found with SKU: " . $skuValue);
+            throw new Exception("Product not found with SKU: " . $sku->getValue());
         }
 
         $product->transferStock(
-            new LocationId($fromLocation),
-            new LocationId($toLocation),
-            new Quantity($quantityValue)
+            $fromLocation,
+            $toLocation,
+            $quantity
         );
 
         $this->productRepository->save($product);

@@ -38,6 +38,6 @@ class ReceiveStockTest extends TestCase
             }));
 
         $useCase = new ReceiveStock($repositoryMock, $this->createStub(EventDispatcherInterface::class));
-        $useCase->execute('TSHIRT-L-RED', 'LOC-STOREFRONT', 5);
+        $useCase->execute(new SKU('TSHIRT-L-RED'), new LocationId('LOC-STOREFRONT'), new Quantity(5));
     }
 }

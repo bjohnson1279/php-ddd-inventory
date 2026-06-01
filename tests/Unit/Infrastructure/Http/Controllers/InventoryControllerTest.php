@@ -23,7 +23,7 @@ class InventoryControllerTest extends TestCase
         $this->controller = new InventoryController();
         $this->receiveStockMock = $this->createMock(ReceiveStock::class);
         $this->dispatchStockMock = $this->createMock(DispatchStock::class);
-        $this->getStockLevelMock = $this->createMock(GetStockLevel::class);
+        $this->getStockLevelMock = $this->createMock(\InventoryApp\Application\Inventory\Queries\StockQueryServiceInterface::class);
     }
 
     /**
@@ -47,7 +47,11 @@ class InventoryControllerTest extends TestCase
 
         $this->receiveStockMock->expects($this->once())
             ->method('execute')
-            ->with('TSHIRT-L-RED', 'LOC-STOREFRONT', 10);
+            ->with(
+                $this->callback(fn($sku) => $sku instanceof \InventoryApp\Domain\Inventory\ValueObjects\SKU && $sku->getValue() === 'TSHIRT-L-RED'),
+                $this->callback(fn($loc) => $loc instanceof \InventoryApp\Domain\Inventory\ValueObjects\LocationId && $loc->getValue() === 'LOC-STOREFRONT'),
+                $this->callback(fn($qty) => $qty instanceof \InventoryApp\Domain\Inventory\ValueObjects\Quantity && $qty->getValue() === 10)
+            );
 
         $response = $this->controller->receive($requestMock, $this->receiveStockMock);
 
@@ -136,7 +140,11 @@ class InventoryControllerTest extends TestCase
 
         $this->dispatchStockMock->expects($this->once())
             ->method('execute')
-            ->with('WIDGET-001', 'LOC-BACKROOM', 3);
+            ->with(
+                $this->callback(fn($sku) => $sku instanceof \InventoryApp\Domain\Inventory\ValueObjects\SKU && $sku->getValue() === 'WIDGET-001'),
+                $this->callback(fn($loc) => $loc instanceof \InventoryApp\Domain\Inventory\ValueObjects\LocationId && $loc->getValue() === 'LOC-BACKROOM'),
+                $this->callback(fn($qty) => $qty instanceof \InventoryApp\Domain\Inventory\ValueObjects\Quantity && $qty->getValue() === 3)
+            );
 
         $response = $this->controller->dispatch($requestMock, $this->dispatchStockMock);
 
@@ -199,9 +207,9 @@ class InventoryControllerTest extends TestCase
             ->willReturn(null);
 
         $this->getStockLevelMock->expects($this->once())
-            ->method('execute')
+            ->method('getStockLevel')
             ->with('TSHIRT-L-RED', null)
-            ->willReturn(50);
+            ->willReturn(new \InventoryApp\Application\Inventory\Queries\StockLevelDTO('TSHIRT-L-RED', 'ALL', 50));
 
         $response = $this->controller->stockLevel($requestMock, 'TSHIRT-L-RED', $this->getStockLevelMock);
 
@@ -225,9 +233,9 @@ class InventoryControllerTest extends TestCase
             ->willReturn('LOC-WAREHOUSE');
 
         $this->getStockLevelMock->expects($this->once())
-            ->method('execute')
+            ->method('getStockLevel')
             ->with('WIDGET-100', 'LOC-WAREHOUSE')
-            ->willReturn(25);
+            ->willReturn(new \InventoryApp\Application\Inventory\Queries\StockLevelDTO('WIDGET-100', 'LOC-WAREHOUSE', 25));
 
         $response = $this->controller->stockLevel($requestMock, 'WIDGET-100', $this->getStockLevelMock);
 
@@ -251,7 +259,7 @@ class InventoryControllerTest extends TestCase
             ->willReturn(null);
 
         $this->getStockLevelMock->expects($this->once())
-            ->method('execute')
+            ->method('getStockLevel')
             ->with('NONEXISTENT-SKU', null)
             ->willThrowException(new Exception('Product not found with SKU: NONEXISTENT-SKU'));
 
@@ -274,7 +282,7 @@ class InventoryControllerTest extends TestCase
             ->willReturn('LOC-INVALID');
 
         $this->getStockLevelMock->expects($this->once())
-            ->method('execute')
+            ->method('getStockLevel')
             ->willThrowException(new Exception('Invalid location identifier'));
 
         $response = $this->controller->stockLevel($requestMock, 'ITEM-001', $this->getStockLevelMock);
@@ -295,9 +303,9 @@ class InventoryControllerTest extends TestCase
             ->willReturn('LOC-STOREFRONT');
 
         $this->getStockLevelMock->expects($this->once())
-            ->method('execute')
+            ->method('getStockLevel')
             ->with('OUT-OF-STOCK-ITEM', 'LOC-STOREFRONT')
-            ->willReturn(0);
+            ->willReturn(new \InventoryApp\Application\Inventory\Queries\StockLevelDTO('OUT-OF-STOCK-ITEM', 'LOC-STOREFRONT', 0));
 
         $response = $this->controller->stockLevel($requestMock, 'OUT-OF-STOCK-ITEM', $this->getStockLevelMock);
 

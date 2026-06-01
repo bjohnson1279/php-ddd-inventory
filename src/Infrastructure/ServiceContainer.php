@@ -27,20 +27,68 @@ use InventoryApp\Domain\Uom\Repositories\ProductUomConfigurationRepositoryInterf
 use InventoryApp\Domain\Kit\Repositories\KitRepositoryInterface;
 use InventoryApp\Infrastructure\Persistence\Repositories\EloquentProductUomConfigurationRepository;
 use InventoryApp\Infrastructure\Persistence\Repositories\EloquentKitRepository;
+use Illuminate\Container\Container;
 
 class ServiceContainer
 {
-    // Tenant-scoped repos are NOT singletons — they carry a tenantId per request
-    private static ?LedgerRepositoryInterface $ledger = null;
-    private static ?UserRepositoryInterface $users = null;
-    private static ?SerializedItemRepositoryInterface $serials = null;
-    private static ?BarcodeRepositoryInterface $barcodes = null;
-    private static ?JournalRepositoryInterface $journal = null;
-    private static ?StockOnboardingRepositoryInterface $onboards = null;
-    private static ?InventoryCountRepositoryInterface $inventoryCounts = null;
-    private static ?ProductUomConfigurationRepositoryInterface $uomConfig = null;
-    private static ?KitRepositoryInterface $kits = null;
+    private static ?Container $container = null;
     private static ?EventDispatcher $dispatcher = null;
+
+    public static function getInstance(): Container
+    {
+        if (self::$container === null) {
+            self::$container = new Container();
+            self::bindInterfaces(self::$container);
+        }
+
+        return self::$container;
+    }
+
+    private static function bindInterfaces(Container $container): void
+    {
+        // Singleton mappings
+        $container->singleton(UserRepositoryInterface::class, EloquentUserRepository::class);
+        $container->singleton(SerializedItemRepositoryInterface::class, EloquentSerializedItemRepository::class);
+        $container->singleton(BarcodeRepositoryInterface::class, EloquentBarcodeRepository::class);
+        $container->singleton(JournalRepositoryInterface::class, EloquentJournalRepository::class);
+        $container->singleton(StockOnboardingRepositoryInterface::class, EloquentStockOnboardingRepository::class);
+        $container->singleton(\InventoryApp\Domain\Catalog\Repositories\CatalogProductRepositoryInterface::class, EloquentCatalogProductRepository::class);
+        $container->singleton(ProductUomConfigurationRepositoryInterface::class, EloquentProductUomConfigurationRepository::class);
+        $container->singleton(KitRepositoryInterface::class, EloquentKitRepository::class);
+        $container->singleton(EventDispatcher::class, function () {
+            return self::dispatcher();
+        });
+
+        $container->singleton(\Psr\EventDispatcher\EventDispatcherInterface::class, function ($c) {
+            return $c->make(EventDispatcher::class);
+        });
+
+        // Tenant-scoped factory mappings (requires tenantId)
+        $container->bind(LedgerRepositoryInterface::class, function ($app, $parameters) {
+            $tenantId = $parameters['tenantId'] ?? (function_exists('tenantId') ? tenantId() : 'system');
+            return new EloquentLedgerRepository($tenantId);
+        });
+
+        $container->bind(ProductRepositoryInterface::class, function ($app, $parameters) {
+            $tenantId = $parameters['tenantId'] ?? (function_exists('tenantId') ? tenantId() : 'system');
+            return new EloquentProductRepository($tenantId);
+        });
+
+        $container->bind(CostLayerRepositoryInterface::class, function ($app, $parameters) {
+            $tenantId = $parameters['tenantId'] ?? (function_exists('tenantId') ? tenantId() : 'system');
+            return new EloquentCostLayerRepository($tenantId);
+        });
+
+        $container->bind(InventoryCountRepositoryInterface::class, function ($app, $parameters) {
+            $tenantId = $parameters['tenantId'] ?? (function_exists('tenantId') ? tenantId() : 'system');
+            return new EloquentInventoryCountRepository($tenantId);
+        });
+
+        $container->bind(\InventoryApp\Application\Inventory\Queries\StockQueryServiceInterface::class, function ($app, $parameters) {
+            $tenantId = $parameters['tenantId'] ?? (function_exists('tenantId') ? tenantId() : 'system');
+            return new \InventoryApp\Infrastructure\Persistence\Queries\EloquentStockQueryService($tenantId);
+        });
+    }
 
     /**
      * Shared event dispatcher singleton.
@@ -53,32 +101,32 @@ class ServiceContainer
 
     public static function ledgerRepo(string $tenantId): LedgerRepositoryInterface
     {
-        return new EloquentLedgerRepository($tenantId);
+        return self::getInstance()->make(LedgerRepositoryInterface::class, ['tenantId' => $tenantId]);
     }
 
     public static function userRepo(): UserRepositoryInterface
     {
-        return self::$users ??= new EloquentUserRepository();
+        return self::getInstance()->make(UserRepositoryInterface::class);
     }
 
     public static function serializedRepo(): SerializedItemRepositoryInterface
     {
-        return self::$serials ??= new EloquentSerializedItemRepository();
+        return self::getInstance()->make(SerializedItemRepositoryInterface::class);
     }
 
     public static function barcodeRepo(): BarcodeRepositoryInterface
     {
-        return self::$barcodes ??= new EloquentBarcodeRepository();
+        return self::getInstance()->make(BarcodeRepositoryInterface::class);
     }
 
     public static function journalRepo(): JournalRepositoryInterface
     {
-        return self::$journal ??= new EloquentJournalRepository();
+        return self::getInstance()->make(JournalRepositoryInterface::class);
     }
 
     public static function stockOnboardingRepo(): StockOnboardingRepositoryInterface
     {
-        return self::$onboards ??= new EloquentStockOnboardingRepository();
+        return self::getInstance()->make(StockOnboardingRepositoryInterface::class);
     }
 
     /**
@@ -86,7 +134,7 @@ class ServiceContainer
      */
     public static function productRepo(string $tenantId): ProductRepositoryInterface
     {
-        return new EloquentProductRepository($tenantId);
+        return self::getInstance()->make(ProductRepositoryInterface::class, ['tenantId' => $tenantId]);
     }
 
     /**
@@ -94,7 +142,7 @@ class ServiceContainer
      */
     public static function costLayerRepo(string $tenantId): CostLayerRepositoryInterface
     {
-        return new EloquentCostLayerRepository($tenantId);
+        return self::getInstance()->make(CostLayerRepositoryInterface::class, ['tenantId' => $tenantId]);
     }
 
     /**
@@ -102,22 +150,22 @@ class ServiceContainer
      */
     public static function inventoryCountRepo(string $tenantId): InventoryCountRepositoryInterface
     {
-        return new EloquentInventoryCountRepository($tenantId);
+        return self::getInstance()->make(InventoryCountRepositoryInterface::class, ['tenantId' => $tenantId]);
     }
 
     public static function catalogProductRepo(): \InventoryApp\Domain\Catalog\Repositories\CatalogProductRepositoryInterface
     {
-        return new EloquentCatalogProductRepository();
+        return self::getInstance()->make(\InventoryApp\Domain\Catalog\Repositories\CatalogProductRepositoryInterface::class);
     }
 
     public static function uomConfigRepo(): ProductUomConfigurationRepositoryInterface
     {
-        return self::$uomConfig ??= new EloquentProductUomConfigurationRepository();
+        return self::getInstance()->make(ProductUomConfigurationRepositoryInterface::class);
     }
 
     public static function kitRepo(): KitRepositoryInterface
     {
-        return self::$kits ??= new EloquentKitRepository();
+        return self::getInstance()->make(KitRepositoryInterface::class);
     }
 }
 

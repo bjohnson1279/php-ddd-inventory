@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS products (
   name TEXT NOT NULL,
   department TEXT NOT NULL,
   reorder_threshold INTEGER NOT NULL DEFAULT 10,
+  version_id INTEGER NOT NULL DEFAULT 1,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   UNIQUE(tenant_id, sku)
@@ -201,6 +202,15 @@ CREATE TABLE IF NOT EXISTS kit_components (
   kit_id UUID NOT NULL REFERENCES kits(id) ON DELETE CASCADE,
   variant_id TEXT NOT NULL,
   quantity INTEGER NOT NULL DEFAULT 1
+);
+
+-- Outbox messages
+CREATE TABLE IF NOT EXISTS outbox_messages (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  event_type VARCHAR(255) NOT NULL,
+  payload JSONB NOT NULL,
+  occurred_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  processed_at TIMESTAMP WITH TIME ZONE
 );
 
 -- Convenience indexes

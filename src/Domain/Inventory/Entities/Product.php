@@ -26,6 +26,7 @@ class Product extends AggregateRoot
     private string $name;
     private Department $department;
     private Quantity $reorderThreshold;
+    private int $versionId;
     
     /** @var array<string, LocationStock> */
     private array $locationStocks = [];
@@ -38,13 +39,15 @@ class Product extends AggregateRoot
         SKU $sku, 
         string $name, 
         Department $department, 
-        ?Quantity $reorderThreshold = null
+        ?Quantity $reorderThreshold = null,
+        int $versionId = 1
     ) {
         $this->id = $id;
         $this->sku = $sku;
         $this->name = $name;
         $this->department = $department;
         $this->reorderThreshold = $reorderThreshold ?? new Quantity(10);
+        $this->versionId = $versionId;
     }
 
     public static function create(
@@ -68,6 +71,8 @@ class Product extends AggregateRoot
     public function getName(): string { return $this->name; }
     public function getDepartment(): Department { return $this->department; }
     public function getReorderThreshold(): Quantity { return $this->reorderThreshold; }
+    public function getVersionId(): int { return $this->versionId; }
+    public function incrementVersion(): void { $this->versionId++; }
 
     public function loadLocationStock(LocationStock $stock): void
     {

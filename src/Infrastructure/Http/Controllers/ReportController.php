@@ -34,33 +34,10 @@ class ReportController
                     ->where('product_id', $p->id)
                     ->get();
 
-                $totalStock = 0;
-                foreach ($stocks as $s) {
-                    $totalStock += (int)$s->stock_quantity;
-
-                    // Initialize location valuation tracking
-                    if (!isset($locationValuations[$s->location_id])) {
-                        $locName = $locations[$s->location_id]->name ?? $s->location_id;
-                        $locationValuations[$s->location_id] = [
-                            'location_id' => $s->location_id,
-                            'name'        => $locName,
-                            'valuation'   => 0
-                        ];
-                    }
-                }
-
+                $totalStock = $this->processProductStocks($stocks, $locations, $locationValuations);
                 $totalItems += $totalStock;
 
-                if ($totalStock <= (int)$p->reorder_threshold) {
-                    $lowStockAlerts++;
-                    $lowStockItems[] = [
-                        'id'                => $p->id,
-                        'name'              => $p->name,
-                        'sku'               => $p->sku,
-                        'current_stock'     => $totalStock,
-                        'reorder_threshold' => (int)$p->reorder_threshold
-                    ];
-                }
+                $this->checkLowStockAlerts($p, $totalStock, $lowStockAlerts, $lowStockItems);
 
                 // Fetch active cost layers for this product variant
                 $layers = DB::table('inventory_cost_layers')
@@ -70,87 +47,18 @@ class ReportController
                     ->get()
                     ->toArray();
 
-                $totalLayersQty = array_sum(array_column($layers, 'remaining_quantity'));
-                $totalLayersCost = array_sum(array_map(fn($l) => $l->remaining_quantity * $l->unit_cost_cents, $layers));
-
-                // 1. Compute WAC (Weighted Average Cost)
-                $wacUnitCents = 1000; // default $10.00
-                if ($totalLayersQty > 0) {
-                    $wacUnitCents = (int)($totalLayersCost / $totalLayersQty);
-                } else {
-                    // fallback to catalog price
-                    $catalogVariant = DB::table('catalog_variants')->where('sku', $p->sku)->first();
-                    if ($catalogVariant) {
-                        $wacUnitCents = (int)($catalogVariant->price * 100);
-                    }
-                }
+                $wacUnitCents = $this->calculateWacUnitCents($layers, $p->sku);
 
                 $wacValuation = $totalStock * $wacUnitCents;
                 $totalWacCents += $wacValuation;
 
-                // Add to location valuation breakdown
-                foreach ($stocks as $s) {
-                    $locationValuations[$s->location_id]['valuation'] += ((int)$s->stock_quantity * $wacUnitCents);
-                }
+                $this->addLocationValuations($stocks, $wacUnitCents, $locationValuations);
 
-                // 2. Compute FIFO Valuation (valuation of remaining inventory)
-                // Since FIFO consumes the oldest first, the remaining stock belongs to the newest layers.
-                // Sort layers by received_at DESC (newest first)
-                usort($layers, fn($a, $b) => strcmp($b->received_at, $a->received_at));
-                
-                $remainingToVal = $totalStock;
-                $fifoValuation = 0;
-                foreach ($layers as $l) {
-                    if ($remainingToVal <= 0) break;
-                    $qtyToTake = min($remainingToVal, (int)$l->remaining_quantity);
-                    $fifoValuation += $qtyToTake * (int)$l->unit_cost_cents;
-                    $remainingToVal -= $qtyToTake;
-                }
-                // If remaining stock exceeds cost layers, value the rest at average cost
-                if ($remainingToVal > 0) {
-                    $fifoValuation += $remainingToVal * $wacUnitCents;
-                }
-                $totalFifoCents += $fifoValuation;
-
-                // 3. Compute LIFO Valuation (valuation of remaining inventory)
-                // Since LIFO consumes the newest first, the remaining stock belongs to the oldest layers.
-                // Sort layers by received_at ASC (oldest first)
-                usort($layers, fn($a, $b) => strcmp($a->received_at, $b->received_at));
-
-                $remainingToVal = $totalStock;
-                $lifoValuation = 0;
-                foreach ($layers as $l) {
-                    if ($remainingToVal <= 0) break;
-                    $qtyToTake = min($remainingToVal, (int)$l->remaining_quantity);
-                    $lifoValuation += $qtyToTake * (int)$l->unit_cost_cents;
-                    $remainingToVal -= $qtyToTake;
-                }
-                if ($remainingToVal > 0) {
-                    $lifoValuation += $remainingToVal * $wacUnitCents;
-                }
-                $totalLifoCents += $lifoValuation;
+                $totalFifoCents += $this->calculateFifoValuation($layers, $totalStock, $wacUnitCents);
+                $totalLifoCents += $this->calculateLifoValuation($layers, $totalStock, $wacUnitCents);
             }
 
-            // Fetch recent transaction activity
-            $transactions = DB::table('inventory_transactions')
-                ->where('tenant_id', $tenantId)
-                ->orderBy('created_at', 'desc')
-                ->limit(5)
-                ->get();
-
-            $activity = [];
-            foreach ($transactions as $t) {
-                $prod = DB::table('products')->where('id', $t->product_id)->first();
-                $activity[] = [
-                    'id'              => $t->id,
-                    'product_name'    => $prod ? $prod->name : $t->product_id,
-                    'sku'             => $prod ? $prod->sku : '',
-                    'type'            => $t->type,
-                    'quantity_change' => (int)$t->quantity_change,
-                    'condition'       => $t->condition,
-                    'created_at'      => $t->created_at
-                ];
-            }
+            $activity = $this->getRecentActivity($tenantId);
 
             return new Response([
                 'total_valuation_fifo_cents' => $totalFifoCents,
@@ -166,5 +74,135 @@ class ReportController
         } catch (Exception $e) {
             return new Response(['error' => $e->getMessage()], 400);
         }
+    }
+
+    private function processProductStocks(iterable $stocks, array $locations, array &$locationValuations): int
+    {
+        $totalStock = 0;
+        foreach ($stocks as $s) {
+            $totalStock += (int)$s->stock_quantity;
+
+            // Initialize location valuation tracking
+            if (!isset($locationValuations[$s->location_id])) {
+                $locName = $locations[$s->location_id]->name ?? $s->location_id;
+                $locationValuations[$s->location_id] = [
+                    'location_id' => $s->location_id,
+                    'name'        => $locName,
+                    'valuation'   => 0
+                ];
+            }
+        }
+        return $totalStock;
+    }
+
+    private function checkLowStockAlerts(object $product, int $totalStock, int &$lowStockAlerts, array &$lowStockItems): void
+    {
+        if ($totalStock <= (int)$product->reorder_threshold) {
+            $lowStockAlerts++;
+            $lowStockItems[] = [
+                'id'                => $product->id,
+                'name'              => $product->name,
+                'sku'               => $product->sku,
+                'current_stock'     => $totalStock,
+                'reorder_threshold' => (int)$product->reorder_threshold
+            ];
+        }
+    }
+
+    private function calculateWacUnitCents(array $layers, string $sku): int
+    {
+        $totalLayersQty = array_sum(array_column($layers, 'remaining_quantity'));
+        $totalLayersCost = array_sum(array_map(fn($l) => $l->remaining_quantity * $l->unit_cost_cents, $layers));
+
+        // 1. Compute WAC (Weighted Average Cost)
+        $wacUnitCents = 1000; // default $10.00
+        if ($totalLayersQty > 0) {
+            $wacUnitCents = (int)($totalLayersCost / $totalLayersQty);
+        } else {
+            // fallback to catalog price
+            $catalogVariant = DB::table('catalog_variants')->where('sku', $sku)->first();
+            if ($catalogVariant) {
+                $wacUnitCents = (int)($catalogVariant->price * 100);
+            }
+        }
+
+        return $wacUnitCents;
+    }
+
+    private function addLocationValuations(iterable $stocks, int $wacUnitCents, array &$locationValuations): void
+    {
+        // Add to location valuation breakdown
+        foreach ($stocks as $s) {
+            $locationValuations[$s->location_id]['valuation'] += ((int)$s->stock_quantity * $wacUnitCents);
+        }
+    }
+
+    private function calculateFifoValuation(array $layers, int $totalStock, int $wacUnitCents): int
+    {
+        // 2. Compute FIFO Valuation (valuation of remaining inventory)
+        // Since FIFO consumes the oldest first, the remaining stock belongs to the newest layers.
+        // Sort layers by received_at DESC (newest first)
+        usort($layers, fn($a, $b) => strcmp($b->received_at, $a->received_at));
+
+        $remainingToVal = $totalStock;
+        $fifoValuation = 0;
+        foreach ($layers as $l) {
+            if ($remainingToVal <= 0) break;
+            $qtyToTake = min($remainingToVal, (int)$l->remaining_quantity);
+            $fifoValuation += $qtyToTake * (int)$l->unit_cost_cents;
+            $remainingToVal -= $qtyToTake;
+        }
+        // If remaining stock exceeds cost layers, value the rest at average cost
+        if ($remainingToVal > 0) {
+            $fifoValuation += $remainingToVal * $wacUnitCents;
+        }
+        return $fifoValuation;
+    }
+
+    private function calculateLifoValuation(array $layers, int $totalStock, int $wacUnitCents): int
+    {
+        // 3. Compute LIFO Valuation (valuation of remaining inventory)
+        // Since LIFO consumes the newest first, the remaining stock belongs to the oldest layers.
+        // Sort layers by received_at ASC (oldest first)
+        usort($layers, fn($a, $b) => strcmp($a->received_at, $b->received_at));
+
+        $remainingToVal = $totalStock;
+        $lifoValuation = 0;
+        foreach ($layers as $l) {
+            if ($remainingToVal <= 0) break;
+            $qtyToTake = min($remainingToVal, (int)$l->remaining_quantity);
+            $lifoValuation += $qtyToTake * (int)$l->unit_cost_cents;
+            $remainingToVal -= $qtyToTake;
+        }
+        if ($remainingToVal > 0) {
+            $lifoValuation += $remainingToVal * $wacUnitCents;
+        }
+        return $lifoValuation;
+    }
+
+    private function getRecentActivity(string $tenantId): array
+    {
+        // Fetch recent transaction activity
+        $transactions = DB::table('inventory_transactions')
+            ->where('tenant_id', $tenantId)
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+
+        $activity = [];
+        foreach ($transactions as $t) {
+            $prod = DB::table('products')->where('id', $t->product_id)->first();
+            $activity[] = [
+                'id'              => $t->id,
+                'product_name'    => $prod ? $prod->name : $t->product_id,
+                'sku'             => $prod ? $prod->sku : '',
+                'type'            => $t->type,
+                'quantity_change' => (int)$t->quantity_change,
+                'condition'       => $t->condition,
+                'created_at'      => $t->created_at
+            ];
+        }
+
+        return $activity;
     }
 }

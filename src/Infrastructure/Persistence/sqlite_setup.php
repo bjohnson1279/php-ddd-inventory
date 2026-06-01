@@ -256,12 +256,19 @@ class SqliteSetup
               created_at           DATETIME DEFAULT CURRENT_TIMESTAMP,
               FOREIGN KEY (journal_entry_id) REFERENCES journal_entries (id)
             )",
-            "CREATE TABLE IF NOT EXISTS outbox_messages (
-              id            TEXT PRIMARY KEY,
-              event_type    VARCHAR(255) NOT NULL,
-              payload       TEXT NOT NULL,
-              occurred_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
-              processed_at  DATETIME
+            "CREATE TABLE IF NOT EXISTS xero_journal_mappings (
+              id                   TEXT PRIMARY KEY,
+              journal_entry_id     TEXT NOT NULL UNIQUE,
+              xero_journal_id      VARCHAR(50) NOT NULL UNIQUE,
+              created_at           DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (journal_entry_id) REFERENCES journal_entries (id)
+            )",
+            "CREATE TABLE IF NOT EXISTS netsuite_journal_mappings (
+              id                  TEXT PRIMARY KEY,
+              journal_entry_id    TEXT NOT NULL UNIQUE,
+              netsuite_journal_id VARCHAR(50) NOT NULL UNIQUE,
+              created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (journal_entry_id) REFERENCES journal_entries (id)
             )"
         ];
 

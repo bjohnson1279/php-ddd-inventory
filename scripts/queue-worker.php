@@ -123,6 +123,26 @@ function resolveListener(string $class, string $tenantId): ?object
         return new \InventoryApp\Application\Accounting\Listeners\SyncJournalToQuickBooks($syncClient, $mappingRepo);
     }
 
+    // Resolve SyncJournalToXero
+    if ($class === \InventoryApp\Application\Accounting\Listeners\SyncJournalToXero::class) {
+        $syncClient = new \InventoryApp\Infrastructure\Integration\Xero\XeroJournalSync(
+            getenv('XERO_TENANT_ID') ?: 'mock-tenant',
+            getenv('XERO_ACCESS_TOKEN') ?: 'mock-token'
+        );
+        $mappingRepo = new \InventoryApp\Infrastructure\Integration\Xero\XeroMappingRepository();
+        return new \InventoryApp\Application\Accounting\Listeners\SyncJournalToXero($syncClient, $mappingRepo);
+    }
+
+    // Resolve SyncJournalToNetSuite
+    if ($class === \InventoryApp\Application\Accounting\Listeners\SyncJournalToNetSuite::class) {
+        $syncClient = new \InventoryApp\Infrastructure\Integration\NetSuite\NetSuiteJournalSync(
+            getenv('NETSUITE_ACCOUNT_ID') ?: 'mock-account',
+            getenv('NETSUITE_TOKEN') ?: 'mock-token'
+        );
+        $mappingRepo = new \InventoryApp\Infrastructure\Integration\NetSuite\NetSuiteMappingRepository();
+        return new \InventoryApp\Application\Accounting\Listeners\SyncJournalToNetSuite($syncClient, $mappingRepo);
+    }
+
     // Resolve NotificationListener
     if ($class === \InventoryApp\Application\Notification\Listeners\NotificationListener::class) {
         $notificationService = new \InventoryApp\Application\Notification\Services\NotificationService();

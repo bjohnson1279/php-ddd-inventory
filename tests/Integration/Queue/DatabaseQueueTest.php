@@ -26,7 +26,11 @@ final class DatabaseQueueTest extends TestCase
         DB::table('catalog_variants')->delete();
         DB::table('catalog_products')->delete();
         DB::table('quickbooks_journal_mappings')->delete();
+        DB::table('xero_journal_mappings')->delete();
+        DB::table('netsuite_journal_mappings')->delete();
         DB::table('journal_entries')->delete();
+
+        ServiceContainer::resetDispatcher();
     }
 
     public function testEventDispatchQueuesListenerAndWorkerProcessesIt(): void
@@ -254,5 +258,103 @@ final class DatabaseQueueTest extends TestCase
         // 5. Verify the mapping was successfully created in the mapping table
         $this->assertNotNull($mappingRepo->findQuickBooksJournalId($entryId));
         $this->assertStringContainsString('mock-qbo-journal-', $mappingRepo->findQuickBooksJournalId($entryId));
+    }
+
+    public function testJournalEntryRecordedQueuesXeroSync(): void
+    {
+        $entryId = uuidv4();
+        $tenantId = 'test-tenant';
+
+        $syncClient = new \InventoryApp\Infrastructure\Integration\Xero\XeroJournalSync(
+            'mock-tenant',
+            'token'
+        );
+        $mappingRepo = new \InventoryApp\Infrastructure\Integration\Xero\XeroMappingRepository();
+        $xeroSyncListener = new \InventoryApp\Application\Accounting\Listeners\SyncJournalToXero($syncClient, $mappingRepo);
+
+        $dispatcher = ServiceContainer::dispatcher();
+        $dispatcher->subscribe(\InventoryApp\Domain\Accounting\Events\JournalEntryRecorded::class, [$xeroSyncListener, 'handle']);
+
+        // Verify queue is empty
+        $this->assertEquals(0, DB::table('queued_jobs')->count());
+
+        $journalRepo = ServiceContainer::journalRepo();
+        $entry = new \InventoryApp\Domain\Accounting\Aggregates\JournalEntry(
+            $entryId,
+            $tenantId,
+            new \DateTimeImmutable(),
+            'Integration Test Journal Entry to Xero',
+            'ref-xero-123',
+            \InventoryApp\Domain\Accounting\Enums\AccountingMethod::Accrual
+        );
+        $entry->addLine(\InventoryApp\Domain\Accounting\ValueObjects\AccountCode::cash(), 3000, \InventoryApp\Domain\Accounting\Enums\DebitCredit::Debit, 'Deposit');
+        $entry->addLine(\InventoryApp\Domain\Accounting\ValueObjects\AccountCode::salesRevenue(), 3000, \InventoryApp\Domain\Accounting\Enums\DebitCredit::Credit, 'Revenue');
+        $entry->assertBalanced();
+
+        $journalRepo->save($entry);
+
+        $this->assertEquals(1, DB::table('queued_jobs')->count());
+        $job = DB::table('queued_jobs')->first();
+        $this->assertEquals('InventoryApp\Application\Accounting\Listeners\SyncJournalToXero', $job->listener_class);
+
+        $output = [];
+        $resultCode = -1;
+        $cmd = "php scripts/queue-worker.php --once";
+        exec($cmd, $output, $resultCode);
+
+        $this->assertEquals(0, $resultCode, implode("\n", $output));
+        $this->assertEquals(0, DB::table('queued_jobs')->count());
+
+        $this->assertNotNull($mappingRepo->findXeroJournalId($entryId));
+        $this->assertStringContainsString('mock-xero-journal-', $mappingRepo->findXeroJournalId($entryId));
+    }
+
+    public function testJournalEntryRecordedQueuesNetSuiteSync(): void
+    {
+        $entryId = uuidv4();
+        $tenantId = 'test-tenant';
+
+        $syncClient = new \InventoryApp\Infrastructure\Integration\NetSuite\NetSuiteJournalSync(
+            'mock-account',
+            'token'
+        );
+        $mappingRepo = new \InventoryApp\Infrastructure\Integration\NetSuite\NetSuiteMappingRepository();
+        $nsSyncListener = new \InventoryApp\Application\Accounting\Listeners\SyncJournalToNetSuite($syncClient, $mappingRepo);
+
+        $dispatcher = ServiceContainer::dispatcher();
+        $dispatcher->subscribe(\InventoryApp\Domain\Accounting\Events\JournalEntryRecorded::class, [$nsSyncListener, 'handle']);
+
+        // Verify queue is empty
+        $this->assertEquals(0, DB::table('queued_jobs')->count());
+
+        $journalRepo = ServiceContainer::journalRepo();
+        $entry = new \InventoryApp\Domain\Accounting\Aggregates\JournalEntry(
+            $entryId,
+            $tenantId,
+            new \DateTimeImmutable(),
+            'Integration Test Journal Entry to NetSuite',
+            'ref-ns-123',
+            \InventoryApp\Domain\Accounting\Enums\AccountingMethod::Accrual
+        );
+        $entry->addLine(\InventoryApp\Domain\Accounting\ValueObjects\AccountCode::cash(), 4500, \InventoryApp\Domain\Accounting\Enums\DebitCredit::Debit, 'Deposit');
+        $entry->addLine(\InventoryApp\Domain\Accounting\ValueObjects\AccountCode::salesRevenue(), 4500, \InventoryApp\Domain\Accounting\Enums\DebitCredit::Credit, 'Revenue');
+        $entry->assertBalanced();
+
+        $journalRepo->save($entry);
+
+        $this->assertEquals(1, DB::table('queued_jobs')->count());
+        $job = DB::table('queued_jobs')->first();
+        $this->assertEquals('InventoryApp\Application\Accounting\Listeners\SyncJournalToNetSuite', $job->listener_class);
+
+        $output = [];
+        $resultCode = -1;
+        $cmd = "php scripts/queue-worker.php --once";
+        exec($cmd, $output, $resultCode);
+
+        $this->assertEquals(0, $resultCode, implode("\n", $output));
+        $this->assertEquals(0, DB::table('queued_jobs')->count());
+
+        $this->assertNotNull($mappingRepo->findNetSuiteJournalId($entryId));
+        $this->assertStringContainsString('mock-netsuite-journal-', $mappingRepo->findNetSuiteJournalId($entryId));
     }
 }

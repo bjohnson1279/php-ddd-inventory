@@ -4,6 +4,7 @@ namespace InventoryApp\Application\Inventory\Listeners;
 
 use InventoryApp\Domain\Catalog\Events\VariantAddedToCatalog;
 use InventoryApp\Application\Inventory\UseCases\RegisterProduct;
+use Ramsey\Uuid\Uuid;
 
 class CreateInventoryItemOnVariantAdded
 {
@@ -19,7 +20,7 @@ class CreateInventoryItemOnVariantAdded
         // When a new variant is cataloged, we automatically register it in the inventory system
         // with 0 stock, assigned to the default STOREFRONT location.
         $this->registerProductUseCase->execute(
-            uniqid('inv_'), // Generate a new ID for the inventory item
+            Uuid::uuid4()->toString(), // Generate a new UUID for the inventory item
             $event->getSku()->getValue(),
             $event->getProductName() . ' (' . $event->getSku()->getValue() . ')',
             $event->getDepartment()->getValue(),

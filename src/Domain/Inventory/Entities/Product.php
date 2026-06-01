@@ -18,6 +18,7 @@ use InventoryApp\Domain\Inventory\Events\StockReconciled;
 use InventoryApp\Domain\Inventory\Events\StockTransferred;
 use InventoryApp\Domain\Inventory\Events\LowStockDetected;
 use DateTimeImmutable;
+use Ramsey\Uuid\Uuid;
 
 class Product extends AggregateRoot
 {
@@ -132,7 +133,7 @@ class Product extends AggregateRoot
         ?string $reference = null
     ): void {
         $this->pendingTransactions[] = new InventoryTransaction(
-            uniqid('txn_', true),
+            Uuid::uuid4()->toString(),
             $this->id,
             $type,
             $quantityChange,

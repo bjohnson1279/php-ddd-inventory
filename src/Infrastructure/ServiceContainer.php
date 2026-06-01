@@ -99,6 +99,11 @@ class ServiceContainer
         return self::$dispatcher ??= new EventDispatcher();
     }
 
+    public static function resetDispatcher(): void
+    {
+        self::$dispatcher = null;
+    }
+
     public static function ledgerRepo(string $tenantId): LedgerRepositoryInterface
     {
         return self::getInstance()->make(LedgerRepositoryInterface::class, ['tenantId' => $tenantId]);

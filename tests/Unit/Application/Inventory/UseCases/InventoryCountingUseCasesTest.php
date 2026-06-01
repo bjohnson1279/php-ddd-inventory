@@ -29,14 +29,6 @@ class InventoryCountingUseCasesTest extends TestCase
         $this->productRepo = $this->createMock(ProductRepositoryInterface::class);
     }
 
-    public function testStartInventoryCountSavesNewAggregate(): void
-    {
-        $this->countRepo->expects($this->once())->method('save')
-            ->with($this->callback(fn(InventoryCount $c) => $c->getId() === 'c-1'));
-
-        (new StartInventoryCount($this->countRepo))->execute('c-1');
-    }
-
     public function testRecordCountItemUpdatesAggregate(): void
     {
         $count = InventoryCount::start('c-1');

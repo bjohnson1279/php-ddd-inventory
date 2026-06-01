@@ -40,6 +40,7 @@ class SqliteSetup
               name TEXT NOT NULL,
               department TEXT NOT NULL,
               reorder_threshold INTEGER NOT NULL DEFAULT 10,
+              version_id INTEGER NOT NULL DEFAULT 1,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               UNIQUE(tenant_id, sku)

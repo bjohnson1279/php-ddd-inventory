@@ -13,7 +13,13 @@ class LocationId
         if (empty(trim($value))) {
             throw new InvalidArgumentException("Location ID cannot be empty");
         }
-        $this->value = trim($value);
+
+        $trimmed = trim($value);
+        if (!str_starts_with($trimmed, 'LOC-')) {
+            throw new InvalidArgumentException("Location ID must start with 'LOC-'");
+        }
+
+        $this->value = $trimmed;
     }
 
     public function getValue(): string

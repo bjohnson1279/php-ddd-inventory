@@ -41,7 +41,7 @@ class TransferStockTest extends TestCase
             }));
 
         $useCase = new TransferStock($repositoryMock, $this->createStub(EventDispatcherInterface::class));
-        $useCase->execute('TSHIRT-L-RED', 'LOC-STOREFRONT', 'LOC-BACKROOM', 4);
+        $useCase->execute(new SKU('TSHIRT-L-RED'), new LocationId('LOC-STOREFRONT'), new LocationId('LOC-BACKROOM'), new Quantity(4));
     }
 
     public function testExecuteThrowsWhenProductNotFound(): void
@@ -53,6 +53,6 @@ class TransferStockTest extends TestCase
         $this->expectExceptionMessageMatches('/not found/i');
 
         $useCase = new TransferStock($repositoryMock, $this->createStub(EventDispatcherInterface::class));
-        $useCase->execute('GHOST-SKU', 'LOC-A', 'LOC-B', 1);
+        $useCase->execute(new SKU('GHOST-SKU'), new LocationId('LOC-A'), new LocationId('LOC-B'), new Quantity(1));
     }
 }

@@ -16,16 +16,12 @@ class ReceiveStock
         private readonly EventDispatcherInterface   $events,
     ) {}
 
-    public function execute(string $skuValue, string $locationValue, int $quantityValue, ?string $reference = null): void
+    public function execute(SKU $sku, LocationId $locationId, Quantity $quantity, ?string $reference = null): void
     {
-        $sku        = new SKU($skuValue);
-        $quantity   = new Quantity($quantityValue);
-        $locationId = new LocationId($locationValue);
-
         $product = $this->productRepository->findBySku($sku);
 
         if (!$product) {
-            throw new Exception("Product not found with SKU: " . $skuValue);
+            throw new Exception("Product not found with SKU: " . $sku->getValue());
         }
 
         $product->receiveStockAt($locationId, $quantity, $reference);

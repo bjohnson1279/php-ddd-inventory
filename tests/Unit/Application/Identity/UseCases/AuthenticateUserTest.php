@@ -117,4 +117,53 @@ class AuthenticateUserTest extends TestCase
 
         $useCase->execute($email, $wrongPassword, $tenantId);
     }
+
+    public function testExecuteThrowsWhenTokenServiceFails(): void
+    {
+        $email = 'user@store.com';
+        $password = 'password123';
+        $tenantId = 't1';
+        $user = $this->makeUser('u1', $email, $password);
+
+        $repo = $this->createMock(UserRepositoryInterface::class);
+        $repo->expects($this->once())
+            ->method('findByEmail')
+            ->with($email, $this->equalTo(new TenantId($tenantId)))
+            ->willReturn($user);
+
+        $tokenService = $this->createMock(ApiTokenService::class);
+        $tokenService->expects($this->once())
+            ->method('issue')
+            ->willThrowException(new Exception('Token generation failed'));
+
+        $useCase = new AuthenticateUser($repo, $tokenService);
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('Token generation failed');
+
+        $useCase->execute($email, $password, $tenantId);
+    }
+
+    public function testExecuteThrowsWhenRepositoryFails(): void
+    {
+        $email = 'user@store.com';
+        $password = 'password123';
+        $tenantId = 't1';
+
+        $repo = $this->createMock(UserRepositoryInterface::class);
+        $repo->expects($this->once())
+            ->method('findByEmail')
+            ->willThrowException(new Exception('Database connection failed'));
+
+        $tokenService = $this->createMock(ApiTokenService::class);
+        $tokenService->expects($this->never())
+            ->method('issue');
+
+        $useCase = new AuthenticateUser($repo, $tokenService);
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('Database connection failed');
+
+        $useCase->execute($email, $password, $tenantId);
+    }
 }

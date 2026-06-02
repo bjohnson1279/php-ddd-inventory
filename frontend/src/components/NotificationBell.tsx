@@ -106,10 +106,12 @@ export default function NotificationBell() {
         className="btn-secondary notification-bell-button" 
         onClick={() => setIsOpen(!isOpen)}
         style={{ position: 'relative', padding: '0' }}
+        aria-label={`Notifications, ${unreadCount} unread`}
+        aria-expanded={isOpen}
       >
-        🔔
+        <span aria-hidden="true">🔔</span>
         {unreadCount > 0 && (
-          <span className="notification-badge">{unreadCount}</span>
+          <span className="notification-badge" aria-hidden="true">{unreadCount}</span>
         )}
       </button>
 

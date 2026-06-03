@@ -60,6 +60,7 @@ final class ReportControllerTest extends TestCase
             'adminPassword' => $this->password,
         ]);
 
+
         $this->assertEquals(200, $setupRes['status']);
 
         // 2. Login to get token
@@ -126,6 +127,7 @@ final class ReportControllerTest extends TestCase
 
         // 4. Request valuation report
         $res = $this->request('GET', '/api/reports/valuation', [], $this->token);
+
         $this->assertEquals(200, $res['status'], json_encode($res));
 
         $body = $res['body'];

@@ -13,82 +13,106 @@ class ReportController
     {
         try {
             // 1. Fetch all products for tenant
-            $products = DB::table('products')
-                ->where('tenant_id', $tenantId)
-                ->get();
-
-            $totalFifoCents = 0;
-            $totalLifoCents = 0;
-            $totalWacCents = 0;
-            $totalItems = 0;
-            $lowStockAlerts = 0;
-            $lowStockItems = [];
-            $locationValuations = [];
+            $products = DB::table('products')->where('tenant_id', $tenantId)->get();
+            $productIds = $products->pluck('id')->toArray();
+            $productSkus = $products->pluck('sku')->toArray();
 
             // Fetch all locations to initialize location names
             $locations = DB::table('locations')->get()->keyBy('id')->toArray();
 
             // Fetch ALL stock locations for these products once (to avoid N+1)
-            $productIds = $products->pluck('id')->toArray();
-            $allStocks = DB::table('product_locations')
-                ->whereIn('product_id', $productIds)
-                ->get()
-                ->groupBy('product_id');
+            $allStocks = $this->fetchStocksMap($productIds);
 
             // Fetch ALL active cost layers for these products once
-            $productSkus = $products->pluck('sku')->toArray();
-            $allLayers = DB::table('inventory_cost_layers')
-                ->where('tenant_id', $tenantId)
-                ->whereIn('variant_id', $productSkus)
-                ->where('remaining_quantity', '>', 0)
-                ->get()
-                ->groupBy('variant_id');
+            $allLayers = $this->fetchCostLayersMap($tenantId, $productSkus);
 
             // Fetch ALL catalog variants for these products once
-            $catalogVariants = DB::table('catalog_variants')
-                ->whereIn('sku', $productSkus)
-                ->get()
-                ->keyBy('sku');
+            $catalogVariants = $this->fetchCatalogVariantsMap($productSkus);
 
-            foreach ($products as $p) {
-                // Get stock at all locations for this product
-                $stocks = $allStocks->get($p->id, collect([]));
+            $reportData = $this->buildReportData($products, $locations, $allStocks, $allLayers, $catalogVariants);
+            $reportData['recent_activity'] = $this->getRecentActivity($tenantId);
 
-                $totalStock = $this->processProductStocks($stocks, $locations, $locationValuations);
-                $totalItems += $totalStock;
-
-                $this->checkLowStockAlerts($p, $totalStock, $lowStockAlerts, $lowStockItems);
-
-                // Fetch active cost layers for this product variant
-                $layers = $allLayers->get($p->sku, collect([]))->toArray();
-
-                $wacUnitCents = $this->calculateWacUnitCents($layers, $p->sku, $catalogVariants);
-
-                $wacValuation = $totalStock * $wacUnitCents;
-                $totalWacCents += $wacValuation;
-
-                $this->addLocationValuations($stocks, $wacUnitCents, $locationValuations);
-
-                $totalFifoCents += $this->calculateFifoValuation($layers, $totalStock, $wacUnitCents);
-                $totalLifoCents += $this->calculateLifoValuation($layers, $totalStock, $wacUnitCents);
-            }
-
-            $activity = $this->getRecentActivity($tenantId);
-
-            return new Response([
-                'total_valuation_fifo_cents' => $totalFifoCents,
-                'total_valuation_lifo_cents' => $totalLifoCents,
-                'total_valuation_wac_cents'  => $totalWacCents,
-                'total_items_count'          => $totalItems,
-                'low_stock_alerts_count'     => $lowStockAlerts,
-                'low_stock_items'            => $lowStockItems,
-                'valuation_by_location'      => array_values($locationValuations),
-                'recent_activity'            => $activity
-            ], 200);
-
+            return new Response($reportData, 200);
         } catch (Exception $e) {
             return new Response(['error' => $e->getMessage()], 400);
         }
+    }
+
+    private function fetchStocksMap(array $productIds): \Illuminate\Support\Collection
+    {
+        if (empty($productIds)) {
+            return collect([]);
+        }
+        return DB::table('product_locations')
+            ->whereIn('product_id', $productIds)
+            ->get()
+            ->groupBy('product_id');
+    }
+
+    private function fetchCostLayersMap(string $tenantId, array $productSkus): \Illuminate\Support\Collection
+    {
+        if (empty($productSkus)) {
+            return collect([]);
+        }
+        return DB::table('inventory_cost_layers')
+            ->where('tenant_id', $tenantId)
+            ->whereIn('variant_id', $productSkus)
+            ->where('remaining_quantity', '>', 0)
+            ->get()
+            ->groupBy('variant_id');
+    }
+
+    private function fetchCatalogVariantsMap(array $productSkus): \Illuminate\Support\Collection
+    {
+        if (empty($productSkus)) {
+            return collect([]);
+        }
+        return DB::table('catalog_variants')
+            ->whereIn('sku', $productSkus)
+            ->get()
+            ->keyBy('sku');
+    }
+
+    private function buildReportData(
+        \Illuminate\Support\Collection $products,
+        array $locations,
+        \Illuminate\Support\Collection $allStocks,
+        \Illuminate\Support\Collection $allLayers,
+        \Illuminate\Support\Collection $catalogVariants
+    ): array {
+        $data = [
+            'total_valuation_fifo_cents' => 0,
+            'total_valuation_lifo_cents' => 0,
+            'total_valuation_wac_cents'  => 0,
+            'total_items_count'          => 0,
+            'low_stock_alerts_count'     => 0,
+            'low_stock_items'            => [],
+            'valuation_by_location'      => []
+        ];
+
+        $locationValuations = [];
+
+        foreach ($products as $p) {
+            // Get stock at all locations for this product
+            $stocks = $allStocks->get($p->id, collect([]));
+            $totalStock = $this->processProductStocks($stocks, $locations, $locationValuations);
+            $data['total_items_count'] += $totalStock;
+
+            $this->checkLowStockAlerts($p, $totalStock, $data['low_stock_alerts_count'], $data['low_stock_items']);
+
+            // Fetch active cost layers for this product variant
+            $layers = $allLayers->get($p->sku, collect([]))->toArray();
+            $wacUnitCents = $this->calculateWacUnitCents($layers, $p->sku, $catalogVariants);
+
+            $data['total_valuation_wac_cents'] += ($totalStock * $wacUnitCents);
+            $this->addLocationValuations($stocks, $wacUnitCents, $locationValuations);
+
+            $data['total_valuation_fifo_cents'] += $this->calculateFifoValuation($layers, $totalStock, $wacUnitCents);
+            $data['total_valuation_lifo_cents'] += $this->calculateLifoValuation($layers, $totalStock, $wacUnitCents);
+        }
+
+        $data['valuation_by_location'] = array_values($locationValuations);
+        return $data;
     }
 
     private function processProductStocks(iterable $stocks, array $locations, array &$locationValuations): int

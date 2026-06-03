@@ -128,4 +128,40 @@ class RegisterUserTest extends TestCase
 
         (new RegisterUser($repo, $dispatcher))->execute('u7', 't-check', 'CHECK@store.com', 'password123', 'Check User');
     }
+
+    public function testRegisterUserDoesNotDispatchEventsIfSaveFails(): void
+    {
+        $repo = $this->createMock(UserRepositoryInterface::class);
+        $repo->method('findByEmail')->willReturn(null);
+        $repo->method('save')->willThrowException(new \RuntimeException('Database error'));
+
+        $dispatcher = $this->createMock(EventDispatcherInterface::class);
+        $dispatcher->expects($this->never())->method('dispatch');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Database error');
+
+        (new RegisterUser($repo, $dispatcher))->execute('u8', 't1', 'fail@store.com', 'password123', 'Fail User');
+    }
+
+    public function testRegisterUserSavesUserWithCorrectInitialState(): void
+    {
+        $repo = $this->createMock(UserRepositoryInterface::class);
+        $repo->expects($this->once())->method('findByEmail')->willReturn(null);
+
+        $repo->expects($this->once())->method('save')->with($this->callback(function (User $user) {
+            return $user->getId() === 'u-new'
+                && $user->getTenantId()->getValue() === 't-new'
+                && $user->getEmail() === 'state@store.com'
+                && $user->getName() === 'State User'
+                && $user->isActive() === true
+                && count($user->getRoles()) === 1
+                && $user->getRoles()[0]->getId() === Role::STAFF
+                && $user->verifyPassword('mysecurepass123');
+        }));
+
+        $dispatcher = $this->createMock(EventDispatcherInterface::class);
+
+        (new RegisterUser($repo, $dispatcher))->execute('u-new', 't-new', 'state@store.com', 'mysecurepass123', 'State User');
+    }
 }

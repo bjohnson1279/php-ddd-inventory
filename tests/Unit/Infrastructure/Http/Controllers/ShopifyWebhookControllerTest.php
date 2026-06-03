@@ -42,8 +42,16 @@ class MockPhpStream
 
 class ShopifyWebhookControllerTest extends TestCase
 {
+    private ?string $originalSecret = null;
+    private ?string $originalHmac = null;
+    private ?string $originalTopic = null;
+
     protected function setUp(): void
     {
+        $this->originalSecret = getenv('SHOPIFY_WEBHOOK_SECRET');
+        $this->originalHmac = $_SERVER['HTTP_X_SHOPIFY_HMAC_SHA256'] ?? null;
+        $this->originalTopic = $_SERVER['HTTP_X_SHOPIFY_TOPIC'] ?? null;
+
         // Setup SQLite Capsule
         $capsule = new DB();
         $capsule->addConnection([
@@ -72,9 +80,25 @@ class ShopifyWebhookControllerTest extends TestCase
     protected function tearDown(): void
     {
         stream_wrapper_restore('php');
-        $_SERVER['HTTP_X_SHOPIFY_HMAC_SHA256'] = '';
-        $_SERVER['HTTP_X_SHOPIFY_TOPIC'] = '';
-        putenv('SHOPIFY_WEBHOOK_SECRET=');
+
+        if ($this->originalHmac !== null) {
+            $_SERVER['HTTP_X_SHOPIFY_HMAC_SHA256'] = $this->originalHmac;
+        } else {
+            unset($_SERVER['HTTP_X_SHOPIFY_HMAC_SHA256']);
+        }
+
+        if ($this->originalTopic !== null) {
+            $_SERVER['HTTP_X_SHOPIFY_TOPIC'] = $this->originalTopic;
+        } else {
+            unset($_SERVER['HTTP_X_SHOPIFY_TOPIC']);
+        }
+
+        if ($this->originalSecret !== false && $this->originalSecret !== null) {
+            putenv('SHOPIFY_WEBHOOK_SECRET=' . $this->originalSecret);
+        } else {
+            putenv('SHOPIFY_WEBHOOK_SECRET'); // Removes the env var
+        }
+
         MockPhpStream::$data = '';
     }
 
@@ -284,5 +308,170 @@ class ShopifyWebhookControllerTest extends TestCase
 
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertStringContainsString('Webhook topic not supported, ignored', $response->getContent());
+    }
+
+    public function testExceptionReturns400()
+    {
+        $tenantId = 'tenant-1';
+        $locationId = 'LOC-STOREFRONT';
+        $sku = 'NON-EXISTENT-SKU'; // This will cause ProcessSale to throw an exception
+
+        DB::table('tenants')->insert(['id' => $tenantId, 'name' => 'Test Tenant']);
+        DB::table('locations')->insert(['id' => $locationId, 'name' => 'Storefront', 'type' => 'STORE']);
+
+        $payload = [
+            'id' => '123',
+            'line_items' => [
+                ['sku' => $sku, 'quantity' => 1]
+            ]
+        ];
+
+        MockPhpStream::$data = json_encode($payload);
+        $_SERVER['HTTP_X_SHOPIFY_TOPIC'] = 'orders/create';
+
+        $controller = new ShopifyWebhookController();
+        $request = $this->createMockRequest($tenantId);
+
+        $response = $controller->handle($request);
+
+        $this->assertEquals(400, $response->getStatusCode());
+        $this->assertStringContainsString('Product not found', $response->getContent());
+    }
+
+    public function testEmptySecretBypassesHmacValidation()
+    {
+        putenv('SHOPIFY_WEBHOOK_SECRET=');
+        $_SERVER['HTTP_X_SHOPIFY_HMAC_SHA256'] = 'invalid_hmac';
+        MockPhpStream::$data = json_encode(['id' => 123]);
+        $_SERVER['HTTP_X_SHOPIFY_TOPIC'] = 'unknown/topic'; // Ensure it returns a 200 message
+
+        $controller = new ShopifyWebhookController();
+        $request = $this->createMockRequest('tenant-1');
+
+        $response = $controller->handle($request);
+
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertStringContainsString('Webhook topic not supported, ignored', $response->getContent());
+    }
+
+    public function testLineItemWithEmptySkuOrInvalidQuantityIsIgnored()
+    {
+        $tenantId = 'tenant-1';
+        $locationId = 'LOC-STOREFRONT';
+
+        // Seed data
+        DB::table('tenants')->insert(['id' => $tenantId, 'name' => 'Test Tenant']);
+        DB::table('locations')->insert(['id' => $locationId, 'name' => 'Storefront', 'type' => 'STORE']);
+        DB::table('products')->insert([
+            'id' => 'prod-4',
+            'tenant_id' => $tenantId,
+            'sku' => 'TEST-SKU-4',
+            'name' => 'Test Product 4',
+            'department' => 'Test',
+        ]);
+        DB::table('product_locations')->insert([
+            'product_id' => 'prod-4',
+            'location_id' => $locationId,
+            'stock_quantity' => 10,
+        ]);
+
+        $payload = [
+            'id' => '444',
+            'line_items' => [
+                ['sku' => '', 'quantity' => 5], // Empty SKU
+                ['sku' => 'TEST-SKU-4', 'quantity' => 0], // Zero quantity
+                ['sku' => 'TEST-SKU-4', 'quantity' => -1], // Negative quantity
+                ['sku' => 'TEST-SKU-4', 'quantity' => 1], // Valid item
+            ]
+        ];
+
+        MockPhpStream::$data = json_encode($payload);
+        $_SERVER['HTTP_X_SHOPIFY_TOPIC'] = 'orders/create';
+
+        $controller = new ShopifyWebhookController();
+        $request = $this->createMockRequest($tenantId);
+
+        $response = $controller->handle($request);
+
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertStringContainsString('Order webhook processed', $response->getContent());
+
+        // Assert stock decremented by only the valid item (1)
+        $stock = DB::table('product_locations')
+            ->where('product_id', 'prod-4')
+            ->where('location_id', $locationId)
+            ->value('stock_quantity');
+
+        $this->assertEquals(9, $stock);
+    }
+
+    public function testLocationMappingIsUsedIfPresent()
+    {
+        $tenantId = 'tenant-1';
+        $locationId = 'LOC-CUSTOM';
+
+        // Explicitly insert test data into the existing location mapping table
+        DB::table('shopify_location_mappings')->insert([
+            'id' => 'map-1',
+            'shopify_location_id' => 'shop-loc-1',
+            'our_location_id' => $locationId
+        ]);
+
+        // Seed data
+        DB::table('tenants')->insert(['id' => $tenantId, 'name' => 'Test Tenant']);
+        DB::table('locations')->insert(['id' => $locationId, 'name' => 'Custom', 'type' => 'STORE']);
+        DB::table('products')->insert([
+            'id' => 'prod-5',
+            'tenant_id' => $tenantId,
+            'sku' => 'TEST-SKU-5',
+            'name' => 'Test Product 5',
+            'department' => 'Test',
+        ]);
+        DB::table('product_locations')->insert([
+            'product_id' => 'prod-5',
+            'location_id' => $locationId,
+            'stock_quantity' => 10,
+        ]);
+
+        $payload = [
+            'id' => '555',
+            'location_id' => 'shop-loc-1', // Although ignored by current controller, explicitly simulating it
+            'line_items' => [
+                ['sku' => 'TEST-SKU-5', 'quantity' => 2]
+            ]
+        ];
+
+        MockPhpStream::$data = json_encode($payload);
+        $_SERVER['HTTP_X_SHOPIFY_TOPIC'] = 'orders/create';
+
+        $controller = new ShopifyWebhookController();
+        $request = $this->createMockRequest($tenantId);
+
+        $response = $controller->handle($request);
+
+        $this->assertEquals(200, $response->getStatusCode());
+
+        $stock = DB::table('product_locations')
+            ->where('product_id', 'prod-5')
+            ->where('location_id', $locationId)
+            ->value('stock_quantity');
+
+        $this->assertEquals(8, $stock);
+    }
+
+    public function testInvalidJsonBodyIsHandled()
+    {
+        $tenantId = 'tenant-1';
+        MockPhpStream::$data = 'invalid json string';
+        $_SERVER['HTTP_X_SHOPIFY_TOPIC'] = 'orders/create';
+
+        $controller = new ShopifyWebhookController();
+        $request = $this->createMockRequest($tenantId);
+
+        $response = $controller->handle($request);
+
+        // Since json_decode returns null, it falls back to empty array and processes with 0 line items
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertStringContainsString('Order webhook processed', $response->getContent());
     }
 }

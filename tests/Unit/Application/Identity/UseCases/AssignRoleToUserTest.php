@@ -71,4 +71,59 @@ class AssignRoleToUserTest extends TestCase
         $this->expectExceptionMessageMatches('/not found/i');
         (new AssignRoleToUser($repo))->execute('ghost', Role::MANAGER, 'admin-1');
     }
+
+    public function testAssignRoleThrowsWhenActorNotFound(): void
+    {
+        $target = $this->makeUser('staff-target', Role::STAFF);
+
+        $repo = $this->createMock(UserRepositoryInterface::class);
+        $repo->method('findById')->willReturnMap([
+            ['ghost-actor', null],
+            ['staff-target', $target],
+        ]);
+        $repo->expects($this->never())->method('save');
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessageMatches('/unauthorized/i');
+        (new AssignRoleToUser($repo))->execute('staff-target', Role::MANAGER, 'ghost-actor');
+    }
+
+    public function testAssignRoleThrowsWhenRoleIsInvalid(): void
+    {
+        $admin  = $this->makeUser('admin-1', Role::ADMIN);
+        $target = $this->makeUser('staff-1', Role::STAFF);
+
+        $repo = $this->createMock(UserRepositoryInterface::class);
+        $repo->method('findById')->willReturnMap([
+            ['admin-1', $admin],
+            ['staff-1', $target],
+        ]);
+        $repo->expects($this->never())->method('save');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessageMatches('/Unknown default role/i');
+        (new AssignRoleToUser($repo))->execute('staff-1', 'nonexistent-role', 'admin-1');
+    }
+
+    public function testAssignRoleIsIdempotent(): void
+    {
+        $admin  = $this->makeUser('admin-1', Role::ADMIN);
+        $target = $this->makeUser('staff-1', Role::STAFF);
+
+        $target->assignRole(Role::createDefault(Role::MANAGER));
+        $rolesCount = count($target->getRoles());
+
+        $repo = $this->createMock(UserRepositoryInterface::class);
+        $repo->method('findById')->willReturnMap([
+            ['admin-1', $admin],
+            ['staff-1', $target],
+        ]);
+
+        $repo->expects($this->once())->method('save')
+            ->with($this->callback(function (User $u) use ($rolesCount) {
+                return count($u->getRoles()) === $rolesCount && $u->canDo(Permission::REPORTS_VIEW);
+            }));
+
+        (new AssignRoleToUser($repo))->execute('staff-1', Role::MANAGER, 'admin-1');
+    }
 }

@@ -55,6 +55,8 @@ class AuthenticateUserTest extends TestCase
             'special character password' => ['user@store.com', 'p@sswörd🔑123', 't1', 't1'],
             'plus addressing email' => ['user+tag@store.com', 'password123', 't1', 't1'],
             'extremely long password' => ['user@store.com', str_repeat('a', 100), 't1', 't1'],
+            'mixed casing email' => ['UsEr@StOrE.CoM', 'password123', 't1', 't1'],
+            'unicode email' => ['üser@store.com', 'password123', 't1', 't1'],
         ];
     }
 
@@ -91,6 +93,8 @@ class AuthenticateUserTest extends TestCase
             'empty email' => ['', 'password123', 't1', false],
             'whitespace-only password' => ['user@store.com', '   ', 't1', true, 'user@store.com', 'password123'],
             'wrong password casing' => ['user@store.com', 'PASSWORD123', 't1', true, 'user@store.com', 'password123'],
+            'malformed email' => ['user@store', 'password123', 't1', false],
+            'null-byte password' => ['user@store.com', "password\0123", 't1', true, 'user@store.com', 'password123'],
         ];
     }
 
@@ -170,7 +174,7 @@ class AuthenticateUserTest extends TestCase
     /**
      * @dataProvider invalidTenantIdProvider
      */
-    public function testExecuteThrowsOnInvalidTenantId(string $tenantId): void
+    public function testExecuteThrowsOnInvalidTenantId(string $tenantId, string $expectedMessage = 'TenantId cannot be empty'): void
     {
         $email = 'user@store.com';
         $password = 'password123';
@@ -184,7 +188,7 @@ class AuthenticateUserTest extends TestCase
         $useCase = new AuthenticateUser($repo, $tokenService);
 
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('TenantId cannot be empty');
+        $this->expectExceptionMessage($expectedMessage);
 
         $useCase->execute($email, $password, $tenantId);
     }
@@ -194,6 +198,8 @@ class AuthenticateUserTest extends TestCase
         return [
             'empty tenant id' => [''],
             'null-byte tenant id' => ["\0"],
+            'extremely long tenant id' => [str_repeat('a', 1000), 'TenantId cannot exceed 255 characters'],
+            'whitespace string tenant id' => ['   '],
         ];
     }
 }

@@ -17,6 +17,9 @@ class TenantId
         if (empty(trim($value))) {
             throw new InvalidArgumentException("TenantId cannot be empty");
         }
+        if (strlen($value) > 255) {
+            throw new InvalidArgumentException("TenantId cannot exceed 255 characters");
+        }
         $this->value = trim($value);
     }
 

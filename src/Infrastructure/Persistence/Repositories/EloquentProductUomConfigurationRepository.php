@@ -43,6 +43,7 @@ class EloquentProductUomConfigurationRepository implements ProductUomConfigurati
             // Re-sync rules
             UomConversionRuleModel::where('configuration_id', $config->id)->delete();
 
+            // Bulk insert to avoid N+1 query and handle large arrays with chunking
             $rulesData = [];
             foreach ($config->conversionRules() as $rule) {
                 $rulesData[] = [
@@ -53,8 +54,11 @@ class EloquentProductUomConfigurationRepository implements ProductUomConfigurati
                     'label'            => $rule->label,
                 ];
             }
+
             if (!empty($rulesData)) {
-                UomConversionRuleModel::insert($rulesData);
+                foreach (array_chunk($rulesData, 500) as $chunk) {
+                    UomConversionRuleModel::insert($chunk);
+                }
             }
         });
     }

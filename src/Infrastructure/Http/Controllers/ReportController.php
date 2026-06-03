@@ -28,11 +28,31 @@ class ReportController
             // Fetch all locations to initialize location names
             $locations = DB::table('locations')->get()->keyBy('id')->toArray();
 
+            // Fetch ALL stock locations for these products once (to avoid N+1)
+            $productIds = $products->pluck('id')->toArray();
+            $allStocks = DB::table('product_locations')
+                ->whereIn('product_id', $productIds)
+                ->get()
+                ->groupBy('product_id');
+
+            // Fetch ALL active cost layers for these products once
+            $productSkus = $products->pluck('sku')->toArray();
+            $allLayers = DB::table('inventory_cost_layers')
+                ->where('tenant_id', $tenantId)
+                ->whereIn('variant_id', $productSkus)
+                ->where('remaining_quantity', '>', 0)
+                ->get()
+                ->groupBy('variant_id');
+
+            // Fetch ALL catalog variants for these products once
+            $catalogVariants = DB::table('catalog_variants')
+                ->whereIn('sku', $productSkus)
+                ->get()
+                ->keyBy('sku');
+
             foreach ($products as $p) {
                 // Get stock at all locations for this product
-                $stocks = DB::table('product_locations')
-                    ->where('product_id', $p->id)
-                    ->get();
+                $stocks = $allStocks->get($p->id, collect([]));
 
                 $totalStock = $this->processProductStocks($stocks, $locations, $locationValuations);
                 $totalItems += $totalStock;
@@ -40,14 +60,9 @@ class ReportController
                 $this->checkLowStockAlerts($p, $totalStock, $lowStockAlerts, $lowStockItems);
 
                 // Fetch active cost layers for this product variant
-                $layers = DB::table('inventory_cost_layers')
-                    ->where('tenant_id', $tenantId)
-                    ->where('variant_id', $p->sku)
-                    ->where('remaining_quantity', '>', 0)
-                    ->get()
-                    ->toArray();
+                $layers = $allLayers->get($p->sku, collect([]))->toArray();
 
-                $wacUnitCents = $this->calculateWacUnitCents($layers, $p->sku);
+                $wacUnitCents = $this->calculateWacUnitCents($layers, $p->sku, $catalogVariants);
 
                 $wacValuation = $totalStock * $wacUnitCents;
                 $totalWacCents += $wacValuation;
@@ -109,7 +124,7 @@ class ReportController
         }
     }
 
-    private function calculateWacUnitCents(array $layers, string $sku): int
+    private function calculateWacUnitCents(array $layers, string $sku, $catalogVariants = null): int
     {
         $totalLayersQty = array_sum(array_column($layers, 'remaining_quantity'));
         $totalLayersCost = array_sum(array_map(fn($l) => $l->remaining_quantity * $l->unit_cost_cents, $layers));
@@ -120,7 +135,11 @@ class ReportController
             $wacUnitCents = (int)($totalLayersCost / $totalLayersQty);
         } else {
             // fallback to catalog price
-            $catalogVariant = DB::table('catalog_variants')->where('sku', $sku)->first();
+            if ($catalogVariants !== null) {
+                $catalogVariant = $catalogVariants->get($sku);
+            } else {
+                $catalogVariant = DB::table('catalog_variants')->where('sku', $sku)->first();
+            }
             if ($catalogVariant) {
                 $wacUnitCents = (int)($catalogVariant->price * 100);
             }

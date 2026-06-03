@@ -40,7 +40,27 @@ class StartInventoryCountTest extends TestCase
             ['00000000-0000-0000-0000-000000000000'],
             [''],
             ['count_id_12345'],
+            ['マルチバイト'], // Multibyte string
+            ['!@#$%^&*()_+'], // Special characters
+            [str_repeat('a', 255)], // Long string
         ];
+    }
+
+    public function testStartInventoryCountDoesNotQueryExistingCount(): void
+    {
+        // StartInventoryCount should simply create a new entity and pass it to save.
+        // It does not need to verify existence before hand (optimistic creation).
+        $this->countRepo->expects($this->never())->method('findById');
+
+        $this->countRepo->expects($this->once())->method('save')
+            ->with($this->callback(function (InventoryCount $c) {
+                return $c->getId() === 'c-1'
+                    && $c->getStatus()->equals(CountStatus::started())
+                    && empty($c->getItems());
+            }));
+
+        $useCase = new StartInventoryCount($this->countRepo);
+        $useCase->execute('c-1');
     }
 
     public function testStartInventoryCountThrowsExceptionWhenRepositoryFails(): void

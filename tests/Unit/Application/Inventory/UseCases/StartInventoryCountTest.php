@@ -85,4 +85,32 @@ class StartInventoryCountTest extends TestCase
         // Pass an invalid type (array) instead of string
         $useCase->execute(['invalid' => 'type']);
     }
+
+    public function testStartInventoryCountThrowsArgumentCountErrorForMissingInput(): void
+    {
+        $useCase = new StartInventoryCount($this->countRepo);
+
+        $this->expectException(\ArgumentCountError::class);
+
+        // Call without required argument
+        $useCase->execute();
+    }
+
+    public function testStartInventoryCountThrowsTypeErrorForNullInput(): void
+    {
+        $useCase = new StartInventoryCount($this->countRepo);
+
+        $this->expectException(\TypeError::class);
+
+        $useCase->execute(null);
+    }
+
+    public function testStartInventoryCountThrowsTypeErrorForObjectInput(): void
+    {
+        $useCase = new StartInventoryCount($this->countRepo);
+
+        $this->expectException(\TypeError::class);
+
+        $useCase->execute(new \stdClass());
+    }
 }

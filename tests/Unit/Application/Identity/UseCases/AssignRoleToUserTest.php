@@ -54,8 +54,25 @@ class AssignRoleToUserTest extends TestCase
         $repo->expects($this->never())->method('save');
 
         $this->expectException(Exception::class);
-        $this->expectExceptionMessageMatches('/unauthorized/i');
+        $this->expectExceptionMessage('Unauthorized: you do not have permission to manage users.');
         (new AssignRoleToUser($repo))->execute('staff-target', Role::MANAGER, 'staff-actor');
+    }
+
+    public function testAssignRoleWhenActorAndTargetAreSameUser(): void
+    {
+        $admin = $this->makeUser('admin-1', Role::ADMIN);
+
+        $repo = $this->createMock(UserRepositoryInterface::class);
+        $repo->method('findById')
+            ->willReturnMap([
+                ['admin-1', $admin],
+            ]);
+        $repo->expects($this->once())->method('save')
+            ->with($this->callback(function (User $u) {
+                return $u->canDo(Permission::REPORTS_VIEW) && $u->getId() === 'admin-1';
+            }));
+
+        (new AssignRoleToUser($repo))->execute('admin-1', Role::MANAGER, 'admin-1');
     }
 
     public function testAssignRoleThrowsWhenTargetUserNotFound(): void
@@ -68,7 +85,7 @@ class AssignRoleToUserTest extends TestCase
         ]);
 
         $this->expectException(Exception::class);
-        $this->expectExceptionMessageMatches('/not found/i');
+        $this->expectExceptionMessage('User not found: ghost');
         (new AssignRoleToUser($repo))->execute('ghost', Role::MANAGER, 'admin-1');
     }
 
@@ -84,7 +101,7 @@ class AssignRoleToUserTest extends TestCase
         $repo->expects($this->never())->method('save');
 
         $this->expectException(Exception::class);
-        $this->expectExceptionMessageMatches('/unauthorized/i');
+        $this->expectExceptionMessage('Unauthorized: you do not have permission to manage users.');
         (new AssignRoleToUser($repo))->execute('staff-target', Role::MANAGER, 'ghost-actor');
     }
 
@@ -101,7 +118,7 @@ class AssignRoleToUserTest extends TestCase
         $repo->expects($this->never())->method('save');
 
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessageMatches('/Unknown default role/i');
+        $this->expectExceptionMessage("Unknown default role: nonexistent-role");
         (new AssignRoleToUser($repo))->execute('staff-1', 'nonexistent-role', 'admin-1');
     }
 

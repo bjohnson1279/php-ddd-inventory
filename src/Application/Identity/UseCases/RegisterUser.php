@@ -23,6 +23,7 @@ class RegisterUser
         string $name
     ): void {
         $tenantId = new TenantId($tenantIdValue);
+        $email = strtolower(trim($email));
 
         if ($this->userRepository->findByEmail($email, $tenantId)) {
             throw new Exception("A user with email '{$email}' already exists for this tenant.");

@@ -57,7 +57,8 @@ class User extends AggregateRoot
         string $plainPassword,
         string $name
     ): self {
-        if (empty(trim($email)) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $email = trim($email);
+        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             throw new InvalidArgumentException("Invalid email address: {$email}");
         }
         if (strlen($plainPassword) < 8) {

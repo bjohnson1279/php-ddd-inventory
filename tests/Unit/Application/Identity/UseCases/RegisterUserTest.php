@@ -80,4 +80,52 @@ class RegisterUserTest extends TestCase
         // This will throw when User::register is called inside RegisterUser->execute
         (new RegisterUser($repo, $dispatcher))->execute('u4', 't1', 'new@store.com', 'short', 'New User');
     }
+
+    public function testRegisterUserThrowsWhenTenantIdIsEmpty(): void
+    {
+        $repo = $this->createMock(UserRepositoryInterface::class);
+        $dispatcher = $this->createMock(EventDispatcherInterface::class);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageMatches('/cannot be empty/i');
+
+        (new RegisterUser($repo, $dispatcher))->execute('u5', '  ', 'new@store.com', 'password123', 'New User');
+    }
+
+    public function testRegisterUserTrimsAndLowercasesEmailAndName(): void
+    {
+        $repo = $this->createMock(UserRepositoryInterface::class);
+        $repo->expects($this->once())->method('findByEmail')->willReturn(null);
+        $repo->expects($this->once())->method('save')
+            ->with($this->callback(function (User $u) {
+                return $u->getEmail() === 'mixedcase@store.com' && $u->getName() === 'Spaced Name';
+            }));
+
+        $dispatcher = $this->createMock(EventDispatcherInterface::class);
+        $dispatcher->expects($this->once())->method('dispatch')
+            ->with($this->callback(function (UserRegistered $e) {
+                return $e->email === 'mixedcase@store.com' && $e->name === 'Spaced Name';
+            }));
+
+        (new RegisterUser($repo, $dispatcher))->execute(
+            'u6',
+            't1',
+            '  MIXEDcase@STORE.com   ',
+            'password123',
+            '   Spaced Name  '
+        );
+    }
+
+    public function testRegisterUserPassesCorrectArgumentsToRepositoryWhenCheckingEmail(): void
+    {
+        $repo = $this->createMock(UserRepositoryInterface::class);
+        $repo->expects($this->once())
+             ->method('findByEmail')
+             ->with('check@store.com', $this->callback(fn(TenantId $t) => $t->getValue() === 't-check'))
+             ->willReturn(null);
+
+        $dispatcher = $this->createMock(EventDispatcherInterface::class);
+
+        (new RegisterUser($repo, $dispatcher))->execute('u7', 't-check', 'CHECK@store.com', 'password123', 'Check User');
+    }
 }

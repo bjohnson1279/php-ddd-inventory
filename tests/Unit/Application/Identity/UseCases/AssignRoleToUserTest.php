@@ -126,4 +126,29 @@ class AssignRoleToUserTest extends TestCase
 
         (new AssignRoleToUser($repo))->execute('staff-1', Role::MANAGER, 'admin-1');
     }
+
+    public function testActorCanAssignRoleToThemselves(): void
+    {
+        $admin = $this->makeUser('admin-1', Role::ADMIN);
+
+        $repo = $this->createMock(UserRepositoryInterface::class);
+        $repo->method('findById')->willReturnMap([
+            ['admin-1', $admin],
+        ]);
+
+        $repo->expects($this->once())->method('save')
+            ->with($this->callback(function (User $u) {
+                // Ensure they have the original ADMIN role and the newly assigned MANAGER role
+                $hasManager = false;
+                foreach ($u->getRoles() as $r) {
+                    if ($r->getId() === Role::MANAGER) {
+                        $hasManager = true;
+                        break;
+                    }
+                }
+                return $hasManager && $u->canDo(Permission::REPORTS_VIEW);
+            }));
+
+        (new AssignRoleToUser($repo))->execute('admin-1', Role::MANAGER, 'admin-1');
+    }
 }

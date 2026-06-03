@@ -24,38 +24,71 @@ class AssignRoleToUserTest extends TestCase
 
     // ── AssignRoleToUser ──────────────────────────────────────────────────────
 
-    public function testAssignRoleGrantsNewPermissionToTarget(): void
+    /**
+     * @dataProvider roleAssignmentProvider
+     */
+    public function testAssignRoleGrantsNewPermissionToTarget(string $roleToAssign, string $expectedPermission): void
     {
         $admin  = $this->makeUser('admin-1', Role::ADMIN);
-        $target = $this->makeUser('staff-1', Role::STAFF);
+        $target = $this->makeUser('target-1', Role::STAFF);
 
         $repo = $this->createMock(UserRepositoryInterface::class);
         $repo->method('findById')
             ->willReturnMap([
                 ['admin-1', $admin],
-                ['staff-1', $target],
+                ['target-1', $target],
             ]);
         $repo->expects($this->once())->method('save')
-            ->with($this->callback(fn(User $u) => $u->canDo(Permission::REPORTS_VIEW)));
+            ->with($this->callback(function (User $u) use ($expectedPermission, $roleToAssign) {
+                // Ensure the assigned role is actually in the user's roles
+                $hasRole = false;
+                foreach ($u->getRoles() as $r) {
+                    if ($r->getId() === $roleToAssign) {
+                        $hasRole = true;
+                        break;
+                    }
+                }
+                return $hasRole && $u->canDo($expectedPermission);
+            }));
 
-        (new AssignRoleToUser($repo))->execute('staff-1', Role::MANAGER, 'admin-1');
+        (new AssignRoleToUser($repo))->execute('target-1', $roleToAssign, 'admin-1');
     }
 
-    public function testAssignRoleThrowsWhenActorLacksPermission(): void
+    public function roleAssignmentProvider(): array
     {
-        $staff  = $this->makeUser('staff-actor', Role::STAFF);
-        $target = $this->makeUser('staff-target', Role::STAFF);
+        return [
+            'assign manager role' => [Role::MANAGER, Permission::REPORTS_VIEW],
+            'assign admin role'   => [Role::ADMIN, Permission::USERS_MANAGE],
+            'assign staff role'   => [Role::STAFF, Permission::SALES_PROCESS],
+        ];
+    }
+
+    /**
+     * @dataProvider unauthorizedRolesProvider
+     */
+    public function testAssignRoleThrowsWhenActorLacksPermission(string $actorRole): void
+    {
+        $actor  = $this->makeUser('actor', $actorRole);
+        $target = $this->makeUser('target', Role::STAFF);
 
         $repo = $this->createMock(UserRepositoryInterface::class);
         $repo->method('findById')->willReturnMap([
-            ['staff-actor', $staff],
-            ['staff-target', $target],
+            ['actor', $actor],
+            ['target', $target],
         ]);
         $repo->expects($this->never())->method('save');
 
         $this->expectException(Exception::class);
         $this->expectExceptionMessage('Unauthorized: you do not have permission to manage users.');
-        (new AssignRoleToUser($repo))->execute('staff-target', Role::MANAGER, 'staff-actor');
+        (new AssignRoleToUser($repo))->execute('target', Role::MANAGER, 'actor');
+    }
+
+    public function unauthorizedRolesProvider(): array
+    {
+        return [
+            'staff role' => [Role::STAFF],
+            'manager role' => [Role::MANAGER],
+        ];
     }
 
     public function testAssignRoleWhenActorAndTargetAreSameUser(): void

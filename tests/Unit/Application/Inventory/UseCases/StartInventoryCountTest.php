@@ -55,4 +55,14 @@ class StartInventoryCountTest extends TestCase
 
         $useCase->execute('c-1');
     }
+
+    public function testStartInventoryCountThrowsTypeErrorForArrayInput(): void
+    {
+        $useCase = new StartInventoryCount($this->countRepo);
+
+        $this->expectException(\TypeError::class);
+
+        // Pass an invalid type (array) instead of string
+        $useCase->execute(['invalid' => 'type']);
+    }
 }

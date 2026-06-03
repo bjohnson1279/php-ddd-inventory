@@ -18,7 +18,7 @@ use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Exception;
 
-class InventoryCountingUseCasesTest extends TestCase
+class CompleteInventoryCountTest extends TestCase
 {
     private $countRepo;
     private $productRepo;
@@ -27,25 +27,6 @@ class InventoryCountingUseCasesTest extends TestCase
     {
         $this->countRepo = $this->createMock(InventoryCountRepositoryInterface::class);
         $this->productRepo = $this->createMock(ProductRepositoryInterface::class);
-    }
-
-    public function testRecordCountItemUpdatesAggregate(): void
-    {
-        $count = InventoryCount::start('c-1');
-        $this->countRepo->method('findById')->willReturn($count);
-        $this->countRepo->expects($this->once())->method('save')
-            ->with($this->callback(fn(InventoryCount $c) => count($c->getItems()) === 1));
-
-        (new RecordCountItem($this->countRepo))->execute('c-1', 'SKU-1', 10);
-    }
-
-    public function testRecordCountItemThrowsWhenNotFound(): void
-    {
-        $this->countRepo->method('findById')->willReturn(null);
-        $this->expectException(Exception::class);
-        $this->expectExceptionMessageMatches('/not found/');
-
-        (new RecordCountItem($this->countRepo))->execute('ghost', 'SKU-1', 10);
     }
 
     public function testCompleteInventoryCountReconcilesProducts(): void

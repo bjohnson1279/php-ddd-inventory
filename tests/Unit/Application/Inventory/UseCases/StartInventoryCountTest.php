@@ -76,41 +76,25 @@ class StartInventoryCountTest extends TestCase
         $useCase->execute('c-1');
     }
 
-    public function testStartInventoryCountThrowsTypeErrorForArrayInput(): void
+    /**
+     * @dataProvider invalidInputProvider
+     */
+    public function testStartInventoryCountThrowsErrorForInvalidInput(array $args, string $expectedException): void
     {
         $useCase = new StartInventoryCount($this->countRepo);
 
-        $this->expectException(\TypeError::class);
+        $this->expectException($expectedException);
 
-        // Pass an invalid type (array) instead of string
-        $useCase->execute(['invalid' => 'type']);
+        $useCase->execute(...$args);
     }
 
-    public function testStartInventoryCountThrowsArgumentCountErrorForMissingInput(): void
+    public function invalidInputProvider(): array
     {
-        $useCase = new StartInventoryCount($this->countRepo);
-
-        $this->expectException(\ArgumentCountError::class);
-
-        // Call without required argument
-        $useCase->execute();
-    }
-
-    public function testStartInventoryCountThrowsTypeErrorForNullInput(): void
-    {
-        $useCase = new StartInventoryCount($this->countRepo);
-
-        $this->expectException(\TypeError::class);
-
-        $useCase->execute(null);
-    }
-
-    public function testStartInventoryCountThrowsTypeErrorForObjectInput(): void
-    {
-        $useCase = new StartInventoryCount($this->countRepo);
-
-        $this->expectException(\TypeError::class);
-
-        $useCase->execute(new \stdClass());
+        return [
+            'array input' => [[['invalid' => 'type']], \TypeError::class],
+            'null input' => [[null], \TypeError::class],
+            'object input' => [[new \stdClass()], \TypeError::class],
+            'missing input' => [[], \ArgumentCountError::class],
+        ];
     }
 }

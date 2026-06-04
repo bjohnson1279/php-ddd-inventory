@@ -232,9 +232,20 @@ class ReportController
             ->limit(5)
             ->get();
 
+        if ($transactions->isEmpty()) {
+            return [];
+        }
+
+        // Bolt optimization: Extract product fetching out of the loop.
+        // Instead of executing `DB::table('products')->where('id', ...)->first()` 5 times,
+        // we extract the unique product IDs and perform a single O(1) batched query.
+        // This solves an N+1 query issue for the activity feed.
+        $productIds = $transactions->pluck('product_id')->unique()->toArray();
+        $products = DB::table('products')->whereIn('id', $productIds)->get()->keyBy('id');
+
         $activity = [];
         foreach ($transactions as $t) {
-            $prod = DB::table('products')->where('id', $t->product_id)->first();
+            $prod = $products->get($t->product_id);
             $activity[] = [
                 'id'              => $t->id,
                 'product_name'    => $prod ? $prod->name : $t->product_id,

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import api from '../api/client';
 
 type Variant = {
@@ -151,13 +151,15 @@ export default function Catalog() {
     }
   };
 
-  // Helper to get all variants flat
-  const allVariants = products.flatMap(p => 
+  // Bolt Optimization: Memoize the flat variant map computation
+  // Expected Impact: Prevents O(N*M) array allocations on every keystroke
+  // when editing forms, reducing unnecessary React re-renders.
+  const allVariants = useMemo(() => products.flatMap(p =>
     p.variants.map(v => ({
       ...v,
       productName: p.name
     }))
-  );
+  ), [products]);
 
   useEffect(() => {
     if (allVariants.length > 0 && !selectedVarId) {

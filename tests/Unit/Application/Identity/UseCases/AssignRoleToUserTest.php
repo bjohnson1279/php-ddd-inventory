@@ -15,7 +15,11 @@ class AssignRoleToUserTest extends TestCase
 {
     private function makeUser(string $id, string $roleSlug = Role::STAFF): User
     {
-        $user = User::register($id, new TenantId('t1'), "{$id}@store.com", 'password123', 'Test User');
+        static $cachedPasswordHash = null;
+        if ($cachedPasswordHash === null) {
+            $cachedPasswordHash = password_hash('password123', PASSWORD_BCRYPT);
+        }
+        $user = new User($id, new TenantId('t1'), "{$id}@store.com", $cachedPasswordHash, 'Test User', [Role::createDefault(Role::STAFF)]);
         if ($roleSlug !== Role::STAFF) {
             $user->assignRole(Role::createDefault($roleSlug));
         }
@@ -125,7 +129,7 @@ class AssignRoleToUserTest extends TestCase
 
         // Target user initially only has STAFF role.
         // By default, the registered user gets the STAFF role.
-        $target = User::register('target-staff', new TenantId('t1'), 'target@store.com', 'password123', 'Target User');
+        $target = $this->makeUser('target-staff');
 
         $repo = $this->createMock(UserRepositoryInterface::class);
         $repo->method('findById')->willReturnMap([
@@ -242,5 +246,24 @@ class AssignRoleToUserTest extends TestCase
             }));
 
         (new AssignRoleToUser($repo))->execute('admin-1', Role::MANAGER, 'admin-1');
+    }
+
+    public function testAssignRoleThrowsWhenRepositorySaveFails(): void
+    {
+        $admin  = $this->makeUser('admin-1', Role::ADMIN);
+        $target = $this->makeUser('target-1', Role::STAFF);
+
+        $repo = $this->createMock(UserRepositoryInterface::class);
+        $repo->method('findById')->willReturnMap([
+            ['admin-1', $admin],
+            ['target-1', $target],
+        ]);
+
+        $repo->expects($this->once())->method('save')->willThrowException(new Exception('Database error'));
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('Database error');
+
+        (new AssignRoleToUser($repo))->execute('target-1', Role::MANAGER, 'admin-1');
     }
 }

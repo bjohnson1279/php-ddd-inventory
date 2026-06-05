@@ -25,11 +25,14 @@ class ShopifyWebhookController
 
             // HMAC validation
             $secret = getenv('SHOPIFY_WEBHOOK_SECRET');
-            if (!empty($secret)) {
-                $calculatedHmac = base64_encode(hash_hmac('sha256', $rawBody, $secret, true));
-                if (!hash_equals($hmacHeader, $calculatedHmac)) {
-                    return new Response(['error' => 'HMAC verification failed'], 401);
-                }
+            if (empty($secret)) {
+                // Fail securely instead of bypassing the check
+                return new Response(['error' => 'Webhook secret is not configured'], 500);
+            }
+
+            $calculatedHmac = base64_encode(hash_hmac('sha256', $rawBody, $secret, true));
+            if (!hash_equals($hmacHeader, $calculatedHmac)) {
+                return new Response(['error' => 'HMAC verification failed'], 401);
             }
 
             $data = json_decode($rawBody, true) ?: [];

@@ -228,6 +228,11 @@ class ShopifyWebhookControllerTest extends TestCase
         MockPhpStream::$data = json_encode($payload);
         $_SERVER['HTTP_X_SHOPIFY_TOPIC'] = 'orders/cancelled';
 
+        // Set valid secret and HMAC for this test to pass HMAC validation
+        $secret = 'test-secret';
+        putenv("SHOPIFY_WEBHOOK_SECRET={$secret}");
+        $_SERVER['HTTP_X_SHOPIFY_HMAC_SHA256'] = base64_encode(hash_hmac('sha256', MockPhpStream::$data, $secret, true));
+
         $controller = new ShopifyWebhookController();
         $request = $this->createMockRequest($tenantId);
 
@@ -280,6 +285,11 @@ class ShopifyWebhookControllerTest extends TestCase
         MockPhpStream::$data = json_encode($payload);
         $_SERVER['HTTP_X_SHOPIFY_TOPIC'] = 'refunds/create';
 
+        // Set valid secret and HMAC for this test to pass HMAC validation
+        $secret = 'test-secret';
+        putenv("SHOPIFY_WEBHOOK_SECRET={$secret}");
+        $_SERVER['HTTP_X_SHOPIFY_HMAC_SHA256'] = base64_encode(hash_hmac('sha256', MockPhpStream::$data, $secret, true));
+
         $controller = new ShopifyWebhookController();
         $request = $this->createMockRequest($tenantId);
 
@@ -300,6 +310,11 @@ class ShopifyWebhookControllerTest extends TestCase
     {
         MockPhpStream::$data = json_encode(['id' => '111']);
         $_SERVER['HTTP_X_SHOPIFY_TOPIC'] = 'unknown/topic';
+
+        // Set valid secret and HMAC for this test to pass HMAC validation
+        $secret = 'test-secret';
+        putenv("SHOPIFY_WEBHOOK_SECRET={$secret}");
+        $_SERVER['HTTP_X_SHOPIFY_HMAC_SHA256'] = base64_encode(hash_hmac('sha256', MockPhpStream::$data, $secret, true));
 
         $controller = new ShopifyWebhookController();
         $request = $this->createMockRequest('tenant-1');
@@ -329,6 +344,11 @@ class ShopifyWebhookControllerTest extends TestCase
         MockPhpStream::$data = json_encode($payload);
         $_SERVER['HTTP_X_SHOPIFY_TOPIC'] = 'orders/create';
 
+        // Set valid secret and HMAC for this test to pass HMAC validation
+        $secret = 'test-secret';
+        putenv("SHOPIFY_WEBHOOK_SECRET={$secret}");
+        $_SERVER['HTTP_X_SHOPIFY_HMAC_SHA256'] = base64_encode(hash_hmac('sha256', MockPhpStream::$data, $secret, true));
+
         $controller = new ShopifyWebhookController();
         $request = $this->createMockRequest($tenantId);
 
@@ -338,20 +358,20 @@ class ShopifyWebhookControllerTest extends TestCase
         $this->assertStringContainsString('Product not found', $response->getContent());
     }
 
-    public function testEmptySecretBypassesHmacValidation()
+    public function testEmptySecretReturns500()
     {
         putenv('SHOPIFY_WEBHOOK_SECRET=');
         $_SERVER['HTTP_X_SHOPIFY_HMAC_SHA256'] = 'invalid_hmac';
         MockPhpStream::$data = json_encode(['id' => 123]);
-        $_SERVER['HTTP_X_SHOPIFY_TOPIC'] = 'unknown/topic'; // Ensure it returns a 200 message
+        $_SERVER['HTTP_X_SHOPIFY_TOPIC'] = 'unknown/topic';
 
         $controller = new ShopifyWebhookController();
         $request = $this->createMockRequest('tenant-1');
 
         $response = $controller->handle($request);
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $this->assertStringContainsString('Webhook topic not supported, ignored', $response->getContent());
+        $this->assertEquals(500, $response->getStatusCode());
+        $this->assertStringContainsString('Webhook secret is not configured', $response->getContent());
     }
 
     public function testLineItemWithEmptySkuOrInvalidQuantityIsIgnored()
@@ -387,6 +407,11 @@ class ShopifyWebhookControllerTest extends TestCase
 
         MockPhpStream::$data = json_encode($payload);
         $_SERVER['HTTP_X_SHOPIFY_TOPIC'] = 'orders/create';
+
+        // Set valid secret and HMAC for this test to pass HMAC validation
+        $secret = 'test-secret';
+        putenv("SHOPIFY_WEBHOOK_SECRET={$secret}");
+        $_SERVER['HTTP_X_SHOPIFY_HMAC_SHA256'] = base64_encode(hash_hmac('sha256', MockPhpStream::$data, $secret, true));
 
         $controller = new ShopifyWebhookController();
         $request = $this->createMockRequest($tenantId);
@@ -444,6 +469,11 @@ class ShopifyWebhookControllerTest extends TestCase
         MockPhpStream::$data = json_encode($payload);
         $_SERVER['HTTP_X_SHOPIFY_TOPIC'] = 'orders/create';
 
+        // Set valid secret and HMAC for this test to pass HMAC validation
+        $secret = 'test-secret';
+        putenv("SHOPIFY_WEBHOOK_SECRET={$secret}");
+        $_SERVER['HTTP_X_SHOPIFY_HMAC_SHA256'] = base64_encode(hash_hmac('sha256', MockPhpStream::$data, $secret, true));
+
         $controller = new ShopifyWebhookController();
         $request = $this->createMockRequest($tenantId);
 
@@ -464,6 +494,11 @@ class ShopifyWebhookControllerTest extends TestCase
         $tenantId = 'tenant-1';
         MockPhpStream::$data = 'invalid json string';
         $_SERVER['HTTP_X_SHOPIFY_TOPIC'] = 'orders/create';
+
+        // Set valid secret and HMAC for this test to pass HMAC validation
+        $secret = 'test-secret';
+        putenv("SHOPIFY_WEBHOOK_SECRET={$secret}");
+        $_SERVER['HTTP_X_SHOPIFY_HMAC_SHA256'] = base64_encode(hash_hmac('sha256', MockPhpStream::$data, $secret, true));
 
         $controller = new ShopifyWebhookController();
         $request = $this->createMockRequest($tenantId);

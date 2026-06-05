@@ -48,7 +48,11 @@ class AssignRoleToUserTest extends TestCase
                         break;
                     }
                 }
-                return $hasRole && $u->canDo($expectedPermission);
+                $expectedRoleCount = $roleToAssign === Role::STAFF ? 1 : 2;
+                return $hasRole
+                    && $u->canDo($expectedPermission)
+                    && $u->getId() === 'target-1'
+                    && count($u->getRoles()) === $expectedRoleCount; // initial STAFF + the new role, or just 1 if assigning STAFF again
             }));
 
         (new AssignRoleToUser($repo))->execute('target-1', $roleToAssign, 'admin-1');
@@ -61,6 +65,30 @@ class AssignRoleToUserTest extends TestCase
             'assign admin role'   => [Role::ADMIN, Permission::USERS_MANAGE],
             'assign staff role'   => [Role::STAFF, Permission::SALES_PROCESS],
         ];
+    }
+
+    public function testActorWithCustomRoleHavingUsersManagePermissionCanAssignRoles(): void
+    {
+        $customRole = new Role('custom-admin', 'Custom Admin', [Permission::USERS_MANAGE]);
+        $actor  = $this->makeUser('actor-custom', Role::STAFF);
+        // Overwrite roles with the custom one
+        $actor->revokeRole(Role::STAFF);
+        $actor->assignRole($customRole);
+
+        $target = $this->makeUser('target-user', Role::STAFF);
+
+        $repo = $this->createMock(UserRepositoryInterface::class);
+        $repo->method('findById')->willReturnMap([
+            ['actor-custom', $actor],
+            ['target-user', $target],
+        ]);
+
+        $repo->expects($this->once())->method('save')
+            ->with($this->callback(function (User $u) {
+                return $u->getId() === 'target-user' && count($u->getRoles()) === 2 && $u->canDo(Permission::REPORTS_VIEW);
+            }));
+
+        (new AssignRoleToUser($repo))->execute('target-user', Role::MANAGER, 'actor-custom');
     }
 
     /**
@@ -91,21 +119,29 @@ class AssignRoleToUserTest extends TestCase
         ];
     }
 
-    public function testAssignRoleWhenActorAndTargetAreSameUser(): void
+    public function testAssignRolePreservesExistingRoles(): void
     {
         $admin = $this->makeUser('admin-1', Role::ADMIN);
 
+        // Target user initially only has STAFF role.
+        // By default, the registered user gets the STAFF role.
+        $target = User::register('target-staff', new TenantId('t1'), 'target@store.com', 'password123', 'Target User');
+
         $repo = $this->createMock(UserRepositoryInterface::class);
-        $repo->method('findById')
-            ->willReturnMap([
-                ['admin-1', $admin],
-            ]);
+        $repo->method('findById')->willReturnMap([
+            ['admin-1', $admin],
+            ['target-staff', $target],
+        ]);
+
         $repo->expects($this->once())->method('save')
             ->with($this->callback(function (User $u) {
-                return $u->canDo(Permission::REPORTS_VIEW) && $u->getId() === 'admin-1';
+                return $u->getId() === 'target-staff'
+                    && count($u->getRoles()) === 2
+                    && $u->getRoles()[0]->getId() === Role::STAFF
+                    && $u->getRoles()[1]->getId() === Role::MANAGER;
             }));
 
-        (new AssignRoleToUser($repo))->execute('admin-1', Role::MANAGER, 'admin-1');
+        (new AssignRoleToUser($repo))->execute('target-staff', Role::MANAGER, 'admin-1');
     }
 
     public function testAssignRoleThrowsWhenTargetUserNotFound(): void
@@ -116,6 +152,7 @@ class AssignRoleToUserTest extends TestCase
             ['admin-1', $admin],
             ['ghost',   null],
         ]);
+        $repo->expects($this->never())->method('save');
 
         $this->expectException(Exception::class);
         $this->expectExceptionMessage('User not found: ghost');
@@ -171,7 +208,9 @@ class AssignRoleToUserTest extends TestCase
 
         $repo->expects($this->once())->method('save')
             ->with($this->callback(function (User $u) use ($rolesCount) {
-                return count($u->getRoles()) === $rolesCount && $u->canDo(Permission::REPORTS_VIEW);
+                return count($u->getRoles()) === $rolesCount
+                    && $u->canDo(Permission::REPORTS_VIEW)
+                    && $u->getId() === 'staff-1';
             }));
 
         (new AssignRoleToUser($repo))->execute('staff-1', Role::MANAGER, 'admin-1');
@@ -196,7 +235,10 @@ class AssignRoleToUserTest extends TestCase
                         break;
                     }
                 }
-                return $hasManager && $u->canDo(Permission::REPORTS_VIEW);
+                return $hasManager
+                    && $u->canDo(Permission::REPORTS_VIEW)
+                    && $u->getId() === 'admin-1'
+                    && count($u->getRoles()) === 3; // STAFF + ADMIN + MANAGER
             }));
 
         (new AssignRoleToUser($repo))->execute('admin-1', Role::MANAGER, 'admin-1');

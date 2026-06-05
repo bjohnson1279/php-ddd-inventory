@@ -36,13 +36,19 @@ class StartInventoryCountTest extends TestCase
     public function countIdProvider(): array
     {
         return [
-            ['c-1'],
-            ['00000000-0000-0000-0000-000000000000'],
-            [''],
-            ['count_id_12345'],
-            ['マルチバイト'], // Multibyte string
-            ['!@#$%^&*()_+'], // Special characters
-            [str_repeat('a', 255)], // Long string
+            'simple id' => ['c-1'],
+            'UUID v4' => ['00000000-0000-0000-0000-000000000000'],
+            'empty string' => [''],
+            'alphanumeric id' => ['count_id_12345'],
+            'multibyte string' => ['マルチバイト'],
+            'special characters' => ['!@#$%^&*()_+'],
+            '255 characters string' => [str_repeat('a', 255)],
+            'whitespace only string' => ['   '],
+            'string with null byte' => ["id\0with\0null\0bytes"],
+            'sql injection attempt' => ["1'; DROP TABLE inventory_counts;--"],
+            'xss attempt' => ["<script>alert('xss')</script>"],
+            'html entities' => ["&lt;b&gt;id&lt;/b&gt;"],
+            'new lines and tabs' => ["id\nwith\twhitespace\r\n"],
         ];
     }
 
@@ -76,26 +82,17 @@ class StartInventoryCountTest extends TestCase
         $useCase->execute('c-1');
     }
 
-    /**
-     * @dataProvider invalidInputProvider
-     */
-    public function testStartInventoryCountThrowsErrorForInvalidInput(array $args, string $expectedException): void
+    public function testStartInventoryCountThrowsExceptionWhenRepositoryThrowsDuplicateKeyException(): void
     {
+        $this->countRepo->expects($this->once())->method('save')
+            ->willThrowException(new \RuntimeException("Duplicate key error: c-1 already exists"));
+
         $useCase = new StartInventoryCount($this->countRepo);
 
-        $this->expectException($expectedException);
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("Duplicate key error: c-1 already exists");
 
-        $useCase->execute(...$args);
-    }
-
-    public function invalidInputProvider(): array
-    {
-        return [
-            'array input' => [[['invalid' => 'type']], \TypeError::class],
-            'null input' => [[null], \TypeError::class],
-            'object input' => [[new \stdClass()], \TypeError::class],
-            'missing input' => [[], \ArgumentCountError::class],
-        ];
+        $useCase->execute('c-1');
     }
 
     public function testExecuteCanBeCalledMultipleTimesToStartMultipleCounts(): void

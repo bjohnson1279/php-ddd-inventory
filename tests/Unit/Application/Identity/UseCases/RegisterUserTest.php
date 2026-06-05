@@ -49,47 +49,51 @@ class RegisterUserTest extends TestCase
         $dispatcher->expects($this->never())->method('dispatch');
 
         $this->expectException(Exception::class);
-        $this->expectExceptionMessageMatches('/already exists/i');
+        $this->expectExceptionMessage("A user with email 'new@store.com' already exists for this tenant.");
         (new RegisterUser($repo, $dispatcher))->execute('u2', 't1', 'new@store.com', 'password123', 'Dupe');
     }
 
-    public function testRegisterUserThrowsWhenEmailIsInvalid(): void
+    /**
+     * @dataProvider invalidInputProvider
+     */
+    public function testRegisterUserThrowsOnInvalidInput(string $email, string $password, string $tenantId, string $expectedException, string $expectedMessage): void
     {
         $repo = $this->createMock(UserRepositoryInterface::class);
-        $repo->method('findByEmail')->willReturn(null); // The repository is checked before the User is instantiated
+        $repo->method('findByEmail')->willReturn(null);
 
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
 
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageMatches('/invalid email address/i');
+        $this->expectException($expectedException);
+        $this->expectExceptionMessage($expectedMessage);
 
-        // This will throw when User::register is called inside RegisterUser->execute
-        (new RegisterUser($repo, $dispatcher))->execute('u3', 't1', 'invalid-email', 'password123', 'New User');
+        (new RegisterUser($repo, $dispatcher))->execute('u-invalid', $tenantId, $email, $password, 'New User');
     }
 
-    public function testRegisterUserThrowsWhenPasswordIsTooShort(): void
+    public function invalidInputProvider(): array
     {
-        $repo = $this->createMock(UserRepositoryInterface::class);
-        $repo->method('findByEmail')->willReturn(null); // The repository is checked before the User is instantiated
-
-        $dispatcher = $this->createMock(EventDispatcherInterface::class);
-
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageMatches('/at least 8 characters/i');
-
-        // This will throw when User::register is called inside RegisterUser->execute
-        (new RegisterUser($repo, $dispatcher))->execute('u4', 't1', 'new@store.com', 'short', 'New User');
-    }
-
-    public function testRegisterUserThrowsWhenTenantIdIsEmpty(): void
-    {
-        $repo = $this->createMock(UserRepositoryInterface::class);
-        $dispatcher = $this->createMock(EventDispatcherInterface::class);
-
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageMatches('/cannot be empty/i');
-
-        (new RegisterUser($repo, $dispatcher))->execute('u5', '  ', 'new@store.com', 'password123', 'New User');
+        return [
+            'invalid email format' => [
+                'invalid-email', 'password123', 't1', InvalidArgumentException::class, 'Invalid email address: invalid-email'
+            ],
+            'empty email' => [
+                '', 'password123', 't1', InvalidArgumentException::class, 'Invalid email address: '
+            ],
+            'whitespace email' => [
+                '   ', 'password123', 't1', InvalidArgumentException::class, 'Invalid email address: '
+            ],
+            'short password' => [
+                'new@store.com', 'short', 't1', InvalidArgumentException::class, 'Password must be at least 8 characters'
+            ],
+            'empty password' => [
+                'new@store.com', '', 't1', InvalidArgumentException::class, 'Password must be at least 8 characters'
+            ],
+            'empty tenant id' => [
+                'new@store.com', 'password123', '', InvalidArgumentException::class, 'TenantId cannot be empty'
+            ],
+            'whitespace tenant id' => [
+                'new@store.com', 'password123', '  ', InvalidArgumentException::class, 'TenantId cannot be empty'
+            ],
+        ];
     }
 
     public function testRegisterUserTrimsAndLowercasesEmailAndName(): void

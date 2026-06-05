@@ -15,11 +15,20 @@ class AuthenticateUserTest extends TestCase
 {
     private function makeUser(string $id, string $email, string $password, bool $active = true): User
     {
-        $user = User::register($id, new TenantId('t1'), $email, $password, 'Test User');
-        if (!$active) {
-            $user->deactivate();
+        static $hashCache = [];
+        if (!isset($hashCache[$password])) {
+            $hashCache[$password] = password_hash($password, PASSWORD_BCRYPT);
         }
-        return $user;
+
+        return new User(
+            $id,
+            new TenantId('t1'),
+            strtolower(trim($email)),
+            $hashCache[$password],
+            'Test User',
+            [],
+            $active
+        );
     }
 
     /**
@@ -98,12 +107,12 @@ class AuthenticateUserTest extends TestCase
         ];
     }
 
-    public function testExecuteThrowsWhenUserIsInactive(): void
+    /**
+     * @dataProvider inactiveUserProvider
+     */
+    public function testExecuteThrowsWhenUserIsInactive(string $email, string $providedPassword, string $tenantId, string $actualPassword): void
     {
-        $email = 'user@store.com';
-        $password = 'password123';
-        $tenantId = 't1';
-        $user = $this->makeUser('u1', $email, $password, false);
+        $user = $this->makeUser('u1', $email, $actualPassword, false);
 
         $repo = $this->createMock(UserRepositoryInterface::class);
         $repo->expects($this->once())
@@ -119,7 +128,16 @@ class AuthenticateUserTest extends TestCase
         $this->expectException(Exception::class);
         $this->expectExceptionMessage('Account is deactivated. Contact your administrator.');
 
-        $useCase->execute($email, $password, $tenantId);
+        $useCase->execute($email, $providedPassword, $tenantId);
+    }
+
+    public function inactiveUserProvider(): array
+    {
+        return [
+            'correct password' => ['user@store.com', 'password123', 't1', 'password123'],
+            'incorrect password' => ['user@store.com', 'wrong', 't1', 'password123'],
+            'empty password' => ['user@store.com', '', 't1', 'password123'],
+        ];
     }
 
     public function testExecuteThrowsWhenTokenServiceFails(): void

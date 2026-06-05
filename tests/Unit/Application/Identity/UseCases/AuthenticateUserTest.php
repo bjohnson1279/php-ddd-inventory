@@ -220,4 +220,37 @@ class AuthenticateUserTest extends TestCase
             'whitespace string tenant id' => ['   '],
         ];
     }
+
+    public function testExecuteUsesUserMethodsCorrectly(): void
+    {
+        $email = 'user@store.com';
+        $password = 'password123';
+        $tenantIdValue = 't1';
+
+        $userMock = $this->createMock(User::class);
+        $userMock->expects($this->once())->method('isActive')->willReturn(true);
+        $userMock->expects($this->once())->method('verifyPassword')->with($password)->willReturn(true);
+        $userMock->expects($this->once())->method('getId')->willReturn('u1');
+
+        $tenantIdMock = $this->createMock(TenantId::class);
+        $tenantIdMock->expects($this->once())->method('getValue')->willReturn($tenantIdValue);
+        $userMock->expects($this->once())->method('getTenantId')->willReturn($tenantIdMock);
+
+        $repo = $this->createMock(UserRepositoryInterface::class);
+        $repo->expects($this->once())
+            ->method('findByEmail')
+            ->with($email, $this->equalTo(new TenantId($tenantIdValue)))
+            ->willReturn($userMock);
+
+        $tokenService = $this->createMock(ApiTokenService::class);
+        $tokenService->expects($this->once())
+            ->method('issue')
+            ->with('u1', $tenantIdValue)
+            ->willReturn('generated_token');
+
+        $useCase = new AuthenticateUser($repo, $tokenService);
+        $token = $useCase->execute($email, $password, $tenantIdValue);
+
+        $this->assertEquals('generated_token', $token);
+    }
 }

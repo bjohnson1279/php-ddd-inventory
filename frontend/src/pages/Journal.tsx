@@ -160,22 +160,22 @@ export default function Journal() {
                 {lines.map((line, idx) => (
                   <div key={idx} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: 'rgba(0,0,0,0.1)', padding: '0.5rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.03)' }}>
                     <div style={{ flex: 1.5 }}>
-                      <input value={line.account} onChange={e => handleLineChange(idx, 'account', e.target.value)} placeholder="Acct e.g. 1200" required style={{ margin: 0 }} />
+                      <input aria-label={`Account for line ${idx + 1}`} value={line.account} onChange={e => handleLineChange(idx, 'account', e.target.value)} placeholder="Acct e.g. 1200" required style={{ margin: 0 }} />
                     </div>
                     <div style={{ flex: 1 }}>
-                      <select value={line.type} onChange={e => handleLineChange(idx, 'type', e.target.value)} style={{ padding: '0.625rem 0.5rem' }}>
+                      <select aria-label={`Type for line ${idx + 1}`} value={line.type} onChange={e => handleLineChange(idx, 'type', e.target.value)} style={{ padding: '0.625rem 0.5rem' }}>
                         <option value="debit">DR (Debit)</option>
                         <option value="credit">CR (Credit)</option>
                       </select>
                     </div>
                     <div style={{ flex: 1.5 }}>
-                      <input type="number" min="1" value={line.amount || ''} onChange={e => handleLineChange(idx, 'amount', e.target.value)} placeholder="Amount (cents)" required style={{ margin: 0 }} />
+                      <input aria-label={`Amount for line ${idx + 1}`} type="number" min="1" value={line.amount || ''} onChange={e => handleLineChange(idx, 'amount', e.target.value)} placeholder="Amount (cents)" required style={{ margin: 0 }} />
                     </div>
                     <div style={{ flex: 2 }}>
-                      <input value={line.memo} onChange={e => handleLineChange(idx, 'memo', e.target.value)} placeholder="Memo note" style={{ margin: 0 }} />
+                      <input aria-label={`Memo for line ${idx + 1}`} value={line.memo} onChange={e => handleLineChange(idx, 'memo', e.target.value)} placeholder="Memo note" style={{ margin: 0 }} />
                     </div>
                     {lines.length > 2 && (
-                      <button type="button" className="btn-sm btn-secondary text-danger" style={{ padding: '0.5rem 0.6rem' }} onClick={() => handleRemoveLine(idx)}>✕</button>
+                      <button type="button" aria-label={`Remove line ${idx + 1}`} className="btn-sm btn-secondary text-danger" style={{ padding: '0.5rem 0.6rem' }} onClick={() => handleRemoveLine(idx)}>✕</button>
                     )}
                   </div>
                 ))}

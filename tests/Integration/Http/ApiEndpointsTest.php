@@ -19,6 +19,9 @@ final class ApiEndpointsTest extends TestCase
 
     public static function setUpBeforeClass(): void
     {
+        // Export environment variables for the test server
+        putenv('SHOPIFY_WEBHOOK_SECRET=test-secret-env');
+
         // Start built-in PHP development server in the background on port 8085
         $output = [];
         $command = "php -S 127.0.0.1:8085 public/index.php > tests/Integration/Http/server.log 2>&1 & echo $!";
@@ -413,15 +416,31 @@ final class ApiEndpointsTest extends TestCase
             ]
         ];
 
+        $jsonPayload = json_encode($payload);
+        $secret = getenv('SHOPIFY_WEBHOOK_SECRET') ?: 'test-secret-env';
+        // Mocking env variable wasn't working directly in the web server process
+        // In the PHP internal server `php -S`, env vars are not always passed.
+        // We'll let the application use whatever is defined, and sign it appropriately.
+        // Wait, the webhook controller fetches it with `getenv()`.
+        // If not set, it fails with 500 now.
+        // Let's ensure the secret is set before making the request by restarting the server or passing it in.
+        // Since we cannot restart the server here easily, the PHP internal server script `tests/Integration/Http/server.php`
+        // will have the environment variables from when it was started.
+        // We need to calculate the HMAC based on what the server expects.
+        // If the server doesn't have it, we're in trouble.
+        // Actually, we can just fetch the secret from the current environment,
+        // assuming it was passed down when the test suite was started.
+        $calculatedHmac = base64_encode(hash_hmac('sha256', $jsonPayload, $secret, true));
+
         $url = 'http://127.0.0.1:8085/api/webhooks/shopify?tenant_id=' . $this->tenantId;
         
         $options = [
             'http' => [
                 'header' => "Content-Type: application/json\r\n" .
                             "X-Shopify-Topic: orders/create\r\n" .
-                            "X-Shopify-Hmac-Sha256: dummy-signature\r\n",
+                            "X-Shopify-Hmac-Sha256: {$calculatedHmac}\r\n",
                 'method' => 'POST',
-                'content' => json_encode($payload),
+                'content' => $jsonPayload,
                 'ignore_errors' => true
             ]
         ];
@@ -443,13 +462,14 @@ final class ApiEndpointsTest extends TestCase
         $this->assertEquals(45, $stockQty);
 
         // 6. Test cancellation webhook (orders/cancelled) to restock 5 items
+        $cancelHmac = base64_encode(hash_hmac('sha256', $jsonPayload, $secret, true));
         $cancelOptions = [
             'http' => [
                 'header' => "Content-Type: application/json\r\n" .
                             "X-Shopify-Topic: orders/cancelled\r\n" .
-                            "X-Shopify-Hmac-Sha256: dummy-signature\r\n",
+                            "X-Shopify-Hmac-Sha256: {$cancelHmac}\r\n",
                 'method' => 'POST',
-                'content' => json_encode($payload),
+                'content' => $jsonPayload,
                 'ignore_errors' => true
             ]
         ];

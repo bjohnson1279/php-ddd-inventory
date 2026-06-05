@@ -20,8 +20,14 @@ final class DatabaseQueueTest extends TestCase
     protected function setUp(): void
     {
         // Clean up queued jobs and mapping/catalog tables to ensure run-to-run isolation
-        DB::table('queued_jobs')->truncate();
-        DB::table('shopify_sync_failures')->truncate();
+        if (getenv('DB_CONNECTION') === 'sqlite' || DB::connection()->getDriverName() === 'sqlite') {
+            DB::table('queued_jobs')->delete();
+            DB::table('shopify_sync_failures')->delete();
+        } else {
+            DB::table('queued_jobs')->truncate();
+            DB::table('shopify_sync_failures')->truncate();
+        }
+
         DB::table('shopify_sku_mappings')->delete();
         DB::table('catalog_variants')->delete();
         DB::table('catalog_products')->delete();

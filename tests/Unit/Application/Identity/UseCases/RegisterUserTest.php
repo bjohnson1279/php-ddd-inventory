@@ -24,18 +24,34 @@ class RegisterUserTest extends TestCase
         return $user;
     }
 
-    public function testRegisterUserSavesNewUserAndDispatchesEvents(): void
+    /**
+     * @dataProvider validRegistrationProvider
+     */
+    public function testRegisterUserSavesNewUserAndDispatchesEvents(string $email, string $password, string $name, string $expectedEmail): void
     {
         $repo = $this->createMock(UserRepositoryInterface::class);
         $repo->expects($this->once())->method('findByEmail')->willReturn(null);
         $repo->expects($this->once())->method('save')
-            ->with($this->callback(fn(User $u) => $u->getEmail() === 'new@store.com'));
+            ->with($this->callback(fn(User $u) => $u->getEmail() === $expectedEmail));
 
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
         $dispatcher->expects($this->once())->method('dispatch')
             ->with($this->isInstanceOf(UserRegistered::class));
 
-        (new RegisterUser($repo, $dispatcher))->execute('u1', 't1', 'new@store.com', 'password123', 'New User');
+        (new RegisterUser($repo, $dispatcher))->execute('u1', 't1', $email, $password, $name);
+    }
+
+    public function validRegistrationProvider(): array
+    {
+        return [
+            'standard success' => ['new@store.com', 'password123', 'New User', 'new@store.com'],
+            'plus addressing' => ['user+tag@store.com', 'password123', 'Plus User', 'user+tag@store.com'],
+            'unicode email' => ['üser@store.com', 'password123', 'Unicode User', 'üser@store.com'],
+            'mixed case email' => ['UsEr@StOrE.CoM', 'password123', 'Mixed Case User', 'user@store.com'],
+            'special char password' => ['special@store.com', 'p@sswörd🔑123', 'Special Password User', 'special@store.com'],
+            'long password' => ['long@store.com', str_repeat('a', 100), 'Long Password User', 'long@store.com'],
+            'email with surrounding whitespace' => ['  spaced@store.com  ', 'password123', 'Spaced Email User', 'spaced@store.com'],
+        ];
     }
 
     public function testRegisterUserThrowsWhenEmailAlreadyExists(): void
@@ -93,6 +109,12 @@ class RegisterUserTest extends TestCase
             'whitespace tenant id' => [
                 'new@store.com', 'password123', '  ', InvalidArgumentException::class, 'TenantId cannot be empty'
             ],
+            'malformed email domain' => [
+                'user@store', 'password123', 't1', InvalidArgumentException::class, 'Invalid email address: user@store'
+            ],
+            'tenant id too long' => [
+                'new@store.com', 'password123', str_repeat('a', 256), InvalidArgumentException::class, 'TenantId cannot exceed 255 characters'
+            ],
         ];
     }
 
@@ -133,6 +155,21 @@ class RegisterUserTest extends TestCase
         (new RegisterUser($repo, $dispatcher))->execute('u7', 't-check', 'CHECK@store.com', 'password123', 'Check User');
     }
 
+    public function testRegisterUserDoesNotDispatchEventsIfFindByEmailFails(): void
+    {
+        $repo = $this->createMock(UserRepositoryInterface::class);
+        $repo->method('findByEmail')->willThrowException(new \RuntimeException('Connection failed'));
+        $repo->expects($this->never())->method('save');
+
+        $dispatcher = $this->createMock(EventDispatcherInterface::class);
+        $dispatcher->expects($this->never())->method('dispatch');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Connection failed');
+
+        (new RegisterUser($repo, $dispatcher))->execute('u-fail-find', 't1', 'fail@store.com', 'password123', 'Fail User');
+    }
+
     public function testRegisterUserDoesNotDispatchEventsIfSaveFails(): void
     {
         $repo = $this->createMock(UserRepositoryInterface::class);
@@ -146,6 +183,21 @@ class RegisterUserTest extends TestCase
         $this->expectExceptionMessage('Database error');
 
         (new RegisterUser($repo, $dispatcher))->execute('u8', 't1', 'fail@store.com', 'password123', 'Fail User');
+    }
+
+    public function testRegisterUserBubblesUpDispatcherExceptions(): void
+    {
+        $repo = $this->createMock(UserRepositoryInterface::class);
+        $repo->method('findByEmail')->willReturn(null);
+        $repo->expects($this->once())->method('save');
+
+        $dispatcher = $this->createMock(EventDispatcherInterface::class);
+        $dispatcher->method('dispatch')->willThrowException(new \RuntimeException('Dispatcher error'));
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Dispatcher error');
+
+        (new RegisterUser($repo, $dispatcher))->execute('u-fail-dispatch', 't1', 'dispatch@store.com', 'password123', 'Dispatch User');
     }
 
     public function testRegisterUserSavesUserWithCorrectInitialState(): void

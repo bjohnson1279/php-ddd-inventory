@@ -97,4 +97,26 @@ class StartInventoryCountTest extends TestCase
             'missing input' => [[], \ArgumentCountError::class],
         ];
     }
+
+    public function testExecuteCanBeCalledMultipleTimesToStartMultipleCounts(): void
+    {
+        $this->countRepo->expects($this->exactly(2))->method('save')
+            ->withConsecutive(
+                [$this->callback(function (InventoryCount $c) {
+                    return $c->getId() === 'c-1'
+                        && $c->getStatus()->equals(CountStatus::started())
+                        && count($c->getItems()) === 0;
+                })],
+                [$this->callback(function (InventoryCount $c) {
+                    return $c->getId() === 'c-2'
+                        && $c->getStatus()->equals(CountStatus::started())
+                        && count($c->getItems()) === 0;
+                })]
+            );
+
+        $useCase = new StartInventoryCount($this->countRepo);
+
+        $useCase->execute('c-1');
+        $useCase->execute('c-2');
+    }
 }

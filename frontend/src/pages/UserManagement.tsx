@@ -32,7 +32,7 @@ export default function UserManagement() {
       setEmail('');
       fetchUsers();
     } catch (err: any) {
-      setMessage(err.message || 'Error');
+      setMessage(err?.message || 'Error');
     } finally {
       setIsInviting(false);
     }

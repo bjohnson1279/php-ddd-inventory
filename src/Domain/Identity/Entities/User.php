@@ -69,7 +69,7 @@ class User extends AggregateRoot
             $id,
             $tenantId,
             strtolower(trim($email)),
-            password_hash($plainPassword, PASSWORD_BCRYPT),
+            password_hash($plainPassword, PASSWORD_ARGON2ID),
             trim($name),
             [Role::createDefault(Role::STAFF)] // default role
         );

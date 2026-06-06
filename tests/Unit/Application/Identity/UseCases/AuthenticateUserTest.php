@@ -17,7 +17,7 @@ class AuthenticateUserTest extends TestCase
     {
         static $hashCache = [];
         if (!isset($hashCache[$password])) {
-            $hashCache[$password] = password_hash($password, PASSWORD_BCRYPT);
+            $hashCache[$password] = password_hash($password, PASSWORD_ARGON2ID);
         }
 
         return new User(

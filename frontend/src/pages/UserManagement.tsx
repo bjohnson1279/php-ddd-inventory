@@ -7,6 +7,7 @@ export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
+  const [isInviting, setIsInviting] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -23,14 +24,17 @@ export default function UserManagement() {
 
   const invite = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMessage('Inviting...');
+    setMessage('');
+    setIsInviting(true);
     try {
       await api.post('/users', { email });
-      setMessage('Invited');
+      setMessage('Invited successfully!');
       setEmail('');
       fetchUsers();
     } catch (err: any) {
-      setMessage(err.message || 'Error');
+      setMessage(err?.message || 'Error');
+    } finally {
+      setIsInviting(false);
     }
   };
 
@@ -44,11 +48,29 @@ export default function UserManagement() {
           </li>
         ))}
       </ul>
-      <form onSubmit={invite}>
-        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email" />
-        <button type="submit">Invite</button>
+      <form onSubmit={invite} className="form-group">
+        <label htmlFor="invite-email">Email Address</label>
+        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+          <input
+            id="invite-email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="colleague@example.com"
+            required
+            disabled={isInviting}
+            style={{ margin: 0 }}
+          />
+          <button type="submit" className="btn-primary" disabled={isInviting || !email} aria-busy={isInviting}>
+            {isInviting ? 'Inviting...' : 'Invite'}
+          </button>
+        </div>
       </form>
-      <p>{message}</p>
+      {message && (
+        <p role="alert" className={message === 'Invited successfully!' ? 'text-success' : 'text-danger'}>
+          {message}
+        </p>
+      )}
     </div>
   );
 }

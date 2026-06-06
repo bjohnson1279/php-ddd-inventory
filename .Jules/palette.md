@@ -5,3 +5,7 @@
 ## 2024-05-18 - Mapped List Inputs Need Dynamic ARIA Labels
 **Learning:** When mapping over dynamic arrays to render multiple rows of identical form inputs (like in a Journal Entry line with multiple Acct, Type, Amount, Memo fields), hardcoded `aria-label` or missing labels entirely confuse screen reader users because every row sounds the same. Screen readers cannot easily distinguish "Amount" on row 1 from "Amount" on row 2.
 **Action:** When rendering identical inputs in a map loop, use the loop index to create dynamically unique ARIA labels (e.g., `aria-label={\`Account for line ${idx + 1}\`}`) to ensure users have full row-context when navigating form inputs and their associated actions.
+
+## 2024-05-18 - Missing label-input pairs and dangerous substring validation
+**Learning:** Forms in this repository frequently lack explicit `htmlFor` and `id` associations on `<label>` and `<input>` elements. Screen readers rely on these pairs to correctly announce input fields. Additionally, UI styling logic relies on dangerous substring matching like `message.includes('Error')`, causing unexpected visual states (success colors for validation errors) when the API doesn't literally return "Error".
+**Action:** Always manually verify and add explicit `htmlFor` and `id` pairs when modifying forms. When conditionally styling UI feedback messages, use explicit, positive equality checks for success states (e.g., `message === 'Success'`) instead of substring searches.

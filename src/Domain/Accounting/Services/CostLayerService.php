@@ -16,9 +16,9 @@ class CostLayerService
     public function consumeFifoLayers(string $variantId, int $quantity): CostBreakdown
     {
         $activeLayers = $this->layers->getActiveLayers($variantId, 'received_at ASC');
-        $breakdown = $this->consumeLayers($activeLayers, $quantity);
+        [$breakdown, $affectedLayers] = $this->consumeLayers($activeLayers, $quantity);
 
-        $this->layers->saveBatch($activeLayers);
+        $this->layers->saveBatch($affectedLayers);
 
         return $breakdown;
     }
@@ -26,9 +26,9 @@ class CostLayerService
     public function consumeLifoLayers(string $variantId, int $quantity): CostBreakdown
     {
         $activeLayers = $this->layers->getActiveLayers($variantId, 'received_at DESC');
-        $breakdown = $this->consumeLayers($activeLayers, $quantity);
+        [$breakdown, $affectedLayers] = $this->consumeLayers($activeLayers, $quantity);
 
-        $this->layers->saveBatch($activeLayers);
+        $this->layers->saveBatch($affectedLayers);
 
         return $breakdown;
     }
@@ -77,11 +77,15 @@ class CostLayerService
         return new CostBreakdown($quantity, (int) round($quantity * $avgCostCents));
     }
 
-    /** @param InventoryCostLayer[] $layers */
-    private function consumeLayers(array $layers, int $quantity): CostBreakdown
+    /**
+     * @param InventoryCostLayer[] $layers
+     * @return array{0: CostBreakdown, 1: InventoryCostLayer[]}
+     */
+    private function consumeLayers(array $layers, int $quantity): array
     {
         $remaining = $quantity;
         $totalCost = 0;
+        $affectedLayers = [];
 
         foreach ($layers as $layer) {
             if ($remaining <= 0) break;
@@ -89,12 +93,13 @@ class CostLayerService
             $consumed = $layer->consume($remaining);
             $totalCost += $consumed * $layer->unitCostCents;
             $remaining -= $consumed;
+            $affectedLayers[] = $layer;
         }
 
         if ($remaining > 0) {
             throw new DomainException("Insufficient cost layers to cover quantity {$quantity}");
         }
 
-        return new CostBreakdown($quantity, $totalCost);
+        return [new CostBreakdown($quantity, $totalCost), $affectedLayers];
     }
 }

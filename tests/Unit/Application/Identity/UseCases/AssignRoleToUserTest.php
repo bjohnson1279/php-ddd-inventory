@@ -17,7 +17,7 @@ class AssignRoleToUserTest extends TestCase
     {
         static $cachedPasswordHash = null;
         if ($cachedPasswordHash === null) {
-            $cachedPasswordHash = password_hash('password123', PASSWORD_BCRYPT);
+            $cachedPasswordHash = password_hash('password123', PASSWORD_ARGON2ID);
         }
         $user = new User($id, new TenantId('t1'), "{$id}@store.com", $cachedPasswordHash, 'Test User', [Role::createDefault(Role::STAFF)]);
         if ($roleSlug !== Role::STAFF) {

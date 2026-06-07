@@ -77,13 +77,14 @@ class EloquentBarcodeRepository implements BarcodeRepositoryInterface
             // naive: remove existing assignments for variant, then append
             BarcodeModel::where('variant_id', $set->variantId)->delete();
 
+            $barcodesData = [];
             foreach ($set->all() as $a) {
                 $id = $a->id;
                 if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
                     $id = Uuid::uuid4()->toString();
                 }
 
-                BarcodeModel::create([
+                $barcodesData[] = [
                     'id'         => $id,
                     'variant_id' => $a->variantId,
                     'value'      => $a->barcode->value,
@@ -91,7 +92,13 @@ class EloquentBarcodeRepository implements BarcodeRepositoryInterface
                     'source'     => $a->source->value,
                     'is_primary' => $a->isPrimary,
                     'created_at' => $a->assignedAt->format('Y-m-d H:i:s'),
-                ]);
+                ];
+            }
+
+            if (!empty($barcodesData)) {
+                foreach (array_chunk($barcodesData, 500) as $chunk) {
+                    BarcodeModel::insert($chunk);
+                }
             }
         });
     }

@@ -26,13 +26,20 @@ class EloquentKitRepository implements KitRepositoryInterface
             // Re-sync components
             KitComponentModel::where('kit_id', $kit->id)->delete();
 
+            $componentsData = [];
             foreach ($kit->components() as $component) {
-                KitComponentModel::create([
+                $componentsData[] = [
                     'id'         => Uuid::uuid4()->toString(),
                     'kit_id'     => $kit->id,
                     'variant_id' => $component->variantId,
                     'quantity'   => $component->quantity,
-                ]);
+                ];
+            }
+
+            if (!empty($componentsData)) {
+                foreach (array_chunk($componentsData, 500) as $chunk) {
+                    KitComponentModel::insert($chunk);
+                }
             }
         });
     }

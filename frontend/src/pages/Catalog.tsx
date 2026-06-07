@@ -264,7 +264,7 @@ export default function Catalog() {
                   <option value="ACC">Accessories</option>
                 </select>
               </div>
-              <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={isCreatingProd} aria-busy={isCreatingProd}>
+              <button type="submit" className="btn-primary" style={{ width: '100%', opacity: isCreatingProd ? 0.6 : 1, cursor: isCreatingProd ? 'not-allowed' : 'pointer' }} disabled={isCreatingProd} aria-busy={isCreatingProd}>
                 {isCreatingProd ? 'Creating...' : 'Create Product'}
               </button>
             </form>

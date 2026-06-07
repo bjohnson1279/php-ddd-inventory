@@ -363,7 +363,7 @@ export default function Catalog() {
                 <label>Scan / Type Code</label>
                 <input value={lookupVal} onChange={e => setLookupVal(e.target.value)} placeholder="Scan barcode..." required />
               </div>
-              <button type="submit" className="btn-primary" disabled={isResolving} aria-busy={isResolving}>
+              <button type="submit" className="btn-primary" style={{ opacity: isResolving ? 0.6 : 1, cursor: isResolving ? 'not-allowed' : 'pointer' }} disabled={isResolving} aria-busy={isResolving}>
                 {isResolving ? 'Resolving...' : 'Resolve'}
               </button>
             </form>

@@ -348,7 +348,7 @@ export default function Catalog() {
                 <input type="checkbox" checked={isPrimary} onChange={e => setIsPrimary(e.target.checked)} style={{ width: 'auto', marginTop: 0 }} id="is_primary" />
                 <label htmlFor="is_primary" style={{ margin: 0, cursor: 'pointer' }}>Make Primary Barcode</label>
               </div>
-              <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={isAssigning} aria-busy={isAssigning}>
+              <button type="submit" className="btn-primary" style={{ width: '100%', opacity: isAssigning ? 0.6 : 1, cursor: isAssigning ? 'not-allowed' : 'pointer' }} disabled={isAssigning} aria-busy={isAssigning}>
                 {isAssigning ? 'Assigning...' : 'Assign Barcode'}
               </button>
             </form>

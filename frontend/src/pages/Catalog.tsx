@@ -301,7 +301,7 @@ export default function Catalog() {
                   <input value={varSize} onChange={e => setVarSize(e.target.value)} placeholder="e.g. Medium" />
                 </div>
               </div>
-              <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={isAddingVar} aria-busy={isAddingVar}>
+              <button type="submit" className="btn-primary" style={{ width: '100%', opacity: isAddingVar ? 0.6 : 1, cursor: isAddingVar ? 'not-allowed' : 'pointer' }} disabled={isAddingVar} aria-busy={isAddingVar}>
                 {isAddingVar ? 'Adding...' : 'Add Variant'}
               </button>
             </form>

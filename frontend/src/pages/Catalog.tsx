@@ -47,6 +47,12 @@ export default function Catalog() {
   const [lookupResult, setLookupResult] = useState<string | null>(null);
   const [lookupError, setLookupError] = useState('');
 
+  // Loading states
+  const [isCreatingProd, setIsCreatingProd] = useState(false);
+  const [isAddingVar, setIsAddingVar] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [isResolving, setIsResolving] = useState(false);
+
   useEffect(() => {
     fetchProducts();
   }, []);
@@ -68,7 +74,8 @@ export default function Catalog() {
 
   const createProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    setProdMsg('Creating...');
+    setProdMsg('');
+    setIsCreatingProd(true);
     try {
       await api.post('/catalog/products', {
         name: prodName,
@@ -81,6 +88,8 @@ export default function Catalog() {
       fetchProducts();
     } catch (err: any) {
       setProdMsg(err.message || 'Error creating product');
+    } finally {
+      setIsCreatingProd(false);
     }
   };
 
@@ -90,7 +99,8 @@ export default function Catalog() {
       setVarMsg('Select a product first.');
       return;
     }
-    setVarMsg('Adding variant...');
+    setVarMsg('');
+    setIsAddingVar(true);
     try {
       const attributes: Record<string, string> = {};
       if (varColor) attributes['color'] = varColor;
@@ -109,6 +119,8 @@ export default function Catalog() {
       fetchProducts();
     } catch (err: any) {
       setVarMsg(err.message || 'Error adding variant');
+    } finally {
+      setIsAddingVar(false);
     }
   };
 
@@ -118,7 +130,8 @@ export default function Catalog() {
       setBarcodeMsg('Select a variant first.');
       return;
     }
-    setBarcodeMsg('Assigning barcode...');
+    setBarcodeMsg('');
+    setIsAssigning(true);
     try {
       await api.post('/barcodes/assign', {
         variant_id: selectedVarId,
@@ -132,6 +145,8 @@ export default function Catalog() {
       fetchProducts();
     } catch (err: any) {
       setBarcodeMsg(err.message || 'Error assigning barcode');
+    } finally {
+      setIsAssigning(false);
     }
   };
 
@@ -139,6 +154,7 @@ export default function Catalog() {
     e.preventDefault();
     setLookupResult(null);
     setLookupError('');
+    setIsResolving(true);
     try {
       const res = await api.get(`/barcodes/lookup?value=${lookupVal}`);
       if (res.variant_id) {
@@ -148,6 +164,8 @@ export default function Catalog() {
       }
     } catch (err: any) {
       setLookupError(err.message || 'Barcode not found');
+    } finally {
+      setIsResolving(false);
     }
   };
 
@@ -246,7 +264,9 @@ export default function Catalog() {
                   <option value="ACC">Accessories</option>
                 </select>
               </div>
-              <button type="submit" className="btn-primary" style={{ width: '100%' }}>Create Product</button>
+              <button type="submit" className="btn-primary" style={{ width: '100%', opacity: isCreatingProd ? 0.6 : 1, cursor: isCreatingProd ? 'not-allowed' : 'pointer' }} disabled={isCreatingProd} aria-busy={isCreatingProd}>
+                {isCreatingProd ? 'Creating...' : 'Create Product'}
+              </button>
             </form>
             <p style={{ color: prodMsg.includes('Error') ? '#f87171' : '#34d399' }}>{prodMsg}</p>
           </div>
@@ -281,7 +301,9 @@ export default function Catalog() {
                   <input value={varSize} onChange={e => setVarSize(e.target.value)} placeholder="e.g. Medium" />
                 </div>
               </div>
-              <button type="submit" className="btn-primary" style={{ width: '100%' }}>Add Variant</button>
+              <button type="submit" className="btn-primary" style={{ width: '100%', opacity: isAddingVar ? 0.6 : 1, cursor: isAddingVar ? 'not-allowed' : 'pointer' }} disabled={isAddingVar} aria-busy={isAddingVar}>
+                {isAddingVar ? 'Adding...' : 'Add Variant'}
+              </button>
             </form>
             <p style={{ color: varMsg.includes('Error') ? '#f87171' : '#34d399' }}>{varMsg}</p>
           </div>
@@ -326,7 +348,9 @@ export default function Catalog() {
                 <input type="checkbox" checked={isPrimary} onChange={e => setIsPrimary(e.target.checked)} style={{ width: 'auto', marginTop: 0 }} id="is_primary" />
                 <label htmlFor="is_primary" style={{ margin: 0, cursor: 'pointer' }}>Make Primary Barcode</label>
               </div>
-              <button type="submit" className="btn-primary" style={{ width: '100%' }}>Assign Barcode</button>
+              <button type="submit" className="btn-primary" style={{ width: '100%', opacity: isAssigning ? 0.6 : 1, cursor: isAssigning ? 'not-allowed' : 'pointer' }} disabled={isAssigning} aria-busy={isAssigning}>
+                {isAssigning ? 'Assigning...' : 'Assign Barcode'}
+              </button>
             </form>
             <p style={{ color: barcodeMsg.includes('Error') ? '#f87171' : '#34d399' }}>{barcodeMsg}</p>
           </div>
@@ -339,7 +363,9 @@ export default function Catalog() {
                 <label>Scan / Type Code</label>
                 <input value={lookupVal} onChange={e => setLookupVal(e.target.value)} placeholder="Scan barcode..." required />
               </div>
-              <button type="submit" className="btn-primary">Resolve</button>
+              <button type="submit" className="btn-primary" style={{ opacity: isResolving ? 0.6 : 1, cursor: isResolving ? 'not-allowed' : 'pointer' }} disabled={isResolving} aria-busy={isResolving}>
+                {isResolving ? 'Resolving...' : 'Resolve'}
+              </button>
             </form>
             {lookupResult && (
               <div className="text-success" style={{ marginTop: '1rem', fontSize: '0.95rem' }}>

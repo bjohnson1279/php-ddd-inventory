@@ -9,3 +9,7 @@
 ## 2024-05-18 - Missing label-input pairs and dangerous substring validation
 **Learning:** Forms in this repository frequently lack explicit `htmlFor` and `id` associations on `<label>` and `<input>` elements. Screen readers rely on these pairs to correctly announce input fields. Additionally, UI styling logic relies on dangerous substring matching like `message.includes('Error')`, causing unexpected visual states (success colors for validation errors) when the API doesn't literally return "Error".
 **Action:** Always manually verify and add explicit `htmlFor` and `id` pairs when modifying forms. When conditionally styling UI feedback messages, use explicit, positive equality checks for success states (e.g., `message === 'Success'`) instead of substring searches.
+
+## 2026-06-07 - Button Loading States and Accessibility During Submission
+**Learning:** When form submit buttons only use a text update (e.g., changing "Create Product" to "Creating...") without disabling the button or adding `aria-busy`, it introduces a risk of multiple submissions and poor feedback for screen reader users. The API calls handle state manually, requiring discrete booleans for component loading phases.
+**Action:** Always replace string-based loading messages on forms with dedicated boolean loading states (e.g., `isCreatingProd`), then explicitly disable the action button (`disabled={isLoading}`) and set `aria-busy={isLoading}` to prevent double-clicks and clearly communicate system state to assistive technologies.

@@ -27,14 +27,21 @@ class EloquentStockOnboardingRepository implements StockOnboardingRepositoryInte
             // Re-sync items: delete existing and insert new
             StockOnboardingItemModel::where('onboarding_id', $onboarding->id)->delete();
 
+            $itemsData = [];
             foreach ($onboarding->items() as $item) {
-                StockOnboardingItemModel::create([
+                $itemsData[] = [
                     'id'              => Uuid::uuid4()->toString(),
                     'onboarding_id'   => $onboarding->id,
                     'variant_id'      => $item->variantId,
                     'quantity'        => $item->quantity,
                     'unit_cost_cents' => $item->unitCostCents,
-                ]);
+                ];
+            }
+
+            if (!empty($itemsData)) {
+                foreach (array_chunk($itemsData, 500) as $chunk) {
+                    StockOnboardingItemModel::insert($chunk);
+                }
             }
         });
     }

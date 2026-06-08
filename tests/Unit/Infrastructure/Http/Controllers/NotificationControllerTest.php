@@ -79,4 +79,115 @@ class NotificationControllerTest extends TestCase
 
         $this->assertEquals('Notification not found', $decoded['error']);
     }
+
+    public function testListReturns200WithNotifications(): void
+    {
+        $tenantId = 'tenant-1';
+        $notifications = [
+            ['id' => 'notif-1', 'message' => 'First notification'],
+            ['id' => 'notif-2', 'message' => 'Second notification'],
+        ];
+
+        $this->serviceMock->expects($this->once())
+            ->method('getNotifications')
+            ->with($tenantId)
+            ->willReturn($notifications);
+
+        $requestMock = $this->createMock(RequestInterface::class);
+
+        $response = $this->controller->list($requestMock, $tenantId);
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(200, $response->getStatusCode());
+
+        $rawContent = $response->getContent();
+        $this->assertIsString($rawContent);
+
+        $decoded = json_decode($rawContent, true);
+        if (is_string($decoded)) {
+            $decoded = json_decode($decoded, true);
+        }
+
+        $this->assertEquals($notifications, $decoded['notifications']);
+    }
+
+    public function testListReturns400OnException(): void
+    {
+        $tenantId = 'tenant-1';
+
+        $this->serviceMock->expects($this->once())
+            ->method('getNotifications')
+            ->with($tenantId)
+            ->willThrowException(new Exception('Error fetching notifications'));
+
+        $requestMock = $this->createMock(RequestInterface::class);
+
+        $response = $this->controller->list($requestMock, $tenantId);
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(400, $response->getStatusCode());
+
+        $rawContent = $response->getContent();
+        $this->assertIsString($rawContent);
+
+        $decoded = json_decode($rawContent, true);
+        if (is_string($decoded)) {
+            $decoded = json_decode($decoded, true);
+        }
+
+        $this->assertEquals('Error fetching notifications', $decoded['error']);
+    }
+
+    public function testReadAllReturns200WithStaticMessage(): void
+    {
+        $tenantId = 'tenant-1';
+
+        $this->serviceMock->expects($this->once())
+            ->method('markAllAsRead')
+            ->with($tenantId);
+
+        $requestMock = $this->createMock(RequestInterface::class);
+
+        $response = $this->controller->readAll($requestMock, $tenantId);
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(200, $response->getStatusCode());
+
+        $rawContent = $response->getContent();
+        $this->assertIsString($rawContent);
+
+        $decoded = json_decode($rawContent, true);
+        if (is_string($decoded)) {
+            $decoded = json_decode($decoded, true);
+        }
+
+        $this->assertEquals('All notifications marked as read', $decoded['message']);
+    }
+
+    public function testReadAllReturns400OnException(): void
+    {
+        $tenantId = 'tenant-1';
+
+        $this->serviceMock->expects($this->once())
+            ->method('markAllAsRead')
+            ->with($tenantId)
+            ->willThrowException(new Exception('Error marking all as read'));
+
+        $requestMock = $this->createMock(RequestInterface::class);
+
+        $response = $this->controller->readAll($requestMock, $tenantId);
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(400, $response->getStatusCode());
+
+        $rawContent = $response->getContent();
+        $this->assertIsString($rawContent);
+
+        $decoded = json_decode($rawContent, true);
+        if (is_string($decoded)) {
+            $decoded = json_decode($decoded, true);
+        }
+
+        $this->assertEquals('Error marking all as read', $decoded['error']);
+    }
 }

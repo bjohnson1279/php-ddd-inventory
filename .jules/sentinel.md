@@ -11,4 +11,4 @@
 ## 2026-06-08 - Empty Webhook Secret Validation Bypass
 **Vulnerability:** The Shopify webhook signature verification process in `ShopifyWebhookVerifier` did not check if the configured `webhookSecret` was empty before calling `hash_hmac()`. If the secret was empty, `hash_hmac()` processed it without error, allowing attackers to sign arbitrary payloads using an empty string key, completely bypassing HMAC verification.
 **Learning:** Functions like `hash_hmac` do not inherently fail or warn when provided with an empty key. They compute a technically valid HMAC for that empty key, leading to a critical bypass if the secret is unintentionally unconfigured.
-**Prevention:** Always implement an explicit `empty()` check on shared secrets (like API keys or HMAC secrets) before using them in cryptographic signing or verification functions to prevent null-key spoofing attacks.
+**Prevention:** Always implement an explicit check to ensure shared secrets (like API keys or HMAC secrets) are not empty or whitespace-only before using them in cryptographic signing or verification functions to prevent null-key spoofing attacks.

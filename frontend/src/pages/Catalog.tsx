@@ -352,7 +352,11 @@ export default function Catalog() {
                 {isAssigning ? 'Assigning...' : 'Assign Barcode'}
               </button>
             </form>
-            <p style={{ color: barcodeMsg === 'Barcode assigned successfully!' ? '#34d399' : '#f87171' }}>{barcodeMsg}</p>
+            {barcodeMsg && (
+              <p style={{ color: barcodeMsg === 'Barcode assigned successfully!' ? '#34d399' : '#f87171' }}>
+                {barcodeMsg}
+              </p>
+            )}
           </div>
 
           {/* Barcode Lookup Finder */}

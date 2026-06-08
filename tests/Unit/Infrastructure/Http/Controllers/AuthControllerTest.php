@@ -133,4 +133,27 @@ class AuthControllerTest extends TestCase
         $this->assertEquals(400, $response->getStatusCode());
         $this->assertEquals(json_encode(['error' => 'Registration failed.']), $response->getContent());
     }
+
+    public function testRegisterThrowsInvalidArgumentExceptionAndReturns400(): void
+    {
+        $this->requestMock->expects($this->once())
+            ->method('validate')
+            ->willReturn([
+                'id'        => 'user-1',
+                'tenant_id' => 'tenant-1',
+                'email'     => 'test@example.com',
+                'password'  => 'password',
+                'name'      => 'Test User',
+            ]);
+
+        $this->registerUserMock->expects($this->once())
+            ->method('execute')
+            ->with('user-1', 'tenant-1', 'test@example.com', 'password', 'Test User')
+            ->willThrowException(new InvalidArgumentException('TenantId cannot be empty'));
+
+        $response = $this->controller->register($this->requestMock, $this->registerUserMock);
+
+        $this->assertEquals(400, $response->getStatusCode());
+        $this->assertEquals(json_encode(['error' => 'TenantId cannot be empty']), $response->getContent());
+    }
 }

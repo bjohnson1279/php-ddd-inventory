@@ -5,6 +5,7 @@ namespace InventoryApp\Infrastructure\Persistence\Repositories;
 use InventoryApp\Domain\Inventory\Repositories\InventoryCountRepositoryInterface;
 use InventoryApp\Domain\Inventory\Entities\InventoryCount;
 use InventoryApp\Domain\Inventory\Entities\InventoryCountItem;
+use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
 use InventoryApp\Domain\Inventory\ValueObjects\SKU;
 use InventoryApp\Domain\Inventory\ValueObjects\Quantity;
 use InventoryApp\Domain\Inventory\ValueObjects\CountStatus;
@@ -28,6 +29,7 @@ class EloquentInventoryCountRepository implements InventoryCountRepositoryInterf
         foreach ($model->items as $itemModel) {
             $items[] = new InventoryCountItem(
                 new SKU($itemModel->sku),
+                new LocationId($itemModel->location_id),
                 new Quantity($itemModel->counted_quantity)
             );
         }
@@ -56,6 +58,7 @@ class EloquentInventoryCountRepository implements InventoryCountRepositoryInterf
                     [
                         'inventory_count_id' => $model->id,
                         'sku'                => $item->getSku()->getValue(),
+                        'location_id'        => $item->getLocationId()->getValue(),
                     ],
                     [
                         'product_id'       => null,

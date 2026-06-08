@@ -34,10 +34,11 @@ class InventoryCountController
         try {
             $validated = $request->validate([
                 'sku' => 'required|string',
+                'location_id' => 'required|string',
                 'quantity' => 'required|integer'
             ]);
 
-            $useCase->execute($countId, $validated['sku'], $validated['quantity']);
+            $useCase->execute($countId, $validated['sku'], $validated['location_id'], $validated['quantity']);
 
             return new Response(['message' => 'Item count recorded successfully.']);
         } catch (Exception $e) {

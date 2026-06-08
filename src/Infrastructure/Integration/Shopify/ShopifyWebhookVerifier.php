@@ -18,6 +18,10 @@ class ShopifyWebhookVerifier
 
     public function verify(string $rawPayload, string $hmacHeader): bool
     {
+        if (empty($this->webhookSecret)) {
+            return false;
+        }
+
         $computed = base64_encode(
             hash_hmac('sha256', $rawPayload, $this->webhookSecret, true)
         );

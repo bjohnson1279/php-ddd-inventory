@@ -74,6 +74,8 @@ class XeroJournalSync
                 'Xero-tenant-id: ' . $this->tenantId,
                 'Authorization: Bearer ' . $this->accessToken,
             ],
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
         ]);
 
         $response   = curl_exec($ch);

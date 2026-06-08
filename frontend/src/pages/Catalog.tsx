@@ -268,7 +268,11 @@ export default function Catalog() {
                 {isCreatingProd ? 'Creating...' : 'Create Product'}
               </button>
             </form>
-            <p style={{ color: prodMsg === 'Product created successfully!' ? '#34d399' : '#f87171' }}>{prodMsg}</p>
+            {prodMsg && (
+              <p style={{ color: prodMsg === 'Product created successfully!' ? '#34d399' : '#f87171' }}>
+                {prodMsg}
+              </p>
+            )}
           </div>
 
           {/* Add Variant Form */}

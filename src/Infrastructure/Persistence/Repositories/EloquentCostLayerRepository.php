@@ -90,6 +90,24 @@ class EloquentCostLayerRepository implements CostLayerRepositoryInterface
         return $model ? $this->hydrate($model) : null;
     }
 
+    /**
+     * @param string[] $serialNumbers
+     * @return InventoryCostLayer[]
+     */
+    public function findBySerials(string $variantId, array $serialNumbers): array
+    {
+        if (empty($serialNumbers)) {
+            return [];
+        }
+
+        $models = CostLayerModel::where('tenant_id', $this->tenantId)
+            ->where('variant_id', $variantId)
+            ->whereIn('serial_number', $serialNumbers)
+            ->get();
+
+        return $models->map(fn($model) => $this->hydrate($model))->all();
+    }
+
     private function hydrate(CostLayerModel $model): InventoryCostLayer
     {
         $layer = new InventoryCostLayer(

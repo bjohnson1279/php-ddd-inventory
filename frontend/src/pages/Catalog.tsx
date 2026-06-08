@@ -309,7 +309,11 @@ export default function Catalog() {
                 {isAddingVar ? 'Adding...' : 'Add Variant'}
               </button>
             </form>
-            <p style={{ color: varMsg === 'Variant added successfully!' ? '#34d399' : '#f87171' }}>{varMsg}</p>
+            {varMsg && (
+              <p style={{ color: varMsg === 'Variant added successfully!' ? '#34d399' : '#f87171' }}>
+                {varMsg}
+              </p>
+            )}
           </div>
 
           {/* Barcode Assignment Form */}

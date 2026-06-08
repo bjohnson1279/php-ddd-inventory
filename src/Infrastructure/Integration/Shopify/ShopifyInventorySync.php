@@ -46,6 +46,8 @@ class ShopifyInventorySync
                 'Content-Type: application/json',
                 'X-Shopify-Access-Token: ' . $this->accessToken,
             ],
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
         ]);
 
         $response   = curl_exec($ch);
@@ -103,6 +105,8 @@ class ShopifyInventorySync
                 'Content-Type: application/json',
                 'X-Shopify-Access-Token: ' . $this->accessToken,
             ],
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
         ]);
 
         $response   = curl_exec($ch);

@@ -38,8 +38,14 @@ class CostLayerService
         $totalCost = 0;
         $affectedLayers = [];
 
+        $layers = $this->layers->findBySerials($variantId, $serialNumbers);
+        $layersBySerial = [];
+        foreach ($layers as $layer) {
+            $layersBySerial[$layer->serialNumber] = $layer;
+        }
+
         foreach ($serialNumbers as $sn) {
-            $layer = $this->layers->findBySerial($variantId, $sn);
+            $layer = $layersBySerial[$sn] ?? null;
             if (!$layer) {
                 throw new DomainException("No cost layer found for serial number {$sn}");
             }

@@ -38,10 +38,10 @@ class InventoryCountControllerTest extends TestCase
     {
         $useCase = $this->createMock(RecordCountItem::class);
         $useCase->expects($this->once())->method('execute')
-            ->with('c-1', 'SKU-A', 10);
+            ->with('c-1', 'SKU-A', 'LOC-A', 10);
 
         $request = $this->createMock(RequestInterface::class);
-        $request->method('validate')->willReturn(['sku' => 'SKU-A', 'quantity' => 10]);
+        $request->method('validate')->willReturn(['sku' => 'SKU-A', 'location_id' => 'LOC-A', 'quantity' => 10]);
 
         $response = $this->controller->recordItem('c-1', $request, $useCase);
 

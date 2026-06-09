@@ -11,7 +11,7 @@ class InventoryCountItemModel extends Model
     protected $keyType = 'string';
     public $timestamps = false;
 
-    protected $fillable = ['id','inventory_count_id','product_id','sku','counted_quantity','created_at'];
+    protected $fillable = ['id','inventory_count_id','product_id','sku','location_id','counted_quantity','created_at'];
 
     public function count()
     {

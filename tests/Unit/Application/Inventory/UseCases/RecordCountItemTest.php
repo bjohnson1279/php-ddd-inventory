@@ -34,7 +34,7 @@ class RecordCountItemTest extends TestCase
         $this->countRepo->expects($this->once())->method('save')
             ->with($this->callback(fn(InventoryCount $c) => count($c->getItems()) === 1));
 
-        (new RecordCountItem($this->countRepo))->execute('c-1', 'SKU-1', 10);
+        (new RecordCountItem($this->countRepo))->execute('c-1', 'SKU-1', 'LOC-A', 10);
     }
 
     public function testRecordCountItemThrowsWhenNotFound(): void
@@ -43,7 +43,7 @@ class RecordCountItemTest extends TestCase
         $this->expectException(Exception::class);
         $this->expectExceptionMessageMatches('/not found/');
 
-        (new RecordCountItem($this->countRepo))->execute('ghost', 'SKU-1', 10);
+        (new RecordCountItem($this->countRepo))->execute('ghost', 'SKU-1', 'LOC-A', 10);
     }
 
 }

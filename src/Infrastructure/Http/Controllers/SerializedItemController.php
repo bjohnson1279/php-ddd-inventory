@@ -182,7 +182,13 @@ class SerializedItemController
     {
         try {
             $statusStr = $request->query('status');
-            $status = $statusStr ? SerializedItemStatus::from($statusStr) : null;
+            $status = null;
+            if ($statusStr) {
+                $status = SerializedItemStatus::tryFrom($statusStr);
+                if ($status === null) {
+                    return new Response(['error' => 'Invalid status parameter'], 400);
+                }
+            }
 
             $items = $repo->findByVariant($variantId, $status);
             $serialized = array_map(fn($item) => $this->serializeItem($item), $items);
@@ -200,7 +206,10 @@ class SerializedItemController
             if (empty($statusStr)) {
                 return new Response(['error' => 'status query parameter is required'], 400);
             }
-            $status = SerializedItemStatus::from($statusStr);
+            $status = SerializedItemStatus::tryFrom($statusStr);
+            if ($status === null) {
+                return new Response(['error' => 'Invalid status parameter'], 400);
+            }
 
             $count = $repo->countByStatus($variantId, $status);
 

@@ -194,19 +194,26 @@ class EloquentProductRepository implements ProductRepositoryInterface
                 // up for product_id + location_id, causing upsert to fail.
                 // We'll fallback to updateOrCreate for locations, but wrapped in the transaction it's still fast.
                 // Or try checking connection driver. For production postgres it works if unique constraint exists.
-                // Let's use updateOrCreate for locationData to be safe since it's a pivot-like table
-                foreach ($locationData as $loc) {
-                    ProductLocationModel::updateOrCreate(
-                        [
-                            'product_id' => $loc['product_id'],
-                            'location_id' => $loc['location_id'],
-                        ],
-                        [
-                            'stock_quantity'     => $loc['stock_quantity'],
-                            'open_box_quantity'  => $loc['open_box_quantity'],
-                            'damaged_quantity'   => $loc['damaged_quantity'],
-                            'updated_at'        => $loc['updated_at'],
-                        ]
+                if (\Illuminate\Database\Capsule\Manager::connection()->getDriverName() === 'sqlite') {
+                    foreach ($locationData as $loc) {
+                        ProductLocationModel::updateOrCreate(
+                            [
+                                'product_id' => $loc['product_id'],
+                                'location_id' => $loc['location_id'],
+                            ],
+                            [
+                                'stock_quantity'     => $loc['stock_quantity'],
+                                'open_box_quantity'  => $loc['open_box_quantity'],
+                                'damaged_quantity'   => $loc['damaged_quantity'],
+                                'updated_at'        => $loc['updated_at'],
+                            ]
+                        );
+                    }
+                } else {
+                    ProductLocationModel::upsert(
+                        $locationData,
+                        ['product_id', 'location_id'],
+                        ['stock_quantity', 'open_box_quantity', 'damaged_quantity', 'updated_at']
                     );
                 }
             }

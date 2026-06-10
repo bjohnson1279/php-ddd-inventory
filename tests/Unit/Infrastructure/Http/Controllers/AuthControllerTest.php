@@ -6,12 +6,17 @@ use PHPUnit\Framework\TestCase;
 use InventoryApp\Infrastructure\Http\Controllers\AuthController;
 use InventoryApp\Infrastructure\Http\RequestInterface;
 use InventoryApp\Application\Identity\UseCases\RegisterUser;
+use InventoryApp\Application\Identity\UseCases\AuthenticateUser;
 use InventoryApp\Infrastructure\Http\Response;
 use Exception;
+use InvalidArgumentException;
 
 class AuthControllerTest extends TestCase
 {
     private AuthController $controller;
+    private $registerUserMock;
+    private $authenticateUserMock;
+    private $requestMock;
 
     protected function setUp(): void
     {

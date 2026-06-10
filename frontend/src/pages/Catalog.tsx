@@ -248,16 +248,16 @@ export default function Catalog() {
             <div className="section-title">Create Product</div>
             <form onSubmit={createProduct}>
               <div className="form-group">
-                <label>Product Name</label>
-                <input value={prodName} onChange={e => setProdName(e.target.value)} placeholder="e.g. Classic Denim Jacket" required />
+                <label htmlFor="prodName">Product Name</label>
+                <input id="prodName" value={prodName} onChange={e => setProdName(e.target.value)} placeholder="e.g. Classic Denim Jacket" required />
               </div>
               <div className="form-group">
-                <label>Description</label>
-                <input value={prodDesc} onChange={e => setProdDesc(e.target.value)} placeholder="e.g. 100% Cotton raw denim outerwear" required />
+                <label htmlFor="prodDesc">Description</label>
+                <input id="prodDesc" value={prodDesc} onChange={e => setProdDesc(e.target.value)} placeholder="e.g. 100% Cotton raw denim outerwear" required />
               </div>
               <div className="form-group">
-                <label>Department</label>
-                <select value={prodDept} onChange={e => setProdDept(e.target.value)}>
+                <label htmlFor="prodDept">Department</label>
+                <select id="prodDept" value={prodDept} onChange={e => setProdDept(e.target.value)}>
                   <option value="GEN">General</option>
                   <option value="APP">Apparel</option>
                   <option value="FTW">Footwear</option>
@@ -268,7 +268,11 @@ export default function Catalog() {
                 {isCreatingProd ? 'Creating...' : 'Create Product'}
               </button>
             </form>
-            <p style={{ color: prodMsg.includes('Error') ? '#f87171' : '#34d399' }}>{prodMsg}</p>
+            {prodMsg && (
+              <p style={{ color: prodMsg === 'Product created successfully!' ? '#34d399' : '#f87171' }}>
+                {prodMsg}
+              </p>
+            )}
           </div>
 
           {/* Add Variant Form */}
@@ -276,36 +280,40 @@ export default function Catalog() {
             <div className="section-title">Add Variant</div>
             <form onSubmit={createVariant}>
               <div className="form-group">
-                <label>Parent Product</label>
-                <select value={selectedProdId} onChange={e => setSelectedProdId(e.target.value)}>
+                <label htmlFor="selectedProdId">Parent Product</label>
+                <select id="selectedProdId" value={selectedProdId} onChange={e => setSelectedProdId(e.target.value)}>
                   {products.map(p => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
                 </select>
               </div>
               <div className="form-group">
-                <label>SKU</label>
-                <input value={varSku} onChange={e => setVarSku(e.target.value)} placeholder="e.g. DNM-JKT-BLU-M" required />
+                <label htmlFor="varSku">SKU</label>
+                <input id="varSku" value={varSku} onChange={e => setVarSku(e.target.value)} placeholder="e.g. DNM-JKT-BLU-M" required />
               </div>
               <div className="form-group">
-                <label>Price</label>
-                <input type="number" step="0.01" value={varPrice} onChange={e => setVarPrice(e.target.value)} placeholder="e.g. 89.99" required />
+                <label htmlFor="varPrice">Price</label>
+                <input id="varPrice" type="number" step="0.01" value={varPrice} onChange={e => setVarPrice(e.target.value)} placeholder="e.g. 89.99" required />
               </div>
               <div className="grid-2">
                 <div className="form-group">
-                  <label>Color Attribute</label>
-                  <input value={varColor} onChange={e => setVarColor(e.target.value)} placeholder="e.g. Blue" />
+                  <label htmlFor="varColor">Color Attribute</label>
+                  <input id="varColor" value={varColor} onChange={e => setVarColor(e.target.value)} placeholder="e.g. Blue" />
                 </div>
                 <div className="form-group">
-                  <label>Size Attribute</label>
-                  <input value={varSize} onChange={e => setVarSize(e.target.value)} placeholder="e.g. Medium" />
+                  <label htmlFor="varSize">Size Attribute</label>
+                  <input id="varSize" value={varSize} onChange={e => setVarSize(e.target.value)} placeholder="e.g. Medium" />
                 </div>
               </div>
               <button type="submit" className="btn-primary" style={{ width: '100%', opacity: isAddingVar ? 0.6 : 1, cursor: isAddingVar ? 'not-allowed' : 'pointer' }} disabled={isAddingVar} aria-busy={isAddingVar}>
                 {isAddingVar ? 'Adding...' : 'Add Variant'}
               </button>
             </form>
-            <p style={{ color: varMsg.includes('Error') ? '#f87171' : '#34d399' }}>{varMsg}</p>
+            {varMsg && (
+              <p style={{ color: varMsg === 'Variant added successfully!' ? '#34d399' : '#f87171' }}>
+                {varMsg}
+              </p>
+            )}
           </div>
 
           {/* Barcode Assignment Form */}
@@ -313,21 +321,21 @@ export default function Catalog() {
             <div className="section-title">Assign Barcode</div>
             <form onSubmit={assignBarcode}>
               <div className="form-group">
-                <label>Variant</label>
-                <select value={selectedVarId} onChange={e => setSelectedVarId(e.target.value)}>
+                <label htmlFor="selectedVarId">Variant</label>
+                <select id="selectedVarId" value={selectedVarId} onChange={e => setSelectedVarId(e.target.value)}>
                   {allVariants.map(v => (
                     <option key={v.id} value={v.id}>{v.productName} — {v.sku}</option>
                   ))}
                 </select>
               </div>
               <div className="form-group">
-                <label>Barcode Value</label>
-                <input value={barcodeVal} onChange={e => setBarcodeVal(e.target.value)} placeholder="e.g. 190198031203" required />
+                <label htmlFor="barcodeVal">Barcode Value</label>
+                <input id="barcodeVal" value={barcodeVal} onChange={e => setBarcodeVal(e.target.value)} placeholder="e.g. 190198031203" required />
               </div>
               <div className="grid-2">
                 <div className="form-group">
-                  <label>Symbology</label>
-                  <select value={symbology} onChange={e => setSymbology(e.target.value)}>
+                  <label htmlFor="symbology">Symbology</label>
+                  <select id="symbology" value={symbology} onChange={e => setSymbology(e.target.value)}>
                     <option value="upc_a">UPC-A</option>
                     <option value="upc_e">UPC-E</option>
                     <option value="ean_13">EAN-13</option>
@@ -336,8 +344,8 @@ export default function Catalog() {
                   </select>
                 </div>
                 <div className="form-group">
-                  <label>Source</label>
-                  <select value={source} onChange={e => setSource(e.target.value)}>
+                  <label htmlFor="source">Source</label>
+                  <select id="source" value={source} onChange={e => setSource(e.target.value)}>
                     <option value="supplier">Supplier</option>
                     <option value="internal">Internal</option>
                     <option value="gs1">GS1 Registered</option>
@@ -352,7 +360,11 @@ export default function Catalog() {
                 {isAssigning ? 'Assigning...' : 'Assign Barcode'}
               </button>
             </form>
-            <p style={{ color: barcodeMsg.includes('Error') ? '#f87171' : '#34d399' }}>{barcodeMsg}</p>
+            {barcodeMsg && (
+              <p style={{ color: barcodeMsg === 'Barcode assigned successfully!' ? '#34d399' : '#f87171' }}>
+                {barcodeMsg}
+              </p>
+            )}
           </div>
 
           {/* Barcode Lookup Finder */}
@@ -360,8 +372,8 @@ export default function Catalog() {
             <div className="section-title">Barcode Scan Lookup</div>
             <form onSubmit={lookupBarcode} className="form-row">
               <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-                <label>Scan / Type Code</label>
-                <input value={lookupVal} onChange={e => setLookupVal(e.target.value)} placeholder="Scan barcode..." required />
+                <label htmlFor="lookupVal">Scan / Type Code</label>
+                <input id="lookupVal" value={lookupVal} onChange={e => setLookupVal(e.target.value)} placeholder="Scan barcode..." required />
               </div>
               <button type="submit" className="btn-primary" style={{ opacity: isResolving ? 0.6 : 1, cursor: isResolving ? 'not-allowed' : 'pointer' }} disabled={isResolving} aria-busy={isResolving}>
                 {isResolving ? 'Resolving...' : 'Resolve'}

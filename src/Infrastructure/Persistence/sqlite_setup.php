@@ -179,6 +179,7 @@ class SqliteSetup
               inventory_count_id TEXT NOT NULL,
               product_id TEXT,
               sku TEXT NOT NULL,
+              location_id VARCHAR(50) NOT NULL,
               counted_quantity INTEGER NOT NULL DEFAULT 0,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )",

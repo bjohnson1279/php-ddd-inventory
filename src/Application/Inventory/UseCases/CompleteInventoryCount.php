@@ -45,9 +45,8 @@ class CompleteInventoryCount
             if (isset($productsBySku[$skuValue])) {
                 $product = $productsBySku[$skuValue];
 
-                // Hardcoded to LOC-STOREFRONT until InventoryCount items support locations
                 $product->reconcileStockAt(
-                    new LocationId('LOC-STOREFRONT'),
+                    $item->getLocationId(),
                     $item->getCountedQuantity(),
                     'COUNT_' . $inventoryCount->getId()
                 );

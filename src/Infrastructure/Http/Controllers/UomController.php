@@ -18,10 +18,16 @@ class UomController
         if (empty($data['name']) || empty($data['abbreviation']) || empty($data['category'])) {
             throw new \InvalidArgumentException('Unit of measure must have name, abbreviation, and category.');
         }
+
+        $category = UomCategory::tryFrom($data['category']);
+        if ($category === null) {
+            throw new \InvalidArgumentException('Invalid unit of measure category.');
+        }
+
         return new UnitOfMeasure(
             $data['name'],
             $data['abbreviation'],
-            UomCategory::from($data['category'])
+            $category
         );
     }
 

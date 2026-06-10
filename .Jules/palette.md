@@ -13,3 +13,6 @@
 ## 2026-06-07 - Button Loading States and Accessibility During Submission
 **Learning:** When form submit buttons only use a text update (e.g., changing "Create Product" to "Creating...") without disabling the button or adding `aria-busy`, it introduces a risk of multiple submissions and poor feedback for screen reader users. The API calls handle state manually, requiring discrete booleans for component loading phases.
 **Action:** Always replace string-based loading messages on forms with dedicated boolean loading states (e.g., `isCreatingProd`), then explicitly disable the action button (`disabled={isLoading}`) and set `aria-busy={isLoading}` to prevent double-clicks and clearly communicate system state to assistive technologies.
+## 2026-06-09 - Stock Transaction Form Loading & a11y
+**Learning:** Forms in this repository frequently lack explicit htmlFor and id associations on <label> and <input> elements, and missing boolean loading states (e.g., isProcessingOp) leads to multiple submissions and poor screen reader feedback.
+**Action:** Always manually verify and add htmlFor/id pairs, and explicitly apply disabled={isLoading} and aria-busy={isLoading} attributes to form submit buttons when modifying forms.

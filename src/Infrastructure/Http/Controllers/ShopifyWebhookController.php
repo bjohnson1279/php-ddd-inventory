@@ -5,8 +5,10 @@ namespace InventoryApp\Infrastructure\Http\Controllers;
 use InventoryApp\Infrastructure\Http\Response;
 use InventoryApp\Infrastructure\Http\RequestInterface;
 use InventoryApp\Infrastructure\ServiceContainer;
-use InventoryApp\Application\Inventory\UseCases\ProcessSale;
-use InventoryApp\Application\Inventory\UseCases\ProcessReturn;
+use InventoryApp\Domain\Inventory\ValueObjects\SKU;
+use InventoryApp\Domain\Inventory\ValueObjects\Quantity;
+use InventoryApp\Domain\Inventory\ValueObjects\Condition;
+use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
 use Exception;
 
 class ShopifyWebhookController
@@ -48,17 +50,7 @@ class ShopifyWebhookController
                 $orderId = 'shopify-order-' . ($data['id'] ?? 'unknown');
                 $lineItems = $data['line_items'] ?? [];
                 
-                foreach ($lineItems as $item) {
-                    $sku = $item['sku'] ?? '';
-                    $qty = (int)($item['quantity'] ?? 0);
-                    
-                    if (empty($sku) || $qty <= 0) {
-                        continue;
-                    }
-
-                    $useCase = new ProcessSale($productRepo, $dispatcher);
-                    $useCase->execute($sku, $locationId, $qty, $orderId);
-                }
+                $this->processBatch($lineItems, $locationId, $orderId, 'sale', $productRepo, $dispatcher);
                 
                 return new Response(['message' => 'Order webhook processed, stock decremented'], 200);
             }
@@ -67,17 +59,7 @@ class ShopifyWebhookController
                 $orderId = 'shopify-order-' . ($data['id'] ?? 'unknown');
                 $lineItems = $data['line_items'] ?? [];
                 
-                foreach ($lineItems as $item) {
-                    $sku = $item['sku'] ?? '';
-                    $qty = (int)($item['quantity'] ?? 0);
-                    
-                    if (empty($sku) || $qty <= 0) {
-                        continue;
-                    }
-
-                    $useCase = new ProcessReturn($productRepo, $dispatcher);
-                    $useCase->execute($sku, $locationId, $qty, 'new', $orderId);
-                }
+                $this->processBatch($lineItems, $locationId, $orderId, 'return', $productRepo, $dispatcher);
                 
                 return new Response(['message' => 'Cancellation webhook processed, stock restocked'], 200);
             }
@@ -86,18 +68,15 @@ class ShopifyWebhookController
                 $orderId = 'shopify-order-' . ($data['order_id'] ?? 'unknown');
                 $refundLineItems = $data['refund_line_items'] ?? [];
                 
+                // Extract line_items from refund payload
+                $lineItems = [];
                 foreach ($refundLineItems as $rItem) {
                     $item = $rItem['line_item'] ?? [];
-                    $sku = $item['sku'] ?? '';
-                    $qty = (int)($rItem['quantity'] ?? 0);
-                    
-                    if (empty($sku) || $qty <= 0) {
-                        continue;
-                    }
-
-                    $useCase = new ProcessReturn($productRepo, $dispatcher);
-                    $useCase->execute($sku, $locationId, $qty, 'new', $orderId);
+                    $item['quantity'] = $rItem['quantity'] ?? 0;
+                    $lineItems[] = $item;
                 }
+
+                $this->processBatch($lineItems, $locationId, $orderId, 'return', $productRepo, $dispatcher);
                 
                 return new Response(['message' => 'Refund webhook processed, stock restocked'], 200);
             }
@@ -105,6 +84,68 @@ class ShopifyWebhookController
             return new Response(['message' => 'Webhook topic not supported, ignored'], 200);
         } catch (Exception $e) {
             return new Response(['error' => $e->getMessage()], 400);
+        }
+    }
+
+    private function processBatch(array $items, string $locationValue, string $orderId, string $action, $productRepo, $dispatcher): void
+    {
+        $skusToProcess = [];
+        $validItems = [];
+
+        foreach ($items as $item) {
+            $skuValue = $item['sku'] ?? '';
+            $qty = (int)($item['quantity'] ?? 0);
+
+            if (empty($skuValue) || $qty <= 0) {
+                continue;
+            }
+
+            $skusToProcess[] = new SKU($skuValue);
+            $validItems[] = ['sku' => $skuValue, 'qty' => $qty];
+        }
+
+        if (empty($validItems)) {
+            return;
+        }
+
+        $productsBySku = $productRepo->findBySkus($skusToProcess);
+        $productsToSave = [];
+        $eventsToDispatch = [];
+        $locationId = new LocationId($locationValue);
+        $condition = new Condition('new');
+
+        foreach ($validItems as $item) {
+            $skuValue = $item['sku'];
+            $qty = $item['qty'];
+
+            if (!isset($productsBySku[$skuValue])) {
+                throw new Exception("Product not found with SKU: " . $skuValue);
+            }
+
+            $product = $productsBySku[$skuValue];
+            $quantity = new Quantity($qty);
+
+            if ($action === 'sale') {
+                $product->processSaleAt($locationId, $quantity, $orderId);
+            } else if ($action === 'return') {
+                $product->processReturnAt($locationId, $quantity, $condition, $orderId);
+            }
+
+            $productsToSave[$product->getId()] = $product;
+        }
+
+        if (!empty($productsToSave)) {
+            $productRepo->saveAll(array_values($productsToSave));
+
+            foreach ($productsToSave as $product) {
+                foreach ($product->releaseEvents() as $event) {
+                    $eventsToDispatch[] = $event;
+                }
+            }
+
+            foreach ($eventsToDispatch as $event) {
+                $dispatcher->dispatch($event);
+            }
         }
     }
 }

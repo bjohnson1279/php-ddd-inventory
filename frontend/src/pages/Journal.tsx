@@ -32,6 +32,7 @@ export default function Journal() {
     { account: '1000', amount: 0, type: 'credit', memo: '' }
   ]);
   const [submitMsg, setSubmitMsg] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     fetchEntries();
@@ -92,7 +93,8 @@ export default function Journal() {
       setSubmitMsg('Error: Debits and Credits must balance and be greater than 0.');
       return;
     }
-    setSubmitMsg('Recording journal entry...');
+    setSubmitMsg('');
+    setIsSubmitting(true);
     try {
       await api.post('/journal/entries', {
         date: entryDate,
@@ -116,6 +118,8 @@ export default function Journal() {
       fetchEntries();
     } catch (err: any) {
       setSubmitMsg(err.message || 'Submission failed');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -131,24 +135,24 @@ export default function Journal() {
             <form onSubmit={handleSubmit}>
               <div className="grid-2">
                 <div className="form-group">
-                  <label>Date</label>
-                  <input type="date" value={entryDate} onChange={e => setEntryDate(e.target.value)} required />
+                  <label htmlFor="entryDate">Date</label>
+                  <input id="entryDate" type="date" value={entryDate} onChange={e => setEntryDate(e.target.value)} required />
                 </div>
                 <div className="form-group">
-                  <label>Accounting Standard</label>
-                  <select value={method} onChange={e => setMethod(e.target.value as any)}>
+                  <label htmlFor="method">Accounting Standard</label>
+                  <select id="method" value={method} onChange={e => setMethod(e.target.value as any)}>
                     <option value="accrual">Accrual Method</option>
                     <option value="cash">Cash Method</option>
                   </select>
                 </div>
               </div>
               <div className="form-group">
-                <label>Description / Narrative</label>
-                <input value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. Month-end inventory adjustment" required />
+                <label htmlFor="description">Description / Narrative</label>
+                <input id="description" value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. Month-end inventory adjustment" required />
               </div>
               <div className="form-group">
-                <label>Reference ID / Source doc (Optional)</label>
-                <input value={refId} onChange={e => setRefId(e.target.value)} placeholder="e.g. PO-9801 / SALE-1002" />
+                <label htmlFor="refId">Reference ID / Source doc (Optional)</label>
+                <input id="refId" value={refId} onChange={e => setRefId(e.target.value)} placeholder="e.g. PO-9801 / SALE-1002" />
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
@@ -196,11 +200,15 @@ export default function Journal() {
                 </div>
               </div>
 
-              <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={!isBalanced}>
-                Post Journal Entry
+              <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={!isBalanced || isSubmitting} aria-busy={isSubmitting}>
+                {isSubmitting ? 'Posting...' : 'Post Journal Entry'}
               </button>
             </form>
-            <p style={{ color: submitMsg.includes('Error') || submitMsg.includes('failed') ? '#f87171' : '#34d399' }}>{submitMsg}</p>
+            {submitMsg && (
+              <p style={{ color: submitMsg === 'Journal entry balanced and recorded successfully!' ? '#34d399' : '#f87171' }}>
+                {submitMsg}
+              </p>
+            )}
           </div>
         </div>
 

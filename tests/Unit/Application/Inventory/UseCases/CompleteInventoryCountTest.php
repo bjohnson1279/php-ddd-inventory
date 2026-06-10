@@ -32,7 +32,7 @@ class CompleteInventoryCountTest extends TestCase
     public function testCompleteInventoryCountReconcilesProducts(): void
     {
         $count = InventoryCount::start('c-1');
-        $count->recordCount(new SKU('SKU-1'), new Quantity(15));
+        $count->recordCount(new SKU('SKU-1'), new LocationId('LOC-STOREFRONT'), new Quantity(15));
         
         $product = Product::create(
             'p-1', new SKU('SKU-1'), 'Test', new Department('D1'), new LocationId('LOC-STOREFRONT'), new Quantity(10)

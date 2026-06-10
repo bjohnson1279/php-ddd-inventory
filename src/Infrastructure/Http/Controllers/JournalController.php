@@ -31,7 +31,11 @@ class JournalController
             $id = Uuid::uuid4()->toString();
             $tenantId = $_SERVER['auth.tenant_id'] ?? 'system';
             $date = new \DateTimeImmutable($validated['date']);
-            $method = AccountingMethod::from($validated['method']);
+
+            $method = AccountingMethod::tryFrom($validated['method']);
+            if ($method === null) {
+                throw new \InvalidArgumentException("Invalid accounting method");
+            }
 
             $entry = new JournalEntry($id, $tenantId, $date, $validated['description'], $referenceId, $method);
 
@@ -40,7 +44,12 @@ class JournalController
                     throw new Exception("Each line must contain account, amount, and type");
                 }
                 $account = $this->resolveAccountCode($line['account']);
-                $type = DebitCredit::from($line['type']);
+
+                $type = DebitCredit::tryFrom($line['type']);
+                if ($type === null) {
+                    throw new \InvalidArgumentException("Invalid line type (debit/credit)");
+                }
+
                 $amount = (int)$line['amount'];
                 $memo = $line['memo'] ?? '';
                 $entry->addLine($account, $amount, $type, $memo);

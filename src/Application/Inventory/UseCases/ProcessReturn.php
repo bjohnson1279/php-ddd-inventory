@@ -38,4 +38,38 @@ class ProcessReturn
             $this->events->dispatch($event);
         }
     }
+
+    public function executeBulk(array $returns, ?string $orderId = null): void
+    {
+        $skus = [];
+        foreach ($returns as $returnItem) {
+            $skus[] = new SKU($returnItem['sku']);
+        }
+
+        $products = $this->productRepository->findBySkus($skus);
+
+        foreach ($returns as $returnItem) {
+            $skuValue = $returnItem['sku'];
+            if (!isset($products[$skuValue])) {
+                throw new Exception("Product not found with SKU: " . $skuValue);
+            }
+
+            $product = $products[$skuValue];
+
+            $quantity   = new Quantity((int)$returnItem['quantity']);
+            // Accept condition input case-insensitively
+            $condition  = new Condition(strtolower($returnItem['condition']));
+            $locationId = new LocationId($returnItem['location']);
+
+            $product->processReturnAt($locationId, $quantity, $condition, $orderId);
+        }
+
+        $this->productRepository->saveAll(array_values($products));
+
+        foreach ($products as $product) {
+            foreach ($product->releaseEvents() as $event) {
+                $this->events->dispatch($event);
+            }
+        }
+    }
 }

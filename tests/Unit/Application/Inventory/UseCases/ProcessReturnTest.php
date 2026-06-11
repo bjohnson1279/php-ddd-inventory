@@ -40,4 +40,48 @@ class ProcessReturnTest extends TestCase
         $useCase = new ProcessReturn($repositoryMock, $this->createStub(EventDispatcherInterface::class));
         $useCase->execute('TSHIRT-L-RED', 'LOC-STOREFRONT', 1, 'OPEN_BOX');
     }
+
+    public function testExecuteBulkProcessesReturnsAndSavesProducts()
+    {
+        $repositoryMock = $this->createMock(ProductRepositoryInterface::class);
+
+        $product1 = Product::create(
+            'prod_123',
+            new SKU('TSHIRT-L-RED'),
+            'Large Red T-Shirt',
+            new Department('APPAREL'),
+            new LocationId('LOC-STOREFRONT'),
+            new Quantity(10)
+        );
+
+        $product2 = Product::create(
+            'prod_456',
+            new SKU('PANTS-M-BLK'),
+            'Medium Black Pants',
+            new Department('APPAREL'),
+            new LocationId('LOC-STOREFRONT'),
+            new Quantity(5)
+        );
+
+        $repositoryMock->expects($this->once())
+            ->method('findBySkus')
+            ->willReturn([
+                'TSHIRT-L-RED' => $product1,
+                'PANTS-M-BLK'  => $product2
+            ]);
+
+        $repositoryMock->expects($this->once())
+            ->method('saveAll')
+            ->with($this->callback(function (array $products) {
+                return count($products) === 2 &&
+                       $products[0]->getStockAt(new LocationId('LOC-STOREFRONT'))->getOpenBoxQuantity()->getValue() === 1 &&
+                       $products[1]->getStockAt(new LocationId('LOC-STOREFRONT'))->getDamagedQuantity()->getValue() === 2;
+            }));
+
+        $useCase = new ProcessReturn($repositoryMock, $this->createStub(EventDispatcherInterface::class));
+        $useCase->executeBulk([
+            ['sku' => 'TSHIRT-L-RED', 'location' => 'LOC-STOREFRONT', 'quantity' => 1, 'condition' => 'OPEN_BOX'],
+            ['sku' => 'PANTS-M-BLK',  'location' => 'LOC-STOREFRONT', 'quantity' => 2, 'condition' => 'DAMAGED']
+        ]);
+    }
 }

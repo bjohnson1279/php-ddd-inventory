@@ -137,4 +137,33 @@ class SerializedItemControllerTest extends TestCase
         $this->assertEquals(400, $response->getStatusCode());
         $this->assertStringContainsString('Domain logic error', $response->getContent());
     }
+
+    public function testReceiveReturns400OnException(): void
+    {
+        $request = $this->createMock(RequestInterface::class);
+        $request->method('validate')->willReturn([
+            'location_id' => 'loc-1',
+            'purchase_order_id' => 'po-1'
+        ]);
+
+        $service = $this->createMock(SerializedInventoryService::class);
+        $service->method('receive')->willThrowException(new Exception('Simulated Service Error'));
+
+        $repo = $this->createMock(SerializedItemRepositoryInterface::class);
+
+        $item = new SerializedItem(
+            'item-id-1',
+            'var-1',
+            new SerialNumber('SN12345'),
+            'tenant-1',
+            'loc-0'
+        );
+
+        $repo->method('findById')->willReturn($item);
+
+        $response = $this->controller->receive($request, 'item-id-1', $service, $repo);
+
+        $this->assertEquals(400, $response->getStatusCode());
+        $this->assertStringContainsString('Simulated Service Error', $response->getContent());
+    }
 }

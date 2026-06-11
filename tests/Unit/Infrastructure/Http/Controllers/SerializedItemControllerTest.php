@@ -9,17 +9,24 @@ use InventoryApp\Domain\Serial\Services\SerializedInventoryService;
 use InventoryApp\Domain\Serial\Repositories\SerializedItemRepositoryInterface;
 use InventoryApp\Domain\Serial\Aggregates\SerializedItem;
 use InventoryApp\Domain\Serial\ValueObjects\SerialNumber;
-use InventoryApp\Infrastructure\Http\Response;
 use Exception;
+use Psr\Http\Message\StreamInterface;
 
 class SerializedItemControllerTest extends TestCase
 {
-    private $controller;
+    private SerializedItemController $controller;
+    private $serviceMock;
+    private $repoMock;
+    private $requestMock;
 
     protected function setUp(): void
     {
         $this->controller = new SerializedItemController();
-        // Set the auth.user_id to simulate a logged-in user
+        $serviceMock = $this->createMock(SerializedInventoryService::class);
+        $repoMock = $this->createMock(SerializedItemRepositoryInterface::class);
+        $requestMock = $this->createMock(RequestInterface::class);
+
+        // Required to prevent undefined index error
         $_SERVER['auth.user_id'] = 'user-123';
     }
 
@@ -32,7 +39,8 @@ class SerializedItemControllerTest extends TestCase
     {
         $id = 'item-123';
 
-        $this->requestMock->expects($this->once())
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->once())
             ->method('validate')
             ->willReturn([
                 'location_id' => 'loc-1',
@@ -41,12 +49,16 @@ class SerializedItemControllerTest extends TestCase
 
         $item = new SerializedItem($id, 'var-1', new SerialNumber('SN-123'), 'tenant-1', 'loc-unknown');
 
-        $this->repoMock->expects($this->once())
+        $repoMock = $this->createMock(SerializedItemRepositoryInterface::class);
+        $repoMock = $this->createMock(SerializedItemRepositoryInterface::class);
+        $repoMock->expects($this->once())
             ->method('findById')
             ->with($id)
             ->willReturn($item);
 
-        $this->serviceMock->expects($this->once())
+        $serviceMock = $this->createMock(SerializedInventoryService::class);
+        $serviceMock = $this->createMock(SerializedInventoryService::class);
+        $serviceMock->expects($this->once())
             ->method('receive')
             ->with(
                 $this->callback(function (SerialNumber $sn) {
@@ -59,7 +71,7 @@ class SerializedItemControllerTest extends TestCase
                 'user-123'
             );
 
-        $response = $this->controller->receive($this->requestMock, $id, $this->serviceMock, $this->repoMock);
+        $response = $this->controller->receive($requestMock, $id, $serviceMock, $repoMock);
 
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertStringContainsString('Serial item received', $response->getContent());
@@ -69,21 +81,24 @@ class SerializedItemControllerTest extends TestCase
     {
         $id = 'non-existent-item';
 
-        $this->requestMock->expects($this->once())
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->once())
             ->method('validate')
             ->willReturn([
                 'location_id' => 'loc-1',
                 'purchase_order_id' => 'po-1',
             ]);
 
-        $this->repoMock->expects($this->once())
+        $repoMock = $this->createMock(SerializedItemRepositoryInterface::class);
+        $repoMock->expects($this->once())
             ->method('findById')
             ->with($id)
             ->willReturn(null);
 
-        $this->serviceMock->expects($this->never())->method('receive');
+        $serviceMock = $this->createMock(SerializedInventoryService::class);
+        $serviceMock->expects($this->never())->method('receive');
 
-        $response = $this->controller->receive($this->requestMock, $id, $this->serviceMock, $this->repoMock);
+        $response = $this->controller->receive($requestMock, $id, $serviceMock, $repoMock);
 
         $this->assertEquals(404, $response->getStatusCode());
         $this->assertStringContainsString('Serial item not found', $response->getContent());
@@ -93,11 +108,15 @@ class SerializedItemControllerTest extends TestCase
     {
         $id = 'item-123';
 
-        $this->requestMock->expects($this->once())
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->once())
             ->method('validate')
             ->willThrowException(new Exception('Validation failed'));
 
-        $response = $this->controller->receive($this->requestMock, $id, $this->serviceMock, $this->repoMock);
+        $serviceMock = $this->createMock(SerializedInventoryService::class);
+        $repoMock = $this->createMock(SerializedItemRepositoryInterface::class);
+
+        $response = $this->controller->receive($requestMock, $id, $serviceMock, $repoMock);
 
         $this->assertEquals(400, $response->getStatusCode());
         $this->assertStringContainsString('Validation failed', $response->getContent());
@@ -107,7 +126,8 @@ class SerializedItemControllerTest extends TestCase
     {
         $id = 'item-123';
 
-        $this->requestMock->expects($this->once())
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->once())
             ->method('validate')
             ->willReturn([
                 'location_id' => 'loc-1',
@@ -116,16 +136,20 @@ class SerializedItemControllerTest extends TestCase
 
         $item = new SerializedItem($id, 'var-1', new SerialNumber('SN-123'), 'tenant-1', 'loc-unknown');
 
-        $this->repoMock->expects($this->once())
+        $repoMock = $this->createMock(SerializedItemRepositoryInterface::class);
+        $repoMock = $this->createMock(SerializedItemRepositoryInterface::class);
+        $repoMock->expects($this->once())
             ->method('findById')
             ->with($id)
             ->willReturn($item);
 
-        $this->serviceMock->expects($this->once())
+        $serviceMock = $this->createMock(SerializedInventoryService::class);
+        $serviceMock = $this->createMock(SerializedInventoryService::class);
+        $serviceMock->expects($this->once())
             ->method('receive')
             ->willThrowException(new Exception('Domain logic error'));
 
-        $response = $this->controller->receive($this->requestMock, $id, $this->serviceMock, $this->repoMock);
+        $response = $this->controller->receive($requestMock, $id, $serviceMock, $repoMock);
 
         $this->assertEquals(400, $response->getStatusCode());
         $this->assertStringContainsString('Domain logic error', $response->getContent());
@@ -146,7 +170,7 @@ class SerializedItemControllerTest extends TestCase
 
         $item = new SerializedItem(
             'item-id-1',
-            'variant-id-1',
+            'var-1',
             new SerialNumber('SN12345'),
             'tenant-1',
             'loc-0'

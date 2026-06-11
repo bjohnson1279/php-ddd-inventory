@@ -101,13 +101,13 @@ class CostLayerServiceTest extends TestCase
     public function testConsumeSpecificLayers(): void
     {
         $layer1 = new InventoryCostLayer('l1', 'v1', 't1', 1, 1500, new \DateTimeImmutable());
+        $layer1->serialNumber = 'SN-100';
         $layer2 = new InventoryCostLayer('l2', 'v1', 't1', 1, 2000, new \DateTimeImmutable());
+        $layer2->serialNumber = 'SN-200';
 
-        $this->repo->method('findBySerial')
-            ->will($this->returnValueMap([
-                ['v1', 'SN-100', $layer1],
-                ['v1', 'SN-200', $layer2],
-            ]));
+        $this->repo->method('findBySerials')
+            ->with('v1', ['SN-100', 'SN-200'])
+            ->willReturn([$layer1, $layer2]);
 
         $this->repo->expects($this->once())->method('saveBatch')->with([$layer1, $layer2]);
 
@@ -121,7 +121,7 @@ class CostLayerServiceTest extends TestCase
 
     public function testConsumeSpecificLayersThrowsWhenNotFound(): void
     {
-        $this->repo->method('findBySerial')->willReturn(null);
+        $this->repo->method('findBySerials')->willReturn([]);
 
         $this->expectException(DomainException::class);
         $this->expectExceptionMessageMatches('/No cost layer found for serial number/');
@@ -132,9 +132,10 @@ class CostLayerServiceTest extends TestCase
     public function testConsumeSpecificLayersThrowsWhenAlreadyConsumed(): void
     {
         $layer = new InventoryCostLayer('l1', 'v1', 't1', 1, 1500, new \DateTimeImmutable());
+        $layer->serialNumber = 'SN-100';
         $layer->consume(1); // Already consumed
 
-        $this->repo->method('findBySerial')->willReturn($layer);
+        $this->repo->method('findBySerials')->willReturn([$layer]);
 
         $this->expectException(DomainException::class);
         $this->expectExceptionMessageMatches('/already been consumed/');

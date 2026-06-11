@@ -3,6 +3,7 @@
 namespace InventoryApp\Domain\Inventory\Entities;
 
 use InventoryApp\Domain\Inventory\ValueObjects\CountStatus;
+use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
 use InventoryApp\Domain\Inventory\ValueObjects\SKU;
 use InventoryApp\Domain\Inventory\ValueObjects\Quantity;
 use Exception;
@@ -21,7 +22,8 @@ class InventoryCount
         
         foreach ($items as $item) {
             if ($item instanceof InventoryCountItem) {
-                $this->items[$item->getSku()->getValue()] = $item;
+                $key = $item->getSku()->getValue() . '_' . $item->getLocationId()->getValue();
+                $this->items[$key] = $item;
             }
         }
     }
@@ -31,14 +33,15 @@ class InventoryCount
         return new self($id, CountStatus::started());
     }
 
-    public function recordCount(SKU $sku, Quantity $quantity): void
+    public function recordCount(SKU $sku, LocationId $locationId, Quantity $quantity): void
     {
         if ($this->status->isCompleted()) {
             throw new Exception("Cannot modify an already completed inventory count.");
         }
 
-        // Add or overwrite the existing counted quantity for this SKU
-        $this->items[$sku->getValue()] = new InventoryCountItem($sku, $quantity);
+        // Add or overwrite the existing counted quantity for this SKU at this location
+        $key = $sku->getValue() . '_' . $locationId->getValue();
+        $this->items[$key] = new InventoryCountItem($sku, $locationId, $quantity);
     }
 
     public function complete(): void

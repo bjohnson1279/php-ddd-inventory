@@ -74,19 +74,6 @@ class ShopifyMappingRepository
     }
 
     /**
-     * Persist a location mapping (e.g. when an admin connects a Shopify location).
-     */
-    public function saveLocationMapping(string $ourLocationId, string $shopifyLocationId): void
-    {
-        DB::table('shopify_location_mappings')->updateOrInsert(
-            ['shopify_location_id' => $shopifyLocationId],
-            ['our_location_id'     => $ourLocationId]
-        );
-
-        unset($this->locationCache[$shopifyLocationId]);
-    }
-
-    /**
      * Persist a SKU → Shopify inventory_item_id mapping (e.g. after product sync).
      */
     public function saveSkuMapping(string $sku, string $shopifyInventoryItemId): void

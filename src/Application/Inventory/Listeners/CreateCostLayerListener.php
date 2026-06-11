@@ -11,6 +11,8 @@ use Ramsey\Uuid\Uuid;
 
 class CreateCostLayerListener
 {
+    private array $priceCache = [];
+
     public function __construct(
         private readonly ?CostLayerRepositoryInterface $costLayerRepo = null,
         private readonly ?string $tenantId = null
@@ -32,8 +34,11 @@ class CreateCostLayerListener
         $sku = $event->getSku()->getValue();
         
         // Lookup default catalog price to establish unit cost
-        $variant = DB::table('catalog_variants')->where('sku', $sku)->first();
-        $price = $variant ? $variant->price : 10.00;
+        if (!isset($this->priceCache[$sku])) {
+            $variant = DB::table('catalog_variants')->where('sku', $sku)->first();
+            $this->priceCache[$sku] = $variant ? $variant->price : 10.00;
+        }
+        $price = $this->priceCache[$sku];
         $unitCostCents = (int)($price * 100);
 
         $layer = new InventoryCostLayer(

@@ -45,8 +45,16 @@ class BarcodeController
                 $isPrimary = (bool)$body['is_primary'];
             }
 
-            $symbology = BarcodeSymbology::from($validated['symbology']);
-            $source = BarcodeSource::from($validated['source']);
+            $symbology = BarcodeSymbology::tryFrom($validated['symbology']);
+            if ($symbology === null) {
+                throw new \InvalidArgumentException('Invalid barcode symbology.');
+            }
+
+            $source = BarcodeSource::tryFrom($validated['source']);
+            if ($source === null) {
+                throw new \InvalidArgumentException('Invalid barcode source.');
+            }
+
             $barcode = new Barcode($symbology, $validated['value']);
 
             $repo->registerAssignment($validated['variant_id'], $barcode, $source, $isPrimary);

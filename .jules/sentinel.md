@@ -7,3 +7,13 @@
 **Vulnerability:** The application was using the older `bcrypt` algorithm for password hashing via `PASSWORD_BCRYPT`.
 **Learning:** Bcrypt is susceptible to specialized hardware attacks (GPUs/ASICs). Argon2id is the current recommended algorithm.
 **Prevention:** Always use `PASSWORD_ARGON2ID` instead of `PASSWORD_BCRYPT` or `PASSWORD_DEFAULT` when creating new password hashes in PHP to ensure resistance against modern hardware-accelerated cracking attacks.
+
+## 2026-06-08 - Empty Webhook Secret Validation Bypass
+**Vulnerability:** The Shopify webhook signature verification process in `ShopifyWebhookVerifier` did not check if the configured `webhookSecret` was empty before calling `hash_hmac()`. If the secret was empty, `hash_hmac()` processed it without error, allowing attackers to sign arbitrary payloads using an empty string key, completely bypassing HMAC verification.
+**Learning:** Functions like `hash_hmac` do not inherently fail or warn when provided with an empty key. They compute a technically valid HMAC for that empty key, leading to a critical bypass if the secret is unintentionally unconfigured.
+**Prevention:** Always implement an explicit check to ensure shared secrets (like API keys or HMAC secrets) are not empty or whitespace-only before using them in cryptographic signing or verification functions to prevent null-key spoofing attacks.
+
+## 2026-06-09 - Enum Validation ValueError Stack Trace Leak
+**Vulnerability:** The application used `BackedEnum::from()` to parse user-provided query parameters directly into Enum types. Invalid strings threw a `ValueError` which, depending on the error handling setup, could lead to HTTP 500s or bypass standard `Exception` catching, potentially leaking stack traces and exposing internal application logic.
+**Learning:** `ValueError` introduced in PHP 8 extends `Error`, not `Exception`. Broad `catch (Exception $e)` blocks fail to catch it, leading to unhandled fatal errors that bypass graceful fail-secure mechanisms.
+**Prevention:** Always use `BackedEnum::tryFrom()` and check for a `null` response instead of `from()` when working with unsanitized user input, ensuring errors are securely handled with generic HTTP 400 responses.

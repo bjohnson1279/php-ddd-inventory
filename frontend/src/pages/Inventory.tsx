@@ -9,6 +9,7 @@ export default function Inventory() {
   const [locationId, setLocationId] = useState('LOC-STOREFRONT');
   const [toLocationId, setToLocationId] = useState('LOC-BACKROOM');
   const [opMsg, setOpMsg] = useState('');
+  const [isProcessingOp, setIsProcessingOp] = useState(false);
 
   // Stock Query
   const [querySku, setQuerySku] = useState('');
@@ -26,6 +27,7 @@ export default function Inventory() {
   const handleStockOp = async (e: React.FormEvent) => {
     e.preventDefault();
     setOpMsg('Processing transaction...');
+    setIsProcessingOp(true);
     try {
       const qty = parseInt(quantity) || 0;
       if (opType === 'receive') {
@@ -42,6 +44,8 @@ export default function Inventory() {
       setQuantity('');
     } catch (err: any) {
       setOpMsg(err.message || 'Transaction failed');
+    } finally {
+      setIsProcessingOp(false);
     }
   };
 
@@ -125,31 +129,31 @@ export default function Inventory() {
 
             <form onSubmit={handleStockOp}>
               <div className="form-group">
-                <label>SKU</label>
-                <input value={sku} onChange={e => setSku(e.target.value)} placeholder="e.g. DNM-JKT-BLU-M" required />
+                <label htmlFor="opSku">SKU</label>
+                <input id="opSku" value={sku} onChange={e => setSku(e.target.value)} placeholder="e.g. DNM-JKT-BLU-M" required />
               </div>
               <div className="form-group">
-                <label>Quantity</label>
-                <input type="number" min="1" value={quantity} onChange={e => setQuantity(e.target.value)} placeholder="e.g. 10" required />
+                <label htmlFor="opQuantity">Quantity</label>
+                <input id="opQuantity" type="number" min="1" value={quantity} onChange={e => setQuantity(e.target.value)} placeholder="e.g. 10" required />
               </div>
               <div className="form-group">
-                <label>{opType === 'transfer' ? 'From Location' : 'Location'}</label>
-                <select value={locationId} onChange={e => setLocationId(e.target.value)}>
+                <label htmlFor="opLocationId">{opType === 'transfer' ? 'From Location' : 'Location'}</label>
+                <select id="opLocationId" value={locationId} onChange={e => setLocationId(e.target.value)}>
                   <option value="LOC-STOREFRONT">Sales Floor (LOC-STOREFRONT)</option>
                   <option value="LOC-BACKROOM">Backroom Storage (LOC-BACKROOM)</option>
                 </select>
               </div>
               {opType === 'transfer' && (
                 <div className="form-group">
-                  <label>To Location</label>
-                  <select value={toLocationId} onChange={e => setToLocationId(e.target.value)}>
+                  <label htmlFor="opToLocationId">To Location</label>
+                  <select id="opToLocationId" value={toLocationId} onChange={e => setToLocationId(e.target.value)}>
                     <option value="LOC-BACKROOM">Backroom Storage (LOC-BACKROOM)</option>
                     <option value="LOC-STOREFRONT">Sales Floor (LOC-STOREFRONT)</option>
                   </select>
                 </div>
               )}
-              <button type="submit" className="btn-primary" style={{ width: '100%' }}>
-                {opType === 'receive' ? 'Receive Stock' : opType === 'dispatch' ? 'Dispatch Stock' : 'Transfer Stock'}
+              <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={isProcessingOp} aria-busy={isProcessingOp}>
+                {isProcessingOp ? 'Processing...' : opType === 'receive' ? 'Receive Stock' : opType === 'dispatch' ? 'Dispatch Stock' : 'Transfer Stock'}
               </button>
             </form>
             <p style={{ color: opMsg.includes('failed') || opMsg.includes('Error') ? '#f87171' : '#34d399' }}>{opMsg}</p>

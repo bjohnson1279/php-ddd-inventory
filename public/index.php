@@ -1163,10 +1163,10 @@ if ($method === 'POST' && str_starts_with($uri, '/webhooks/shopify/')) {
     $payload = json_decode($rawBody, true) ?: [];
 
     $mapper = new \InventoryApp\Infrastructure\Integration\Shopify\ShopifyOrderMapper(
-        new \InventoryApp\Application\Inventory\UseCases\ProcessSale(
+        new \InventoryApp\Application\Inventory\UseCases\ProcessSaleBatch(
             ServiceContainer::productRepo('system'), $dispatcher
         ),
-        new \InventoryApp\Application\Inventory\UseCases\ProcessReturn(
+        new \InventoryApp\Application\Inventory\UseCases\ProcessReturnBatch(
             ServiceContainer::productRepo('system'), $dispatcher
         ),
         new \InventoryApp\Infrastructure\Integration\Shopify\ShopifyMappingRepository()

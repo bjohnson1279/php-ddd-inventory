@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS inventory_count_items (
   inventory_count_id UUID NOT NULL REFERENCES inventory_counts(id) ON DELETE CASCADE,
   product_id UUID REFERENCES products(id) ON DELETE SET NULL,
   sku TEXT NOT NULL,
+  location_id VARCHAR(50) NOT NULL,
   counted_quantity INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );

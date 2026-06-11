@@ -28,6 +28,109 @@ class SerializedItemControllerTest extends TestCase
         unset($_SERVER['auth.user_id']);
     }
 
+    public function testReceiveSuccessReturns200(): void
+    {
+        $id = 'item-123';
+
+        $this->requestMock->expects($this->once())
+            ->method('validate')
+            ->willReturn([
+                'location_id' => 'loc-1',
+                'purchase_order_id' => 'po-1',
+            ]);
+
+        $item = new SerializedItem($id, 'var-1', new SerialNumber('SN-123'), 'tenant-1', 'loc-unknown');
+
+        $this->repoMock->expects($this->once())
+            ->method('findById')
+            ->with($id)
+            ->willReturn($item);
+
+        $this->serviceMock->expects($this->once())
+            ->method('receive')
+            ->with(
+                $this->callback(function (SerialNumber $sn) {
+                    return $sn->value === 'SN-123';
+                }),
+                'tenant-1',
+                'loc-1',
+                'po-1',
+                0,
+                'user-123'
+            );
+
+        $response = $this->controller->receive($this->requestMock, $id, $this->serviceMock, $this->repoMock);
+
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertStringContainsString('Serial item received', $response->getContent());
+    }
+
+    public function testReceiveItemNotFoundReturns404(): void
+    {
+        $id = 'non-existent-item';
+
+        $this->requestMock->expects($this->once())
+            ->method('validate')
+            ->willReturn([
+                'location_id' => 'loc-1',
+                'purchase_order_id' => 'po-1',
+            ]);
+
+        $this->repoMock->expects($this->once())
+            ->method('findById')
+            ->with($id)
+            ->willReturn(null);
+
+        $this->serviceMock->expects($this->never())->method('receive');
+
+        $response = $this->controller->receive($this->requestMock, $id, $this->serviceMock, $this->repoMock);
+
+        $this->assertEquals(404, $response->getStatusCode());
+        $this->assertStringContainsString('Serial item not found', $response->getContent());
+    }
+
+    public function testReceiveExceptionReturns400(): void
+    {
+        $id = 'item-123';
+
+        $this->requestMock->expects($this->once())
+            ->method('validate')
+            ->willThrowException(new Exception('Validation failed'));
+
+        $response = $this->controller->receive($this->requestMock, $id, $this->serviceMock, $this->repoMock);
+
+        $this->assertEquals(400, $response->getStatusCode());
+        $this->assertStringContainsString('Validation failed', $response->getContent());
+    }
+
+    public function testReceiveServiceExceptionReturns400(): void
+    {
+        $id = 'item-123';
+
+        $this->requestMock->expects($this->once())
+            ->method('validate')
+            ->willReturn([
+                'location_id' => 'loc-1',
+                'purchase_order_id' => 'po-1',
+            ]);
+
+        $item = new SerializedItem($id, 'var-1', new SerialNumber('SN-123'), 'tenant-1', 'loc-unknown');
+
+        $this->repoMock->expects($this->once())
+            ->method('findById')
+            ->with($id)
+            ->willReturn($item);
+
+        $this->serviceMock->expects($this->once())
+            ->method('receive')
+            ->willThrowException(new Exception('Domain logic error'));
+
+        $response = $this->controller->receive($this->requestMock, $id, $this->serviceMock, $this->repoMock);
+
+        $this->assertEquals(400, $response->getStatusCode());
+        $this->assertStringContainsString('Domain logic error', $response->getContent());
+    }
+
     public function testReceiveReturns400OnException(): void
     {
         $request = $this->createMock(RequestInterface::class);

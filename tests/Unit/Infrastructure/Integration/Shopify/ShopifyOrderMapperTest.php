@@ -16,11 +16,14 @@ class ShopifyOrderMapperTest extends TestCase
         $processSale   = $this->createMock(ProcessSale::class);
         $processReturn = $this->createMock(ProcessReturn::class);
 
-        $processSale->expects($this->exactly(2))
-            ->method('execute')
-            ->withConsecutive(
-                ['TEE-L-RED', 'LOC-STOREFRONT', 2, '1001'],
-                ['PANTS-M-BLK', 'LOC-STOREFRONT', 1, '1001']
+        $processSale->expects($this->once())
+            ->method('executeBulk')
+            ->with(
+                [
+                    ['sku' => 'TEE-L-RED', 'location' => 'LOC-STOREFRONT', 'quantity' => 2],
+                    ['sku' => 'PANTS-M-BLK', 'location' => 'LOC-STOREFRONT', 'quantity' => 1]
+                ],
+                '1001'
             );
 
         $mappings = $this->createMock(ShopifyMappingRepository::class);
@@ -41,8 +44,11 @@ class ShopifyOrderMapperTest extends TestCase
         $processReturn = $this->createMock(ProcessReturn::class);
 
         $processSale->expects($this->once())
-            ->method('execute')
-            ->with('VALID-SKU', 'LOC-STOREFRONT', 1, '2002');
+            ->method('executeBulk')
+            ->with(
+                [['sku' => 'VALID-SKU', 'location' => 'LOC-STOREFRONT', 'quantity' => 1]],
+                '2002'
+            );
 
         $mappings = $this->createMock(ShopifyMappingRepository::class);
         $mappings->method('findLocationId')->willReturn(null);
@@ -63,8 +69,11 @@ class ShopifyOrderMapperTest extends TestCase
         $processReturn = $this->createMock(ProcessReturn::class);
 
         $processReturn->expects($this->once())
-            ->method('execute')
-            ->with('TEE-L-RED', 'LOC-STOREFRONT', 1, Condition::NEW, $this->anything());
+            ->method('executeBulk')
+            ->with(
+                [['sku' => 'TEE-L-RED', 'location' => 'LOC-STOREFRONT', 'quantity' => 1, 'condition' => Condition::NEW]],
+                $this->anything()
+            );
 
         $mappings = $this->createMock(ShopifyMappingRepository::class);
         $mappings->method('findLocationId')->willReturn(null);
@@ -87,8 +96,11 @@ class ShopifyOrderMapperTest extends TestCase
         $processReturn = $this->createMock(ProcessReturn::class);
 
         $processReturn->expects($this->once())
-            ->method('execute')
-            ->with('TEE-L-RED', 'LOC-STOREFRONT', 1, Condition::DAMAGED, $this->anything());
+            ->method('executeBulk')
+            ->with(
+                [['sku' => 'TEE-L-RED', 'location' => 'LOC-STOREFRONT', 'quantity' => 1, 'condition' => Condition::DAMAGED]],
+                $this->anything()
+            );
 
         $mappings = $this->createMock(ShopifyMappingRepository::class);
         $mappings->method('findLocationId')->willReturn(null);
@@ -111,8 +123,11 @@ class ShopifyOrderMapperTest extends TestCase
         $processReturn = $this->createMock(ProcessReturn::class);
 
         $processReturn->expects($this->once())
-            ->method('execute')
-            ->with('TEE-L-RED', 'LOC-STOREFRONT', 1, Condition::OPEN_BOX, $this->anything());
+            ->method('executeBulk')
+            ->with(
+                [['sku' => 'TEE-L-RED', 'location' => 'LOC-STOREFRONT', 'quantity' => 1, 'condition' => Condition::OPEN_BOX]],
+                $this->anything()
+            );
 
         $mappings = $this->createMock(ShopifyMappingRepository::class);
         $mappings->method('findLocationId')->willReturn(null);

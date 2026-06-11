@@ -22,8 +22,11 @@ class ShopifyLocationMappingTest extends TestCase
             ->willReturn('LOC-BACKROOM');
 
         $processSale->expects($this->once())
-            ->method('execute')
-            ->with('TEE-L-RED', 'LOC-BACKROOM', 1, $this->anything());
+            ->method('executeBulk')
+            ->with(
+                [['sku' => 'TEE-L-RED', 'location' => 'LOC-BACKROOM', 'quantity' => 1]],
+                $this->anything()
+            );
 
         $mapper = new ShopifyOrderMapper($processSale, $processReturn, $mappings);
         $mapper->handleOrderPaid([
@@ -44,8 +47,11 @@ class ShopifyLocationMappingTest extends TestCase
         $mappings->method('findLocationId')->willReturn(null);
 
         $processSale->expects($this->once())
-            ->method('execute')
-            ->with('TEE-L-RED', 'LOC-STOREFRONT', 1, $this->anything()); // default
+            ->method('executeBulk')
+            ->with(
+                [['sku' => 'TEE-L-RED', 'location' => 'LOC-STOREFRONT', 'quantity' => 1]],
+                $this->anything()
+            ); // default
 
         $mapper = new ShopifyOrderMapper($processSale, $processReturn, $mappings, 'LOC-STOREFRONT');
         $mapper->handleOrderPaid([
@@ -65,8 +71,11 @@ class ShopifyLocationMappingTest extends TestCase
         $mappings->expects($this->never())->method('findLocationId');
 
         $processSale->expects($this->once())
-            ->method('execute')
-            ->with('TEE-L-RED', 'LOC-STOREFRONT', 1, $this->anything());
+            ->method('executeBulk')
+            ->with(
+                [['sku' => 'TEE-L-RED', 'location' => 'LOC-STOREFRONT', 'quantity' => 1]],
+                $this->anything()
+            );
 
         $mapper = new ShopifyOrderMapper($processSale, $processReturn, $mappings);
         $mapper->handleOrderPaid([

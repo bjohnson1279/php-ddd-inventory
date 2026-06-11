@@ -2,46 +2,46 @@
 
 namespace InventoryApp\Infrastructure\Integration\Shopify;
 
-use InventoryApp\Application\Inventory\UseCases\ProcessSale;
-use InventoryApp\Application\Inventory\UseCases\ProcessReturn;
+use InventoryApp\Application\Inventory\UseCases\ProcessSaleBatch;
+use InventoryApp\Application\Inventory\UseCases\ProcessReturnBatch;
 use InventoryApp\Domain\Inventory\ValueObjects\Condition;
 
 /**
  * Translates raw Shopify webhook payloads into our Inventory domain use cases.
  *
  * Each Shopify webhook topic maps to one or more domain operations:
- *   - orders/paid       → ProcessSale (per line item, per location)
- *   - refunds/create    → ProcessReturn (with condition routing)
+ *   - orders/paid       → ProcessSaleBatch (all valid line items at once)
+ *   - refunds/create    → ProcessReturnBatch (all valid refund line items at once)
  */
 class ShopifyOrderMapper
 {
-    private ProcessSale $processSale;
-    private ProcessReturn $processReturn;
+    private ProcessSaleBatch $processSaleBatch;
+    private ProcessReturnBatch $processReturnBatch;
     private ShopifyMappingRepository $mappings;
     private string $defaultLocationId;
 
     public function __construct(
-        ProcessSale $processSale,
-        ProcessReturn $processReturn,
+        ProcessSaleBatch $processSaleBatch,
+        ProcessReturnBatch $processReturnBatch,
         ShopifyMappingRepository $mappings,
         string $defaultLocationId = 'LOC-STOREFRONT'
     ) {
-        $this->processSale       = $processSale;
-        $this->processReturn     = $processReturn;
+        $this->processSaleBatch  = $processSaleBatch;
+        $this->processReturnBatch = $processReturnBatch;
         $this->mappings          = $mappings;
         $this->defaultLocationId = $defaultLocationId;
     }
 
     /**
      * Handle an `orders/paid` webhook payload.
-     * Each line item becomes one ProcessSale call keyed by its SKU.
+     * Line items are collected and passed to ProcessSaleBatch.
      *
      * @param array $payload Decoded JSON from Shopify
      */
     public function handleOrderPaid(array $payload): void
     {
         $orderId = (string) ($payload['id'] ?? 'SHOPIFY-UNKNOWN');
-        $itemsToProcess = [];
+        $batchItems = [];
 
         foreach ($payload['line_items'] ?? [] as $item) {
             $sku      = $item['sku']      ?? null;
@@ -55,29 +55,28 @@ class ShopifyOrderMapper
             // Determine location: prefer Shopify location_id if present
             $locationId = $this->resolveLocationId($item);
 
-            $itemsToProcess[] = [
-                'sku'      => $sku,
+            $batchItems[] = [
+                'sku' => $sku,
                 'location' => $locationId,
-                'quantity' => $quantity,
+                'quantity' => $quantity
             ];
         }
 
-        if (!empty($itemsToProcess)) {
-            $this->processSale->executeBulk($itemsToProcess, $orderId);
+        if (!empty($batchItems)) {
+            $this->processSaleBatch->execute($batchItems, $orderId);
         }
     }
 
     /**
      * Handle a `refunds/create` webhook payload.
-     * Refund line items are routed to ProcessReturn with a Condition derived
-     * from any restock flag and Shopify's restock_type field.
+     * Refund line items are collected and passed to ProcessReturnBatch.
      *
      * @param array $payload Decoded JSON from Shopify
      */
     public function handleRefundCreated(array $payload): void
     {
         $orderId = 'SHOPIFY-REFUND-' . ($payload['id'] ?? 'UNKNOWN');
-        $itemsToProcess = [];
+        $batchItems = [];
 
         foreach ($payload['refund_line_items'] ?? [] as $refundItem) {
             $lineItem = $refundItem['line_item'] ?? [];
@@ -91,16 +90,16 @@ class ShopifyOrderMapper
             $condition  = $this->resolveCondition($refundItem);
             $locationId = $this->resolveLocationId($lineItem);
 
-            $itemsToProcess[] = [
-                'sku'       => $sku,
-                'location'  => $locationId,
-                'quantity'  => $quantity,
-                'condition' => $condition,
+            $batchItems[] = [
+                'sku' => $sku,
+                'location' => $locationId,
+                'quantity' => $quantity,
+                'condition' => $condition
             ];
         }
 
-        if (!empty($itemsToProcess)) {
-            $this->processReturn->executeBulk($itemsToProcess, $orderId);
+        if (!empty($batchItems)) {
+            $this->processReturnBatch->execute($batchItems, $orderId);
         }
     }
 

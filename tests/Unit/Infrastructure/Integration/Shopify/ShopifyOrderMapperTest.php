@@ -5,30 +5,27 @@ namespace Tests\Unit\Infrastructure\Integration\Shopify;
 use PHPUnit\Framework\TestCase;
 use InventoryApp\Infrastructure\Integration\Shopify\ShopifyOrderMapper;
 use InventoryApp\Infrastructure\Integration\Shopify\ShopifyMappingRepository;
-use InventoryApp\Application\Inventory\UseCases\ProcessSale;
-use InventoryApp\Application\Inventory\UseCases\ProcessReturn;
+use InventoryApp\Application\Inventory\UseCases\ProcessSaleBatch;
+use InventoryApp\Application\Inventory\UseCases\ProcessReturnBatch;
 use InventoryApp\Domain\Inventory\ValueObjects\Condition;
 
 class ShopifyOrderMapperTest extends TestCase
 {
     public function testHandleOrderPaidCallsProcessSalePerLineItem(): void
     {
-        $processSale   = $this->createMock(ProcessSale::class);
-        $processReturn = $this->createMock(ProcessReturn::class);
+        $processSaleBatch   = $this->createMock(ProcessSaleBatch::class);
+        $processReturnBatch = $this->createMock(ProcessReturnBatch::class);
 
-        $processSale->expects($this->once())
-            ->method('executeBulk')
-            ->with(
-                [
-                    ['sku' => 'TEE-L-RED', 'location' => 'LOC-STOREFRONT', 'quantity' => 2],
-                    ['sku' => 'PANTS-M-BLK', 'location' => 'LOC-STOREFRONT', 'quantity' => 1]
-                ],
-                '1001'
-            );
+        $processSaleBatch->expects($this->once())
+            ->method('execute')
+            ->with([
+                ['sku' => 'TEE-L-RED', 'location' => 'LOC-STOREFRONT', 'quantity' => 2],
+                ['sku' => 'PANTS-M-BLK', 'location' => 'LOC-STOREFRONT', 'quantity' => 1]
+            ], '1001');
 
         $mappings = $this->createMock(ShopifyMappingRepository::class);
         $mappings->method('findLocationId')->willReturn(null);
-        $mapper = new ShopifyOrderMapper($processSale, $processReturn, $mappings);
+        $mapper = new ShopifyOrderMapper($processSaleBatch, $processReturnBatch, $mappings);
         $mapper->handleOrderPaid([
             'id'         => 1001,
             'line_items' => [
@@ -40,19 +37,18 @@ class ShopifyOrderMapperTest extends TestCase
 
     public function testHandleOrderPaidSkipsLineItemsWithNoSku(): void
     {
-        $processSale   = $this->createMock(ProcessSale::class);
-        $processReturn = $this->createMock(ProcessReturn::class);
+        $processSaleBatch   = $this->createMock(ProcessSaleBatch::class);
+        $processReturnBatch = $this->createMock(ProcessReturnBatch::class);
 
-        $processSale->expects($this->once())
-            ->method('executeBulk')
-            ->with(
-                [['sku' => 'VALID-SKU', 'location' => 'LOC-STOREFRONT', 'quantity' => 1]],
-                '2002'
-            );
+        $processSaleBatch->expects($this->once())
+            ->method('execute')
+            ->with([
+                ['sku' => 'VALID-SKU', 'location' => 'LOC-STOREFRONT', 'quantity' => 1]
+            ], '2002');
 
         $mappings = $this->createMock(ShopifyMappingRepository::class);
         $mappings->method('findLocationId')->willReturn(null);
-        $mapper = new ShopifyOrderMapper($processSale, $processReturn, $mappings);
+        $mapper = new ShopifyOrderMapper($processSaleBatch, $processReturnBatch, $mappings);
         $mapper->handleOrderPaid([
             'id'         => 2002,
             'line_items' => [
@@ -65,19 +61,18 @@ class ShopifyOrderMapperTest extends TestCase
 
     public function testHandleRefundCreatedWithReturnRestockMapsToNewCondition(): void
     {
-        $processSale   = $this->createMock(ProcessSale::class);
-        $processReturn = $this->createMock(ProcessReturn::class);
+        $processSaleBatch   = $this->createMock(ProcessSaleBatch::class);
+        $processReturnBatch = $this->createMock(ProcessReturnBatch::class);
 
-        $processReturn->expects($this->once())
-            ->method('executeBulk')
-            ->with(
-                [['sku' => 'TEE-L-RED', 'location' => 'LOC-STOREFRONT', 'quantity' => 1, 'condition' => Condition::NEW]],
-                $this->anything()
-            );
+        $processReturnBatch->expects($this->once())
+            ->method('execute')
+            ->with([
+                ['sku' => 'TEE-L-RED', 'location' => 'LOC-STOREFRONT', 'quantity' => 1, 'condition' => Condition::NEW]
+            ], 'SHOPIFY-REFUND-5001');
 
         $mappings = $this->createMock(ShopifyMappingRepository::class);
         $mappings->method('findLocationId')->willReturn(null);
-        $mapper = new ShopifyOrderMapper($processSale, $processReturn, $mappings);
+        $mapper = new ShopifyOrderMapper($processSaleBatch, $processReturnBatch, $mappings);
         $mapper->handleRefundCreated([
             'id'                => 5001,
             'refund_line_items' => [
@@ -92,19 +87,18 @@ class ShopifyOrderMapperTest extends TestCase
 
     public function testHandleRefundCreatedWithNoRestockMapsTosDamagedCondition(): void
     {
-        $processSale   = $this->createMock(ProcessSale::class);
-        $processReturn = $this->createMock(ProcessReturn::class);
+        $processSaleBatch   = $this->createMock(ProcessSaleBatch::class);
+        $processReturnBatch = $this->createMock(ProcessReturnBatch::class);
 
-        $processReturn->expects($this->once())
-            ->method('executeBulk')
-            ->with(
-                [['sku' => 'TEE-L-RED', 'location' => 'LOC-STOREFRONT', 'quantity' => 1, 'condition' => Condition::DAMAGED]],
-                $this->anything()
-            );
+        $processReturnBatch->expects($this->once())
+            ->method('execute')
+            ->with([
+                ['sku' => 'TEE-L-RED', 'location' => 'LOC-STOREFRONT', 'quantity' => 1, 'condition' => Condition::DAMAGED]
+            ], 'SHOPIFY-REFUND-5002');
 
         $mappings = $this->createMock(ShopifyMappingRepository::class);
         $mappings->method('findLocationId')->willReturn(null);
-        $mapper = new ShopifyOrderMapper($processSale, $processReturn, $mappings);
+        $mapper = new ShopifyOrderMapper($processSaleBatch, $processReturnBatch, $mappings);
         $mapper->handleRefundCreated([
             'id'                => 5002,
             'refund_line_items' => [
@@ -119,19 +113,18 @@ class ShopifyOrderMapperTest extends TestCase
 
     public function testHandleRefundCreatedWithUnknownRestockMapsToOpenBox(): void
     {
-        $processSale   = $this->createMock(ProcessSale::class);
-        $processReturn = $this->createMock(ProcessReturn::class);
+        $processSaleBatch   = $this->createMock(ProcessSaleBatch::class);
+        $processReturnBatch = $this->createMock(ProcessReturnBatch::class);
 
-        $processReturn->expects($this->once())
-            ->method('executeBulk')
-            ->with(
-                [['sku' => 'TEE-L-RED', 'location' => 'LOC-STOREFRONT', 'quantity' => 1, 'condition' => Condition::OPEN_BOX]],
-                $this->anything()
-            );
+        $processReturnBatch->expects($this->once())
+            ->method('execute')
+            ->with([
+                ['sku' => 'TEE-L-RED', 'location' => 'LOC-STOREFRONT', 'quantity' => 1, 'condition' => Condition::OPEN_BOX]
+            ], 'SHOPIFY-REFUND-5003');
 
         $mappings = $this->createMock(ShopifyMappingRepository::class);
         $mappings->method('findLocationId')->willReturn(null);
-        $mapper = new ShopifyOrderMapper($processSale, $processReturn, $mappings);
+        $mapper = new ShopifyOrderMapper($processSaleBatch, $processReturnBatch, $mappings);
         $mapper->handleRefundCreated([
             'id'                => 5003,
             'refund_line_items' => [

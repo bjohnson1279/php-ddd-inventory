@@ -53,4 +53,33 @@ class AuthControllerTest extends TestCase
         $this->assertArrayHasKey('error', $content);
         $this->assertEquals('A user with email \'test@example.com\' already exists for this tenant.', $content['error']);
     }
+
+    public function testLoginReturns401OnException(): void
+    {
+        // Arrange
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->once())
+            ->method('validate')
+            ->willReturn([
+                'email'     => 'test@example.com',
+                'password'  => 'wrong-password',
+                'tenant_id' => 'tenant-1',
+            ]);
+
+        $useCaseMock = $this->createMock(AuthenticateUser::class);
+        $useCaseMock->expects($this->once())
+            ->method('execute')
+            ->willThrowException(new Exception('Invalid credentials.'));
+
+        // Act
+        $response = $this->controller->login($requestMock, $useCaseMock);
+
+        // Assert
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(401, $response->getStatusCode());
+
+        $content = json_decode($response->getContent(), true);
+        $this->assertArrayHasKey('error', $content);
+        $this->assertEquals('Invalid credentials.', $content['error']);
+    }
 }

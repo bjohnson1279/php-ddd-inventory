@@ -24,16 +24,19 @@ export default function Kits() {
   const [kitSku, setKitSku] = useState('');
   const [kitName, setKitName] = useState('');
   const [createMsg, setCreateMsg] = useState('');
+  const [isCreatingKit, setIsCreatingKit] = useState(false);
 
   // Add Component Form
   const [compVariantId, setCompVariantId] = useState('');
   const [compQty, setCompQty] = useState('1');
   const [compMsg, setCompMsg] = useState('');
+  const [isAddingComponent, setIsAddingComponent] = useState(false);
 
   // Sell Kit Bundle Form
   const [sellQty, setSellQty] = useState('1');
   const [sellSaleId, setSellSaleId] = useState('');
   const [sellMsg, setSellMsg] = useState('');
+  const [isSellingKit, setIsSellingKit] = useState(false);
 
   useEffect(() => {
     fetchKits();
@@ -53,7 +56,8 @@ export default function Kits() {
 
   const handleCreateKit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setCreateMsg('Creating Kit bundle...');
+    setCreateMsg('');
+    setIsCreatingKit(true);
     try {
       const res = await api.post('/kits', { sku: kitSku, name: kitName });
       setCreateMsg('Kit aggregate created successfully!');
@@ -65,6 +69,8 @@ export default function Kits() {
       }
     } catch (err: any) {
       setCreateMsg(err.message || 'Error creating Kit');
+    } finally {
+      setIsCreatingKit(false);
     }
   };
 
@@ -80,7 +86,8 @@ export default function Kits() {
   const handleAddComponent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedKit) return;
-    setCompMsg('Adding subcomponent...');
+    setCompMsg('');
+    setIsAddingComponent(true);
     try {
       await api.post(`/kits/${selectedKit.id}/components`, {
         variant_id: compVariantId,
@@ -93,13 +100,16 @@ export default function Kits() {
       fetchKits();
     } catch (err: any) {
       setCompMsg(err.message || 'Failed to add component');
+    } finally {
+      setIsAddingComponent(false);
     }
   };
 
   const handleSellKit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedKit) return;
-    setSellMsg('Deducting inventory components...');
+    setSellMsg('');
+    setIsSellingKit(true);
     try {
       await api.post(`/kits/${selectedKit.id}/sell`, {
         quantity: parseInt(sellQty) || 1,
@@ -110,6 +120,8 @@ export default function Kits() {
       setSellQty('1');
     } catch (err: any) {
       setSellMsg(err.message || 'Kit selling failed. Ensure subcomponents have enough stock!');
+    } finally {
+      setIsSellingKit(false);
     }
   };
 
@@ -132,7 +144,9 @@ export default function Kits() {
                 <label>Bundle Name</label>
                 <input value={kitName} onChange={e => setKitName(e.target.value)} placeholder="e.g. Summer Essentials Pack" required />
               </div>
-              <button type="submit" className="btn-primary" style={{ width: '100%' }}>Create Kit Bundle</button>
+              <button type="submit" className="btn-primary" style={{ width: '100%', opacity: isCreatingKit ? 0.6 : 1, cursor: isCreatingKit ? 'not-allowed' : 'pointer' }} disabled={isCreatingKit} aria-busy={isCreatingKit}>
+                {isCreatingKit ? 'Creating...' : 'Create Kit Bundle'}
+              </button>
             </form>
             <p style={{ color: createMsg.includes('Error') ? '#f87171' : '#34d399' }}>{createMsg}</p>
           </div>
@@ -204,7 +218,9 @@ export default function Kits() {
                     <label>Quantity per Bundle</label>
                     <input type="number" min="1" value={compQty} onChange={e => setCompQty(e.target.value)} placeholder="e.g. 1" required />
                   </div>
-                  <button type="submit" className="btn-primary" style={{ width: '100%' }}>Add Component</button>
+                  <button type="submit" className="btn-primary" style={{ width: '100%', opacity: isAddingComponent ? 0.6 : 1, cursor: isAddingComponent ? 'not-allowed' : 'pointer' }} disabled={isAddingComponent} aria-busy={isAddingComponent}>
+                    {isAddingComponent ? 'Adding...' : 'Add Component'}
+                  </button>
                 </form>
                 <p style={{ color: compMsg.includes('Failed') || compMsg.includes('Error') ? '#f87171' : '#34d399' }}>{compMsg}</p>
               </div>
@@ -246,8 +262,8 @@ export default function Kits() {
                     <label>Sale ID / Invoice</label>
                     <input value={sellSaleId} onChange={e => setSellSaleId(e.target.value)} placeholder="e.g. SALE-KIT-BND-10" required />
                   </div>
-                  <button type="submit" className="btn-primary" style={{ width: '100%', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}>
-                    Process Bundle Sale
+                  <button type="submit" className="btn-primary" style={{ width: '100%', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', opacity: isSellingKit ? 0.6 : 1, cursor: isSellingKit ? 'not-allowed' : 'pointer' }} disabled={isSellingKit} aria-busy={isSellingKit}>
+                    {isSellingKit ? 'Processing...' : 'Process Bundle Sale'}
                   </button>
                 </form>
                 <p style={{ color: sellMsg.includes('failed') || sellMsg.includes('Ensure') ? '#f87171' : '#34d399' }}>{sellMsg}</p>

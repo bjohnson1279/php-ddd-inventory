@@ -35,4 +35,36 @@ class ProcessSale
             $this->events->dispatch($event);
         }
     }
+
+    public function executeBulk(array $sales, ?string $orderId = null): void
+    {
+        $skus = [];
+        foreach ($sales as $sale) {
+            $skus[] = new SKU($sale['sku']);
+        }
+
+        $products = $this->productRepository->findBySkus($skus);
+
+        foreach ($sales as $sale) {
+            $skuValue = $sale['sku'];
+            if (!isset($products[$skuValue])) {
+                throw new Exception("Product not found with SKU: " . $skuValue);
+            }
+
+            $product = $products[$skuValue];
+
+            $quantity   = new Quantity((int)$sale['quantity']);
+            $locationId = new LocationId($sale['location']);
+
+            $product->processSaleAt($locationId, $quantity, $orderId);
+        }
+
+        $this->productRepository->saveAll(array_values($products));
+
+        foreach ($products as $product) {
+            foreach ($product->releaseEvents() as $event) {
+                $this->events->dispatch($event);
+            }
+        }
+    }
 }

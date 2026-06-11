@@ -41,6 +41,7 @@ class ShopifyOrderMapper
     public function handleOrderPaid(array $payload): void
     {
         $orderId = (string) ($payload['id'] ?? 'SHOPIFY-UNKNOWN');
+        $itemsToProcess = [];
 
         foreach ($payload['line_items'] ?? [] as $item) {
             $sku      = $item['sku']      ?? null;
@@ -54,7 +55,15 @@ class ShopifyOrderMapper
             // Determine location: prefer Shopify location_id if present
             $locationId = $this->resolveLocationId($item);
 
-            $this->processSale->execute($sku, $locationId, $quantity, $orderId);
+            $itemsToProcess[] = [
+                'sku'      => $sku,
+                'location' => $locationId,
+                'quantity' => $quantity,
+            ];
+        }
+
+        if (!empty($itemsToProcess)) {
+            $this->processSale->executeBulk($itemsToProcess, $orderId);
         }
     }
 
@@ -68,6 +77,7 @@ class ShopifyOrderMapper
     public function handleRefundCreated(array $payload): void
     {
         $orderId = 'SHOPIFY-REFUND-' . ($payload['id'] ?? 'UNKNOWN');
+        $itemsToProcess = [];
 
         foreach ($payload['refund_line_items'] ?? [] as $refundItem) {
             $lineItem = $refundItem['line_item'] ?? [];
@@ -81,7 +91,16 @@ class ShopifyOrderMapper
             $condition  = $this->resolveCondition($refundItem);
             $locationId = $this->resolveLocationId($lineItem);
 
-            $this->processReturn->execute($sku, $locationId, $quantity, $condition, $orderId);
+            $itemsToProcess[] = [
+                'sku'       => $sku,
+                'location'  => $locationId,
+                'quantity'  => $quantity,
+                'condition' => $condition,
+            ];
+        }
+
+        if (!empty($itemsToProcess)) {
+            $this->processReturn->executeBulk($itemsToProcess, $orderId);
         }
     }
 

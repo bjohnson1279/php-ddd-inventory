@@ -136,6 +136,15 @@ export default function NotificationBell() {
                     key={n.id} 
                     className={`notification-item ${n.is_read ? 'read' : 'unread'}`}
                     onClick={() => !n.is_read && handleMarkAsRead(n.id)}
+                    onKeyDown={(e) => {
+                      if (!n.is_read && (e.key === 'Enter' || e.key === ' ')) {
+                        e.preventDefault();
+                        handleMarkAsRead(n.id);
+                      }
+                    }}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`${n.title}: ${n.message}. ${n.is_read ? 'Read' : 'Unread'}`}
                   >
                     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
                       <span 

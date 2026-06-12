@@ -136,15 +136,15 @@ export default function NotificationBell() {
                     key={n.id} 
                     className={`notification-item ${n.is_read ? 'read' : 'unread'}`}
                     onClick={() => !n.is_read && handleMarkAsRead(n.id)}
-                    onKeyDown={(e) => {
-                      if (!n.is_read && (e.key === 'Enter' || e.key === ' ')) {
+                    onKeyDown={n.is_read ? undefined : (e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
                         handleMarkAsRead(n.id);
                       }
                     }}
-                    tabIndex={0}
-                    role="button"
-                    aria-label={`${n.title}: ${n.message}. ${n.is_read ? 'Read' : 'Unread'}`}
+                    tabIndex={n.is_read ? undefined : 0}
+                    role={n.is_read ? undefined : 'button'}
+                    aria-label={n.is_read ? undefined : `${n.title}: ${n.message} at ${new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. Unread`}
                   >
                     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
                       <span 

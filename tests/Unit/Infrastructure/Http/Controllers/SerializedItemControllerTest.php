@@ -15,10 +15,16 @@ use Exception;
 class SerializedItemControllerTest extends TestCase
 {
     private $controller;
+    private $serviceMock;
+    private $repoMock;
+    private $requestMock;
 
     protected function setUp(): void
     {
         $this->controller = new SerializedItemController();
+        $this->serviceMock = $this->createMock(SerializedInventoryService::class);
+        $this->repoMock = $this->createMock(SerializedItemRepositoryInterface::class);
+        $this->requestMock = $this->createMock(RequestInterface::class);
         // Set the auth.user_id to simulate a logged-in user
         $_SERVER['auth.user_id'] = 'user-123';
     }

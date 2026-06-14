@@ -181,12 +181,12 @@ export default function Inventory() {
             <div className="section-title">Query Stock Level</div>
             <form onSubmit={checkStock}>
               <div className="form-group">
-                <label>SKU</label>
-                <input value={querySku} onChange={e => setQuerySku(e.target.value)} placeholder="e.g. DNM-JKT-BLU-M" required />
+                <label htmlFor="querySku">SKU</label>
+                <input id="querySku" value={querySku} onChange={e => setQuerySku(e.target.value)} placeholder="e.g. DNM-JKT-BLU-M" required />
               </div>
               <div className="form-group">
-                <label>Location Context</label>
-                <select value={queryLoc} onChange={e => setQueryLoc(e.target.value)}>
+                <label htmlFor="queryLoc">Location Context</label>
+                <select id="queryLoc" value={queryLoc} onChange={e => setQueryLoc(e.target.value)}>
                   <option value="LOC-STOREFRONT">Sales Floor</option>
                   <option value="LOC-BACKROOM">Backroom Storage</option>
                   <option value="ALL">All Combined (ALL)</option>
@@ -227,12 +227,12 @@ export default function Inventory() {
                 <form onSubmit={recordCountItem} style={{ marginBottom: '1.5rem' }}>
                   <div className="section-title" style={{ fontSize: '1rem', border: 'none' }}>Record Item Count</div>
                   <div className="form-group">
-                    <label>SKU</label>
-                    <input value={countSku} onChange={e => setCountSku(e.target.value)} placeholder="SKU to count" required />
+                    <label htmlFor="countSku">SKU</label>
+                    <input id="countSku" value={countSku} onChange={e => setCountSku(e.target.value)} placeholder="SKU to count" required />
                   </div>
                   <div className="form-group">
-                    <label>Counted Quantity</label>
-                    <input type="number" min="0" value={countQty} onChange={e => setCountQty(e.target.value)} placeholder="Quantity found" required />
+                    <label htmlFor="countQty">Counted Quantity</label>
+                    <input id="countQty" type="number" min="0" value={countQty} onChange={e => setCountQty(e.target.value)} placeholder="Quantity found" required />
                   </div>
                   <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={isRecordingItem} aria-busy={isRecordingItem}>
                     {isRecordingItem ? 'Submitting...' : 'Submit Item Count'}

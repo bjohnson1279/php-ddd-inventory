@@ -261,7 +261,7 @@ export default function Onboarding() {
                           <td>${(item.unit_cost_cents / 100).toFixed(2)}</td>
                           {selectedSession.status === 'draft' && (
                             <td>
-                              <button onClick={() => handleRemoveItem(item.variant_id)} className="btn-sm btn-secondary text-danger" style={{ padding: '0.2rem 0.5rem' }}>
+                              <button aria-label={`Remove variant ${item.variant_id} from session`} onClick={() => handleRemoveItem(item.variant_id)} className="btn-sm btn-secondary text-danger" style={{ padding: '0.2rem 0.5rem' }}>
                                 Remove
                               </button>
                             </td>

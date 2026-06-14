@@ -16,3 +16,4 @@
 ## 2026-06-09 - Stock Transaction Form Loading & a11y
 **Learning:** Forms in this repository frequently lack explicit htmlFor and id associations on <label> and <input> elements, and missing boolean loading states (e.g., isProcessingOp) leads to multiple submissions and poor screen reader feedback.
 **Action:** Always manually verify and add htmlFor/id pairs, and explicitly apply disabled={isLoading} and aria-busy={isLoading} attributes to form submit buttons when modifying forms.
+## 2024-05-18 - Form Accessibility and Remove Buttons\n**Learning:** In a fast-paced environment, simple a11y standards like associating labels and adding ARIA descriptions to icon-only (or generic word like "Remove") buttons are often missed.\n**Action:** Always ensure that labels have `htmlFor` and buttons have `aria-label` describing what is being acted on.

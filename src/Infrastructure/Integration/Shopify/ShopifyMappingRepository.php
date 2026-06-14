@@ -20,6 +20,40 @@ class ShopifyMappingRepository
     private array $skuCache = [];
 
     /**
+     * Preload mappings for an array of Shopify location IDs to avoid N+1 queries.
+     *
+     * @param array<string> $shopifyLocationIds
+     */
+    public function preloadLocationIds(array $shopifyLocationIds): void
+    {
+        $missingIds = [];
+        foreach ($shopifyLocationIds as $id) {
+            if (!array_key_exists($id, $this->locationCache)) {
+                $missingIds[] = $id;
+            }
+        }
+
+        if (empty($missingIds)) {
+            return;
+        }
+
+        $rows = DB::table('shopify_location_mappings')
+            ->whereIn('shopify_location_id', $missingIds)
+            ->get(['shopify_location_id', 'our_location_id']);
+
+        foreach ($rows as $row) {
+            $this->locationCache[$row->shopify_location_id] = $row->our_location_id;
+        }
+
+        // Cache negative lookups
+        foreach ($missingIds as $id) {
+            if (!array_key_exists($id, $this->locationCache)) {
+                $this->locationCache[$id] = null;
+            }
+        }
+    }
+
+    /**
      * Resolve a Shopify location_id to our internal LocationId string.
      * Returns null if no mapping is registered.
      */

@@ -53,7 +53,7 @@ class EloquentInventoryCountRepository implements InventoryCountRepositoryInterf
                 ]
             );
 
-            $driver = InventoryCountItemModel::getConnection()->getDriverName();
+            $driver = (new InventoryCountItemModel())->getConnection()->getDriverName();
 
             if ($driver === 'sqlite') {
                 foreach ($inventoryCount->getItems() as $item) {

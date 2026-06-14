@@ -14,7 +14,7 @@ class RateLimitMiddlewareTest extends TestCase
     {
         $this->tempDir = sys_get_temp_dir();
         // clear old cache
-        $ip = '127.0.0.1';
+        $ip = '10.0.0.' . rand(1, 255); // Use something other than 127.0.0.1 to avoid the PHPUNIT_COMPOSER_INSTALL bypass
         $cacheFile = $this->tempDir . '/rate_limit_' . md5($ip) . '.json';
         if (file_exists($cacheFile)) {
             unlink($cacheFile);

@@ -472,8 +472,12 @@ if ($method === 'POST' && $uri === '/api/users') {
 
 // ── Route: POST /auth/login ───────────────────────────────────────────────────
 if ($method === 'POST' && ($uri === '/auth/login' || $uri === '/api/auth/login')) {
-    $useCase  = new AuthenticateUser(ServiceContainer::userRepo(), new ApiTokenService());
-    $response = (new AuthController())->login($request, $useCase);
+    $middleware = new \InventoryApp\Infrastructure\Http\Middleware\RateLimitMiddleware(5, 60);
+    $response = $middleware->handle($request, function ($req) {
+        $useCase  = new AuthenticateUser(ServiceContainer::userRepo(), new ApiTokenService());
+        return (new AuthController())->login($req, $useCase);
+    });
+
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;

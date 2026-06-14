@@ -41,6 +41,9 @@ export default function Serials() {
   const [actReason, setActReason] = useState('');
   const [actMsg, setActMsg] = useState('');
 
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [isProcessingAction, setIsProcessingAction] = useState(false);
+
   useEffect(() => {
     fetchSerials();
   }, []);
@@ -60,6 +63,7 @@ export default function Serials() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setRegMsg('Registering...');
+    setIsRegistering(true);
     try {
       await api.post('/serials', {
         variant_id: regVariantId,
@@ -71,6 +75,8 @@ export default function Serials() {
       fetchSerials();
     } catch (err: any) {
       setRegMsg(err.message || 'Registration failed');
+    } finally {
+      setIsRegistering(false);
     }
   };
 
@@ -81,6 +87,7 @@ export default function Serials() {
       return;
     }
     setActMsg('Processing action...');
+    setIsProcessingAction(true);
     try {
       let endpoint = `/serials/${selectedSerial.id}`;
       let body: any = {};
@@ -126,6 +133,8 @@ export default function Serials() {
 
     } catch (err: any) {
       setActMsg(err.message || 'Action execution failed');
+    } finally {
+      setIsProcessingAction(false);
     }
   };
 
@@ -154,7 +163,9 @@ export default function Serials() {
                   <option value="LOC-BACKROOM">Backroom Storage</option>
                 </select>
               </div>
-              <button type="submit" className="btn-primary" style={{ width: '100%' }}>Register Serial</button>
+              <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={isRegistering} aria-busy={isRegistering}>
+                {isRegistering ? 'Registering...' : 'Register Serial'}
+              </button>
             </form>
             <p style={{ color: regMsg.includes('failed') || regMsg.includes('Error') ? '#f87171' : '#34d399' }}>{regMsg}</p>
           </div>
@@ -285,8 +296,8 @@ export default function Serials() {
                     </div>
                   )}
 
-                  <button type="submit" className="btn-primary" style={{ width: '100%', textTransform: 'capitalize' }}>
-                    Process {actionType.replace('-', ' ')}
+                  <button type="submit" className="btn-primary" style={{ width: '100%', textTransform: 'capitalize' }} disabled={isProcessingAction} aria-busy={isProcessingAction}>
+                    {isProcessingAction ? 'Processing...' : `Process ${actionType.replace('-', ' ')}`}
                   </button>
                 </form>
                 <p style={{ color: actMsg.includes('failed') || actMsg.includes('Error') ? '#f87171' : '#34d399' }}>{actMsg}</p>

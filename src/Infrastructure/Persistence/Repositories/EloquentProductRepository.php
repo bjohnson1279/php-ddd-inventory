@@ -97,19 +97,41 @@ class EloquentProductRepository implements ProductRepositoryInterface
 
         $product->incrementVersion();
 
+        $locationData = [];
         foreach ($product->getLocationStocks() as $locationStock) {
-            ProductLocationModel::updateOrCreate(
-                [
-                    'product_id'  => $product->getId(),
-                    'location_id' => $locationStock->getLocationId()->getValue(),
-                ],
-                [
-                    'stock_quantity'     => $locationStock->getStockQuantity()->getValue(),
-                    'open_box_quantity'  => $locationStock->getOpenBoxQuantity()->getValue(),
-                    'damaged_quantity'   => $locationStock->getDamagedQuantity()->getValue(),
-                    'updated_at'        => date('Y-m-d H:i:s'),
-                ]
-            );
+            $locationData[] = [
+                'product_id'        => $product->getId(),
+                'location_id'       => $locationStock->getLocationId()->getValue(),
+                'stock_quantity'    => $locationStock->getStockQuantity()->getValue(),
+                'open_box_quantity' => $locationStock->getOpenBoxQuantity()->getValue(),
+                'damaged_quantity'  => $locationStock->getDamagedQuantity()->getValue(),
+                'updated_at'        => date('Y-m-d H:i:s'),
+            ];
+        }
+
+        if (!empty($locationData)) {
+            if ((new ProductLocationModel)->getConnection()->getDriverName() === 'sqlite') {
+                foreach ($locationData as $loc) {
+                    ProductLocationModel::updateOrCreate(
+                        [
+                            'product_id' => $loc['product_id'],
+                            'location_id' => $loc['location_id'],
+                        ],
+                        [
+                            'stock_quantity'     => $loc['stock_quantity'],
+                            'open_box_quantity'  => $loc['open_box_quantity'],
+                            'damaged_quantity'   => $loc['damaged_quantity'],
+                            'updated_at'        => $loc['updated_at'],
+                        ]
+                    );
+                }
+            } else {
+                ProductLocationModel::upsert(
+                    $locationData,
+                    ['product_id', 'location_id'],
+                    ['stock_quantity', 'open_box_quantity', 'damaged_quantity', 'updated_at']
+                );
+            }
         }
 
         $pendingTransactions = $product->getPendingTransactions();

@@ -46,6 +46,7 @@ final class ReportControllerTest extends TestCase
 
     protected function setUp(): void
     {
+        $_SERVER['REMOTE_ADDR'] = '127.0.' . rand(1, 255) . '.' . rand(1, 255);
         $suffix = bin2hex(random_bytes(4));
         $this->tenantId = 'tenant-' . $suffix;
         $this->email = 'admin-' . $suffix . '@example.com';

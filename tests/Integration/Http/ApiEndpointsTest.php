@@ -49,6 +49,7 @@ final class ApiEndpointsTest extends TestCase
 
     protected function setUp(): void
     {
+        $_SERVER['REMOTE_ADDR'] = '127.0.' . rand(1, 255) . '.' . rand(1, 255);
         // Generate unique tenant details for each test run to ensure isolation
         $suffix = bin2hex(random_bytes(4));
         $this->tenantId = 'tenant-' . $suffix;

@@ -12,6 +12,11 @@ class ReportController
     public function valuation(RequestInterface $request, string $tenantId)
     {
         try {
+            $authUserTenantId = $_SERVER['auth.tenant_id'] ?? null;
+            if ($authUserTenantId === null || ($authUserTenantId !== 'system' && $authUserTenantId !== $tenantId)) {
+                return new Response(['error' => 'Unauthorized access to tenant report'], 403);
+            }
+
             // 1. Fetch all products for tenant
             $products = DB::table('products')->where('tenant_id', $tenantId)->get();
             $productIds = $products->pluck('id')->toArray();

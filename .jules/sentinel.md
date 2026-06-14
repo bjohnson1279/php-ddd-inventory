@@ -17,3 +17,8 @@
 **Vulnerability:** The application used `BackedEnum::from()` to parse user-provided query parameters directly into Enum types. Invalid strings threw a `ValueError` which, depending on the error handling setup, could lead to HTTP 500s or bypass standard `Exception` catching, potentially leaking stack traces and exposing internal application logic.
 **Learning:** `ValueError` introduced in PHP 8 extends `Error`, not `Exception`. Broad `catch (Exception $e)` blocks fail to catch it, leading to unhandled fatal errors that bypass graceful fail-secure mechanisms.
 **Prevention:** Always use `BackedEnum::tryFrom()` and check for a `null` response instead of `from()` when working with unsanitized user input, ensuring errors are securely handled with generic HTTP 400 responses.
+
+## 2026-06-14 - Authorization Bypass (IDOR) via Tenant ID parameter
+**Vulnerability:** The `ReportController::valuation` endpoint accepted a `$tenantId` path parameter and queried data for that tenant without verifying that the authenticated user actually belonged to the requested tenant. This Insecure Direct Object Reference (IDOR) allowed any authenticated user to view the valuation report of any other tenant.
+**Learning:** Endpoints that operate on multi-tenant data must always validate the requested tenant identifier against the authenticated user's security context (e.g. `auth.tenant_id`) and ensure a fail-closed implementation if the context is missing.
+**Prevention:** Always extract the tenant ID from the trusted authorization context rather than an untrusted request parameter, or explicitly assert that the requested parameter matches the authorization context. Always use strict, fail-closed comparison logic.

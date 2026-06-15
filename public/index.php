@@ -411,6 +411,12 @@ if ($method === 'POST' && $uri === '/api/setup') {
 if ($method === 'GET' && $uri === '/api/users') {
     requireAuth();
     try {
+        $actingUserId = $_SERVER['auth.user_id'] ?? '';
+        $actor = ServiceContainer::userRepo()->findById($actingUserId);
+        if (!$actor || !$actor->canDo('users:manage')) {
+            throw new Exception("Unauthorized: you do not have permission to manage users.");
+        }
+
         $userModels = \InventoryApp\Infrastructure\Models\UserModel::with('userRoles')
             ->where('tenant_id', tenantId())
             ->get();
@@ -453,9 +459,10 @@ if ($method === 'POST' && $uri === '/api/users') {
         // The invited user must change it on first login.
         $temporaryPassword = bin2hex(random_bytes(12)); // 24 hex chars
         $name            = explode('@', $email)[0];
+        $actingUserId    = $_SERVER['auth.user_id'] ?? '';
 
         $useCase = new RegisterUser(ServiceContainer::userRepo(), $dispatcher);
-        $useCase->execute($userId, $tenantId, $email, $temporaryPassword, $name);
+        $useCase->execute($userId, $tenantId, $email, $temporaryPassword, $name, $actingUserId);
 
         http_response_code(201);
         echo json_encode([

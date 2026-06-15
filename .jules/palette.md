@@ -1,3 +1,0 @@
-## 2024-06-15 - Form Accessibility and Interaction State Learnings
-**Learning:** Initial Setup pages frequently miss key accessibility patterns (proper htmlFor/id associations, loading/disabled states for buttons) compared to core app pages. Forms relying on implicit `<label><input/></label>` wrapping are less accessible to some screen readers and harder to style consistently with the rest of the application's `form-group` classes.
-**Action:** Always ensure foundational forms (like login, setup, registration) use explicit `htmlFor`/`id` linking, disable buttons during async operations to prevent double-submission, and provide clear success/error styling for feedback messages to maintain a consistent UX baseline.

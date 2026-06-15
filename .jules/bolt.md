@@ -1,3 +1,0 @@
-## 2026-06-14 - Optimize ProductLocationModel saves to fix N+1 queries
-**Learning:** When using Eloquent's `upsert` as a bulk operation, it's safer and more standard in generic Laravel setups to retrieve the database driver using `$model->getConnection()->getDriverName()` rather than relying on a static `Capsule\Manager::connection()` call, as the latter might cause initialization errors depending on the application bootstrapping process.
-**Action:** Always prefer standard Eloquent connection retrieval methods on the model instance (e.g. `(new Model)->getConnection()`) when checking driver types for fallback operations, to ensure better compatibility and prevent fatal errors if the global Capsule is not set.

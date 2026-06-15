@@ -1,3 +1,3 @@
-## 2024-06-12 - Added Keyboard Support to Notification Items
-**Learning:** Found that custom clickable `div` elements used as list items for notifications lacked `tabIndex`, `role="button"`, `aria-label`, and keyboard event handlers. This is a common pattern that makes interfaces inaccessible to keyboard and screen reader users.
-**Action:** Always verify that interactive elements that are not native `<button>` or `<a>` tags have the appropriate ARIA roles, `tabIndex`, and keyboard event handlers (`onKeyDown` for Enter/Space).
+## 2024-06-15 - Form Accessibility and Interaction State Learnings
+**Learning:** Initial Setup pages frequently miss key accessibility patterns (proper htmlFor/id associations, loading/disabled states for buttons) compared to core app pages. Forms relying on implicit `<label><input/></label>` wrapping are less accessible to some screen readers and harder to style consistently with the rest of the application's `form-group` classes.
+**Action:** Always ensure foundational forms (like login, setup, registration) use explicit `htmlFor`/`id` linking, disable buttons during async operations to prevent double-submission, and provide clear success/error styling for feedback messages to maintain a consistent UX baseline.

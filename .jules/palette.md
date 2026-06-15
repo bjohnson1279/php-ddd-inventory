@@ -1,3 +1,18 @@
-## 2024-06-12 - Added Keyboard Support to Notification Items
-**Learning:** Found that custom clickable `div` elements used as list items for notifications lacked `tabIndex`, `role="button"`, `aria-label`, and keyboard event handlers. This is a common pattern that makes interfaces inaccessible to keyboard and screen reader users.
-**Action:** Always verify that interactive elements that are not native `<button>` or `<a>` tags have the appropriate ARIA roles, `tabIndex`, and keyboard event handlers (`onKeyDown` for Enter/Space).
+## 2024-05-18 - Improve Screen Reader Experience on Icon-Only Buttons
+**Learning:** Found that an icon-only notification button (`NotificationBell.tsx`) merely displayed an emoji and a dynamic badge. Without descriptive ARIA labels, screen readers would simply read out the emoji name or a raw number without context, leaving users unsure of the button’s function or the number meaning. Using `aria-label` provides a unified string, and `aria-hidden="true"` on the visual elements prevents redundant/confusing announcements. Additionally, explicitly associating the popup state using `aria-expanded` clarifies the state of the component.
+**Action:** When creating icon-only action buttons (especially those with badges like unread counts), always provide a dynamic `aria-label` covering both the action and badge value, and hide the child elements from screen readers via `aria-hidden="true"`. Also always manage state clarity using attributes like `aria-expanded`.
+
+## 2024-05-18 - Mapped List Inputs Need Dynamic ARIA Labels
+**Learning:** When mapping over dynamic arrays to render multiple rows of identical form inputs (like in a Journal Entry line with multiple Acct, Type, Amount, Memo fields), hardcoded `aria-label` or missing labels entirely confuse screen reader users because every row sounds the same. Screen readers cannot easily distinguish "Amount" on row 1 from "Amount" on row 2.
+**Action:** When rendering identical inputs in a map loop, use the loop index to create dynamically unique ARIA labels (e.g., `aria-label={\`Account for line ${idx + 1}\`}`) to ensure users have full row-context when navigating form inputs and their associated actions.
+
+## 2024-05-18 - Missing label-input pairs and dangerous substring validation
+**Learning:** Forms in this repository frequently lack explicit `htmlFor` and `id` associations on `<label>` and `<input>` elements. Screen readers rely on these pairs to correctly announce input fields. Additionally, UI styling logic relies on dangerous substring matching like `message.includes('Error')`, causing unexpected visual states (success colors for validation errors) when the API doesn't literally return "Error".
+**Action:** Always manually verify and add explicit `htmlFor` and `id` pairs when modifying forms. When conditionally styling UI feedback messages, use explicit, positive equality checks for success states (e.g., `message === 'Success'`) instead of substring searches.
+
+## 2026-06-07 - Button Loading States and Accessibility During Submission
+**Learning:** When form submit buttons only use a text update (e.g., changing "Create Product" to "Creating...") without disabling the button or adding `aria-busy`, it introduces a risk of multiple submissions and poor feedback for screen reader users. The API calls handle state manually, requiring discrete booleans for component loading phases.
+**Action:** Always replace string-based loading messages on forms with dedicated boolean loading states (e.g., `isCreatingProd`), then explicitly disable the action button (`disabled={isLoading}`) and set `aria-busy={isLoading}` to prevent double-clicks and clearly communicate system state to assistive technologies.
+## 2026-06-09 - Stock Transaction Form Loading & a11y
+**Learning:** Forms in this repository frequently lack explicit htmlFor and id associations on <label> and <input> elements, and missing boolean loading states (e.g., isProcessingOp) leads to multiple submissions and poor screen reader feedback.
+**Action:** Always manually verify and add htmlFor/id pairs, and explicitly apply disabled={isLoading} and aria-busy={isLoading} attributes to form submit buttons when modifying forms.

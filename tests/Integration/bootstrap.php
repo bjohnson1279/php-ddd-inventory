@@ -37,8 +37,32 @@ if ($driver === 'sqlite') {
 $capsule->setAsGlobal();
 $capsule->bootEloquent();
 
-// Clean tables before each integration run
 $connection = $capsule->getConnection();
+
+if ($driver !== 'sqlite') {
+    try {
+        $hasAllocated = false;
+        $columns = $connection->select("
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'product_locations' 
+              AND column_name = 'allocated_quantity'
+        ");
+        if (!empty($columns)) {
+            $hasAllocated = true;
+        }
+
+        if (!$hasAllocated) {
+            $connection->statement("
+                ALTER TABLE product_locations 
+                ADD COLUMN allocated_quantity INTEGER NOT NULL DEFAULT 0,
+                ADD COLUMN in_transit_quantity INTEGER NOT NULL DEFAULT 0
+            ");
+        }
+    } catch (\Exception $e) {
+        // Ignore or log error
+    }
+}
 
 if ($driver === 'sqlite') {
     require_once __DIR__ . '/../../src/Infrastructure/Persistence/sqlite_setup.php';

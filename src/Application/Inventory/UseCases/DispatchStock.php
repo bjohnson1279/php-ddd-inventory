@@ -6,6 +6,7 @@ use InventoryApp\Domain\Inventory\Repositories\ProductRepositoryInterface;
 use InventoryApp\Domain\Inventory\ValueObjects\SKU;
 use InventoryApp\Domain\Inventory\ValueObjects\Quantity;
 use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
+use InventoryApp\Domain\Procurement\Services\ReorderPolicyService;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Exception;
 
@@ -14,6 +15,7 @@ class DispatchStock
     public function __construct(
         private readonly ProductRepositoryInterface $productRepository,
         private readonly EventDispatcherInterface   $events,
+        private readonly ?ReorderPolicyService      $reorderPolicyService = null
     ) {}
 
     public function execute(SKU $sku, LocationId $locationId, Quantity $quantity, ?string $reference = null): void
@@ -29,6 +31,20 @@ class DispatchStock
 
         foreach ($product->releaseEvents() as $event) {
             $this->events->dispatch($event);
+        }
+
+        if ($this->reorderPolicyService) {
+            $currentStock = $product->getStockAt($locationId)->getStockQuantity()->getValue();
+            $tenantId = method_exists($this->productRepository, 'getTenantId')
+                ? $this->productRepository->getTenantId()
+                : 'default-tenant';
+
+            $this->reorderPolicyService->checkPolicy(
+                $sku->getValue(),
+                $locationId->getValue(),
+                $currentStock,
+                $tenantId
+            );
         }
     }
 }

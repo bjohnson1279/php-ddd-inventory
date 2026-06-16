@@ -166,6 +166,36 @@ class SqliteSetup
               max_volume_cubic_meters NUMERIC NOT NULL,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               UNIQUE(warehouse_id, zone, aisle, rack, shelf, bin)
+            )",
+            "CREATE TABLE IF NOT EXISTS purchase_orders (
+              id VARCHAR(50) PRIMARY KEY,
+              purchase_order_number VARCHAR(100) NOT NULL UNIQUE,
+              vendor_id VARCHAR(50) NOT NULL,
+              tenant_id VARCHAR(50) NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              location_id VARCHAR(50) NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS purchase_order_items (
+              id VARCHAR(50) PRIMARY KEY,
+              purchase_order_id VARCHAR(50) NOT NULL,
+              variant_id VARCHAR(50) NOT NULL,
+              quantity INTEGER NOT NULL,
+              received_quantity INTEGER NOT NULL DEFAULT 0,
+              unit_cost_cents INTEGER NOT NULL,
+              FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS reorder_policies (
+              id VARCHAR(50) PRIMARY KEY,
+              sku VARCHAR(50) NOT NULL,
+              location_id VARCHAR(50) NOT NULL,
+              reorder_point INTEGER NOT NULL,
+              reorder_quantity INTEGER NOT NULL,
+              safety_stock INTEGER NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              UNIQUE(sku, location_id)
             )"
         ];
     }

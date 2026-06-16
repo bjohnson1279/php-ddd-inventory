@@ -65,6 +65,38 @@ CREATE TABLE IF NOT EXISTS warehouse_locations (
   UNIQUE(warehouse_id, zone, aisle, rack, shelf, bin)
 );
 
+CREATE TABLE IF NOT EXISTS purchase_orders (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  purchase_order_number VARCHAR(100) NOT NULL UNIQUE,
+  vendor_id VARCHAR(50) NOT NULL,
+  tenant_id VARCHAR(50) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  status VARCHAR(50) NOT NULL,
+  location_id VARCHAR(50) NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS purchase_order_items (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  purchase_order_id UUID NOT NULL REFERENCES purchase_orders(id) ON DELETE CASCADE,
+  variant_id VARCHAR(50) NOT NULL,
+  quantity INTEGER NOT NULL,
+  received_quantity INTEGER NOT NULL DEFAULT 0,
+  unit_cost_cents INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS reorder_policies (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  sku VARCHAR(50) NOT NULL,
+  location_id VARCHAR(50) NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
+  reorder_point INTEGER NOT NULL,
+  reorder_quantity INTEGER NOT NULL,
+  safety_stock INTEGER NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  UNIQUE(sku, location_id)
+);
+
 -- Product Locations (Stock)
 CREATE TABLE IF NOT EXISTS product_locations (
   product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,

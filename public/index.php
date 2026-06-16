@@ -767,7 +767,7 @@ if ($method === 'POST' && $uri === '/api/inventory/receive') {
 // ── Route: POST /api/inventory/dispatch ──────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/inventory/dispatch') {
     requireAuth();
-    $useCase  = new DispatchStock(ServiceContainer::productRepo(tenantId()), $dispatcher);
+    $useCase  = new DispatchStock(ServiceContainer::productRepo(tenantId()), $dispatcher, ServiceContainer::reorderPolicyService());
     $response = (new InventoryController())->dispatch($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
@@ -1532,6 +1532,138 @@ if ($method === 'PATCH' && preg_match('#^/api/users/([^/]+)/role$#', $uri, $m)) 
         http_response_code(400);
         echo json_encode(['error' => $e->getMessage()]);
     }
+    exit;
+}
+
+// ── Route: POST /api/purchase-orders ─────────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/purchase-orders') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\PurchaseOrderController())
+        ->create($request, ServiceContainer::purchaseOrderRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: GET /api/purchase-orders/{id} ──────────────────────────────────────
+if ($method === 'GET' && preg_match('#^/api/purchase-orders/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:read')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\PurchaseOrderController())
+        ->get($request, $id, ServiceContainer::purchaseOrderRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/purchase-orders/{id}/approve ─────────────────────────────
+if ($method === 'POST' && preg_match('#^/api/purchase-orders/([^/]+)/approve$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\PurchaseOrderController())
+        ->approve($request, $id, ServiceContainer::purchaseOrderRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/purchase-orders/{id}/send ────────────────────────────────
+if ($method === 'POST' && preg_match('#^/api/purchase-orders/([^/]+)/send$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\PurchaseOrderController())
+        ->send($request, $id, ServiceContainer::purchaseOrderRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/purchase-orders/{id}/receive ─────────────────────────────
+if ($method === 'POST' && preg_match('#^/api/purchase-orders/([^/]+)/receive$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\PurchaseOrderController())
+        ->receive(
+            $request,
+            $id,
+            ServiceContainer::purchaseOrderRepo(),
+            ServiceContainer::productRepo(tenantId()),
+            ServiceContainer::costLayerRepo(tenantId()),
+            $dispatcher
+        );
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/reorder-policies ────────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/reorder-policies') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReorderPolicyController())
+        ->createOrUpdate($request, ServiceContainer::reorderPolicyRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: GET /api/reorder-policies/{sku}/{locationId} ──────────────────────
+if ($method === 'GET' && preg_match('#^/api/reorder-policies/([^/]+)/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    $sku = urldecode($m[1]);
+    $locationId = urldecode($m[2]);
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:read')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReorderPolicyController())
+        ->get($request, $sku, $locationId, ServiceContainer::reorderPolicyRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
     exit;
 }
 

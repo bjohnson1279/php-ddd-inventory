@@ -74,7 +74,10 @@ if ($driver === 'sqlite') {
         'role_permissions',
         'notifications',
         'inventory_cost_layers',
-        'warehouse_locations'
+        'warehouse_locations',
+        'purchase_orders',
+        'purchase_order_items',
+        'reorder_policies'
     ];
     
     foreach ($tables as $t) {
@@ -111,7 +114,10 @@ if ($driver === 'sqlite') {
         role_permissions,
         notifications,
         inventory_cost_layers,
-        warehouse_locations
+        warehouse_locations,
+        purchase_orders,
+        purchase_order_items,
+        reorder_policies
     RESTART IDENTITY CASCADE');
 }
 

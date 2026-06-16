@@ -12,6 +12,7 @@ use InventoryApp\Domain\Identity\ValueObjects\TenantId;
 use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
 use InventoryApp\Infrastructure\Models\RMAModel;
 use InventoryApp\Infrastructure\Models\RMAItemModel;
+use Illuminate\Database\Capsule\Manager as Capsule;
 use DateTimeImmutable;
 
 class EloquentRMARepository implements RMARepositoryInterface
@@ -63,7 +64,7 @@ class EloquentRMARepository implements RMARepositoryInterface
     {
         $dbId = $this->ensureUuid($rma->getId());
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($rma, $dbId) {
+        Capsule::transaction(function () use ($rma, $dbId) {
             RMAModel::updateOrCreate(
                 ['id' => $dbId],
                 [

@@ -55,6 +55,8 @@ class ServiceContainer
         $container->singleton(\InventoryApp\Domain\Catalog\Repositories\CatalogProductRepositoryInterface::class, EloquentCatalogProductRepository::class);
         $container->singleton(ProductUomConfigurationRepositoryInterface::class, EloquentProductUomConfigurationRepository::class);
         $container->singleton(KitRepositoryInterface::class, EloquentKitRepository::class);
+        $container->singleton(\InventoryApp\Domain\Returns\Repositories\RMARepositoryInterface::class, \InventoryApp\Infrastructure\Persistence\Repositories\EloquentRMARepository::class);
+        $container->singleton(\InventoryApp\Domain\Returns\Repositories\QuarantineRepositoryInterface::class, \InventoryApp\Infrastructure\Persistence\Repositories\EloquentQuarantineRepository::class);
         $container->singleton(EventDispatcher::class, function () {
             return self::dispatcher();
         });
@@ -171,6 +173,16 @@ class ServiceContainer
     public static function kitRepo(): KitRepositoryInterface
     {
         return self::getInstance()->make(KitRepositoryInterface::class);
+    }
+
+    public static function rmaRepo(): \InventoryApp\Domain\Returns\Repositories\RMARepositoryInterface
+    {
+        return self::getInstance()->make(\InventoryApp\Domain\Returns\Repositories\RMARepositoryInterface::class);
+    }
+
+    public static function quarantineRepo(): \InventoryApp\Domain\Returns\Repositories\QuarantineRepositoryInterface
+    {
+        return self::getInstance()->make(\InventoryApp\Domain\Returns\Repositories\QuarantineRepositoryInterface::class);
     }
 }
 

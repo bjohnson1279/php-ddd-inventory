@@ -490,6 +490,265 @@ if ($method === 'POST' && ($uri === '/auth/login' || $uri === '/api/auth/login')
     exit;
 }
 
+// ── Route: POST /api/returns/rma ───────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/returns/rma') {
+    requireAuth();
+    try {
+        $actingUserId = $_SERVER['auth.user_id'] ?? '';
+        $actor = ServiceContainer::userRepo()->findById($actingUserId);
+        if (!$actor || !$actor->canDo('returns:process')) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Forbidden: You do not have permission to process returns.']);
+            exit;
+        }
+
+        $body = json_decode(file_get_contents('php://input'), true) ?: [];
+        $useCase = new \InventoryApp\Application\Returns\UseCases\CreateRMA(ServiceContainer::rmaRepo());
+        $rma = $useCase->execute([
+            'rmaNumber' => $body['rmaNumber'] ?? '',
+            'tenantId' => tenantId(),
+            'customerId' => $body['customerId'] ?? '',
+            'locationId' => $body['locationId'] ?? '',
+            'items' => $body['items'] ?? []
+        ]);
+
+        $items = [];
+        foreach ($rma->getItems() as $item) {
+            $items[] = [
+                'id' => $item->getId(),
+                'variantId' => $item->getVariantId(),
+                'quantity' => $item->getQuantity(),
+                'receivedQuantity' => $item->getReceivedQuantity(),
+                'unitCostCents' => $item->getUnitCostCents(),
+                'status' => $item->getStatus()->value,
+                'disposition' => $item->getDisposition() ? $item->getDisposition()->value : null
+            ];
+        }
+
+        http_response_code(201);
+        echo json_encode([
+            'id' => $rma->getId(),
+            'rmaNumber' => $rma->getRmaNumber(),
+            'tenantId' => $rma->getTenantId()->getValue(),
+            'customerId' => $rma->getCustomerId(),
+            'locationId' => $rma->getLocationId()->getValue(),
+            'status' => $rma->getStatus()->value,
+            'items' => $items,
+            'createdAt' => $rma->getCreatedAt()->format(DATE_ATOM),
+            'updatedAt' => $rma->getUpdatedAt()->format(DATE_ATOM)
+        ]);
+    } catch (\Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ── Route: POST /api/returns/rma/{id}/authorize ───────────────────────────────────────
+if ($method === 'POST' && preg_match('#^/api/returns/rma/([^/]+)/authorize$#', $uri, $m)) {
+    requireAuth();
+    try {
+        $actingUserId = $_SERVER['auth.user_id'] ?? '';
+        $actor = ServiceContainer::userRepo()->findById($actingUserId);
+        if (!$actor || !$actor->canDo('returns:process')) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Forbidden: You do not have permission to process returns.']);
+            exit;
+        }
+
+        $rmaId = $m[1];
+        $useCase = new \InventoryApp\Application\Returns\UseCases\AuthorizeRMA(ServiceContainer::rmaRepo());
+        $useCase->execute($rmaId);
+
+        http_response_code(200);
+        echo json_encode(['message' => 'RMA authorized successfully']);
+    } catch (\Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ── Route: POST /api/returns/rma/{id}/receive ───────────────────────────────────────
+if ($method === 'POST' && preg_match('#^/api/returns/rma/([^/]+)/receive$#', $uri, $m)) {
+    requireAuth();
+    try {
+        $actingUserId = $_SERVER['auth.user_id'] ?? '';
+        $actor = ServiceContainer::userRepo()->findById($actingUserId);
+        if (!$actor || !$actor->canDo('returns:process')) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Forbidden: You do not have permission to process returns.']);
+            exit;
+        }
+
+        $rmaId = $m[1];
+        $body = json_decode(file_get_contents('php://input'), true) ?: [];
+        $useCase = new \InventoryApp\Application\Returns\UseCases\ReceiveRMA(
+            ServiceContainer::rmaRepo(),
+            ServiceContainer::productRepo(tenantId()),
+            ServiceContainer::costLayerRepo(tenantId()),
+            ServiceContainer::quarantineRepo(),
+            new \InventoryApp\Domain\Accounting\Services\AccountingJournalService(
+                ServiceContainer::journalRepo(),
+                new \InventoryApp\Domain\Accounting\Services\CostLayerService(ServiceContainer::costLayerRepo(tenantId()))
+            ),
+            ServiceContainer::serializedRepo()
+        );
+        $useCase->execute([
+            'rmaId' => $rmaId,
+            'items' => $body['items'] ?? []
+        ]);
+
+        http_response_code(200);
+        echo json_encode(['message' => 'RMA items received successfully']);
+    } catch (\Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ── Route: GET /api/returns/rma/{id} ───────────────────────────────────────
+if ($method === 'GET' && preg_match('#^/api/returns/rma/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    try {
+        $rmaId = $m[1];
+        $rma = ServiceContainer::rmaRepo()->findById($rmaId);
+        if (!$rma || $rma->getTenantId()->getValue() !== tenantId()) {
+            http_response_code(404);
+            echo json_encode(['error' => 'RMA not found']);
+            exit;
+        }
+
+        $items = [];
+        foreach ($rma->getItems() as $item) {
+            $items[] = [
+                'id' => $item->getId(),
+                'variantId' => $item->getVariantId(),
+                'quantity' => $item->getQuantity(),
+                'receivedQuantity' => $item->getReceivedQuantity(),
+                'unitCostCents' => $item->getUnitCostCents(),
+                'status' => $item->getStatus()->value,
+                'disposition' => $item->getDisposition() ? $item->getDisposition()->value : null
+            ];
+        }
+
+        http_response_code(200);
+        echo json_encode([
+            'id' => $rma->getId(),
+            'rmaNumber' => $rma->getRmaNumber(),
+            'tenantId' => $rma->getTenantId()->getValue(),
+            'customerId' => $rma->getCustomerId(),
+            'locationId' => $rma->getLocationId()->getValue(),
+            'status' => $rma->getStatus()->value,
+            'items' => $items,
+            'createdAt' => $rma->getCreatedAt()->format(DATE_ATOM),
+            'updatedAt' => $rma->getUpdatedAt()->format(DATE_ATOM)
+        ]);
+    } catch (\Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ── Route: GET /api/returns/quarantine ───────────────────────────────────────
+if ($method === 'GET' && $uri === '/api/returns/quarantine') {
+    requireAuth();
+    try {
+        $items = ServiceContainer::quarantineRepo()->findAllByTenant(tenantId());
+        $results = [];
+        foreach ($items as $item) {
+            $results[] = [
+                'id' => $item->getId(),
+                'variantId' => $item->getVariantId(),
+                'quantity' => $item->getQuantity(),
+                'reason' => $item->getReason(),
+                'status' => $item->getStatus()->value,
+                'locationId' => $item->getLocationId()->getValue(),
+                'tenantId' => $item->getTenantId()->getValue(),
+                'createdAt' => $item->getCreatedAt()->format(DATE_ATOM),
+                'resolvedAt' => $item->getResolvedAt() ? $item->getResolvedAt()->format(DATE_ATOM) : null
+            ];
+        }
+
+        http_response_code(200);
+        echo json_encode($results);
+    } catch (\Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ── Route: GET /api/returns/quarantine/{id} ───────────────────────────────────────
+if ($method === 'GET' && preg_match('#^/api/returns/quarantine/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    try {
+        $qId = $m[1];
+        $item = ServiceContainer::quarantineRepo()->findById($qId);
+        if (!$item || $item->getTenantId()->getValue() !== tenantId()) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Quarantine item not found']);
+            exit;
+        }
+
+        http_response_code(200);
+        echo json_encode([
+            'id' => $item->getId(),
+            'variantId' => $item->getVariantId(),
+            'quantity' => $item->getQuantity(),
+            'reason' => $item->getReason(),
+            'status' => $item->getStatus()->value,
+            'locationId' => $item->getLocationId()->getValue(),
+            'tenantId' => $item->getTenantId()->getValue(),
+            'createdAt' => $item->getCreatedAt()->format(DATE_ATOM),
+            'resolvedAt' => $item->getResolvedAt() ? $item->getResolvedAt()->format(DATE_ATOM) : null
+        ]);
+    } catch (\Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ── Route: POST /api/returns/quarantine/{id}/resolve ───────────────────────────────────────
+if ($method === 'POST' && preg_match('#^/api/returns/quarantine/([^/]+)/resolve$#', $uri, $m)) {
+    requireAuth();
+    try {
+        $actingUserId = $_SERVER['auth.user_id'] ?? '';
+        $actor = ServiceContainer::userRepo()->findById($actingUserId);
+        if (!$actor || !$actor->canDo('returns:process')) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Forbidden: You do not have permission to process returns.']);
+            exit;
+        }
+
+        $qId = $m[1];
+        $body = json_decode(file_get_contents('php://input'), true) ?: [];
+        $useCase = new \InventoryApp\Application\Returns\UseCases\ResolveQuarantineItem(
+            ServiceContainer::quarantineRepo(),
+            ServiceContainer::productRepo(tenantId()),
+            ServiceContainer::costLayerRepo(tenantId()),
+            new \InventoryApp\Domain\Accounting\Services\AccountingJournalService(
+                ServiceContainer::journalRepo(),
+                new \InventoryApp\Domain\Accounting\Services\CostLayerService(ServiceContainer::costLayerRepo(tenantId()))
+            )
+        );
+        $useCase->execute([
+            'quarantineItemId' => $qId,
+            'resolution' => $body['resolution'] ?? ''
+        ]);
+
+        http_response_code(200);
+        echo json_encode(['message' => 'Quarantine item resolved successfully']);
+    } catch (\Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
 // ── Route: POST /api/inventory/receive ───────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/inventory/receive') {
     requireAuth();

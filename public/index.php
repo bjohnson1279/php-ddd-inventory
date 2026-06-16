@@ -293,7 +293,8 @@ if ($method === 'GET' && $uri === '/api/notifications/subscribe') {
     $sentIds = [];
 
     $start = time();
-    while (time() - $start < 50) {
+    $duration = ($request->query('test') === '1') ? 1 : 50;
+    while (time() - $start < $duration) {
         if (connection_aborted()) {
             break;
         }

@@ -539,7 +539,7 @@ final class ApiEndpointsTest extends TestCase
         $this->assertFalse((bool)$notif['is_read']);
 
         // 4. Test SSE subscribe endpoint
-        $stream = @fopen("http://127.0.0.1:8085/api/notifications/subscribe?token={$this->token}", 'r');
+        $stream = @fopen("http://127.0.0.1:8085/api/notifications/subscribe?token={$this->token}&test=1", 'r');
         $this->assertNotFalse($stream, "Should connect to SSE stream");
         $firstLine = fgets($stream);
         fclose($stream);

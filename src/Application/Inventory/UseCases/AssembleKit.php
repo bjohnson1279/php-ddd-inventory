@@ -96,8 +96,6 @@ class AssembleKit
         $unitCostCents = (int) round($totalCostCents / $quantity);
 
         // 5. Create new costing layer for the assembled Kit variant
-        $dbProducts = \Illuminate\Database\Capsule\Manager::table('products')->get()->toArray();
-        error_log("DB Products in AssembleKit: " . json_encode($dbProducts));
         $kitProduct = $this->productRepository->findBySku(new SKU($kitSkuStr));
         if (!$kitProduct) {
             throw new Exception("Product variant for Kit SKU {$kitSkuStr} not found.");

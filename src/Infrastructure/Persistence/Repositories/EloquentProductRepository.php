@@ -32,13 +32,11 @@ class EloquentProductRepository implements ProductRepositoryInterface
 
     public function findBySku(SKU $sku): ?Product
     {
-        error_log("EloquentProductRepository::findBySku - searching tenant_id: '{$this->tenantId}', sku: '{$sku->getValue()}'");
         $model = ProductModel::with('locations')
             ->where('tenant_id', $this->tenantId)
             ->where('sku', $sku->getValue())
             ->first();
 
-        error_log("EloquentProductRepository::findBySku - found model? " . ($model ? "YES (ID: {$model->id})" : "NO"));
         return $model ? $this->hydrate($model) : null;
     }
 

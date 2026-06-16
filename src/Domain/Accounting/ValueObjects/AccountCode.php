@@ -13,4 +13,5 @@ final class AccountCode
     public static function salesRevenue(): self { return new self('4000', 'Sales Revenue', 'revenue'); }
     public static function costOfGoodsSold(): self { return new self('5000', 'Cost of Goods Sold', 'expense'); }
     public static function inventoryExpense(): self { return new self('5100', 'Inventory Purchases', 'expense'); }
+    public static function inventoryWriteOffExpense(): self { return new self('5300', 'Inventory Write-Off Expense', 'expense'); }
 }

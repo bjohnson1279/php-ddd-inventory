@@ -13,7 +13,8 @@ class SqliteSetup
             self::getInventoryQueries(),
             self::getAccountingQueries(),
             self::getIntegrationQueries(),
-            self::getSystemQueries()
+            self::getSystemQueries(),
+            self::getReturnsQueries()
         );
 
         foreach ($queries as $q) {
@@ -324,6 +325,45 @@ class SqliteSetup
               reserved_at   DATETIME DEFAULT NULL,
               available_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
               created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )"
+        ];
+    }
+
+    private static function getReturnsQueries(): array
+    {
+        return [
+            "CREATE TABLE IF NOT EXISTS rmas (
+              id TEXT PRIMARY KEY,
+              rma_number TEXT NOT NULL UNIQUE,
+              tenant_id VARCHAR(50) NOT NULL,
+              customer_id TEXT NOT NULL,
+              location_id VARCHAR(50) NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS rma_items (
+              id TEXT PRIMARY KEY,
+              rma_id TEXT NOT NULL,
+              variant_id TEXT NOT NULL,
+              quantity INTEGER NOT NULL,
+              received_quantity INTEGER NOT NULL DEFAULT 0,
+              unit_cost_cents INTEGER NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              disposition VARCHAR(50) DEFAULT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (rma_id) REFERENCES rmas (id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS quarantine_items (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              variant_id TEXT NOT NULL,
+              quantity INTEGER NOT NULL,
+              reason TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              location_id VARCHAR(50) NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              resolved_at DATETIME DEFAULT NULL
             )"
         ];
     }

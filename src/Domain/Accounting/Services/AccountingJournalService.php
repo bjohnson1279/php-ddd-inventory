@@ -142,6 +142,64 @@ class AccountingJournalService
         );
     }
 
+    public function onStockReturned(
+        string $tenantId,
+        string $variantId,
+        int $totalCostCents,
+        string $referenceId,
+        \DateTimeImmutable $date
+    ): JournalEntry {
+        return $this->createEntry(
+            $tenantId,
+            $date,
+            "Inventory return receipt — variant {$variantId} — reference {$referenceId}",
+            $referenceId,
+            AccountingMethod::Accrual,
+            [
+                [AccountCode::inventory(), $totalCostCents, DebitCredit::Debit, "Returned stock"],
+                [AccountCode::costOfGoodsSold(), $totalCostCents, DebitCredit::Credit, "COGS reversal"],
+            ]
+        );
+    }
+
+    public function onInventoryWriteOff(
+        string $tenantId,
+        string $referenceId,
+        int $totalCostCents,
+        \DateTimeImmutable $date
+    ): JournalEntry {
+        return $this->createEntry(
+            $tenantId,
+            $date,
+            "Inventory Write-Off — Ref {$referenceId}",
+            $referenceId,
+            AccountingMethod::Accrual,
+            [
+                [AccountCode::inventoryWriteOffExpense(), $totalCostCents, DebitCredit::Debit, "Inventory write-off"],
+                [AccountCode::inventory(), $totalCostCents, DebitCredit::Credit, "Inventory reduction"],
+            ]
+        );
+    }
+
+    public function onReturnToVendor(
+        string $tenantId,
+        string $referenceId,
+        int $totalCostCents,
+        \DateTimeImmutable $date
+    ): JournalEntry {
+        return $this->createEntry(
+            $tenantId,
+            $date,
+            "Return to Vendor — Ref {$referenceId}",
+            $referenceId,
+            AccountingMethod::Accrual,
+            [
+                [AccountCode::accountsPayable(), $totalCostCents, DebitCredit::Debit, "AP cleared — return to vendor"],
+                [AccountCode::inventory(), $totalCostCents, DebitCredit::Credit, "Inventory reduction"],
+            ]
+        );
+    }
+
     private function createEntry(string $tenantId, \DateTimeImmutable $date, string $description, ?string $referenceId, AccountingMethod $method, array $lines): JournalEntry
     {
         $entry = new JournalEntry(\Ramsey\Uuid\Uuid::uuid4()->toString(), $tenantId, $date, $description, $referenceId, $method);

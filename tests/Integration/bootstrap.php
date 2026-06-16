@@ -47,6 +47,8 @@ if ($driver !== 'sqlite') {
             FROM information_schema.columns 
             WHERE table_name = 'product_locations' 
               AND column_name = 'allocated_quantity'
+              AND table_schema = 'public'
+              AND table_catalog = current_database()
         ");
         if (!empty($columns)) {
             $hasAllocated = true;

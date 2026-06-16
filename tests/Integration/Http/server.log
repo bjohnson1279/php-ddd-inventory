@@ -9,3 +9,9 @@
 [Tue Jun 16 05:17:04 2026] 127.0.0.1:34752 Accepted
 [Tue Jun 16 05:17:18 2026] 127.0.0.1:34752 Closing
 [Tue Jun 16 05:17:25 2026] 127.0.0.1:47132 Accepted
+[Tue Jun 16 05:17:39 2026] EloquentProductRepository::findBySku - searching tenant_id: 'tenant-c7ece9b3', sku: 'SKU-3A4064B2'
+[Tue Jun 16 05:17:41 2026] EloquentProductRepository::findBySku - found model? YES (ID: 32e8f1c3-a9f9-47b2-92a2-2c333569baf8)
+[Tue Jun 16 05:17:50 2026] 127.0.0.1:47132 Closing
+[Tue Jun 16 05:17:50 2026] 127.0.0.1:48384 Accepted
+[Tue Jun 16 05:18:08 2026] 127.0.0.1:48384 Closing
+[Tue Jun 16 05:18:09 2026] 127.0.0.1:51032 Accepted

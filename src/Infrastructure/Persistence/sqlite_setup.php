@@ -91,6 +91,8 @@ class SqliteSetup
               department TEXT NOT NULL,
               reorder_threshold INTEGER NOT NULL DEFAULT 10,
               version_id INTEGER NOT NULL DEFAULT 1,
+              weight_grams INTEGER,
+              volume_cubic_meters NUMERIC,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               UNIQUE(tenant_id, sku)
@@ -151,6 +153,19 @@ class SqliteSetup
               damaged_quantity INTEGER NOT NULL DEFAULT 0,
               updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               PRIMARY KEY (product_id, location_id)
+            )",
+            "CREATE TABLE IF NOT EXISTS warehouse_locations (
+              id VARCHAR(50) PRIMARY KEY,
+              warehouse_id VARCHAR(50) NOT NULL,
+              zone VARCHAR(50) NOT NULL,
+              aisle VARCHAR(50) NOT NULL,
+              rack VARCHAR(50) NOT NULL,
+              shelf VARCHAR(50) NOT NULL,
+              bin VARCHAR(50) NOT NULL,
+              max_weight_grams INTEGER NOT NULL,
+              max_volume_cubic_meters NUMERIC NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              UNIQUE(warehouse_id, zone, aisle, rack, shelf, bin)
             )"
         ];
     }

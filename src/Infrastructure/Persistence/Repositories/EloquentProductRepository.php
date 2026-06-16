@@ -70,13 +70,15 @@ class EloquentProductRepository implements ProductRepositoryInterface
             $updated = ProductModel::where('id', $product->getId())
                 ->where('version_id', $product->getVersionId())
                 ->update([
-                    'tenant_id'         => $this->tenantId,
-                    'sku'               => $product->getSku()->getValue(),
-                    'name'              => $product->getName(),
-                    'department'        => $product->getDepartment()->getValue(),
-                    'reorder_threshold' => $product->getReorderThreshold()->getValue(),
-                    'version_id'        => $product->getVersionId() + 1,
-                    'updated_at'        => date('Y-m-d H:i:s'),
+                    'tenant_id'           => $this->tenantId,
+                    'sku'                 => $product->getSku()->getValue(),
+                    'name'                => $product->getName(),
+                    'department'          => $product->getDepartment()->getValue(),
+                    'reorder_threshold'   => $product->getReorderThreshold()->getValue(),
+                    'version_id'          => $product->getVersionId() + 1,
+                    'weight_grams'        => $product->getWeightGrams(),
+                    'volume_cubic_meters' => $product->getVolumeCubicMeters(),
+                    'updated_at'          => date('Y-m-d H:i:s'),
                 ]);
 
             if ($updated === 0) {
@@ -84,14 +86,16 @@ class EloquentProductRepository implements ProductRepositoryInterface
             }
         } else {
             ProductModel::create([
-                'id'                => $product->getId(),
-                'tenant_id'         => $this->tenantId,
-                'sku'               => $product->getSku()->getValue(),
-                'name'              => $product->getName(),
-                'department'        => $product->getDepartment()->getValue(),
-                'reorder_threshold' => $product->getReorderThreshold()->getValue(),
-                'version_id'        => $product->getVersionId() + 1,
-                'updated_at'        => date('Y-m-d H:i:s'),
+                'id'                  => $product->getId(),
+                'tenant_id'           => $this->tenantId,
+                'sku'                 => $product->getSku()->getValue(),
+                'name'                => $product->getName(),
+                'department'          => $product->getDepartment()->getValue(),
+                'reorder_threshold'   => $product->getReorderThreshold()->getValue(),
+                'version_id'          => $product->getVersionId() + 1,
+                'weight_grams'        => $product->getWeightGrams(),
+                'volume_cubic_meters' => $product->getVolumeCubicMeters(),
+                'updated_at'          => date('Y-m-d H:i:s'),
             ]);
         }
 
@@ -170,13 +174,15 @@ class EloquentProductRepository implements ProductRepositoryInterface
 
             foreach ($products as $product) {
                 $productData[] = [
-                    'id'                => $product->getId(),
-                    'tenant_id'         => $this->tenantId,
-                    'sku'               => $product->getSku()->getValue(),
-                    'name'              => $product->getName(),
-                    'department'        => $product->getDepartment()->getValue(),
-                    'reorder_threshold' => $product->getReorderThreshold()->getValue(),
-                    'updated_at'        => $now,
+                    'id'                  => $product->getId(),
+                    'tenant_id'           => $this->tenantId,
+                    'sku'                 => $product->getSku()->getValue(),
+                    'name'                => $product->getName(),
+                    'department'          => $product->getDepartment()->getValue(),
+                    'reorder_threshold'   => $product->getReorderThreshold()->getValue(),
+                    'weight_grams'        => $product->getWeightGrams(),
+                    'volume_cubic_meters' => $product->getVolumeCubicMeters(),
+                    'updated_at'          => $now,
                 ];
 
                 foreach ($product->getLocationStocks() as $locationStock) {
@@ -207,7 +213,7 @@ class EloquentProductRepository implements ProductRepositoryInterface
                 ProductModel::upsert(
                     $productData,
                     ['id'],
-                    ['tenant_id', 'sku', 'name', 'department', 'reorder_threshold', 'updated_at']
+                    ['tenant_id', 'sku', 'name', 'department', 'reorder_threshold', 'weight_grams', 'volume_cubic_meters', 'updated_at']
                 );
             }
 
@@ -267,7 +273,9 @@ class EloquentProductRepository implements ProductRepositoryInterface
             $model->name,
             new Department($model->department),
             new Quantity($model->reorder_threshold),
-            $model->version_id ?? 1
+            $model->version_id ?? 1,
+            $model->weight_grams,
+            $model->volume_cubic_meters
         );
 
         foreach ($model->locations as $locModel) {

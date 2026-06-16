@@ -27,6 +27,8 @@ class Product extends AggregateRoot
     private Department $department;
     private Quantity $reorderThreshold;
     private int $versionId;
+    private ?int $weightGrams;
+    private ?float $volumeCubicMeters;
     
     /** @var array<string, LocationStock> */
     private array $locationStocks = [];
@@ -40,7 +42,9 @@ class Product extends AggregateRoot
         string $name, 
         Department $department, 
         ?Quantity $reorderThreshold = null,
-        int $versionId = 1
+        int $versionId = 1,
+        ?int $weightGrams = null,
+        ?float $volumeCubicMeters = null
     ) {
         $this->id = $id;
         $this->sku = $sku;
@@ -48,6 +52,8 @@ class Product extends AggregateRoot
         $this->department = $department;
         $this->reorderThreshold = $reorderThreshold ?? new Quantity(10);
         $this->versionId = $versionId;
+        $this->weightGrams = $weightGrams;
+        $this->volumeCubicMeters = $volumeCubicMeters;
     }
 
     public static function create(
@@ -72,6 +78,8 @@ class Product extends AggregateRoot
     public function getDepartment(): Department { return $this->department; }
     public function getReorderThreshold(): Quantity { return $this->reorderThreshold; }
     public function getVersionId(): int { return $this->versionId; }
+    public function getWeightGrams(): ?int { return $this->weightGrams; }
+    public function getVolumeCubicMeters(): ?float { return $this->volumeCubicMeters; }
     public function incrementVersion(): void { $this->versionId++; }
 
     public function loadLocationStock(LocationStock $stock): void

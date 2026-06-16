@@ -27,6 +27,8 @@ use InventoryApp\Domain\Uom\Repositories\ProductUomConfigurationRepositoryInterf
 use InventoryApp\Domain\Kit\Repositories\KitRepositoryInterface;
 use InventoryApp\Infrastructure\Persistence\Repositories\EloquentProductUomConfigurationRepository;
 use InventoryApp\Infrastructure\Persistence\Repositories\EloquentKitRepository;
+use InventoryApp\Domain\Inventory\Repositories\WarehouseLocationRepositoryInterface;
+use InventoryApp\Infrastructure\Persistence\Repositories\EloquentWarehouseLocationRepository;
 use Illuminate\Container\Container;
 
 class ServiceContainer
@@ -55,6 +57,7 @@ class ServiceContainer
         $container->singleton(\InventoryApp\Domain\Catalog\Repositories\CatalogProductRepositoryInterface::class, EloquentCatalogProductRepository::class);
         $container->singleton(ProductUomConfigurationRepositoryInterface::class, EloquentProductUomConfigurationRepository::class);
         $container->singleton(KitRepositoryInterface::class, EloquentKitRepository::class);
+        $container->singleton(WarehouseLocationRepositoryInterface::class, EloquentWarehouseLocationRepository::class);
         $container->singleton(\InventoryApp\Domain\Returns\Repositories\RMARepositoryInterface::class, \InventoryApp\Infrastructure\Persistence\Repositories\EloquentRMARepository::class);
         $container->singleton(\InventoryApp\Domain\Returns\Repositories\QuarantineRepositoryInterface::class, \InventoryApp\Infrastructure\Persistence\Repositories\EloquentQuarantineRepository::class);
         $container->singleton(EventDispatcher::class, function () {
@@ -183,6 +186,11 @@ class ServiceContainer
     public static function quarantineRepo(): \InventoryApp\Domain\Returns\Repositories\QuarantineRepositoryInterface
     {
         return self::getInstance()->make(\InventoryApp\Domain\Returns\Repositories\QuarantineRepositoryInterface::class);
+    }
+
+    public static function warehouseLocationRepo(): WarehouseLocationRepositoryInterface
+    {
+        return self::getInstance()->make(WarehouseLocationRepositoryInterface::class);
     }
 }
 

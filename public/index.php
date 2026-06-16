@@ -753,7 +753,11 @@ if ($method === 'POST' && preg_match('#^/api/returns/quarantine/([^/]+)/resolve$
 // ── Route: POST /api/inventory/receive ───────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/inventory/receive') {
     requireAuth();
-    $useCase  = new ReceiveStock(ServiceContainer::productRepo(tenantId()), $dispatcher);
+    $capacityService = new \InventoryApp\Domain\Inventory\Services\WMSCapacityService(
+        ServiceContainer::productRepo(tenantId()),
+        ServiceContainer::warehouseLocationRepo()
+    );
+    $useCase  = new ReceiveStock(ServiceContainer::productRepo(tenantId()), $dispatcher, $capacityService);
     $response = (new InventoryController())->receive($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
@@ -1341,6 +1345,71 @@ if ($method === 'POST' && $uri === '/api/kits/disassemble') {
         )
     );
     $response = (new KitController())->disassemble($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/warehouse-locations ───────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/warehouse-locations') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized: you do not have permission to manage warehouse locations.']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\WarehouseLocationController())
+        ->save($request, ServiceContainer::warehouseLocationRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: DELETE /api/warehouse-locations/{id} ─────────────────────────────────
+if ($method === 'DELETE' && preg_match('#^/api/warehouse-locations/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized: you do not have permission to manage warehouse locations.']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\WarehouseLocationController())
+        ->delete($request, $id, ServiceContainer::warehouseLocationRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: GET /api/warehouse-locations ───────────────────────────────────────
+if ($method === 'GET' && $uri === '/api/warehouse-locations') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\WarehouseLocationController())
+        ->list($request, ServiceContainer::warehouseLocationRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/warehouse-locations/putaway-suggestions ────────────────────
+if ($method === 'POST' && $uri === '/api/warehouse-locations/putaway-suggestions') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\WarehouseLocationController())
+        ->suggestPutaway($request, ServiceContainer::productRepo(tenantId()), ServiceContainer::warehouseLocationRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/warehouse-locations/optimize-pick-route ────────────────────
+if ($method === 'POST' && $uri === '/api/warehouse-locations/optimize-pick-route') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\WarehouseLocationController())
+        ->optimizePickRoute($request, ServiceContainer::warehouseLocationRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;

@@ -44,9 +44,25 @@ CREATE TABLE IF NOT EXISTS products (
   department TEXT NOT NULL,
   reorder_threshold INTEGER NOT NULL DEFAULT 10,
   version_id INTEGER NOT NULL DEFAULT 1,
+  weight_grams INTEGER,
+  volume_cubic_meters NUMERIC,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   UNIQUE(tenant_id, sku)
+);
+
+CREATE TABLE IF NOT EXISTS warehouse_locations (
+  id VARCHAR(50) PRIMARY KEY,
+  warehouse_id VARCHAR(50) NOT NULL,
+  zone VARCHAR(50) NOT NULL,
+  aisle VARCHAR(50) NOT NULL,
+  rack VARCHAR(50) NOT NULL,
+  shelf VARCHAR(50) NOT NULL,
+  bin VARCHAR(50) NOT NULL,
+  max_weight_grams INTEGER NOT NULL,
+  max_volume_cubic_meters NUMERIC NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  UNIQUE(warehouse_id, zone, aisle, rack, shelf, bin)
 );
 
 -- Product Locations (Stock)

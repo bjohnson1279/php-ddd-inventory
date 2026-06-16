@@ -73,7 +73,8 @@ if ($driver === 'sqlite') {
         'user_roles',
         'role_permissions',
         'notifications',
-        'inventory_cost_layers'
+        'inventory_cost_layers',
+        'warehouse_locations'
     ];
     
     foreach ($tables as $t) {

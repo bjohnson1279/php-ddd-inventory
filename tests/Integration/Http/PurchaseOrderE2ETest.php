@@ -164,15 +164,16 @@ final class PurchaseOrderE2ETest extends TestCase
             ->where('product_id', $prod->id)
             ->where('location_id', 'LOC-INT')
             ->first();
-        $this->assertEquals(20, $stockLevel->quantity);
+        $this->assertEquals(20, $stockLevel->stock_quantity);
 
         // Assert cost layer was created
         $costLayer = Capsule::table('inventory_cost_layers')
             ->where('tenant_id', $this->tenantId)
             ->where('variant_id', 'CAT-SKU-1')
+            ->where('purchase_order_id', $poId)
             ->first();
         $this->assertNotNull($costLayer);
-        $this->assertEquals(20, $costLayer->quantity);
+        $this->assertEquals(20, $costLayer->original_quantity);
         $this->assertEquals(1000, $costLayer->unit_cost_cents);
         $this->assertEquals($poId, $costLayer->purchase_order_id);
 
@@ -196,16 +197,18 @@ final class PurchaseOrderE2ETest extends TestCase
             ->where('product_id', $prod->id)
             ->where('location_id', 'LOC-INT')
             ->first();
-        $this->assertEquals(50, $stockLevel->quantity);
+        $this->assertEquals(50, $stockLevel->stock_quantity);
 
         // Assert second cost layer was created
         $costLayers = Capsule::table('inventory_cost_layers')
             ->where('tenant_id', $this->tenantId)
             ->where('variant_id', 'CAT-SKU-1')
-            ->orderBy('id')
+            ->where('purchase_order_id', $poId)
             ->get();
         $this->assertCount(2, $costLayers);
-        $this->assertEquals(30, $costLayers[1]->quantity);
+        $quantities = $costLayers->pluck('original_quantity')->all();
+        sort($quantities);
+        $this->assertEquals([20, 30], $quantities);
     }
 
     public function testPurchaseOrderRbacPermissions(): void

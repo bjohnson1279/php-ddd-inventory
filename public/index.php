@@ -1293,6 +1293,58 @@ if ($method === 'POST' && preg_match('#^/api/kits/([^/]+)/sell$#', $uri, $m)) {
     exit;
 }
 
+// Route: POST /api/kits/assemble
+if ($method === 'POST' && $uri === '/api/kits/assemble') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized: you do not have permission to assemble kits.']);
+        exit;
+    }
+    $useCase = new \InventoryApp\Application\Inventory\UseCases\AssembleKit(
+        ServiceContainer::kitRepo(),
+        ServiceContainer::productRepo(tenantId()),
+        ServiceContainer::ledgerRepo(tenantId()),
+        ServiceContainer::costLayerRepo(tenantId()),
+        new \InventoryApp\Domain\Accounting\Services\AccountingJournalService(
+            ServiceContainer::journalRepo(tenantId()),
+            new \InventoryApp\Domain\Accounting\Services\CostLayerService(ServiceContainer::costLayerRepo(tenantId()))
+        )
+    );
+    $response = (new KitController())->assemble($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: POST /api/kits/disassemble
+if ($method === 'POST' && $uri === '/api/kits/disassemble') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized: you do not have permission to disassemble kits.']);
+        exit;
+    }
+    $useCase = new \InventoryApp\Application\Inventory\UseCases\DisassembleKit(
+        ServiceContainer::kitRepo(),
+        ServiceContainer::productRepo(tenantId()),
+        ServiceContainer::ledgerRepo(tenantId()),
+        ServiceContainer::costLayerRepo(tenantId()),
+        new \InventoryApp\Domain\Accounting\Services\AccountingJournalService(
+            ServiceContainer::journalRepo(tenantId()),
+            new \InventoryApp\Domain\Accounting\Services\CostLayerService(ServiceContainer::costLayerRepo(tenantId()))
+        )
+    );
+    $response = (new KitController())->disassemble($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
 // ── Route: POST /api/webhooks/shopify ────────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/webhooks/shopify') {
     // Note: Do not call requireAuth() here because Shopify uses HMAC signature headers instead of API bearer tokens

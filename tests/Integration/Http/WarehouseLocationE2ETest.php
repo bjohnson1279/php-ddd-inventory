@@ -47,6 +47,11 @@ final class WarehouseLocationE2ETest extends TestCase
 
     protected function setUp(): void
     {
+        Capsule::table('warehouse_locations')->delete();
+        Capsule::table('catalog_variants')->delete();
+        Capsule::table('catalog_products')->delete();
+        Capsule::table('locations')->where('id', '!=', 'LOC-INT')->delete();
+
         $suffix = bin2hex(random_bytes(4));
         $this->tenantId = 'tenant-' . $suffix;
         $this->email = 'admin-' . $suffix . '@example.com';
@@ -163,9 +168,15 @@ final class WarehouseLocationE2ETest extends TestCase
         ], $this->token);
         $this->assertEquals(200, $saveRes['status']);
 
+        Capsule::table('locations')->insertOrIgnore([
+            'id'   => 'WH1-ZONEA-A01-R01-S01-B01',
+            'name' => 'WH1-ZONEA-A01-R01-S01-B01',
+            'type' => 'WAREHOUSE'
+        ]);
+
         // 2. Seed product
         Capsule::table('products')->insert([
-            'id' => 'prod-1',
+            'id' => uuidv4(),
             'tenant_id' => $this->tenantId,
             'sku' => 'TSHIRT-SM-RED',
             'name' => 'Classic Tee',
@@ -179,16 +190,16 @@ final class WarehouseLocationE2ETest extends TestCase
         // 3. Receive stock that fits capacity
         $receiveRes1 = $this->request('POST', '/api/inventory/receive', [
             'sku' => 'TSHIRT-SM-RED',
-            'amount' => 30,
-            'locationId' => 'WH1-ZONEA-A01-R01-S01-B01'
+            'quantity' => 30,
+            'location_id' => 'WH1-ZONEA-A01-R01-S01-B01'
         ], $this->token);
         $this->assertEquals(200, $receiveRes1['status'], json_encode($receiveRes1));
 
         // 4. Receive stock that exceeds weight limit (150 * 100g = 15000g > 10000g)
         $receiveRes2 = $this->request('POST', '/api/inventory/receive', [
             'sku' => 'TSHIRT-SM-RED',
-            'amount' => 150,
-            'locationId' => 'WH1-ZONEA-A01-R01-S01-B01'
+            'quantity' => 150,
+            'location_id' => 'WH1-ZONEA-A01-R01-S01-B01'
         ], $this->token);
         $this->assertEquals(400, $receiveRes2['status']);
         $this->assertStringContainsString('weight limit', $receiveRes2['body']['error']);
@@ -196,8 +207,8 @@ final class WarehouseLocationE2ETest extends TestCase
         // 5. Receive stock that exceeds volume limit (60 * 0.05 = 3.0 m3 > 2.0 m3)
         $receiveRes3 = $this->request('POST', '/api/inventory/receive', [
             'sku' => 'TSHIRT-SM-RED',
-            'amount' => 60,
-            'locationId' => 'WH1-ZONEA-A01-R01-S01-B01'
+            'quantity' => 60,
+            'location_id' => 'WH1-ZONEA-A01-R01-S01-B01'
         ], $this->token);
         $this->assertEquals(400, $receiveRes3['status']);
         $this->assertStringContainsString('volume limit', $receiveRes3['body']['error']);
@@ -211,20 +222,22 @@ final class WarehouseLocationE2ETest extends TestCase
         $this->request('POST', '/api/warehouse-locations', ['path' => 'WH1-COLD-A02-R01-S01-B01', 'maxWeightGrams' => 100000, 'maxVolumeCubicMeters' => 10.0], $this->token);
 
         // 2. Seed catalog product and variant
+        $productId = uuidv4();
+        $variantId = uuidv4();
         Capsule::table('catalog_products')->insert([
-            'id' => 'cp-fast',
+            'id' => $productId,
             'name' => 'Fast Product',
             'department' => 'Apparel'
         ]);
         Capsule::table('catalog_variants')->insert([
-            'id' => 'cv-fast',
-            'product_id' => 'cp-fast',
+            'id' => $variantId,
+            'product_id' => $productId,
             'sku' => 'FAST-SKU',
             'attributes' => json_encode(['velocity' => 'fast-moving']),
             'price' => 15.00
         ]);
         Capsule::table('products')->insert([
-            'id' => 'cp-fast',
+            'id' => $productId,
             'tenant_id' => $this->tenantId,
             'sku' => 'FAST-SKU',
             'name' => 'Fast Product',
@@ -303,9 +316,10 @@ final class WarehouseLocationE2ETest extends TestCase
             $statusCode = (int)$match[1];
         }
 
+        $decoded = json_decode((string)$result, true);
         return [
             'status' => $statusCode,
-            'body'   => json_decode((string)$result, true) ?: $result
+            'body'   => (json_last_error() === JSON_ERROR_NONE) ? $decoded : $result
         ];
     }
 }

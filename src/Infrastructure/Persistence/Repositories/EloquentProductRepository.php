@@ -109,6 +109,8 @@ class EloquentProductRepository implements ProductRepositoryInterface
                 'stock_quantity'    => $locationStock->getStockQuantity()->getValue(),
                 'open_box_quantity' => $locationStock->getOpenBoxQuantity()->getValue(),
                 'damaged_quantity'  => $locationStock->getDamagedQuantity()->getValue(),
+                'allocated_quantity'=> $locationStock->getAllocatedQuantity()->getValue(),
+                'in_transit_quantity'=> $locationStock->getInTransitQuantity()->getValue(),
                 'updated_at'        => date('Y-m-d H:i:s'),
             ];
         }
@@ -122,10 +124,12 @@ class EloquentProductRepository implements ProductRepositoryInterface
                             'location_id' => $loc['location_id'],
                         ],
                         [
-                            'stock_quantity'     => $loc['stock_quantity'],
-                            'open_box_quantity'  => $loc['open_box_quantity'],
-                            'damaged_quantity'   => $loc['damaged_quantity'],
-                            'updated_at'        => $loc['updated_at'],
+                            'stock_quantity'      => $loc['stock_quantity'],
+                            'open_box_quantity'   => $loc['open_box_quantity'],
+                            'damaged_quantity'    => $loc['damaged_quantity'],
+                            'allocated_quantity'  => $loc['allocated_quantity'],
+                            'in_transit_quantity' => $loc['in_transit_quantity'],
+                            'updated_at'          => $loc['updated_at'],
                         ]
                     );
                 }
@@ -133,7 +137,7 @@ class EloquentProductRepository implements ProductRepositoryInterface
                 ProductLocationModel::upsert(
                     $locationData,
                     ['product_id', 'location_id'],
-                    ['stock_quantity', 'open_box_quantity', 'damaged_quantity', 'updated_at']
+                    ['stock_quantity', 'open_box_quantity', 'damaged_quantity', 'allocated_quantity', 'in_transit_quantity', 'updated_at']
                 );
             }
         }
@@ -192,6 +196,8 @@ class EloquentProductRepository implements ProductRepositoryInterface
                         'stock_quantity'    => $locationStock->getStockQuantity()->getValue(),
                         'open_box_quantity' => $locationStock->getOpenBoxQuantity()->getValue(),
                         'damaged_quantity'  => $locationStock->getDamagedQuantity()->getValue(),
+                        'allocated_quantity'=> $locationStock->getAllocatedQuantity()->getValue(),
+                        'in_transit_quantity'=> $locationStock->getInTransitQuantity()->getValue(),
                         'updated_at'        => $now,
                     ];
                 }
@@ -230,10 +236,12 @@ class EloquentProductRepository implements ProductRepositoryInterface
                                 'location_id' => $loc['location_id'],
                             ],
                             [
-                                'stock_quantity'     => $loc['stock_quantity'],
-                                'open_box_quantity'  => $loc['open_box_quantity'],
-                                'damaged_quantity'   => $loc['damaged_quantity'],
-                                'updated_at'        => $loc['updated_at'],
+                                'stock_quantity'      => $loc['stock_quantity'],
+                                'open_box_quantity'   => $loc['open_box_quantity'],
+                                'damaged_quantity'    => $loc['damaged_quantity'],
+                                'allocated_quantity'  => $loc['allocated_quantity'],
+                                'in_transit_quantity' => $loc['in_transit_quantity'],
+                                'updated_at'          => $loc['updated_at'],
                             ]
                         );
                     }
@@ -241,7 +249,7 @@ class EloquentProductRepository implements ProductRepositoryInterface
                     ProductLocationModel::upsert(
                         $locationData,
                         ['product_id', 'location_id'],
-                        ['stock_quantity', 'open_box_quantity', 'damaged_quantity', 'updated_at']
+                        ['stock_quantity', 'open_box_quantity', 'damaged_quantity', 'allocated_quantity', 'in_transit_quantity', 'updated_at']
                     );
                 }
             }
@@ -283,7 +291,9 @@ class EloquentProductRepository implements ProductRepositoryInterface
                 new LocationId($locModel->location_id),
                 new Quantity($locModel->stock_quantity),
                 new Quantity($locModel->open_box_quantity),
-                new Quantity($locModel->damaged_quantity)
+                new Quantity($locModel->damaged_quantity),
+                new Quantity($locModel->allocated_quantity ?? 0),
+                new Quantity($locModel->in_transit_quantity ?? 0)
             ));
         }
 

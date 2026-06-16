@@ -151,6 +151,8 @@ class SqliteSetup
               stock_quantity INTEGER NOT NULL DEFAULT 0,
               open_box_quantity INTEGER NOT NULL DEFAULT 0,
               damaged_quantity INTEGER NOT NULL DEFAULT 0,
+              allocated_quantity INTEGER NOT NULL DEFAULT 0,
+              in_transit_quantity INTEGER NOT NULL DEFAULT 0,
               updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               PRIMARY KEY (product_id, location_id)
             )",

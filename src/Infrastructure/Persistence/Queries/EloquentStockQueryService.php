@@ -30,11 +30,20 @@ class EloquentStockQueryService implements StockQueryServiceInterface
         }
 
         $totalStock = (int) $query->sum('stock_quantity');
+        $totalAllocated = (int) $query->sum('allocated_quantity');
+        $totalInTransit = (int) $query->sum('in_transit_quantity');
+        $available = $totalStock - $totalAllocated + $totalInTransit;
+        if ($available < 0) {
+            $available = 0;
+        }
 
         return new StockLevelDTO(
             $product->sku,
             $locationId ?? 'ALL',
-            $totalStock
+            $totalStock,
+            $totalAllocated,
+            $totalInTransit,
+            $available
         );
     }
 }

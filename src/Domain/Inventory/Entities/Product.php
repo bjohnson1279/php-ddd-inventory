@@ -301,6 +301,81 @@ class Product extends AggregateRoot
         $this->recordLowStockIfNeeded();
     }
 
+    public function allocateStockAt(LocationId $locationId, Quantity $quantity): void
+    {
+        $stock = $this->getOrCreateLocationStock($locationId);
+        $stock->allocate($quantity, $this->sku->getValue());
+        $this->incrementVersion();
+    }
+
+    public function releaseAllocationAt(LocationId $locationId, Quantity $quantity): void
+    {
+        $stock = $this->getOrCreateLocationStock($locationId);
+        $stock->releaseAllocation($quantity);
+        $this->incrementVersion();
+    }
+
+    public function fulfillAllocationAt(LocationId $locationId, Quantity $quantity): void
+    {
+        $stock = $this->getOrCreateLocationStock($locationId);
+        $stock->fulfillAllocation($quantity);
+        
+        $this->recordTransaction(
+            new TransactionType(TransactionType::DISPATCH),
+            -$quantity->getValue(),
+            new Condition(Condition::NEW),
+            "FULFILL_ALLOCATION"
+        );
+        
+        $this->recordEvent(new StockDispatched(
+            $this->sku,
+            $locationId,
+            $quantity->getValue(),
+            "FULFILL_ALLOCATION",
+            new DateTimeImmutable()
+        ));
+        
+        $this->incrementVersion();
+        $this->recordLowStockIfNeeded();
+    }
+
+    public function createInTransitAt(LocationId $locationId, Quantity $quantity): void
+    {
+        $stock = $this->getOrCreateLocationStock($locationId);
+        $stock->createInTransit($quantity);
+        $this->incrementVersion();
+    }
+
+    public function receiveInTransitAt(LocationId $locationId, Quantity $quantity): void
+    {
+        $stock = $this->getOrCreateLocationStock($locationId);
+        $stock->receiveInTransit($quantity);
+        
+        $this->recordTransaction(
+            new TransactionType(TransactionType::RECEIPT),
+            $quantity->getValue(),
+            new Condition(Condition::NEW),
+            "RECEIVE_IN_TRANSIT"
+        );
+        
+        $this->recordEvent(new StockReceived(
+            $this->sku,
+            $locationId,
+            $quantity->getValue(),
+            "RECEIVE_IN_TRANSIT",
+            new DateTimeImmutable()
+        ));
+        
+        $this->incrementVersion();
+    }
+
+    public function cancelInTransitAt(LocationId $locationId, Quantity $quantity): void
+    {
+        $stock = $this->getOrCreateLocationStock($locationId);
+        $stock->cancelInTransit($quantity);
+        $this->incrementVersion();
+    }
+
     // -----------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------

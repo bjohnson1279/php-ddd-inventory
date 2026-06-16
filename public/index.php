@@ -251,6 +251,11 @@ use InventoryApp\Application\Catalog\UseCases\AddVariant;
 use InventoryApp\Application\Inventory\UseCases\ReceiveStock;
 use InventoryApp\Application\Inventory\UseCases\DispatchStock;
 use InventoryApp\Application\Inventory\UseCases\TransferStock;
+use InventoryApp\Application\Inventory\UseCases\AllocateStock;
+use InventoryApp\Application\Inventory\UseCases\ReleaseAllocation;
+use InventoryApp\Application\Inventory\UseCases\FulfillAllocation;
+use InventoryApp\Application\Inventory\UseCases\CreateInTransit;
+use InventoryApp\Application\Inventory\UseCases\ReceiveInTransit;
 use InventoryApp\Application\Inventory\UseCases\ProcessSale;
 use InventoryApp\Application\Inventory\UseCases\ProcessReturn;
 use InventoryApp\Application\Inventory\UseCases\GetStockLevel;
@@ -790,6 +795,102 @@ if ($method === 'GET' && preg_match('#^/api/inventory/([^/]+)/stock$#', $uri, $m
     $sku      = urldecode($m[1]);
     $useCase  = new GetStockLevel(ServiceContainer::productRepo(tenantId()));
     $response = (new InventoryController())->stockLevel($request, $sku, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: GET /api/inventory/{sku} ──────────────────────────────────────────
+if ($method === 'GET' && preg_match('#^/api/inventory/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    $sku      = urldecode($m[1]);
+    $useCase  = new GetStockLevel(ServiceContainer::productRepo(tenantId()));
+    $response = (new InventoryController())->stockLevel($request, $sku, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/inventory/allocate ──────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/inventory/allocate') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $useCase  = new AllocateStock(ServiceContainer::productRepo(tenantId()));
+    $response = (new InventoryController())->allocate($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/inventory/release-allocation ────────────────────────────
+if ($method === 'POST' && $uri === '/api/inventory/release-allocation') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $useCase  = new ReleaseAllocation(ServiceContainer::productRepo(tenantId()));
+    $response = (new InventoryController())->releaseAllocation($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/inventory/fulfill-allocation ────────────────────────────
+if ($method === 'POST' && $uri === '/api/inventory/fulfill-allocation') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $useCase  = new FulfillAllocation(ServiceContainer::productRepo(tenantId()), $dispatcher);
+    $response = (new InventoryController())->fulfillAllocation($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/inventory/create-in-transit ─────────────────────────────
+if ($method === 'POST' && $uri === '/api/inventory/create-in-transit') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $useCase  = new CreateInTransit(ServiceContainer::productRepo(tenantId()));
+    $response = (new InventoryController())->createInTransit($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/inventory/receive-in-transit ────────────────────────────
+if ($method === 'POST' && $uri === '/api/inventory/receive-in-transit') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $useCase  = new ReceiveInTransit(ServiceContainer::productRepo(tenantId()), $dispatcher);
+    $response = (new InventoryController())->receiveInTransit($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;

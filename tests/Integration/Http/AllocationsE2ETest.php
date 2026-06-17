@@ -117,17 +117,27 @@ final class AllocationsE2ETest extends TestCase
         $skuStr = 'TEST-SKU-ALLOC';
         $locationId = 'LOC-INT';
 
-        // 1. Setup product catalog
-        $createProdRes = $this->request('POST', '/api/catalog/products', [
-            'id' => uuidv4(),
-            'sku' => $skuStr,
-            'name' => 'Test Allocation Product',
-            'description' => 'Test Allocation Product Description',
-            'department' => 'electronics',
-            'initialLocation' => $locationId,
-            'initialStock' => 20,
-        ], $this->token);
-        $this->assertEquals(201, $createProdRes['status'], json_encode($createProdRes));
+        // 1. Setup product catalog directly in DB
+        $productId = uuidv4();
+        Capsule::table('products')->insert([
+            'id'                => $productId,
+            'tenant_id'         => $this->tenantId,
+            'sku'               => $skuStr,
+            'name'              => 'Test Allocation Product',
+            'department'        => 'electronics',
+            'reorder_threshold' => 5,
+            'created_at'        => date('Y-m-d H:i:s'),
+            'updated_at'        => date('Y-m-d H:i:s')
+        ]);
+
+        Capsule::table('product_locations')->insert([
+            'product_id'         => $productId,
+            'location_id'        => $locationId,
+            'stock_quantity'     => 20,
+            'allocated_quantity' => 0,
+            'in_transit_quantity'=> 0,
+            'updated_at'         => date('Y-m-d H:i:s')
+        ]);
 
         // 2. Allocate 8 units
         $allocRes = $this->request('POST', '/api/inventory/allocate', [
@@ -184,17 +194,27 @@ final class AllocationsE2ETest extends TestCase
         $skuStr = 'TEST-SKU-TRANSIT';
         $locationId = 'LOC-INT';
 
-        // 1. Setup product catalog
-        $createProdRes = $this->request('POST', '/api/catalog/products', [
-            'id' => uuidv4(),
-            'sku' => $skuStr,
-            'name' => 'Test Transit Product',
-            'description' => 'Test Transit Product Description',
-            'department' => 'electronics',
-            'initialLocation' => $locationId,
-            'initialStock' => 10,
-        ], $this->token);
-        $this->assertEquals(201, $createProdRes['status'], json_encode($createProdRes));
+        // 1. Setup product catalog directly in DB
+        $productId = uuidv4();
+        Capsule::table('products')->insert([
+            'id'                => $productId,
+            'tenant_id'         => $this->tenantId,
+            'sku'               => $skuStr,
+            'name'              => 'Test Transit Product',
+            'department'        => 'electronics',
+            'reorder_threshold' => 5,
+            'created_at'        => date('Y-m-d H:i:s'),
+            'updated_at'        => date('Y-m-d H:i:s')
+        ]);
+
+        Capsule::table('product_locations')->insert([
+            'product_id'         => $productId,
+            'location_id'        => $locationId,
+            'stock_quantity'     => 10,
+            'allocated_quantity' => 0,
+            'in_transit_quantity'=> 0,
+            'updated_at'         => date('Y-m-d H:i:s')
+        ]);
 
         // 2. Create in-transit stock of 10
         $transitRes = $this->request('POST', '/api/inventory/create-in-transit', [

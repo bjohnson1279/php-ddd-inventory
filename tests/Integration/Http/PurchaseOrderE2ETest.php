@@ -22,7 +22,7 @@ final class PurchaseOrderE2ETest extends TestCase
     {
         // Start built-in PHP development server in the background on port 8086
         $output = [];
-        $command = "php -S 127.0.0.1:8086 public/index.php > tests/Integration/Http/server.log 2>&1 & echo $!";
+        $command = "php -S 127.0.0.1:8086 public/index.php > tests/Integration/Http/server_po.log 2>&1 & echo $!";
         
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);

@@ -1014,6 +1014,16 @@ if ($method === 'GET' && preg_match('#^/api/barcodes/variants/([^/]+)$#', $uri, 
     exit;
 }
 
+// Route: POST /api/barcodes/scan
+if ($method === 'POST' && $uri === '/api/barcodes/scan') {
+    requireAuth();
+    $response = (new BarcodeController())->scan($request, ServiceContainer::barcodeRepo(tenantId()), tenantId());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+
 // ── Serial Number Tracking ─────────────────────────────────────────────────────
 // Route: POST /api/serials
 if ($method === 'POST' && $uri === '/api/serials') {

@@ -248,6 +248,31 @@ class AssignRoleToUserTest extends TestCase
         (new AssignRoleToUser($repo))->execute('admin-1', Role::MANAGER, 'admin-1');
     }
 
+    public function testAssignRoleThrowsWhenCrossTenantAssignmentIsAttempted(): void
+    {
+        $admin  = $this->makeUser('admin-1', Role::ADMIN);
+        $target = $this->makeUser('target-1', Role::STAFF);
+
+        // Use reflection to change the target's tenantId for testing
+        $reflectionClass = new \ReflectionClass($target);
+        $property = $reflectionClass->getProperty('tenantId');
+        $property->setAccessible(true);
+        $property->setValue($target, new TenantId('t2'));
+
+        $repo = $this->createMock(UserRepositoryInterface::class);
+        $repo->method('findById')->willReturnMap([
+            ['admin-1', $admin],
+            ['target-1', $target],
+        ]);
+
+        $repo->expects($this->never())->method('save');
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('Unauthorized: cross-tenant role assignment is not allowed.');
+
+        (new AssignRoleToUser($repo))->execute('target-1', Role::MANAGER, 'admin-1');
+    }
+
     public function testAssignRoleThrowsWhenRepositorySaveFails(): void
     {
         $admin  = $this->makeUser('admin-1', Role::ADMIN);

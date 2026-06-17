@@ -27,6 +27,10 @@ class AssignRoleToUser
             throw new Exception("User not found: {$targetUserId}");
         }
 
+        if ($actor->getTenantId()->getValue() !== $target->getTenantId()->getValue()) {
+            throw new Exception("Unauthorized: cross-tenant role assignment is not allowed.");
+        }
+
         $role = Role::createDefault($roleSlug);
         $target->assignRole($role);
         $this->userRepository->save($target);

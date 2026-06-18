@@ -191,8 +191,8 @@ export default function Uom() {
             <div className="section-title">Lookup Variant UoM Configuration</div>
             <form onSubmit={handleSearch} className="form-row">
               <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-                <label>Variant ID (UUID)</label>
-                <input value={variantId} onChange={e => setVariantId(e.target.value)} placeholder="Variant UUID..." required />
+                <label htmlFor="variantId">Variant ID (UUID)</label>
+                <input id="variantId" value={variantId} onChange={e => setVariantId(e.target.value)} placeholder="Variant UUID..." required />
               </div>
               <button type="submit" className="btn-primary">Load</button>
             </form>
@@ -204,21 +204,21 @@ export default function Uom() {
             <div className="section-title">Establish UoM Configuration</div>
             <form onSubmit={handleCreate}>
               <div className="form-group">
-                <label>Variant ID (UUID)</label>
-                <input value={createVariantId} onChange={e => setCreateVariantId(e.target.value)} placeholder="Variant UUID..." required />
+                <label htmlFor="createVariantId">Variant ID (UUID)</label>
+                <input id="createVariantId" value={createVariantId} onChange={e => setCreateVariantId(e.target.value)} placeholder="Variant UUID..." required />
               </div>
               <div className="form-group">
-                <label>Base Unit Name</label>
-                <input value={baseName} onChange={e => setBaseName(e.target.value)} placeholder="e.g. Gram / Each" required />
+                <label htmlFor="baseName">Base Unit Name</label>
+                <input id="baseName" value={baseName} onChange={e => setBaseName(e.target.value)} placeholder="e.g. Gram / Each" required />
               </div>
               <div className="grid-2">
                 <div className="form-group">
-                  <label>Abbrev</label>
-                  <input value={baseAbbrev} onChange={e => setBaseAbbrev(e.target.value)} placeholder="e.g. g / ea" required />
+                  <label htmlFor="baseAbbrev">Abbrev</label>
+                  <input id="baseAbbrev" value={baseAbbrev} onChange={e => setBaseAbbrev(e.target.value)} placeholder="e.g. g / ea" required />
                 </div>
                 <div className="form-group">
-                  <label>Category</label>
-                  <select value={baseCategory} onChange={e => setBaseCategory(e.target.value as any)}>
+                  <label htmlFor="baseCategory">Category</label>
+                  <select id="baseCategory" value={baseCategory} onChange={e => setBaseCategory(e.target.value as any)}>
                     <option value="discrete">Discrete / Count</option>
                     <option value="weight">Weight / Mass</option>
                     <option value="volume">Volume / Liquid</option>
@@ -261,8 +261,8 @@ export default function Uom() {
                 <div className="section-title">Configure Workflow Operations</div>
                 <form onSubmit={handleSetUnits}>
                   <div className="form-group">
-                    <label>Purchase Unit</label>
-                    <select value={purchaseUnitIndex} onChange={e => setPurchaseUnitIndex(e.target.value)}>
+                    <label htmlFor="purchaseUnitIndex">Purchase Unit</label>
+                    <select id="purchaseUnitIndex" value={purchaseUnitIndex} onChange={e => setPurchaseUnitIndex(e.target.value)}>
                       <option value="-1">Base Unit: {config.base_unit.name}</option>
                       {config.rules.map((r, i) => (
                         <option key={r.id} value={i.toString()}>{r.unit.name} ({r.unit.abbreviation})</option>
@@ -270,8 +270,8 @@ export default function Uom() {
                     </select>
                   </div>
                   <div className="form-group">
-                    <label>Sale Unit</label>
-                    <select value={saleUnitIndex} onChange={e => setSaleUnitIndex(e.target.value)}>
+                    <label htmlFor="saleUnitIndex">Sale Unit</label>
+                    <select id="saleUnitIndex" value={saleUnitIndex} onChange={e => setSaleUnitIndex(e.target.value)}>
                       <option value="-1">Base Unit: {config.base_unit.name}</option>
                       {config.rules.map((r, i) => (
                         <option key={r.id} value={i.toString()}>{r.unit.name} ({r.unit.abbreviation})</option>
@@ -288,17 +288,17 @@ export default function Uom() {
                 <div className="section-title">Add Pack / Conversion Rule</div>
                 <form onSubmit={handleAddRule}>
                   <div className="form-group">
-                    <label>Pack Unit Name</label>
-                    <input value={ruleName} onChange={e => setRuleName(e.target.value)} placeholder="e.g. Case / Pallet" required />
+                    <label htmlFor="ruleName">Pack Unit Name</label>
+                    <input id="ruleName" value={ruleName} onChange={e => setRuleName(e.target.value)} placeholder="e.g. Case / Pallet" required />
                   </div>
                   <div className="grid-2">
                     <div className="form-group">
-                      <label>Abbrev</label>
-                      <input value={ruleAbbrev} onChange={e => setRuleAbbrev(e.target.value)} placeholder="e.g. cs / plt" required />
+                      <label htmlFor="ruleAbbrev">Abbrev</label>
+                      <input id="ruleAbbrev" value={ruleAbbrev} onChange={e => setRuleAbbrev(e.target.value)} placeholder="e.g. cs / plt" required />
                     </div>
                     <div className="form-group">
-                      <label>Category (Must Match Base Category)</label>
-                      <select value={ruleCategory} onChange={e => setRuleCategory(e.target.value as any)}>
+                      <label htmlFor="ruleCategory">Category (Must Match Base Category)</label>
+                      <select id="ruleCategory" value={ruleCategory} onChange={e => setRuleCategory(e.target.value as any)}>
                         <option value="discrete">Discrete / Count</option>
                         <option value="weight">Weight / Mass</option>
                         <option value="volume">Volume / Liquid</option>
@@ -307,12 +307,12 @@ export default function Uom() {
                   </div>
                   <div className="grid-2">
                     <div className="form-group">
-                      <label>Factor to Base</label>
-                      <input type="number" step="any" value={ruleFactor} onChange={e => setRuleFactor(e.target.value)} placeholder="e.g. 24" required />
+                      <label htmlFor="ruleFactor">Factor to Base</label>
+                      <input id="ruleFactor" type="number" step="any" value={ruleFactor} onChange={e => setRuleFactor(e.target.value)} placeholder="e.g. 24" required />
                     </div>
                     <div className="form-group">
-                      <label>Label</label>
-                      <input value={ruleLabel} onChange={e => setRuleLabel(e.target.value)} placeholder="e.g. Case of 24" />
+                      <label htmlFor="ruleLabel">Label</label>
+                      <input id="ruleLabel" value={ruleLabel} onChange={e => setRuleLabel(e.target.value)} placeholder="e.g. Case of 24" />
                     </div>
                   </div>
                   <button type="submit" className="btn-primary" style={{ width: '100%' }}>Add Conversion Rule</button>

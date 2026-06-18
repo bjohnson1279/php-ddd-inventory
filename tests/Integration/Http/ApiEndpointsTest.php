@@ -118,7 +118,6 @@ final class ApiEndpointsTest extends TestCase
             'name' => 'Scan Test Product',
             'description' => 'Test',
             'department' => 'GEN',
-            'tenant_id' => $this->tenantId,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 

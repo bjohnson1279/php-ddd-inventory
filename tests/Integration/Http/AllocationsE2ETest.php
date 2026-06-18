@@ -126,6 +126,7 @@ final class AllocationsE2ETest extends TestCase
             'name'              => 'Test Allocation Product',
             'department'        => 'electronics',
             'reorder_threshold' => 5,
+            'version_id'        => 1,
             'created_at'        => date('Y-m-d H:i:s'),
             'updated_at'        => date('Y-m-d H:i:s')
         ]);
@@ -203,6 +204,7 @@ final class AllocationsE2ETest extends TestCase
             'name'              => 'Test Transit Product',
             'department'        => 'electronics',
             'reorder_threshold' => 5,
+            'version_id'        => 1,
             'created_at'        => date('Y-m-d H:i:s'),
             'updated_at'        => date('Y-m-d H:i:s')
         ]);

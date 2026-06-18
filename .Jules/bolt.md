@@ -1,3 +1,0 @@
-## 2026-06-03 - N+1 Queries in Laravel Reporting Loops
-**Learning:** Calling Laravel Query Builder methods like `DB::table(...)->get()` inside loops, even for small datasets, quickly degrades performance due to repeated sequential connection overhead. N+1 applies to more than just Eloquent relationships—it applies to arbitrary query loops as well.
-**Action:** When calculating aggregate reports across multiple products or items, extract the inner loop queries, bulk-fetch using `whereIn()`, and organize the records via `->groupBy()` or `->keyBy()` before entering the loop to ensure O(1) query complexity.

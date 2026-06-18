@@ -107,7 +107,7 @@ class BarcodeController
 
             $events = \InventoryApp\Infrastructure\ServiceContainer::dispatcher();
             $productRepo = \InventoryApp\Infrastructure\ServiceContainer::productRepo($tenantId);
-            $countRepo = \InventoryApp\Infrastructure\ServiceContainer::countRepo($tenantId);
+            $countRepo = \InventoryApp\Infrastructure\ServiceContainer::inventoryCountRepo($tenantId);
 
             $dispatchStock = new \InventoryApp\Application\Inventory\UseCases\DispatchStock($productRepo, $events);
             $receiveStock = new \InventoryApp\Application\Inventory\UseCases\ReceiveStock($productRepo, $events);

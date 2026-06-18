@@ -73,6 +73,7 @@ class SqliteSetup
               name TEXT NOT NULL,
               description TEXT,
               department TEXT NOT NULL,
+              tenant_id VARCHAR(50),
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )",
             "CREATE TABLE IF NOT EXISTS catalog_variants (
@@ -279,7 +280,9 @@ class SqliteSetup
               unit_cost_cents           INTEGER NOT NULL,
               purchase_order_id         VARCHAR(50),
               received_at               DATETIME DEFAULT CURRENT_TIMESTAMP,
-              serial_number             VARCHAR(100)
+              serial_number             VARCHAR(100),
+              lot_number                VARCHAR(100),
+              expiration_date           DATETIME
             )"
         ];
     }

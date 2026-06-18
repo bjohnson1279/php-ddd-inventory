@@ -85,4 +85,27 @@ class InMemoryLedgerRepository implements LedgerRepositoryInterface
         }
         return false;
     }
+
+    public function findRecallEntries(string $lotNumber): array
+    {
+        $rows = $this->read();
+        $out = [];
+        foreach ($rows as $r) {
+            $meta = $r['metadata'] ?? [];
+            if (isset($meta['lotNumber']) && $meta['lotNumber'] === $lotNumber) {
+                $out[] = new LedgerEntry(
+                    $r['id'],
+                    $r['variantId'],
+                    (int)$r['quantity'],
+                    \InventoryApp\Domain\Inventory\Enums\ReasonCode::from($r['reason']),
+                    $r['actorId'],
+                    $r['referenceId'] ?? null,
+                    new \DateTimeImmutable($r['occurredAt']),
+                    $r['metadata'] ?? [],
+                );
+            }
+        }
+        usort($out, fn($a, $b) => $b->occurredAt <=> $a->occurredAt);
+        return $out;
+    }
 }

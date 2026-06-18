@@ -31,19 +31,38 @@ $dotenv->safeLoad();
 
 // ── Eloquent (Capsule) ────────────────────────────────────────────────────────
 $capsule = new Capsule;
-$capsule->addConnection([
-    'driver'    => getenv('DB_CONNECTION') ?: 'pgsql',
-    'host'      => getenv('DB_HOST')       ?: 'db',
-    'database'  => getenv('DB_DATABASE')   ?: 'ddd_inventory',
-    'username'  => getenv('DB_USERNAME')   ?: 'ddd_user',
-    'password'  => getenv('DB_PASSWORD')   ?: 'secret',
-    'port'      => getenv('DB_PORT')       ?: 5432,
-    'charset'   => 'utf8',
-    'collation' => 'utf8_unicode_ci',
-    'prefix'    => '',
-]);
+$driver = getenv('DB_CONNECTION') ?: 'pgsql';
+
+if ($driver === 'sqlite') {
+    $dbPath = getenv('DB_DATABASE') ?: 'storage/data/test.sqlite';
+    if ($dbPath !== ':memory:' && !str_starts_with($dbPath, '/') && !str_contains($dbPath, ':')) {
+        $dbPath = __DIR__ . '/../' . $dbPath;
+    }
+    $capsule->addConnection([
+        'driver'   => 'sqlite',
+        'database' => $dbPath,
+        'prefix'   => '',
+    ]);
+} else {
+    $capsule->addConnection([
+        'driver'    => $driver,
+        'host'      => getenv('DB_HOST')       ?: 'db',
+        'database'  => getenv('DB_DATABASE')   ?: 'ddd_inventory',
+        'username'  => getenv('DB_USERNAME')   ?: 'ddd_user',
+        'password'  => getenv('DB_PASSWORD')   ?: 'secret',
+        'port'      => getenv('DB_PORT')       ?: 5432,
+        'charset'   => 'utf8',
+        'collation' => 'utf8_unicode_ci',
+        'prefix'    => '',
+    ]);
+}
 $capsule->setAsGlobal();
 $capsule->bootEloquent();
+
+if ($driver === 'sqlite') {
+    require_once __DIR__ . '/../src/Infrastructure/Persistence/sqlite_setup.php';
+    \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
+}
 
 // ── Event listeners ──────────────────────────────────────────────────────────
 use InventoryApp\Infrastructure\ServiceContainer;
@@ -251,6 +270,11 @@ use InventoryApp\Application\Catalog\UseCases\AddVariant;
 use InventoryApp\Application\Inventory\UseCases\ReceiveStock;
 use InventoryApp\Application\Inventory\UseCases\DispatchStock;
 use InventoryApp\Application\Inventory\UseCases\TransferStock;
+use InventoryApp\Application\Inventory\UseCases\AllocateStock;
+use InventoryApp\Application\Inventory\UseCases\ReleaseAllocation;
+use InventoryApp\Application\Inventory\UseCases\FulfillAllocation;
+use InventoryApp\Application\Inventory\UseCases\CreateInTransit;
+use InventoryApp\Application\Inventory\UseCases\ReceiveInTransit;
 use InventoryApp\Application\Inventory\UseCases\ProcessSale;
 use InventoryApp\Application\Inventory\UseCases\ProcessReturn;
 use InventoryApp\Application\Inventory\UseCases\GetStockLevel;
@@ -293,7 +317,8 @@ if ($method === 'GET' && $uri === '/api/notifications/subscribe') {
     $sentIds = [];
 
     $start = time();
-    while (time() - $start < 50) {
+    $duration = ($request->query('test') === '1') ? 1 : 50;
+    while (time() - $start < $duration) {
         if (connection_aborted()) {
             break;
         }
@@ -411,6 +436,12 @@ if ($method === 'POST' && $uri === '/api/setup') {
 if ($method === 'GET' && $uri === '/api/users') {
     requireAuth();
     try {
+        $actingUserId = $_SERVER['auth.user_id'] ?? '';
+        $actor = ServiceContainer::userRepo()->findById($actingUserId);
+        if (!$actor || !$actor->canDo('users:manage')) {
+            throw new Exception("Unauthorized: you do not have permission to manage users.");
+        }
+
         $userModels = \InventoryApp\Infrastructure\Models\UserModel::with('userRoles')
             ->where('tenant_id', tenantId())
             ->get();
@@ -453,9 +484,10 @@ if ($method === 'POST' && $uri === '/api/users') {
         // The invited user must change it on first login.
         $temporaryPassword = bin2hex(random_bytes(12)); // 24 hex chars
         $name            = explode('@', $email)[0];
+        $actingUserId    = $_SERVER['auth.user_id'] ?? '';
 
         $useCase = new RegisterUser(ServiceContainer::userRepo(), $dispatcher);
-        $useCase->execute($userId, $tenantId, $email, $temporaryPassword, $name);
+        $useCase->execute($userId, $tenantId, $email, $temporaryPassword, $name, $actingUserId);
 
         http_response_code(201);
         echo json_encode([
@@ -472,17 +504,290 @@ if ($method === 'POST' && $uri === '/api/users') {
 
 // ── Route: POST /auth/login ───────────────────────────────────────────────────
 if ($method === 'POST' && ($uri === '/auth/login' || $uri === '/api/auth/login')) {
-    $useCase  = new AuthenticateUser(ServiceContainer::userRepo(), new ApiTokenService());
-    $response = (new AuthController())->login($request, $useCase);
+    $middleware = new \InventoryApp\Infrastructure\Http\Middleware\RateLimitMiddleware(5, 60);
+    $response = $middleware->handle($request, function ($req) {
+        $useCase  = new AuthenticateUser(ServiceContainer::userRepo(), new ApiTokenService());
+        return (new AuthController())->login($req, $useCase);
+    });
+
     http_response_code($response->getStatusCode());
     echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/returns/rma ───────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/returns/rma') {
+    requireAuth();
+    try {
+        $actingUserId = $_SERVER['auth.user_id'] ?? '';
+        $actor = ServiceContainer::userRepo()->findById($actingUserId);
+        if (!$actor || !$actor->canDo('returns:process')) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Forbidden: You do not have permission to process returns.']);
+            exit;
+        }
+
+        $body = json_decode(file_get_contents('php://input'), true) ?: [];
+        $useCase = new \InventoryApp\Application\Returns\UseCases\CreateRMA(ServiceContainer::rmaRepo());
+        $rma = $useCase->execute([
+            'rmaNumber' => $body['rmaNumber'] ?? '',
+            'tenantId' => tenantId(),
+            'customerId' => $body['customerId'] ?? '',
+            'locationId' => $body['locationId'] ?? '',
+            'items' => $body['items'] ?? []
+        ]);
+
+        $items = [];
+        foreach ($rma->getItems() as $item) {
+            $items[] = [
+                'id' => $item->getId(),
+                'variantId' => $item->getVariantId(),
+                'quantity' => $item->getQuantity(),
+                'receivedQuantity' => $item->getReceivedQuantity(),
+                'unitCostCents' => $item->getUnitCostCents(),
+                'status' => $item->getStatus()->value,
+                'disposition' => $item->getDisposition() ? $item->getDisposition()->value : null
+            ];
+        }
+
+        http_response_code(201);
+        echo json_encode([
+            'id' => $rma->getId(),
+            'rmaNumber' => $rma->getRmaNumber(),
+            'tenantId' => $rma->getTenantId()->getValue(),
+            'customerId' => $rma->getCustomerId(),
+            'locationId' => $rma->getLocationId()->getValue(),
+            'status' => $rma->getStatus()->value,
+            'items' => $items,
+            'createdAt' => $rma->getCreatedAt()->format(DATE_ATOM),
+            'updatedAt' => $rma->getUpdatedAt()->format(DATE_ATOM)
+        ]);
+    } catch (\Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ── Route: POST /api/returns/rma/{id}/authorize ───────────────────────────────────────
+if ($method === 'POST' && preg_match('#^/api/returns/rma/([^/]+)/authorize$#', $uri, $m)) {
+    requireAuth();
+    try {
+        $actingUserId = $_SERVER['auth.user_id'] ?? '';
+        $actor = ServiceContainer::userRepo()->findById($actingUserId);
+        if (!$actor || !$actor->canDo('returns:process')) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Forbidden: You do not have permission to process returns.']);
+            exit;
+        }
+
+        $rmaId = $m[1];
+        $useCase = new \InventoryApp\Application\Returns\UseCases\AuthorizeRMA(ServiceContainer::rmaRepo());
+        $useCase->execute($rmaId);
+
+        http_response_code(200);
+        echo json_encode(['message' => 'RMA authorized successfully']);
+    } catch (\Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ── Route: POST /api/returns/rma/{id}/receive ───────────────────────────────────────
+if ($method === 'POST' && preg_match('#^/api/returns/rma/([^/]+)/receive$#', $uri, $m)) {
+    requireAuth();
+    try {
+        $actingUserId = $_SERVER['auth.user_id'] ?? '';
+        $actor = ServiceContainer::userRepo()->findById($actingUserId);
+        if (!$actor || !$actor->canDo('returns:process')) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Forbidden: You do not have permission to process returns.']);
+            exit;
+        }
+
+        $rmaId = $m[1];
+        $body = json_decode(file_get_contents('php://input'), true) ?: [];
+        $useCase = new \InventoryApp\Application\Returns\UseCases\ReceiveRMA(
+            ServiceContainer::rmaRepo(),
+            ServiceContainer::productRepo(tenantId()),
+            ServiceContainer::costLayerRepo(tenantId()),
+            ServiceContainer::quarantineRepo(),
+            new \InventoryApp\Domain\Accounting\Services\AccountingJournalService(
+                ServiceContainer::journalRepo(),
+                new \InventoryApp\Domain\Accounting\Services\CostLayerService(ServiceContainer::costLayerRepo(tenantId()))
+            ),
+            ServiceContainer::serializedRepo()
+        );
+        $useCase->execute([
+            'rmaId' => $rmaId,
+            'items' => $body['items'] ?? []
+        ]);
+
+        http_response_code(200);
+        echo json_encode(['message' => 'RMA items received successfully']);
+    } catch (\Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ── Route: GET /api/returns/rma/{id} ───────────────────────────────────────
+if ($method === 'GET' && preg_match('#^/api/returns/rma/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    try {
+        $rmaId = $m[1];
+        $rma = ServiceContainer::rmaRepo()->findById($rmaId);
+        if (!$rma || $rma->getTenantId()->getValue() !== tenantId()) {
+            http_response_code(404);
+            echo json_encode(['error' => 'RMA not found']);
+            exit;
+        }
+
+        $items = [];
+        foreach ($rma->getItems() as $item) {
+            $items[] = [
+                'id' => $item->getId(),
+                'variantId' => $item->getVariantId(),
+                'quantity' => $item->getQuantity(),
+                'receivedQuantity' => $item->getReceivedQuantity(),
+                'unitCostCents' => $item->getUnitCostCents(),
+                'status' => $item->getStatus()->value,
+                'disposition' => $item->getDisposition() ? $item->getDisposition()->value : null
+            ];
+        }
+
+        http_response_code(200);
+        echo json_encode([
+            'id' => $rma->getId(),
+            'rmaNumber' => $rma->getRmaNumber(),
+            'tenantId' => $rma->getTenantId()->getValue(),
+            'customerId' => $rma->getCustomerId(),
+            'locationId' => $rma->getLocationId()->getValue(),
+            'status' => $rma->getStatus()->value,
+            'items' => $items,
+            'createdAt' => $rma->getCreatedAt()->format(DATE_ATOM),
+            'updatedAt' => $rma->getUpdatedAt()->format(DATE_ATOM)
+        ]);
+    } catch (\Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ── Route: GET /api/returns/quarantine ───────────────────────────────────────
+if ($method === 'GET' && $uri === '/api/returns/quarantine') {
+    requireAuth();
+    try {
+        $items = ServiceContainer::quarantineRepo()->findAllByTenant(tenantId());
+        $results = [];
+        foreach ($items as $item) {
+            $results[] = [
+                'id' => $item->getId(),
+                'variantId' => $item->getVariantId(),
+                'quantity' => $item->getQuantity(),
+                'reason' => $item->getReason(),
+                'status' => $item->getStatus()->value,
+                'locationId' => $item->getLocationId()->getValue(),
+                'tenantId' => $item->getTenantId()->getValue(),
+                'createdAt' => $item->getCreatedAt()->format(DATE_ATOM),
+                'resolvedAt' => $item->getResolvedAt() ? $item->getResolvedAt()->format(DATE_ATOM) : null
+            ];
+        }
+
+        http_response_code(200);
+        echo json_encode($results);
+    } catch (\Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ── Route: GET /api/returns/quarantine/{id} ───────────────────────────────────────
+if ($method === 'GET' && preg_match('#^/api/returns/quarantine/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    try {
+        $qId = $m[1];
+        $item = ServiceContainer::quarantineRepo()->findById($qId);
+        if (!$item || $item->getTenantId()->getValue() !== tenantId()) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Quarantine item not found']);
+            exit;
+        }
+
+        http_response_code(200);
+        echo json_encode([
+            'id' => $item->getId(),
+            'variantId' => $item->getVariantId(),
+            'quantity' => $item->getQuantity(),
+            'reason' => $item->getReason(),
+            'status' => $item->getStatus()->value,
+            'locationId' => $item->getLocationId()->getValue(),
+            'tenantId' => $item->getTenantId()->getValue(),
+            'createdAt' => $item->getCreatedAt()->format(DATE_ATOM),
+            'resolvedAt' => $item->getResolvedAt() ? $item->getResolvedAt()->format(DATE_ATOM) : null
+        ]);
+    } catch (\Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ── Route: POST /api/returns/quarantine/{id}/resolve ───────────────────────────────────────
+if ($method === 'POST' && preg_match('#^/api/returns/quarantine/([^/]+)/resolve$#', $uri, $m)) {
+    requireAuth();
+    try {
+        $actingUserId = $_SERVER['auth.user_id'] ?? '';
+        $actor = ServiceContainer::userRepo()->findById($actingUserId);
+        if (!$actor || !$actor->canDo('returns:process')) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Forbidden: You do not have permission to process returns.']);
+            exit;
+        }
+
+        $qId = $m[1];
+        $body = json_decode(file_get_contents('php://input'), true) ?: [];
+        $useCase = new \InventoryApp\Application\Returns\UseCases\ResolveQuarantineItem(
+            ServiceContainer::quarantineRepo(),
+            ServiceContainer::productRepo(tenantId()),
+            ServiceContainer::costLayerRepo(tenantId()),
+            new \InventoryApp\Domain\Accounting\Services\AccountingJournalService(
+                ServiceContainer::journalRepo(),
+                new \InventoryApp\Domain\Accounting\Services\CostLayerService(ServiceContainer::costLayerRepo(tenantId()))
+            )
+        );
+        $useCase->execute([
+            'quarantineItemId' => $qId,
+            'resolution' => $body['resolution'] ?? ''
+        ]);
+
+        http_response_code(200);
+        echo json_encode(['message' => 'Quarantine item resolved successfully']);
+    } catch (\Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
     exit;
 }
 
 // ── Route: POST /api/inventory/receive ───────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/inventory/receive') {
     requireAuth();
-    $useCase  = new ReceiveStock(ServiceContainer::productRepo(tenantId()), $dispatcher);
+    $capacityService = new \InventoryApp\Domain\Inventory\Services\WMSCapacityService(
+        ServiceContainer::productRepo(tenantId()),
+        ServiceContainer::warehouseLocationRepo()
+    );
+    $useCase  = new ReceiveStock(
+        ServiceContainer::productRepo(tenantId()),
+        $dispatcher,
+        $capacityService,
+        ServiceContainer::costLayerRepo(tenantId()),
+        ServiceContainer::ledgerRepo(tenantId())
+    );
     $response = (new InventoryController())->receive($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
@@ -492,8 +797,41 @@ if ($method === 'POST' && $uri === '/api/inventory/receive') {
 // ── Route: POST /api/inventory/dispatch ──────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/inventory/dispatch') {
     requireAuth();
-    $useCase  = new DispatchStock(ServiceContainer::productRepo(tenantId()), $dispatcher);
+    $useCase  = new DispatchStock(
+        ServiceContainer::productRepo(tenantId()),
+        $dispatcher,
+        ServiceContainer::reorderPolicyService(),
+        ServiceContainer::ledgerRepo(tenantId()),
+        ServiceContainer::costLayerRepo(tenantId())
+    );
     $response = (new InventoryController())->dispatch($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: GET /api/inventory/fefo-pick ──────────────────────────────────────
+if ($method === 'GET' && $uri === '/api/inventory/fefo-pick') {
+    requireAuth();
+    $suggester = new \InventoryApp\Domain\Inventory\Services\FEFOPickingSuggester(
+        ServiceContainer::costLayerRepo(tenantId()),
+        ServiceContainer::ledgerRepo(tenantId()),
+        ServiceContainer::productRepo(tenantId())
+    );
+    $response = (new InventoryController())->suggestFefoPick($request, $suggester);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: GET /api/reports/recall/{lotNumber} ──────────────────────────────
+if ($method === 'GET' && preg_match('#^/api/reports/recall/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    $lotNumber = urldecode($m[1]);
+    $recallService = new \InventoryApp\Domain\Inventory\Services\ProductRecallService(
+        ServiceContainer::ledgerRepo(tenantId())
+    );
+    $response = (new InventoryController())->traceRecall($request, $lotNumber, $recallService);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
@@ -512,9 +850,105 @@ if ($method === 'POST' && $uri === '/api/inventory/transfer') {
 // ── Route: GET /api/inventory/{sku}/stock ────────────────────────────────────
 if ($method === 'GET' && preg_match('#^/api/inventory/([^/]+)/stock$#', $uri, $m)) {
     requireAuth();
-    $sku      = urldecode($m[1]);
-    $useCase  = new GetStockLevel(ServiceContainer::productRepo(tenantId()));
-    $response = (new InventoryController())->stockLevel($request, $sku, $useCase);
+    $sku          = urldecode($m[1]);
+    $queryService = ServiceContainer::getInstance()->make(\InventoryApp\Application\Inventory\Queries\StockQueryServiceInterface::class, ['tenantId' => tenantId()]);
+    $response     = (new InventoryController())->stockLevel($request, $sku, $queryService);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: GET /api/inventory/{sku} ──────────────────────────────────────────
+if ($method === 'GET' && preg_match('#^/api/inventory/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    $sku          = urldecode($m[1]);
+    $queryService = ServiceContainer::getInstance()->make(\InventoryApp\Application\Inventory\Queries\StockQueryServiceInterface::class, ['tenantId' => tenantId()]);
+    $response     = (new InventoryController())->stockLevel($request, $sku, $queryService);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/inventory/allocate ──────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/inventory/allocate') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $useCase  = new AllocateStock(ServiceContainer::productRepo(tenantId()));
+    $response = (new InventoryController())->allocate($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/inventory/release-allocation ────────────────────────────
+if ($method === 'POST' && $uri === '/api/inventory/release-allocation') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $useCase  = new ReleaseAllocation(ServiceContainer::productRepo(tenantId()));
+    $response = (new InventoryController())->releaseAllocation($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/inventory/fulfill-allocation ────────────────────────────
+if ($method === 'POST' && $uri === '/api/inventory/fulfill-allocation') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $useCase  = new FulfillAllocation(ServiceContainer::productRepo(tenantId()), $dispatcher);
+    $response = (new InventoryController())->fulfillAllocation($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/inventory/create-in-transit ─────────────────────────────
+if ($method === 'POST' && $uri === '/api/inventory/create-in-transit') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $useCase  = new CreateInTransit(ServiceContainer::productRepo(tenantId()));
+    $response = (new InventoryController())->createInTransit($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/inventory/receive-in-transit ────────────────────────────
+if ($method === 'POST' && $uri === '/api/inventory/receive-in-transit') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $useCase  = new ReceiveInTransit(ServiceContainer::productRepo(tenantId()), $dispatcher);
+    $response = (new InventoryController())->receiveInTransit($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
@@ -637,6 +1071,16 @@ if ($method === 'GET' && preg_match('#^/api/barcodes/variants/([^/]+)$#', $uri, 
     echo $response->getContent();
     exit;
 }
+
+// Route: POST /api/barcodes/scan
+if ($method === 'POST' && $uri === '/api/barcodes/scan') {
+    requireAuth();
+    $response = (new BarcodeController())->scan($request, ServiceContainer::barcodeRepo(tenantId()), tenantId());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
 
 // ── Serial Number Tracking ─────────────────────────────────────────────────────
 // Route: POST /api/serials
@@ -1023,6 +1467,123 @@ if ($method === 'POST' && preg_match('#^/api/kits/([^/]+)/sell$#', $uri, $m)) {
     exit;
 }
 
+// Route: POST /api/kits/assemble
+if ($method === 'POST' && $uri === '/api/kits/assemble') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized: you do not have permission to assemble kits.']);
+        exit;
+    }
+    $useCase = new \InventoryApp\Application\Inventory\UseCases\AssembleKit(
+        ServiceContainer::kitRepo(),
+        ServiceContainer::productRepo(tenantId()),
+        ServiceContainer::ledgerRepo(tenantId()),
+        ServiceContainer::costLayerRepo(tenantId()),
+        new \InventoryApp\Domain\Accounting\Services\AccountingJournalService(
+            ServiceContainer::journalRepo(tenantId()),
+            new \InventoryApp\Domain\Accounting\Services\CostLayerService(ServiceContainer::costLayerRepo(tenantId()))
+        )
+    );
+    $response = (new KitController())->assemble($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: POST /api/kits/disassemble
+if ($method === 'POST' && $uri === '/api/kits/disassemble') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized: you do not have permission to disassemble kits.']);
+        exit;
+    }
+    $useCase = new \InventoryApp\Application\Inventory\UseCases\DisassembleKit(
+        ServiceContainer::kitRepo(),
+        ServiceContainer::productRepo(tenantId()),
+        ServiceContainer::ledgerRepo(tenantId()),
+        ServiceContainer::costLayerRepo(tenantId()),
+        new \InventoryApp\Domain\Accounting\Services\AccountingJournalService(
+            ServiceContainer::journalRepo(tenantId()),
+            new \InventoryApp\Domain\Accounting\Services\CostLayerService(ServiceContainer::costLayerRepo(tenantId()))
+        )
+    );
+    $response = (new KitController())->disassemble($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/warehouse-locations ───────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/warehouse-locations') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized: you do not have permission to manage warehouse locations.']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\WarehouseLocationController())
+        ->save($request, ServiceContainer::warehouseLocationRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: DELETE /api/warehouse-locations/{id} ─────────────────────────────────
+if ($method === 'DELETE' && preg_match('#^/api/warehouse-locations/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized: you do not have permission to manage warehouse locations.']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\WarehouseLocationController())
+        ->delete($request, $id, ServiceContainer::warehouseLocationRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: GET /api/warehouse-locations ───────────────────────────────────────
+if ($method === 'GET' && $uri === '/api/warehouse-locations') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\WarehouseLocationController())
+        ->list($request, ServiceContainer::warehouseLocationRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/warehouse-locations/putaway-suggestions ────────────────────
+if ($method === 'POST' && $uri === '/api/warehouse-locations/putaway-suggestions') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\WarehouseLocationController())
+        ->suggestPutaway($request, ServiceContainer::productRepo(tenantId()), ServiceContainer::warehouseLocationRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/warehouse-locations/optimize-pick-route ────────────────────
+if ($method === 'POST' && $uri === '/api/warehouse-locations/optimize-pick-route') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\WarehouseLocationController())
+        ->optimizePickRoute($request, ServiceContainer::warehouseLocationRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
 // ── Route: POST /api/webhooks/shopify ────────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/webhooks/shopify') {
     // Note: Do not call requireAuth() here because Shopify uses HMAC signature headers instead of API bearer tokens
@@ -1140,6 +1701,138 @@ if ($method === 'PATCH' && preg_match('#^/api/users/([^/]+)/role$#', $uri, $m)) 
         http_response_code(400);
         echo json_encode(['error' => $e->getMessage()]);
     }
+    exit;
+}
+
+// ── Route: POST /api/purchase-orders ─────────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/purchase-orders') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\PurchaseOrderController())
+        ->create($request, ServiceContainer::purchaseOrderRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: GET /api/purchase-orders/{id} ──────────────────────────────────────
+if ($method === 'GET' && preg_match('#^/api/purchase-orders/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:read')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\PurchaseOrderController())
+        ->get($request, $id, ServiceContainer::purchaseOrderRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/purchase-orders/{id}/approve ─────────────────────────────
+if ($method === 'POST' && preg_match('#^/api/purchase-orders/([^/]+)/approve$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\PurchaseOrderController())
+        ->approve($request, $id, ServiceContainer::purchaseOrderRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/purchase-orders/{id}/send ────────────────────────────────
+if ($method === 'POST' && preg_match('#^/api/purchase-orders/([^/]+)/send$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\PurchaseOrderController())
+        ->send($request, $id, ServiceContainer::purchaseOrderRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/purchase-orders/{id}/receive ─────────────────────────────
+if ($method === 'POST' && preg_match('#^/api/purchase-orders/([^/]+)/receive$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\PurchaseOrderController())
+        ->receive(
+            $request,
+            $id,
+            ServiceContainer::purchaseOrderRepo(),
+            ServiceContainer::productRepo(tenantId()),
+            ServiceContainer::costLayerRepo(tenantId()),
+            $dispatcher
+        );
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/reorder-policies ────────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/reorder-policies') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReorderPolicyController())
+        ->createOrUpdate($request, ServiceContainer::reorderPolicyRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: GET /api/reorder-policies/{sku}/{locationId} ──────────────────────
+if ($method === 'GET' && preg_match('#^/api/reorder-policies/([^/]+)/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    $sku = urldecode($m[1]);
+    $locationId = urldecode($m[2]);
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:read')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReorderPolicyController())
+        ->get($request, $sku, $locationId, ServiceContainer::reorderPolicyRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
     exit;
 }
 

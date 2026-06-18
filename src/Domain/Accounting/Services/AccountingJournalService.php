@@ -142,6 +142,104 @@ class AccountingJournalService
         );
     }
 
+    public function onStockReturned(
+        string $tenantId,
+        string $variantId,
+        int $totalCostCents,
+        string $referenceId,
+        \DateTimeImmutable $date
+    ): JournalEntry {
+        return $this->createEntry(
+            $tenantId,
+            $date,
+            "Inventory return receipt — variant {$variantId} — reference {$referenceId}",
+            $referenceId,
+            AccountingMethod::Accrual,
+            [
+                [AccountCode::inventory(), $totalCostCents, DebitCredit::Debit, "Returned stock"],
+                [AccountCode::costOfGoodsSold(), $totalCostCents, DebitCredit::Credit, "COGS reversal"],
+            ]
+        );
+    }
+
+    public function onInventoryWriteOff(
+        string $tenantId,
+        string $referenceId,
+        int $totalCostCents,
+        \DateTimeImmutable $date
+    ): JournalEntry {
+        return $this->createEntry(
+            $tenantId,
+            $date,
+            "Inventory Write-Off — Ref {$referenceId}",
+            $referenceId,
+            AccountingMethod::Accrual,
+            [
+                [AccountCode::inventoryWriteOffExpense(), $totalCostCents, DebitCredit::Debit, "Inventory write-off"],
+                [AccountCode::inventory(), $totalCostCents, DebitCredit::Credit, "Inventory reduction"],
+            ]
+        );
+    }
+
+    public function onReturnToVendor(
+        string $tenantId,
+        string $referenceId,
+        int $totalCostCents,
+        \DateTimeImmutable $date
+    ): JournalEntry {
+        return $this->createEntry(
+            $tenantId,
+            $date,
+            "Return to Vendor — Ref {$referenceId}",
+            $referenceId,
+            AccountingMethod::Accrual,
+            [
+                [AccountCode::accountsPayable(), $totalCostCents, DebitCredit::Debit, "AP cleared — return to vendor"],
+                [AccountCode::inventory(), $totalCostCents, DebitCredit::Credit, "Inventory reduction"],
+            ]
+        );
+    }
+
+    public function onKitAssembly(
+        string $tenantId,
+        \DateTimeImmutable $date,
+        string $kitSku,
+        int $totalCostCents,
+        string $referenceId
+    ): JournalEntry {
+        return $this->createEntry(
+            $tenantId,
+            $date,
+            "Assemble Kit {$kitSku}",
+            $referenceId,
+            AccountingMethod::Accrual,
+            [
+                [AccountCode::inventory(), $totalCostCents, DebitCredit::Debit, "Debit Kit Inventory for {$kitSku} assembly"],
+                [AccountCode::fromCode('1210'), $totalCostCents, DebitCredit::Credit, "Credit Component Inventory for {$kitSku} assembly"],
+            ]
+        );
+    }
+
+    public function onKitDisassembly(
+        string $tenantId,
+        \DateTimeImmutable $date,
+        string $kitSku,
+        int $totalCostCents,
+        string $referenceId
+    ): JournalEntry {
+        return $this->createEntry(
+            $tenantId,
+            $date,
+            "Disassemble Kit {$kitSku}",
+            $referenceId,
+            AccountingMethod::Accrual,
+            [
+                [AccountCode::fromCode('1210'), $totalCostCents, DebitCredit::Debit, "Debit Component Inventory for {$kitSku} disassembly"],
+                [AccountCode::inventory(), $totalCostCents, DebitCredit::Credit, "Credit Kit Inventory for {$kitSku} disassembly"],
+            ]
+        );
+    }
+
     private function createEntry(string $tenantId, \DateTimeImmutable $date, string $description, ?string $referenceId, AccountingMethod $method, array $lines): JournalEntry
     {
         $entry = new JournalEntry(\Ramsey\Uuid\Uuid::uuid4()->toString(), $tenantId, $date, $description, $referenceId, $method);

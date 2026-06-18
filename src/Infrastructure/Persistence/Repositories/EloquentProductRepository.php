@@ -70,13 +70,15 @@ class EloquentProductRepository implements ProductRepositoryInterface
             $updated = ProductModel::where('id', $product->getId())
                 ->where('version_id', $product->getVersionId())
                 ->update([
-                    'tenant_id'         => $this->tenantId,
-                    'sku'               => $product->getSku()->getValue(),
-                    'name'              => $product->getName(),
-                    'department'        => $product->getDepartment()->getValue(),
-                    'reorder_threshold' => $product->getReorderThreshold()->getValue(),
-                    'version_id'        => $product->getVersionId() + 1,
-                    'updated_at'        => date('Y-m-d H:i:s'),
+                    'tenant_id'           => $this->tenantId,
+                    'sku'                 => $product->getSku()->getValue(),
+                    'name'                => $product->getName(),
+                    'department'          => $product->getDepartment()->getValue(),
+                    'reorder_threshold'   => $product->getReorderThreshold()->getValue(),
+                    'version_id'          => $product->getVersionId() + 1,
+                    'weight_grams'        => $product->getWeightGrams(),
+                    'volume_cubic_meters' => $product->getVolumeCubicMeters(),
+                    'updated_at'          => date('Y-m-d H:i:s'),
                 ]);
 
             if ($updated === 0) {
@@ -84,32 +86,65 @@ class EloquentProductRepository implements ProductRepositoryInterface
             }
         } else {
             ProductModel::create([
-                'id'                => $product->getId(),
-                'tenant_id'         => $this->tenantId,
-                'sku'               => $product->getSku()->getValue(),
-                'name'              => $product->getName(),
-                'department'        => $product->getDepartment()->getValue(),
-                'reorder_threshold' => $product->getReorderThreshold()->getValue(),
-                'version_id'        => $product->getVersionId() + 1,
-                'updated_at'        => date('Y-m-d H:i:s'),
+                'id'                  => $product->getId(),
+                'tenant_id'           => $this->tenantId,
+                'sku'                 => $product->getSku()->getValue(),
+                'name'                => $product->getName(),
+                'department'          => $product->getDepartment()->getValue(),
+                'reorder_threshold'   => $product->getReorderThreshold()->getValue(),
+                'version_id'          => $product->getVersionId() + 1,
+                'weight_grams'        => $product->getWeightGrams(),
+                'volume_cubic_meters' => $product->getVolumeCubicMeters(),
+                'updated_at'          => date('Y-m-d H:i:s'),
             ]);
         }
 
         $product->incrementVersion();
 
+        $locationData = [];
         foreach ($product->getLocationStocks() as $locationStock) {
-            ProductLocationModel::updateOrCreate(
-                [
-                    'product_id'  => $product->getId(),
-                    'location_id' => $locationStock->getLocationId()->getValue(),
-                ],
-                [
-                    'stock_quantity'     => $locationStock->getStockQuantity()->getValue(),
-                    'open_box_quantity'  => $locationStock->getOpenBoxQuantity()->getValue(),
-                    'damaged_quantity'   => $locationStock->getDamagedQuantity()->getValue(),
-                    'updated_at'        => date('Y-m-d H:i:s'),
-                ]
-            );
+            $locationData[] = [
+                'product_id'        => $product->getId(),
+                'location_id'       => $locationStock->getLocationId()->getValue(),
+                'stock_quantity'    => $locationStock->getStockQuantity()->getValue(),
+                'open_box_quantity' => $locationStock->getOpenBoxQuantity()->getValue(),
+                'damaged_quantity'  => $locationStock->getDamagedQuantity()->getValue(),
+                'allocated_quantity'=> $locationStock->getAllocatedQuantity()->getValue(),
+                'in_transit_quantity'=> $locationStock->getInTransitQuantity()->getValue(),
+                'updated_at'        => date('Y-m-d H:i:s'),
+            ];
+        }
+
+        if (!empty($locationData)) {
+            if ((new ProductLocationModel)->getConnection()->getDriverName() === 'sqlite') {
+                foreach ($locationData as $loc) {
+                    $exists = DB::table('product_locations')
+                        ->where('product_id', $loc['product_id'])
+                        ->where('location_id', $loc['location_id'])
+                        ->exists();
+                    if ($exists) {
+                        DB::table('product_locations')
+                            ->where('product_id', $loc['product_id'])
+                            ->where('location_id', $loc['location_id'])
+                            ->update([
+                                'stock_quantity'      => $loc['stock_quantity'],
+                                'open_box_quantity'   => $loc['open_box_quantity'],
+                                'damaged_quantity'    => $loc['damaged_quantity'],
+                                'allocated_quantity'  => $loc['allocated_quantity'],
+                                'in_transit_quantity' => $loc['in_transit_quantity'],
+                                'updated_at'          => $loc['updated_at'],
+                            ]);
+                    } else {
+                        DB::table('product_locations')->insert($loc);
+                    }
+                }
+            } else {
+                ProductLocationModel::upsert(
+                    $locationData,
+                    ['product_id', 'location_id'],
+                    ['stock_quantity', 'open_box_quantity', 'damaged_quantity', 'allocated_quantity', 'in_transit_quantity', 'updated_at']
+                );
+            }
         }
 
         $pendingTransactions = $product->getPendingTransactions();
@@ -148,13 +183,15 @@ class EloquentProductRepository implements ProductRepositoryInterface
 
             foreach ($products as $product) {
                 $productData[] = [
-                    'id'                => $product->getId(),
-                    'tenant_id'         => $this->tenantId,
-                    'sku'               => $product->getSku()->getValue(),
-                    'name'              => $product->getName(),
-                    'department'        => $product->getDepartment()->getValue(),
-                    'reorder_threshold' => $product->getReorderThreshold()->getValue(),
-                    'updated_at'        => $now,
+                    'id'                  => $product->getId(),
+                    'tenant_id'           => $this->tenantId,
+                    'sku'                 => $product->getSku()->getValue(),
+                    'name'                => $product->getName(),
+                    'department'          => $product->getDepartment()->getValue(),
+                    'reorder_threshold'   => $product->getReorderThreshold()->getValue(),
+                    'weight_grams'        => $product->getWeightGrams(),
+                    'volume_cubic_meters' => $product->getVolumeCubicMeters(),
+                    'updated_at'          => $now,
                 ];
 
                 foreach ($product->getLocationStocks() as $locationStock) {
@@ -164,6 +201,8 @@ class EloquentProductRepository implements ProductRepositoryInterface
                         'stock_quantity'    => $locationStock->getStockQuantity()->getValue(),
                         'open_box_quantity' => $locationStock->getOpenBoxQuantity()->getValue(),
                         'damaged_quantity'  => $locationStock->getDamagedQuantity()->getValue(),
+                        'allocated_quantity'=> $locationStock->getAllocatedQuantity()->getValue(),
+                        'in_transit_quantity'=> $locationStock->getInTransitQuantity()->getValue(),
                         'updated_at'        => $now,
                     ];
                 }
@@ -185,35 +224,42 @@ class EloquentProductRepository implements ProductRepositoryInterface
                 ProductModel::upsert(
                     $productData,
                     ['id'],
-                    ['tenant_id', 'sku', 'name', 'department', 'reorder_threshold', 'updated_at']
+                    ['tenant_id', 'sku', 'name', 'department', 'reorder_threshold', 'weight_grams', 'volume_cubic_meters', 'updated_at']
                 );
             }
 
             if (!empty($locationData)) {
                 // SQLite in memory test does not have a composite primary key or unique constraint set
                 // up for product_id + location_id, causing upsert to fail.
-                // We'll fallback to updateOrCreate for locations, but wrapped in the transaction it's still fast.
+                // We'll fallback to manual update/insert for locations, but wrapped in the transaction it's still fast.
                 // Or try checking connection driver. For production postgres it works if unique constraint exists.
                 if (\Illuminate\Database\Capsule\Manager::connection()->getDriverName() === 'sqlite') {
                     foreach ($locationData as $loc) {
-                        ProductLocationModel::updateOrCreate(
-                            [
-                                'product_id' => $loc['product_id'],
-                                'location_id' => $loc['location_id'],
-                            ],
-                            [
-                                'stock_quantity'     => $loc['stock_quantity'],
-                                'open_box_quantity'  => $loc['open_box_quantity'],
-                                'damaged_quantity'   => $loc['damaged_quantity'],
-                                'updated_at'        => $loc['updated_at'],
-                            ]
-                        );
+                        $exists = \Illuminate\Database\Capsule\Manager::table('product_locations')
+                            ->where('product_id', $loc['product_id'])
+                            ->where('location_id', $loc['location_id'])
+                            ->exists();
+                        if ($exists) {
+                            \Illuminate\Database\Capsule\Manager::table('product_locations')
+                                ->where('product_id', $loc['product_id'])
+                                ->where('location_id', $loc['location_id'])
+                                ->update([
+                                    'stock_quantity'      => $loc['stock_quantity'],
+                                    'open_box_quantity'   => $loc['open_box_quantity'],
+                                    'damaged_quantity'    => $loc['damaged_quantity'],
+                                    'allocated_quantity'  => $loc['allocated_quantity'],
+                                    'in_transit_quantity' => $loc['in_transit_quantity'],
+                                    'updated_at'          => $loc['updated_at'],
+                                ]);
+                        } else {
+                            \Illuminate\Database\Capsule\Manager::table('product_locations')->insert($loc);
+                        }
                     }
                 } else {
                     ProductLocationModel::upsert(
                         $locationData,
                         ['product_id', 'location_id'],
-                        ['stock_quantity', 'open_box_quantity', 'damaged_quantity', 'updated_at']
+                        ['stock_quantity', 'open_box_quantity', 'damaged_quantity', 'allocated_quantity', 'in_transit_quantity', 'updated_at']
                     );
                 }
             }
@@ -245,7 +291,9 @@ class EloquentProductRepository implements ProductRepositoryInterface
             $model->name,
             new Department($model->department),
             new Quantity($model->reorder_threshold),
-            $model->version_id ?? 1
+            $model->version_id ?? 1,
+            $model->weight_grams,
+            $model->volume_cubic_meters
         );
 
         foreach ($model->locations as $locModel) {
@@ -253,7 +301,9 @@ class EloquentProductRepository implements ProductRepositoryInterface
                 new LocationId($locModel->location_id),
                 new Quantity($locModel->stock_quantity),
                 new Quantity($locModel->open_box_quantity),
-                new Quantity($locModel->damaged_quantity)
+                new Quantity($locModel->damaged_quantity),
+                new Quantity($locModel->allocated_quantity ?? 0),
+                new Quantity($locModel->in_transit_quantity ?? 0)
             ));
         }
 

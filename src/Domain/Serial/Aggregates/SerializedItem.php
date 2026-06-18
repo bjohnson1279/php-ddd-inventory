@@ -61,6 +61,11 @@ class SerializedItem
         $this->transitionTo(SerializedItemStatus::WrittenOff, $reason, $actorId, $referenceId);
     }
 
+    public function quarantine(string $reason, string $actorId, ?string $referenceId = null): void
+    {
+        $this->transitionTo(SerializedItemStatus::Quarantined, $reason, $actorId, $referenceId);
+    }
+
     public function status(): SerializedItemStatus     { return $this->status; }
     public function locationId(): string               { return $this->locationId; }
     public function isAvailable(): bool                { return $this->status === SerializedItemStatus::InStock; }

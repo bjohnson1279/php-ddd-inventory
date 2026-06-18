@@ -24,7 +24,7 @@ final class ApiEndpointsTest extends TestCase
 
         // Start built-in PHP development server in the background on port 8085
         $output = [];
-        $command = "php -S 127.0.0.1:8085 public/index.php > tests/Integration/Http/server.log 2>&1 & echo $!";
+        $command = "php -S 127.0.0.1:8085 public/index.php > tests/Integration/Http/server_api.log 2>&1 & echo $!";
         
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
@@ -105,6 +105,101 @@ final class ApiEndpointsTest extends TestCase
         $this->assertCount(1, $setRes['body']['assignments']);
         $this->assertEquals($barcodeValue, $setRes['body']['assignments'][0]['value']);
         $this->assertTrue($setRes['body']['assignments'][0]['is_primary']);
+    }
+
+    public function testBarcodeScanningSSE(): void
+    {
+        $suffix = strtoupper(bin2hex(random_bytes(4)));
+        $variantId = uuidv4();
+        $sku = 'SKU-SCAN-' . $suffix;
+        $barcodeValue = '979' . strval(rand(1000000000, 9999999999));
+
+        // 1. Setup variant product in DB
+        \Illuminate\Database\Capsule\Manager::table('locations')->insertOrIgnore([
+            'id' => 'LOC-SCAN-1',
+            'name' => 'Scan Location 1',
+            'type' => 'TEST',
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        \Illuminate\Database\Capsule\Manager::table('catalog_products')->insert([
+            'id' => $variantId,
+            'name' => 'Scan Test Product',
+            'description' => 'Test',
+            'department' => 'GEN',
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        \Illuminate\Database\Capsule\Manager::table('catalog_variants')->insert([
+            'id' => $variantId,
+            'product_id' => $variantId,
+            'sku' => $sku,
+            'attributes' => '[]',
+            'price' => 10.0,
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        \Illuminate\Database\Capsule\Manager::table('products')->insert([
+            'id'                => $variantId,
+            'tenant_id'         => $this->tenantId,
+            'sku'               => $sku,
+            'name'              => 'Scan Test Product',
+            'department'        => 'GEN',
+            'reorder_threshold' => 10,
+            'created_at'        => date('Y-m-d H:i:s'),
+            'updated_at'        => date('Y-m-d H:i:s')
+        ]);
+
+        \Illuminate\Database\Capsule\Manager::table('product_locations')->insert([
+            'product_id'        => $variantId,
+            'location_id'       => 'LOC-SCAN-1',
+            'stock_quantity'    => 0,
+            'open_box_quantity' => 0,
+            'damaged_quantity'  => 0,
+            'updated_at'        => date('Y-m-d H:i:s')
+        ]);
+
+        // 2. Assign Barcode
+        $assignRes = $this->request('POST', '/api/barcodes/assign', [
+            'variant_id' => $variantId,
+            'value'      => $barcodeValue,
+            'symbology'  => 'ean_13',
+            'source'     => 'internal',
+            'is_primary' => true,
+        ], $this->token);
+        $this->assertEquals(201, $assignRes['status'], json_encode($assignRes));
+
+        // 3. Dispatch Barcode Scan via HTTP endpoint
+        $scanRes = $this->request('POST', '/api/barcodes/scan', [
+            'rawScan' => $barcodeValue,
+            'context' => 'receiving',
+            'payload' => [
+                'location_id' => 'LOC-SCAN-1',
+                'amount' => 5
+            ]
+        ], $this->token);
+
+        $this->assertEquals(200, $scanRes['status'], json_encode($scanRes));
+        $this->assertEquals('Scan processed.', $scanRes['body']['message']);
+        $this->assertEquals($sku, $scanRes['body']['sku']);
+
+        // 4. Query notifications stream mock (GET /api/notifications)
+        $notifRes = $this->request('GET', '/api/notifications', [], $this->token);
+        $this->assertEquals(200, $notifRes['status'], json_encode($notifRes));
+        
+        $found = false;
+        foreach ($notifRes['body']['notifications'] as $n) {
+            if ($n['type'] === 'barcode_scanned') {
+                $payload = json_decode($n['message'], true);
+                if ($payload['scanValue'] === $barcodeValue) {
+                    $found = true;
+                    $this->assertEquals('receiving', $payload['context']);
+                    $this->assertEquals($sku, $payload['sku']);
+                    break;
+                }
+            }
+        }
+        $this->assertTrue($found, "Notification for scan event not found.");
     }
 
     public function testSerialNumberEndpoints(): void
@@ -539,7 +634,7 @@ final class ApiEndpointsTest extends TestCase
         $this->assertFalse((bool)$notif['is_read']);
 
         // 4. Test SSE subscribe endpoint
-        $stream = @fopen("http://127.0.0.1:8085/api/notifications/subscribe?token={$this->token}", 'r');
+        $stream = @fopen("http://127.0.0.1:8085/api/notifications/subscribe?token={$this->token}&test=1", 'r');
         $this->assertNotFalse($stream, "Should connect to SSE stream");
         $firstLine = fgets($stream);
         fclose($stream);
@@ -556,6 +651,180 @@ final class ApiEndpointsTest extends TestCase
         // 6. Mark all as read
         $readAllRes = $this->request('POST', '/api/notifications/read-all', [], $this->token);
         $this->assertEquals(200, $readAllRes['status']);
+    }
+
+    public function testKitAssemblyAndDisassembly(): void
+    {
+        $suffix = strtoupper(bin2hex(random_bytes(4)));
+        $compAId = uuidv4();
+        $compBId = uuidv4();
+        $kitProductId = uuidv4();
+        $compASku = "COMP-A-{$suffix}";
+        $compBSku = "COMP-B-{$suffix}";
+        $kitSku = "KIT-BUNDLE-{$suffix}";
+        $locationId = "LOC-INT";
+
+        // Seed products
+        \Illuminate\Database\Capsule\Manager::table('products')->insert([
+            ['id' => $compAId, 'tenant_id' => $this->tenantId, 'sku' => $compASku, 'name' => 'Component A', 'department' => 'APP', 'reorder_threshold' => 10, 'created_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s')],
+            ['id' => $compBId, 'tenant_id' => $this->tenantId, 'sku' => $compBSku, 'name' => 'Component B', 'department' => 'APP', 'reorder_threshold' => 10, 'created_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s')],
+            ['id' => $kitProductId, 'tenant_id' => $this->tenantId, 'sku' => $kitSku, 'name' => 'Kit Bundle', 'department' => 'APP', 'reorder_threshold' => 10, 'created_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s')]
+        ]);
+
+        // Seed product locations
+        \Illuminate\Database\Capsule\Manager::table('product_locations')->insert([
+            ['product_id' => $compAId, 'location_id' => $locationId, 'stock_quantity' => 10, 'open_box_quantity' => 0, 'damaged_quantity' => 0, 'updated_at' => date('Y-m-d H:i:s')],
+            ['product_id' => $compBId, 'location_id' => $locationId, 'stock_quantity' => 20, 'open_box_quantity' => 0, 'damaged_quantity' => 0, 'updated_at' => date('Y-m-d H:i:s')],
+            ['product_id' => $kitProductId, 'location_id' => $locationId, 'stock_quantity' => 0, 'open_box_quantity' => 0, 'damaged_quantity' => 0, 'updated_at' => date('Y-m-d H:i:s')]
+        ]);
+
+        // Seed ledger entries for component stocks
+        \Illuminate\Database\Capsule\Manager::table('ledger_entries')->insert([
+            ['id' => uuidv4(), 'tenant_id' => $this->tenantId, 'variant_id' => $compAId, 'quantity' => 10, 'reason' => 'purchase_receipt', 'actor_id' => 'system', 'occurred_at' => date('Y-m-d H:i:s')],
+            ['id' => uuidv4(), 'tenant_id' => $this->tenantId, 'variant_id' => $compBId, 'quantity' => 20, 'reason' => 'purchase_receipt', 'actor_id' => 'system', 'occurred_at' => date('Y-m-d H:i:s')]
+        ]);
+
+        // Seed costing layers for COMP-A (unit cost 100) and COMP-B (unit cost 200)
+        \Illuminate\Database\Capsule\Manager::table('inventory_cost_layers')->insert([
+            ['id' => uuidv4(), 'variant_id' => $compAId, 'tenant_id' => $this->tenantId, 'original_quantity' => 10, 'remaining_quantity' => 10, 'unit_cost_cents' => 100, 'received_at' => date('Y-m-d H:i:s'), 'purchase_order_id' => 'PO-1'],
+            ['id' => uuidv4(), 'variant_id' => $compBId, 'tenant_id' => $this->tenantId, 'original_quantity' => 20, 'remaining_quantity' => 20, 'unit_cost_cents' => 200, 'received_at' => date('Y-m-d H:i:s'), 'purchase_order_id' => 'PO-2']
+        ]);
+
+        // Create Kit formula
+        $kitRes = $this->request('POST', '/api/kits', [
+            'sku'  => $kitSku,
+            'name' => 'Kit Bundle Formula',
+        ], $this->token);
+        $this->assertEquals(201, $kitRes['status']);
+        $kitId = $kitRes['body']['id'];
+
+        $this->request('POST', "/api/kits/{$kitId}/components", ['variant_id' => $compAId, 'quantity' => 2], $this->token);
+        $this->request('POST', "/api/kits/{$kitId}/components", ['variant_id' => $compBId, 'quantity' => 1], $this->token);
+
+        // Invite staff/viewer user to test RBAC
+        $inviteRes = $this->request('POST', '/api/users', [
+            'email' => "viewer-{$suffix}@example.com",
+        ], $this->token);
+        $this->assertEquals(201, $inviteRes['status']);
+        $viewerUserId = $inviteRes['body']['user_id'];
+        $tempPassword = $inviteRes['body']['temporary_password'];
+
+        $loginRes = $this->request('POST', '/api/auth/login', [
+            'tenant_id' => $this->tenantId,
+            'email'     => "viewer-{$suffix}@example.com",
+            'password'  => $tempPassword,
+        ]);
+        $viewerToken = $loginRes['body']['token'];
+
+        // Strip roles
+        \Illuminate\Database\Capsule\Manager::table('user_roles')->where('user_id', $viewerUserId)->delete();
+
+        // 3. Test RBAC denial on assemble/disassemble (no role/permission)
+        $unauthRes1 = $this->request('POST', '/api/kits/assemble', [
+            'kitSku' => $kitSku,
+            'quantity' => 2,
+            'locationId' => $locationId,
+            'referenceId' => 'REF-ASM-TEST'
+        ], $viewerToken);
+        $this->assertEquals(403, $unauthRes1['status']);
+
+        $unauthRes2 = $this->request('POST', '/api/kits/disassemble', [
+            'kitSku' => $kitSku,
+            'quantity' => 2,
+            'locationId' => $locationId,
+            'referenceId' => 'REF-DIS-TEST'
+        ], $viewerToken);
+        $this->assertEquals(403, $unauthRes2['status']);
+
+        // 4. Assemble Kit (2 units) via admin token
+        // Needs 2 * 2 = 4 units of COMP-A (cost 4 * 100 = 400) and 2 * 1 = 2 units of COMP-B (cost 2 * 200 = 400). Total cost = 800.
+        $assembleRes = $this->request('POST', '/api/kits/assemble', [
+            'kitSku' => $kitSku,
+            'quantity' => 2,
+            'locationId' => $locationId,
+            'referenceId' => 'REF-ASM-1'
+        ], $this->token);
+        $this->assertEquals(200, $assembleRes['status'], json_encode($assembleRes));
+
+        // Verify product location stocks: COMP-A: 6, COMP-B: 18, KIT: 2
+        $this->assertEquals(6, \Illuminate\Database\Capsule\Manager::table('product_locations')->where('product_id', $compAId)->where('location_id', $locationId)->value('stock_quantity'));
+        $this->assertEquals(18, \Illuminate\Database\Capsule\Manager::table('product_locations')->where('product_id', $compBId)->where('location_id', $locationId)->value('stock_quantity'));
+        $this->assertEquals(2, \Illuminate\Database\Capsule\Manager::table('product_locations')->where('product_id', $kitProductId)->where('location_id', $locationId)->value('stock_quantity'));
+
+        // Verify ledger entries stock: COMP-A: 6, COMP-B: 18, KIT: 2
+        $this->assertEquals(6, \Illuminate\Database\Capsule\Manager::table('ledger_entries')->where('tenant_id', $this->tenantId)->where('variant_id', $compAId)->sum('quantity'));
+        $this->assertEquals(18, \Illuminate\Database\Capsule\Manager::table('ledger_entries')->where('tenant_id', $this->tenantId)->where('variant_id', $compBId)->sum('quantity'));
+        $this->assertEquals(2, \Illuminate\Database\Capsule\Manager::table('ledger_entries')->where('tenant_id', $this->tenantId)->where('variant_id', $kitProductId)->sum('quantity'));
+
+        // Verify kit costing layer unit cost is 400 (800 / 2)
+        $kitLayerVal = \Illuminate\Database\Capsule\Manager::table('inventory_cost_layers')
+            ->where('tenant_id', $this->tenantId)
+            ->where('variant_id', $kitProductId)
+            ->first();
+        $this->assertNotNull($kitLayerVal);
+        $this->assertEquals(2, $kitLayerVal->remaining_quantity);
+        $this->assertEquals(400, $kitLayerVal->unit_cost_cents);
+
+        // Verify Journal entries are balanced (Debit 1200, Credit 1210 for 800)
+        $journal = \Illuminate\Database\Capsule\Manager::table('journal_entries')
+            ->where('tenant_id', $this->tenantId)
+            ->where('reference_id', 'REF-ASM-1')
+            ->first();
+        $this->assertNotNull($journal);
+        $lines = json_decode($journal->lines, true);
+        $this->assertCount(2, $lines);
+        $debitLine = null;
+        $creditLine = null;
+        foreach ($lines as $line) {
+            if ($line['account'] === '1200') $debitLine = $line;
+            if ($line['account'] === '1210') $creditLine = $line;
+        }
+        $this->assertNotNull($debitLine);
+        $this->assertNotNull($creditLine);
+        $this->assertEquals(800, $debitLine['amount']);
+        $this->assertEquals('debit', $debitLine['type']);
+        $this->assertEquals(800, $creditLine['amount']);
+        $this->assertEquals('credit', $creditLine['type']);
+
+        // 5. Disassemble Kit (2 units)
+        $disassembleRes = $this->request('POST', '/api/kits/disassemble', [
+            'kitSku' => $kitSku,
+            'quantity' => 2,
+            'locationId' => $locationId,
+            'referenceId' => 'REF-DIS-1'
+        ], $this->token);
+        $this->assertEquals(200, $disassembleRes['status'], json_encode($disassembleRes));
+
+        // Verify product location stocks: COMP-A: 10, COMP-B: 20, KIT: 0
+        $this->assertEquals(10, \Illuminate\Database\Capsule\Manager::table('product_locations')->where('product_id', $compAId)->where('location_id', $locationId)->value('stock_quantity'));
+        $this->assertEquals(20, \Illuminate\Database\Capsule\Manager::table('product_locations')->where('product_id', $compBId)->where('location_id', $locationId)->value('stock_quantity'));
+        $this->assertEquals(0, \Illuminate\Database\Capsule\Manager::table('product_locations')->where('product_id', $kitProductId)->where('location_id', $locationId)->value('stock_quantity'));
+
+        // Verify ledger entries stock: COMP-A: 10, COMP-B: 20, KIT: 0
+        $this->assertEquals(10, \Illuminate\Database\Capsule\Manager::table('ledger_entries')->where('tenant_id', $this->tenantId)->where('variant_id', $compAId)->sum('quantity'));
+        $this->assertEquals(20, \Illuminate\Database\Capsule\Manager::table('ledger_entries')->where('tenant_id', $this->tenantId)->where('variant_id', $compBId)->sum('quantity'));
+        $this->assertEquals(0, \Illuminate\Database\Capsule\Manager::table('ledger_entries')->where('tenant_id', $this->tenantId)->where('variant_id', $kitProductId)->sum('quantity'));
+
+        // Verify disassembly Journal entries are balanced (Debit 1210, Credit 1200 for 800)
+        $disJournal = \Illuminate\Database\Capsule\Manager::table('journal_entries')
+            ->where('tenant_id', $this->tenantId)
+            ->where('reference_id', 'REF-DIS-1')
+            ->first();
+        $this->assertNotNull($disJournal);
+        $disLines = json_decode($disJournal->lines, true);
+        $this->assertCount(2, $disLines);
+        $debitLinePost = null;
+        $creditLinePost = null;
+        foreach ($disLines as $line) {
+            if ($line['account'] === '1210') $debitLinePost = $line;
+            if ($line['account'] === '1200') $creditLinePost = $line;
+        }
+        $this->assertNotNull($debitLinePost);
+        $this->assertNotNull($creditLinePost);
+        $this->assertEquals(800, $debitLinePost['amount']);
+        $this->assertEquals('debit', $debitLinePost['type']);
+        $this->assertEquals(800, $creditLinePost['amount']);
+        $this->assertEquals('credit', $creditLinePost['type']);
     }
 
     private function request(string $method, string $path, array $body = [], ?string $token = null): array

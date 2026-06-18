@@ -24,6 +24,11 @@ export default function Inventory() {
   const [countItems, setCountItems] = useState<{ sku: string; quantity: number }[]>([]);
   const [countMsg, setCountMsg] = useState('');
 
+  const [isCheckingStock, setIsCheckingStock] = useState(false);
+  const [isStartingCount, setIsStartingCount] = useState(false);
+  const [isRecordingItem, setIsRecordingItem] = useState(false);
+  const [isCompletingCount, setIsCompletingCount] = useState(false);
+
   const handleStockOp = async (e: React.FormEvent) => {
     e.preventDefault();
     setOpMsg('Processing transaction...');
@@ -53,6 +58,7 @@ export default function Inventory() {
     e.preventDefault();
     setStockLevel(null);
     setQueryMsg('Querying ledger...');
+    setIsCheckingStock(true);
     try {
       const res = await api.get(`/inventory/${querySku}/stock?location_id=${queryLoc}`);
       if (res.stock !== undefined) {
@@ -63,11 +69,14 @@ export default function Inventory() {
       }
     } catch (err: any) {
       setQueryMsg(err.message || 'Error checking stock');
+    } finally {
+      setIsCheckingStock(false);
     }
   };
 
   const startCount = async () => {
     setCountMsg('Starting session...');
+    setIsStartingCount(true);
     try {
       const res = await api.post('/inventory/counts');
       if (res.count_id) {
@@ -78,6 +87,8 @@ export default function Inventory() {
       }
     } catch (err: any) {
       setCountMsg(err.message || 'Error starting count');
+    } finally {
+      setIsStartingCount(false);
     }
   };
 
@@ -85,6 +96,7 @@ export default function Inventory() {
     e.preventDefault();
     if (!activeCountId) return;
     setCountMsg('Recording item...');
+    setIsRecordingItem(true);
     try {
       const qty = parseInt(countQty) || 0;
       await api.post(`/inventory/counts/${activeCountId}/items`, { sku: countSku, quantity: qty });
@@ -94,12 +106,15 @@ export default function Inventory() {
       setCountMsg('Item recorded!');
     } catch (err: any) {
       setCountMsg(err.message || 'Error recording item');
+    } finally {
+      setIsRecordingItem(false);
     }
   };
 
   const completeCount = async () => {
     if (!activeCountId) return;
     setCountMsg('Completing count & reconciling...');
+    setIsCompletingCount(true);
     try {
       await api.post(`/inventory/counts/${activeCountId}/complete`);
       setCountMsg('Count completed and stock reconciled successfully!');
@@ -108,6 +123,8 @@ export default function Inventory() {
       setCountItems([]);
     } catch (err: any) {
       setCountMsg(err.message || 'Reconciliation failed');
+    } finally {
+      setIsCompletingCount(false);
     }
   };
 
@@ -164,18 +181,20 @@ export default function Inventory() {
             <div className="section-title">Query Stock Level</div>
             <form onSubmit={checkStock}>
               <div className="form-group">
-                <label>SKU</label>
-                <input value={querySku} onChange={e => setQuerySku(e.target.value)} placeholder="e.g. DNM-JKT-BLU-M" required />
+                <label htmlFor="querySku">SKU</label>
+                <input id="querySku" value={querySku} onChange={e => setQuerySku(e.target.value)} placeholder="e.g. DNM-JKT-BLU-M" required />
               </div>
               <div className="form-group">
-                <label>Location Context</label>
-                <select value={queryLoc} onChange={e => setQueryLoc(e.target.value)}>
+                <label htmlFor="queryLoc">Location Context</label>
+                <select id="queryLoc" value={queryLoc} onChange={e => setQueryLoc(e.target.value)}>
                   <option value="LOC-STOREFRONT">Sales Floor</option>
                   <option value="LOC-BACKROOM">Backroom Storage</option>
                   <option value="ALL">All Combined (ALL)</option>
                 </select>
               </div>
-              <button type="submit" className="btn-primary" style={{ width: '100%' }}>Check Level</button>
+              <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={isCheckingStock} aria-busy={isCheckingStock}>
+                {isCheckingStock ? 'Checking...' : 'Check Level'}
+              </button>
             </form>
             {stockLevel !== null && (
               <div style={{ marginTop: '1.25rem', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
@@ -194,7 +213,9 @@ export default function Inventory() {
             {!activeCountId ? (
               <div style={{ textAlign: 'center', padding: '2rem 0' }}>
                 <p className="text-muted" style={{ marginBottom: '1.5rem' }}>No active inventory count session running.</p>
-                <button onClick={startCount} className="btn-primary">Start New Count Session</button>
+                <button onClick={startCount} className="btn-primary" disabled={isStartingCount} aria-busy={isStartingCount}>
+                  {isStartingCount ? 'Starting...' : 'Start New Count Session'}
+                </button>
               </div>
             ) : (
               <div>
@@ -206,14 +227,16 @@ export default function Inventory() {
                 <form onSubmit={recordCountItem} style={{ marginBottom: '1.5rem' }}>
                   <div className="section-title" style={{ fontSize: '1rem', border: 'none' }}>Record Item Count</div>
                   <div className="form-group">
-                    <label>SKU</label>
-                    <input value={countSku} onChange={e => setCountSku(e.target.value)} placeholder="SKU to count" required />
+                    <label htmlFor="countSku">SKU</label>
+                    <input id="countSku" value={countSku} onChange={e => setCountSku(e.target.value)} placeholder="SKU to count" required />
                   </div>
                   <div className="form-group">
-                    <label>Counted Quantity</label>
-                    <input type="number" min="0" value={countQty} onChange={e => setCountQty(e.target.value)} placeholder="Quantity found" required />
+                    <label htmlFor="countQty">Counted Quantity</label>
+                    <input id="countQty" type="number" min="0" value={countQty} onChange={e => setCountQty(e.target.value)} placeholder="Quantity found" required />
                   </div>
-                  <button type="submit" className="btn-primary" style={{ width: '100%' }}>Submit Item Count</button>
+                  <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={isRecordingItem} aria-busy={isRecordingItem}>
+                    {isRecordingItem ? 'Submitting...' : 'Submit Item Count'}
+                  </button>
                 </form>
 
                 {countItems.length > 0 && (
@@ -230,8 +253,8 @@ export default function Inventory() {
                   </div>
                 )}
 
-                <button onClick={completeCount} className="btn-primary" style={{ width: '100%', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)' }}>
-                  Complete Session & Reconcile
+                <button onClick={completeCount} className="btn-primary" style={{ width: '100%', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)' }} disabled={isCompletingCount} aria-busy={isCompletingCount}>
+                  {isCompletingCount ? 'Completing...' : 'Complete Session & Reconcile'}
                 </button>
               </div>
             )}

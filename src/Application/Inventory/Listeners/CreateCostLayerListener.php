@@ -11,7 +11,7 @@ use Ramsey\Uuid\Uuid;
 
 class CreateCostLayerListener
 {
-    private array $priceCache = [];
+    private static array $priceCache = [];
 
     public function __construct(
         private readonly ?CostLayerRepositoryInterface $costLayerRepo = null,
@@ -28,17 +28,41 @@ class CreateCostLayerListener
         return $this->costLayerRepo ?? \InventoryApp\Infrastructure\ServiceContainer::costLayerRepo($tenantId);
     }
 
+    public function preloadPrices(array $skus): void
+    {
+        $uncached = array_diff($skus, array_keys(self::$priceCache));
+        if (empty($uncached)) {
+            return;
+        }
+
+        foreach (array_chunk($uncached, 500) as $chunk) {
+            $variants = DB::table('catalog_variants')->whereIn('sku', $chunk)->get(['sku', 'price']);
+            foreach ($variants as $variant) {
+                self::$priceCache[$variant->sku] = $variant->price;
+            }
+        }
+
+        foreach ($uncached as $sku) {
+            if (!isset(self::$priceCache[$sku])) {
+                self::$priceCache[$sku] = 10.00;
+            }
+        }
+    }
+
     public function handleStockReceived(StockReceived $event): void
     {
+        if (!empty($event->skipCostLayerCreation)) {
+            return;
+        }
+
         $tenantId = $this->resolveTenantId();
         $sku = $event->getSku()->getValue();
         
         // Lookup default catalog price to establish unit cost
-        if (!isset($this->priceCache[$sku])) {
-            $variant = DB::table('catalog_variants')->where('sku', $sku)->first();
-            $this->priceCache[$sku] = $variant ? $variant->price : 10.00;
+        if (!isset(self::$priceCache[$sku])) {
+            $this->preloadPrices([$sku]);
         }
-        $price = $this->priceCache[$sku];
+        $price = self::$priceCache[$sku];
         $unitCostCents = (int)($price * 100);
 
         $layer = new InventoryCostLayer(

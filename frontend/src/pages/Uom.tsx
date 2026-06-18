@@ -342,7 +342,7 @@ export default function Uom() {
                           <td>{rule.factor_to_base}x base</td>
                           <td>{rule.label || 'None'}</td>
                           <td>
-                            <button onClick={() => handleRemoveRuleFetch(rule.unit)} className="btn-sm btn-secondary text-danger" style={{ padding: '0.2rem 0.5rem' }}>
+                            <button aria-label={`Remove unit ${rule.unit.name}`} onClick={() => handleRemoveRuleFetch(rule.unit)} className="btn-sm btn-secondary text-danger" style={{ padding: '0.2rem 0.5rem' }}>
                               Remove
                             </button>
                           </td>

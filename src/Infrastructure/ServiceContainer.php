@@ -27,6 +27,8 @@ use InventoryApp\Domain\Uom\Repositories\ProductUomConfigurationRepositoryInterf
 use InventoryApp\Domain\Kit\Repositories\KitRepositoryInterface;
 use InventoryApp\Infrastructure\Persistence\Repositories\EloquentProductUomConfigurationRepository;
 use InventoryApp\Infrastructure\Persistence\Repositories\EloquentKitRepository;
+use InventoryApp\Domain\Inventory\Repositories\WarehouseLocationRepositoryInterface;
+use InventoryApp\Infrastructure\Persistence\Repositories\EloquentWarehouseLocationRepository;
 use Illuminate\Container\Container;
 
 class ServiceContainer
@@ -55,6 +57,18 @@ class ServiceContainer
         $container->singleton(\InventoryApp\Domain\Catalog\Repositories\CatalogProductRepositoryInterface::class, EloquentCatalogProductRepository::class);
         $container->singleton(ProductUomConfigurationRepositoryInterface::class, EloquentProductUomConfigurationRepository::class);
         $container->singleton(KitRepositoryInterface::class, EloquentKitRepository::class);
+        $container->singleton(WarehouseLocationRepositoryInterface::class, EloquentWarehouseLocationRepository::class);
+        $container->singleton(\InventoryApp\Domain\Returns\Repositories\RMARepositoryInterface::class, \InventoryApp\Infrastructure\Persistence\Repositories\EloquentRMARepository::class);
+        $container->singleton(\InventoryApp\Domain\Returns\Repositories\QuarantineRepositoryInterface::class, \InventoryApp\Infrastructure\Persistence\Repositories\EloquentQuarantineRepository::class);
+        $container->singleton(\InventoryApp\Domain\Procurement\Repositories\PurchaseOrderRepositoryInterface::class, \InventoryApp\Infrastructure\Persistence\Repositories\EloquentPurchaseOrderRepository::class);
+        $container->singleton(\InventoryApp\Domain\Procurement\Repositories\ReorderPolicyRepositoryInterface::class, \InventoryApp\Infrastructure\Persistence\Repositories\EloquentReorderPolicyRepository::class);
+        $container->singleton(\InventoryApp\Domain\Procurement\Services\ReorderPolicyService::class, function ($c) {
+            return new \InventoryApp\Domain\Procurement\Services\ReorderPolicyService(
+                $c->make(\InventoryApp\Domain\Procurement\Repositories\ReorderPolicyRepositoryInterface::class),
+                $c->make(\InventoryApp\Domain\Procurement\Repositories\PurchaseOrderRepositoryInterface::class),
+                $c->make(\Psr\EventDispatcher\EventDispatcherInterface::class)
+            );
+        });
         $container->singleton(EventDispatcher::class, function () {
             return self::dispatcher();
         });
@@ -171,6 +185,36 @@ class ServiceContainer
     public static function kitRepo(): KitRepositoryInterface
     {
         return self::getInstance()->make(KitRepositoryInterface::class);
+    }
+
+    public static function rmaRepo(): \InventoryApp\Domain\Returns\Repositories\RMARepositoryInterface
+    {
+        return self::getInstance()->make(\InventoryApp\Domain\Returns\Repositories\RMARepositoryInterface::class);
+    }
+
+    public static function quarantineRepo(): \InventoryApp\Domain\Returns\Repositories\QuarantineRepositoryInterface
+    {
+        return self::getInstance()->make(\InventoryApp\Domain\Returns\Repositories\QuarantineRepositoryInterface::class);
+    }
+
+    public static function warehouseLocationRepo(): WarehouseLocationRepositoryInterface
+    {
+        return self::getInstance()->make(WarehouseLocationRepositoryInterface::class);
+    }
+
+    public static function purchaseOrderRepo(): \InventoryApp\Domain\Procurement\Repositories\PurchaseOrderRepositoryInterface
+    {
+        return self::getInstance()->make(\InventoryApp\Domain\Procurement\Repositories\PurchaseOrderRepositoryInterface::class);
+    }
+
+    public static function reorderPolicyRepo(): \InventoryApp\Domain\Procurement\Repositories\ReorderPolicyRepositoryInterface
+    {
+        return self::getInstance()->make(\InventoryApp\Domain\Procurement\Repositories\ReorderPolicyRepositoryInterface::class);
+    }
+
+    public static function reorderPolicyService(): \InventoryApp\Domain\Procurement\Services\ReorderPolicyService
+    {
+        return self::getInstance()->make(\InventoryApp\Domain\Procurement\Services\ReorderPolicyService::class);
     }
 }
 

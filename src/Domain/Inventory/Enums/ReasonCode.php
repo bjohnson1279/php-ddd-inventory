@@ -13,5 +13,8 @@ enum ReasonCode: string
     case Adjustment      = 'adjustment';
     case WriteOff        = 'write_off';
     case Reconciliation  = 'reconciliation';
+    case KitAssembly     = 'kit_assembly';
+    case KitDisassembly  = 'kit_disassembly';
+    case Dispatch        = 'dispatch';
 }
 

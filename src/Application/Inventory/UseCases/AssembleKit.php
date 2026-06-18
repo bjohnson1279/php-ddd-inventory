@@ -1,0 +1,141 @@
+<?php
+
+namespace InventoryApp\Application\Inventory\UseCases;
+
+use InventoryApp\Domain\Kit\Repositories\KitRepositoryInterface;
+use InventoryApp\Domain\Inventory\Repositories\ProductRepositoryInterface;
+use InventoryApp\Domain\Inventory\Repositories\LedgerRepositoryInterface;
+use InventoryApp\Domain\Accounting\Repositories\CostLayerRepositoryInterface;
+use InventoryApp\Domain\Accounting\Services\CostLayerService;
+use InventoryApp\Domain\Accounting\Services\AccountingJournalService;
+use InventoryApp\Domain\Inventory\Entities\LedgerEntry;
+use InventoryApp\Domain\Inventory\Enums\ReasonCode;
+use InventoryApp\Domain\Accounting\Entities\InventoryCostLayer;
+use InventoryApp\Domain\Inventory\ValueObjects\SKU;
+use InventoryApp\Domain\Inventory\ValueObjects\Quantity;
+use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
+use Exception;
+use Ramsey\Uuid\Uuid;
+
+class AssembleKit
+{
+    private readonly CostLayerService $costLayerService;
+
+    public function __construct(
+        private readonly KitRepositoryInterface $kitRepository,
+        private readonly ProductRepositoryInterface $productRepository,
+        private readonly LedgerRepositoryInterface $ledgerRepository,
+        private readonly CostLayerRepositoryInterface $costLayerRepository,
+        private readonly AccountingJournalService $journalService
+    ) {
+        $this->costLayerService = new CostLayerService($costLayerRepository);
+    }
+
+    public function execute(array $dto): void
+    {
+        $tenantId = $dto['tenantId'];
+        $locationId = $dto['locationId'];
+        $kitSkuStr = $dto['kitSku'];
+        $quantity = $dto['quantity'];
+        $actorId = $dto['actorId'];
+        $referenceId = $dto['referenceId'];
+
+        if ($quantity <= 0) {
+            throw new Exception("Quantity to assemble must be greater than zero.");
+        }
+
+        // 1. Resolve kit details
+        $kit = $this->kitRepository->findBySku($kitSkuStr);
+        if (!$kit) {
+            throw new Exception("Kit with SKU {$kitSkuStr} not found.");
+        }
+
+        // 2. Validate component stock level
+        $componentsToConsume = [];
+        foreach ($kit->components() as $component) {
+            $needed = $component->quantity * $quantity;
+            $available = $this->ledgerRepository->currentQuantity($component->variantId);
+            if ($available < $needed) {
+                throw new Exception("Insufficient stock for component variant ID {$component->variantId}. Needed: {$needed}, Available: {$available}");
+            }
+            $componentsToConsume[] = [
+                'variantId' => $component->variantId,
+                'needed' => $needed
+            ];
+        }
+
+        // 3. Consume FIFO costing layers for components and calculate total components cost
+        $totalCostCents = 0;
+        foreach ($componentsToConsume as $comp) {
+            $breakdown = $this->costLayerService->consumeFifoLayers($comp['variantId'], $comp['needed']);
+            $totalCostCents += $breakdown->totalCostCents;
+
+            // Deduct stock on Product aggregate root
+            $product = $this->productRepository->findById($comp['variantId']);
+            if (!$product) {
+                throw new Exception("Product variant {$comp['variantId']} not found.");
+            }
+            $product->dispatchStockAt(new LocationId($locationId), new Quantity($comp['needed']), $referenceId);
+            $this->productRepository->save($product);
+
+            // Write deduction to ledger_entries
+            $ledgerEntry = new LedgerEntry(
+                id: Uuid::uuid4()->toString(),
+                variantId: $comp['variantId'],
+                quantity: -$comp['needed'],
+                reason: ReasonCode::KitAssembly,
+                actorId: $actorId,
+                referenceId: $referenceId,
+                occurredAt: new \DateTimeImmutable(),
+                metadata: ['locationId' => $locationId]
+            );
+            $this->ledgerRepository->append($ledgerEntry);
+        }
+
+        // 4. Calculate assembled unit cost
+        $unitCostCents = (int) round($totalCostCents / $quantity);
+
+        // 5. Create new costing layer for the assembled Kit variant
+        $kitProduct = $this->productRepository->findBySku(new SKU($kitSkuStr));
+        if (!$kitProduct) {
+            throw new Exception("Product variant for Kit SKU {$kitSkuStr} not found.");
+        }
+
+        $kitLayer = new InventoryCostLayer(
+            id: Uuid::uuid4()->toString(),
+            variantId: $kitProduct->getId(),
+            tenantId: $tenantId,
+            originalQuantity: $quantity,
+            unitCostCents: $unitCostCents,
+            receivedAt: new \DateTimeImmutable(),
+            purchaseOrderId: $referenceId
+        );
+        $this->costLayerRepository->save($kitLayer);
+
+        // 6. Increment stock for Kit variant on Product aggregate
+        $kitProduct->receiveStockAt(new LocationId($locationId), new Quantity($quantity), $referenceId);
+        $this->productRepository->save($kitProduct);
+
+        // 7. Write increment ledger entry for Kit variant
+        $kitLedgerEntry = new LedgerEntry(
+            id: Uuid::uuid4()->toString(),
+            variantId: $kitProduct->getId(),
+            quantity: $quantity,
+            reason: ReasonCode::KitAssembly,
+            actorId: $actorId,
+            referenceId: $referenceId,
+            occurredAt: new \DateTimeImmutable(),
+            metadata: ['locationId' => $locationId]
+        );
+        $this->ledgerRepository->append($kitLedgerEntry);
+
+        // 8. Write balanced double-entry Journal Entry
+        $this->journalService->onKitAssembly(
+            $tenantId,
+            new \DateTimeImmutable(),
+            $kitSkuStr,
+            $totalCostCents,
+            $referenceId
+        );
+    }
+}

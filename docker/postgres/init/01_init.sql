@@ -44,9 +44,57 @@ CREATE TABLE IF NOT EXISTS products (
   department TEXT NOT NULL,
   reorder_threshold INTEGER NOT NULL DEFAULT 10,
   version_id INTEGER NOT NULL DEFAULT 1,
+  weight_grams INTEGER,
+  volume_cubic_meters NUMERIC,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   UNIQUE(tenant_id, sku)
+);
+
+CREATE TABLE IF NOT EXISTS warehouse_locations (
+  id VARCHAR(50) PRIMARY KEY,
+  warehouse_id VARCHAR(50) NOT NULL,
+  zone VARCHAR(50) NOT NULL,
+  aisle VARCHAR(50) NOT NULL,
+  rack VARCHAR(50) NOT NULL,
+  shelf VARCHAR(50) NOT NULL,
+  bin VARCHAR(50) NOT NULL,
+  max_weight_grams INTEGER NOT NULL,
+  max_volume_cubic_meters NUMERIC NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  UNIQUE(warehouse_id, zone, aisle, rack, shelf, bin)
+);
+
+CREATE TABLE IF NOT EXISTS purchase_orders (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  purchase_order_number VARCHAR(100) NOT NULL UNIQUE,
+  vendor_id VARCHAR(50) NOT NULL,
+  tenant_id VARCHAR(50) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  status VARCHAR(50) NOT NULL,
+  location_id VARCHAR(50) NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS purchase_order_items (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  purchase_order_id UUID NOT NULL REFERENCES purchase_orders(id) ON DELETE CASCADE,
+  variant_id VARCHAR(50) NOT NULL,
+  quantity INTEGER NOT NULL,
+  received_quantity INTEGER NOT NULL DEFAULT 0,
+  unit_cost_cents INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS reorder_policies (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  sku VARCHAR(50) NOT NULL,
+  location_id VARCHAR(50) NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
+  reorder_point INTEGER NOT NULL,
+  reorder_quantity INTEGER NOT NULL,
+  safety_stock INTEGER NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  UNIQUE(sku, location_id)
 );
 
 -- Product Locations (Stock)
@@ -56,6 +104,8 @@ CREATE TABLE IF NOT EXISTS product_locations (
   stock_quantity INTEGER NOT NULL DEFAULT 0,
   open_box_quantity INTEGER NOT NULL DEFAULT 0,
   damaged_quantity INTEGER NOT NULL DEFAULT 0,
+  allocated_quantity INTEGER NOT NULL DEFAULT 0,
+  in_transit_quantity INTEGER NOT NULL DEFAULT 0,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   PRIMARY KEY (product_id, location_id)
 );
@@ -89,7 +139,8 @@ CREATE TABLE IF NOT EXISTS inventory_count_items (
   sku TEXT NOT NULL,
   location_id VARCHAR(50) NOT NULL,
   counted_quantity INTEGER NOT NULL DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  UNIQUE(inventory_count_id, sku, location_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_inventory_count_items_inventory_count_id ON inventory_count_items(inventory_count_id);

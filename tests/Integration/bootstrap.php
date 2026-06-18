@@ -37,8 +37,34 @@ if ($driver === 'sqlite') {
 $capsule->setAsGlobal();
 $capsule->bootEloquent();
 
-// Clean tables before each integration run
 $connection = $capsule->getConnection();
+
+if ($driver !== 'sqlite') {
+    try {
+        $hasAllocated = false;
+        $columns = $connection->select("
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'product_locations' 
+              AND column_name = 'allocated_quantity'
+              AND table_schema = 'public'
+              AND table_catalog = current_database()
+        ");
+        if (!empty($columns)) {
+            $hasAllocated = true;
+        }
+
+        if (!$hasAllocated) {
+            $connection->statement("
+                ALTER TABLE product_locations 
+                ADD COLUMN allocated_quantity INTEGER NOT NULL DEFAULT 0,
+                ADD COLUMN in_transit_quantity INTEGER NOT NULL DEFAULT 0
+            ");
+        }
+    } catch (\Exception $e) {
+        // Ignore or log error
+    }
+}
 
 if ($driver === 'sqlite') {
     require_once __DIR__ . '/../../src/Infrastructure/Persistence/sqlite_setup.php';
@@ -73,7 +99,11 @@ if ($driver === 'sqlite') {
         'user_roles',
         'role_permissions',
         'notifications',
-        'inventory_cost_layers'
+        'inventory_cost_layers',
+        'warehouse_locations',
+        'purchase_orders',
+        'purchase_order_items',
+        'reorder_policies'
     ];
     
     foreach ($tables as $t) {
@@ -109,7 +139,11 @@ if ($driver === 'sqlite') {
         user_roles,
         role_permissions,
         notifications,
-        inventory_cost_layers
+        inventory_cost_layers,
+        warehouse_locations,
+        purchase_orders,
+        purchase_order_items,
+        reorder_policies
     RESTART IDENTITY CASCADE');
 }
 

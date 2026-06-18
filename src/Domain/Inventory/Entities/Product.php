@@ -27,6 +27,8 @@ class Product extends AggregateRoot
     private Department $department;
     private Quantity $reorderThreshold;
     private int $versionId;
+    private ?int $weightGrams;
+    private ?float $volumeCubicMeters;
     
     /** @var array<string, LocationStock> */
     private array $locationStocks = [];
@@ -40,7 +42,9 @@ class Product extends AggregateRoot
         string $name, 
         Department $department, 
         ?Quantity $reorderThreshold = null,
-        int $versionId = 1
+        int $versionId = 1,
+        ?int $weightGrams = null,
+        ?float $volumeCubicMeters = null
     ) {
         $this->id = $id;
         $this->sku = $sku;
@@ -48,6 +52,8 @@ class Product extends AggregateRoot
         $this->department = $department;
         $this->reorderThreshold = $reorderThreshold ?? new Quantity(10);
         $this->versionId = $versionId;
+        $this->weightGrams = $weightGrams;
+        $this->volumeCubicMeters = $volumeCubicMeters;
     }
 
     public static function create(
@@ -72,6 +78,8 @@ class Product extends AggregateRoot
     public function getDepartment(): Department { return $this->department; }
     public function getReorderThreshold(): Quantity { return $this->reorderThreshold; }
     public function getVersionId(): int { return $this->versionId; }
+    public function getWeightGrams(): ?int { return $this->weightGrams; }
+    public function getVolumeCubicMeters(): ?float { return $this->volumeCubicMeters; }
     public function incrementVersion(): void { $this->versionId++; }
 
     public function loadLocationStock(LocationStock $stock): void
@@ -146,7 +154,7 @@ class Product extends AggregateRoot
     // Stock mutations — each fires a typed domain event
     // -----------------------------------------------------------------
 
-    public function receiveStockAt(LocationId $locationId, Quantity $quantity, ?string $reference = null): void
+    public function receiveStockAt(LocationId $locationId, Quantity $quantity, ?string $reference = null, bool $skipCostLayerCreation = false): void
     {
         $stock = $this->getOrCreateLocationStock($locationId);
         $stock->addStock($quantity, new Condition(Condition::NEW));
@@ -164,6 +172,7 @@ class Product extends AggregateRoot
             $quantity->getValue(),
             $reference,
             new DateTimeImmutable(),
+            $skipCostLayerCreation
         ));
     }
 
@@ -291,6 +300,74 @@ class Product extends AggregateRoot
         ));
 
         $this->recordLowStockIfNeeded();
+    }
+
+    public function allocateStockAt(LocationId $locationId, Quantity $quantity): void
+    {
+        $stock = $this->getOrCreateLocationStock($locationId);
+        $stock->allocate($quantity, $this->sku->getValue());
+    }
+
+    public function releaseAllocationAt(LocationId $locationId, Quantity $quantity): void
+    {
+        $stock = $this->getOrCreateLocationStock($locationId);
+        $stock->releaseAllocation($quantity);
+    }
+
+    public function fulfillAllocationAt(LocationId $locationId, Quantity $quantity): void
+    {
+        $stock = $this->getOrCreateLocationStock($locationId);
+        $stock->fulfillAllocation($quantity);
+        
+        $this->recordTransaction(
+            new TransactionType(TransactionType::DISPATCH),
+            -$quantity->getValue(),
+            new Condition(Condition::NEW),
+            "FULFILL_ALLOCATION"
+        );
+        
+        $this->recordEvent(new StockDispatched(
+            $this->sku,
+            $locationId,
+            $quantity->getValue(),
+            "FULFILL_ALLOCATION",
+            new DateTimeImmutable()
+        ));
+        
+        $this->recordLowStockIfNeeded();
+    }
+
+    public function createInTransitAt(LocationId $locationId, Quantity $quantity): void
+    {
+        $stock = $this->getOrCreateLocationStock($locationId);
+        $stock->createInTransit($quantity);
+    }
+
+    public function receiveInTransitAt(LocationId $locationId, Quantity $quantity): void
+    {
+        $stock = $this->getOrCreateLocationStock($locationId);
+        $stock->receiveInTransit($quantity);
+        
+        $this->recordTransaction(
+            new TransactionType(TransactionType::RECEIPT),
+            $quantity->getValue(),
+            new Condition(Condition::NEW),
+            "RECEIVE_IN_TRANSIT"
+        );
+        
+        $this->recordEvent(new StockReceived(
+            $this->sku,
+            $locationId,
+            $quantity->getValue(),
+            "RECEIVE_IN_TRANSIT",
+            new DateTimeImmutable()
+        ));
+    }
+
+    public function cancelInTransitAt(LocationId $locationId, Quantity $quantity): void
+    {
+        $stock = $this->getOrCreateLocationStock($locationId);
+        $stock->cancelInTransit($quantity);
     }
 
     // -----------------------------------------------------------------

@@ -122,4 +122,72 @@ class KitController
             'components' => $components,
         ];
     }
+
+    public function assemble(
+        RequestInterface $request,
+        \InventoryApp\Application\Inventory\UseCases\AssembleKit $useCase
+    ) {
+        try {
+            $validated = $request->validate([
+                'kitSku'      => 'required|string',
+                'quantity'    => 'required|integer',
+                'locationId'  => 'required|string',
+                'referenceId' => 'required|string',
+            ]);
+
+            $tenantId = $_SERVER['auth.tenant_id'] ?? 'system';
+            $actorId  = $_SERVER['auth.user_id'] ?? 'system';
+
+            Capsule::transaction(function () use ($useCase, $validated, $tenantId, $actorId) {
+                $useCase->execute([
+                    'tenantId'    => $tenantId,
+                    'locationId'  => $validated['locationId'],
+                    'kitSku'      => $validated['kitSku'],
+                    'quantity'    => (int)$validated['quantity'],
+                    'actorId'     => $actorId,
+                    'referenceId' => $validated['referenceId'],
+                ]);
+            });
+
+            return new Response([
+                'message' => "Successfully assembled {$validated['quantity']} units of Kit {$validated['kitSku']}."
+            ], 200);
+        } catch (Exception $e) {
+            return new Response(['error' => $e->getMessage()], 400);
+        }
+    }
+
+    public function disassemble(
+        RequestInterface $request,
+        \InventoryApp\Application\Inventory\UseCases\DisassembleKit $useCase
+    ) {
+        try {
+            $validated = $request->validate([
+                'kitSku'      => 'required|string',
+                'quantity'    => 'required|integer',
+                'locationId'  => 'required|string',
+                'referenceId' => 'required|string',
+            ]);
+
+            $tenantId = $_SERVER['auth.tenant_id'] ?? 'system';
+            $actorId  = $_SERVER['auth.user_id'] ?? 'system';
+
+            Capsule::transaction(function () use ($useCase, $validated, $tenantId, $actorId) {
+                $useCase->execute([
+                    'tenantId'    => $tenantId,
+                    'locationId'  => $validated['locationId'],
+                    'kitSku'      => $validated['kitSku'],
+                    'quantity'    => (int)$validated['quantity'],
+                    'actorId'     => $actorId,
+                    'referenceId' => $validated['referenceId'],
+                ]);
+            });
+
+            return new Response([
+                'message' => "Successfully disassembled {$validated['quantity']} units of Kit {$validated['kitSku']}."
+            ], 200);
+        } catch (Exception $e) {
+            return new Response(['error' => $e->getMessage()], 400);
+        }
+    }
 }

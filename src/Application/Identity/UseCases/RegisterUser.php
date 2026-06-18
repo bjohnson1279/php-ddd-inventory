@@ -20,8 +20,16 @@ class RegisterUser
         string $tenantIdValue,
         string $email,
         string $password,
-        string $name
+        string $name,
+        ?string $actingUserId = null
     ): void {
+        if ($actingUserId !== null) {
+            $actor = $this->userRepository->findById($actingUserId);
+            if (!$actor || !$actor->canDo('users:manage')) {
+                throw new Exception("Unauthorized: you do not have permission to manage users.");
+            }
+        }
+
         $tenantId = new TenantId($tenantIdValue);
         $email = strtolower(trim($email));
 

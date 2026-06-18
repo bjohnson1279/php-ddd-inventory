@@ -14,13 +14,21 @@ class EloquentCostLayerRepository implements CostLayerRepositoryInterface
     /** @return InventoryCostLayer[] */
     public function getActiveLayers(string $variantId, string $orderBy = 'received_at ASC'): array
     {
-        $direction = str_contains(strtoupper($orderBy), 'DESC') ? 'desc' : 'asc';
-        
-        $models = CostLayerModel::where('tenant_id', $this->tenantId)
+        $isExpiration = str_contains(strtolower($orderBy), 'expiration');
+        $direction = str_contains(strtolower($orderBy), 'desc') ? 'desc' : 'asc';
+
+        $query = CostLayerModel::where('tenant_id', $this->tenantId)
             ->where('variant_id', $variantId)
-            ->where('remaining_quantity', '>', 0)
-            ->orderBy('received_at', $direction)
-            ->get();
+            ->where('remaining_quantity', '>', 0);
+
+        if ($isExpiration) {
+            $query->orderBy('expiration_date', $direction)
+                  ->orderBy('received_at', 'asc');
+        } else {
+            $query->orderBy('received_at', $direction);
+        }
+
+        $models = $query->get();
 
         return $models->map(fn($model) => $this->hydrate($model))->all();
     }
@@ -38,6 +46,8 @@ class EloquentCostLayerRepository implements CostLayerRepositoryInterface
                 'purchase_order_id'  => $layer->purchaseOrderId,
                 'received_at'        => $layer->receivedAt->format('Y-m-d H:i:s'),
                 'serial_number'      => $layer->serialNumber,
+                'lot_number'         => $layer->lotNumber,
+                'expiration_date'    => $layer->expirationDate?->format('Y-m-d H:i:s'),
             ]
         );
     }
@@ -61,6 +71,8 @@ class EloquentCostLayerRepository implements CostLayerRepositoryInterface
                 'purchase_order_id'  => $layer->purchaseOrderId,
                 'received_at'        => $layer->receivedAt->format('Y-m-d H:i:s'),
                 'serial_number'      => $layer->serialNumber,
+                'lot_number'         => $layer->lotNumber,
+                'expiration_date'    => $layer->expirationDate?->format('Y-m-d H:i:s'),
             ];
         }
 
@@ -76,6 +88,8 @@ class EloquentCostLayerRepository implements CostLayerRepositoryInterface
                 'purchase_order_id',
                 'received_at',
                 'serial_number',
+                'lot_number',
+                'expiration_date',
             ]
         );
     }
@@ -122,6 +136,8 @@ class EloquentCostLayerRepository implements CostLayerRepositoryInterface
 
         $layer->setRemainingQuantity($model->remaining_quantity);
         $layer->serialNumber = $model->serial_number;
+        $layer->lotNumber = $model->lot_number;
+        $layer->expirationDate = $model->expiration_date ? new DateTimeImmutable($model->expiration_date) : null;
 
         return $layer;
     }

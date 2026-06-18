@@ -53,19 +53,44 @@ class EloquentInventoryCountRepository implements InventoryCountRepositoryInterf
                 ]
             );
 
-            foreach ($inventoryCount->getItems() as $item) {
-                InventoryCountItemModel::updateOrCreate(
-                    [
+            $driver = (new InventoryCountItemModel())->getConnection()->getDriverName();
+
+            if ($driver === 'sqlite') {
+                foreach ($inventoryCount->getItems() as $item) {
+                    InventoryCountItemModel::updateOrCreate(
+                        [
+                            'inventory_count_id' => $model->id,
+                            'sku'                => $item->getSku()->getValue(),
+                            'location_id'        => $item->getLocationId()->getValue(),
+                        ],
+                        [
+                            'product_id'       => null,
+                            'counted_quantity'  => $item->getCountedQuantity()->getValue(),
+                            'created_at'        => date('Y-m-d H:i:s'),
+                        ]
+                    );
+                }
+            } else {
+                $upsertData = [];
+                $now = date('Y-m-d H:i:s');
+                foreach ($inventoryCount->getItems() as $item) {
+                    $upsertData[] = [
                         'inventory_count_id' => $model->id,
+                        'product_id'         => null,
                         'sku'                => $item->getSku()->getValue(),
                         'location_id'        => $item->getLocationId()->getValue(),
-                    ],
-                    [
-                        'product_id'       => null,
-                        'counted_quantity'  => $item->getCountedQuantity()->getValue(),
-                        'created_at'        => date('Y-m-d H:i:s'),
-                    ]
-                );
+                        'counted_quantity'   => $item->getCountedQuantity()->getValue(),
+                        'created_at'         => $now,
+                    ];
+                }
+
+                if (!empty($upsertData)) {
+                    InventoryCountItemModel::upsert(
+                        $upsertData,
+                        ['inventory_count_id', 'sku', 'location_id'],
+                        ['product_id', 'counted_quantity', 'created_at']
+                    );
+                }
             }
         });
     }

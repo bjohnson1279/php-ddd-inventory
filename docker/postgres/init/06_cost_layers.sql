@@ -8,7 +8,9 @@ CREATE TABLE IF NOT EXISTS inventory_cost_layers (
     unit_cost_cents BIGINT NOT NULL,
     purchase_order_id VARCHAR(50),
     received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    serial_number VARCHAR(100)
+    serial_number VARCHAR(100),
+    lot_number VARCHAR(100),
+    expiration_date TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_cost_layers_tenant ON inventory_cost_layers(tenant_id);

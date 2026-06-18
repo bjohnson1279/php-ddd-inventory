@@ -121,7 +121,7 @@ final class ApiEndpointsTest extends TestCase
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
-        \Illuminate\Database\Capsule\Manager::table('product_variants')->insert([
+        \Illuminate\Database\Capsule\Manager::table('catalog_variants')->insert([
             'id' => $variantId,
             'product_id' => $variantId,
             'sku' => 'SKU-SCAN-1',

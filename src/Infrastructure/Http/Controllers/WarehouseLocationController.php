@@ -96,7 +96,8 @@ class WarehouseLocationController
 
             return new Response($data, 200);
         } catch (Exception $e) {
-            return new Response(['error' => $e->getMessage()], 500);
+            error_log($e->getMessage());
+            return new Response(['error' => 'An internal server error occurred.'], 500);
         }
     }
 

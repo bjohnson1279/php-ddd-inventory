@@ -1,0 +1,3 @@
+## 2026-06-19 - Adding explicit labels to structural forms
+**Learning:** Found multiple instances where the application relied on wrapping inputs inside labels or putting labels next to inputs without an explicit `htmlFor` attribute. While some simple wrappers work for screen readers, using explicit `htmlFor` attributes mapped to `id` fields is much safer, guarantees compatibility across all assistive tech, and ensures the clickable area always targets the intended input.
+**Action:** Next time I work on forms, proactively ensure that all labels and inputs have a 1:1 mapping with explicitly linked `htmlFor` and `id` attributes, particularly in nested or dynamically mapped components.

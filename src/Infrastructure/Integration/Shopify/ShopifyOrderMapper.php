@@ -43,15 +43,22 @@ class ShopifyOrderMapper
         $orderId = (string) ($payload['id'] ?? 'SHOPIFY-UNKNOWN');
         $batchItems = [];
 
-        // Preload location IDs to avoid N+1 queries
+        // Preload location IDs and SKUs to avoid N+1 queries
         $locationIds = [];
+        $skus = [];
         foreach ($payload['line_items'] ?? [] as $item) {
             if (!empty($item['location_id'])) {
                 $locationIds[] = (string) $item['location_id'];
             }
+            if (!empty($item['sku'])) {
+                $skus[] = (string) $item['sku'];
+            }
         }
         if (!empty($locationIds)) {
             $this->mappings->preloadLocationIds(array_unique($locationIds));
+        }
+        if (!empty($skus)) {
+            $this->mappings->preloadSkus(array_unique($skus));
         }
 
         foreach ($payload['line_items'] ?? [] as $item) {
@@ -74,6 +81,11 @@ class ShopifyOrderMapper
         }
 
         if (!empty($batchItems)) {
+            // Preload reverse location IDs for the outgoing SyncStockToShopify events
+            $ourLocationIds = array_column($batchItems, 'location');
+            if (!empty($ourLocationIds)) {
+                $this->mappings->preloadReverseLocationIds(array_unique($ourLocationIds));
+            }
             $this->processSaleBatch->execute($batchItems, $orderId);
         }
     }
@@ -89,16 +101,23 @@ class ShopifyOrderMapper
         $orderId = 'SHOPIFY-REFUND-' . ($payload['id'] ?? 'UNKNOWN');
         $batchItems = [];
 
-        // Preload location IDs to avoid N+1 queries
+        // Preload location IDs and SKUs to avoid N+1 queries
         $locationIds = [];
+        $skus = [];
         foreach ($payload['refund_line_items'] ?? [] as $refundItem) {
             $lineItem = $refundItem['line_item'] ?? [];
             if (!empty($lineItem['location_id'])) {
                 $locationIds[] = (string) $lineItem['location_id'];
             }
+            if (!empty($lineItem['sku'])) {
+                $skus[] = (string) $lineItem['sku'];
+            }
         }
         if (!empty($locationIds)) {
             $this->mappings->preloadLocationIds(array_unique($locationIds));
+        }
+        if (!empty($skus)) {
+            $this->mappings->preloadSkus(array_unique($skus));
         }
 
         foreach ($payload['refund_line_items'] ?? [] as $refundItem) {
@@ -122,6 +141,11 @@ class ShopifyOrderMapper
         }
 
         if (!empty($batchItems)) {
+            // Preload reverse location IDs for the outgoing SyncStockToShopify events
+            $ourLocationIds = array_column($batchItems, 'location');
+            if (!empty($ourLocationIds)) {
+                $this->mappings->preloadReverseLocationIds(array_unique($ourLocationIds));
+            }
             $this->processReturnBatch->execute($batchItems, $orderId);
         }
     }

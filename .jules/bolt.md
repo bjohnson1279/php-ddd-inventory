@@ -1,0 +1,3 @@
+## 2026-06-19 - N+1 Query in Event Listener Loop
+**Learning:** Even when event listeners (like `SyncStockToShopify`) act on individual objects, if those events are fired rapidly in a batch loop (like `ProcessSaleBatch`), any database lookup inside the listener effectively creates an N+1 query problem. In this case, `ShopifyMappingRepository` mapped IDs one-by-one.
+**Action:** When a bulk payload is received (e.g. `ShopifyOrderMapper`), extract and bulk-preload the lookup data into an in-memory cache on the repository *before* iterating. The subsequent sequence of event listeners will then hit the O(1) memory cache instead of the database.

@@ -54,6 +54,77 @@ class ShopifyMappingRepository
     }
 
     /**
+     * Preload mappings for an array of SKUs to avoid N+1 queries.
+     *
+     * @param array<string> $skus
+     */
+    public function preloadSkus(array $skus): void
+    {
+        $missingSkus = [];
+        foreach ($skus as $sku) {
+            if (!array_key_exists($sku, $this->skuCache)) {
+                $missingSkus[] = $sku;
+            }
+        }
+
+        if (empty($missingSkus)) {
+            return;
+        }
+
+        $rows = DB::table('shopify_sku_mappings')
+            ->whereIn('sku', $missingSkus)
+            ->get(['sku', 'shopify_inventory_item_id']);
+
+        foreach ($rows as $row) {
+            $this->skuCache[$row->sku] = $row->shopify_inventory_item_id;
+        }
+
+        // Cache negative lookups
+        foreach ($missingSkus as $sku) {
+            if (!array_key_exists($sku, $this->skuCache)) {
+                $this->skuCache[$sku] = null;
+            }
+        }
+    }
+
+    /**
+     * Preload reverse mappings for an array of our Location IDs to avoid N+1 queries.
+     *
+     * @param array<string> $ourLocationIds
+     */
+    public function preloadReverseLocationIds(array $ourLocationIds): void
+    {
+        $missingIds = [];
+        foreach ($ourLocationIds as $id) {
+            $cacheKey = 'reverse_' . $id;
+            if (!array_key_exists($cacheKey, $this->locationCache)) {
+                $missingIds[] = $id;
+            }
+        }
+
+        if (empty($missingIds)) {
+            return;
+        }
+
+        $rows = DB::table('shopify_location_mappings')
+            ->whereIn('our_location_id', $missingIds)
+            ->get(['shopify_location_id', 'our_location_id']);
+
+        foreach ($rows as $row) {
+            $cacheKey = 'reverse_' . $row->our_location_id;
+            $this->locationCache[$cacheKey] = $row->shopify_location_id;
+        }
+
+        // Cache negative lookups
+        foreach ($missingIds as $id) {
+            $cacheKey = 'reverse_' . $id;
+            if (!array_key_exists($cacheKey, $this->locationCache)) {
+                $this->locationCache[$cacheKey] = null;
+            }
+        }
+    }
+
+    /**
      * Resolve a Shopify location_id to our internal LocationId string.
      * Returns null if no mapping is registered.
      */

@@ -51,6 +51,10 @@ class CreateCostLayerListener
 
     public function handleStockReceived(StockReceived $event): void
     {
+        if (!empty($event->skipCostLayerCreation)) {
+            return;
+        }
+
         $tenantId = $this->resolveTenantId();
         $sku = $event->getSku()->getValue();
         

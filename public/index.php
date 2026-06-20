@@ -31,19 +31,45 @@ $dotenv->safeLoad();
 
 // ── Eloquent (Capsule) ────────────────────────────────────────────────────────
 $capsule = new Capsule;
-$capsule->addConnection([
-    'driver'    => getenv('DB_CONNECTION') ?: 'pgsql',
-    'host'      => getenv('DB_HOST')       ?: 'db',
-    'database'  => getenv('DB_DATABASE')   ?: 'ddd_inventory',
-    'username'  => getenv('DB_USERNAME')   ?: 'ddd_user',
-    'password'  => getenv('DB_PASSWORD')   ?: 'secret',
-    'port'      => getenv('DB_PORT')       ?: 5432,
-    'charset'   => 'utf8',
-    'collation' => 'utf8_unicode_ci',
-    'prefix'    => '',
-]);
+$driver = getenv('DB_CONNECTION') ?: 'pgsql';
+if ($driver === 'sqlite') {
+    $capsule->addConnection([
+        'driver'   => 'sqlite',
+        'database' => getenv('DB_DATABASE') ?: ':memory:',
+        'prefix'   => '',
+    ]);
+} else {
+    $capsule->addConnection([
+        'driver'    => $driver,
+        'host'      => getenv('DB_HOST')       ?: 'db',
+        'database'  => getenv('DB_DATABASE')   ?: 'ddd_inventory',
+        'username'  => getenv('DB_USERNAME')   ?: 'ddd_user',
+        'password'  => getenv('DB_PASSWORD')   ?: 'secret',
+        'port'      => getenv('DB_PORT')       ?: 5432,
+        'charset'   => 'utf8',
+        'collation' => 'utf8_unicode_ci',
+        'prefix'    => '',
+    ]);
+}
 $capsule->setAsGlobal();
 $capsule->bootEloquent();
+
+if ($driver === 'sqlite') {
+    require_once __DIR__ . '/../src/Infrastructure/Persistence/sqlite_setup.php';
+    $conn = $capsule->getConnection();
+    \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($conn);
+    $conn->table('locations')->insertOrIgnore([
+        ['id' => 'LOC-INT', 'name' => 'Integration Location', 'type' => 'TEST']
+    ]);
+    $conn->table('tenants')->insertOrIgnore([
+        ['id' => 'test-tenant', 'name' => 'Test Tenant']
+    ]);
+    $conn->table('roles')->insertOrIgnore([
+        ['id' => 'admin',   'name' => 'Administrator'],
+        ['id' => 'manager', 'name' => 'Manager'],
+        ['id' => 'staff',   'name' => 'Staff']
+    ]);
+}
 
 // ── Event listeners ──────────────────────────────────────────────────────────
 use InventoryApp\Infrastructure\ServiceContainer;

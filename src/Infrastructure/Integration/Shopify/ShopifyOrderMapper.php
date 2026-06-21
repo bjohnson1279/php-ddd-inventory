@@ -74,6 +74,16 @@ class ShopifyOrderMapper
         }
 
         if (!empty($batchItems)) {
+            $skusToPreload = [];
+            $locationsToPreload = [];
+            foreach ($batchItems as $batchItem) {
+                $skusToPreload[] = $batchItem['sku'];
+                $locationsToPreload[] = $batchItem['location'];
+            }
+
+            $this->mappings->preloadShopifyInventoryItemIds(array_unique($skusToPreload));
+            $this->mappings->preloadReverseLocationIds(array_unique($locationsToPreload));
+
             $this->processSaleBatch->execute($batchItems, $orderId);
         }
     }
@@ -122,6 +132,16 @@ class ShopifyOrderMapper
         }
 
         if (!empty($batchItems)) {
+            $skusToPreload = [];
+            $locationsToPreload = [];
+            foreach ($batchItems as $batchItem) {
+                $skusToPreload[] = $batchItem['sku'];
+                $locationsToPreload[] = $batchItem['location'];
+            }
+
+            $this->mappings->preloadShopifyInventoryItemIds(array_unique($skusToPreload));
+            $this->mappings->preloadReverseLocationIds(array_unique($locationsToPreload));
+
             $this->processReturnBatch->execute($batchItems, $orderId);
         }
     }

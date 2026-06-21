@@ -22,7 +22,7 @@ final class AllocationsE2ETest extends TestCase
     {
         // Start built-in PHP development server in the background on port 8087
         $output = [];
-        $command = "php -S 127.0.0.1:8087 public/index.php > tests/Integration/Http/server_allocations.log 2>&1 & echo $!";
+        $command = "DB_CONNECTION=sqlite DB_DATABASE=storage/data/test.sqlite php -S 127.0.0.1:8087 public/index.php > tests/Integration/Http/server_allocations.log 2>&1 & echo $!";
         
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
@@ -119,6 +119,12 @@ final class AllocationsE2ETest extends TestCase
 
         // 1. Setup product catalog directly in DB
         $productId = uuidv4();
+        // make sure tenant exists for Postgres constraint
+        Capsule::table('tenants')->insertOrIgnore([
+            'id' => $this->tenantId,
+            'name' => 'Test Org'
+        ]);
+
         Capsule::table('products')->insert([
             'id'                => $productId,
             'tenant_id'         => $this->tenantId,
@@ -126,6 +132,7 @@ final class AllocationsE2ETest extends TestCase
             'name'              => 'Test Allocation Product',
             'department'        => 'electronics',
             'reorder_threshold' => 5,
+            'version_id'        => 1,
             'created_at'        => date('Y-m-d H:i:s'),
             'updated_at'        => date('Y-m-d H:i:s')
         ]);
@@ -196,6 +203,12 @@ final class AllocationsE2ETest extends TestCase
 
         // 1. Setup product catalog directly in DB
         $productId = uuidv4();
+        // make sure tenant exists for Postgres constraint
+        Capsule::table('tenants')->insertOrIgnore([
+            'id' => $this->tenantId,
+            'name' => 'Test Org'
+        ]);
+
         Capsule::table('products')->insert([
             'id'                => $productId,
             'tenant_id'         => $this->tenantId,
@@ -203,6 +216,7 @@ final class AllocationsE2ETest extends TestCase
             'name'              => 'Test Transit Product',
             'department'        => 'electronics',
             'reorder_threshold' => 5,
+            'version_id'        => 1,
             'created_at'        => date('Y-m-d H:i:s'),
             'updated_at'        => date('Y-m-d H:i:s')
         ]);

@@ -118,20 +118,25 @@ class EloquentProductRepository implements ProductRepositoryInterface
         if (!empty($locationData)) {
             if ((new ProductLocationModel)->getConnection()->getDriverName() === 'sqlite') {
                 foreach ($locationData as $loc) {
-                    ProductLocationModel::updateOrCreate(
-                        [
-                            'product_id' => $loc['product_id'],
-                            'location_id' => $loc['location_id'],
-                        ],
-                        [
-                            'stock_quantity'      => $loc['stock_quantity'],
-                            'open_box_quantity'   => $loc['open_box_quantity'],
-                            'damaged_quantity'    => $loc['damaged_quantity'],
-                            'allocated_quantity'  => $loc['allocated_quantity'],
-                            'in_transit_quantity' => $loc['in_transit_quantity'],
-                            'updated_at'          => $loc['updated_at'],
-                        ]
-                    );
+                    $exists = DB::table('product_locations')
+                        ->where('product_id', $loc['product_id'])
+                        ->where('location_id', $loc['location_id'])
+                        ->exists();
+                    if ($exists) {
+                        DB::table('product_locations')
+                            ->where('product_id', $loc['product_id'])
+                            ->where('location_id', $loc['location_id'])
+                            ->update([
+                                'stock_quantity'      => $loc['stock_quantity'],
+                                'open_box_quantity'   => $loc['open_box_quantity'],
+                                'damaged_quantity'    => $loc['damaged_quantity'],
+                                'allocated_quantity'  => $loc['allocated_quantity'],
+                                'in_transit_quantity' => $loc['in_transit_quantity'],
+                                'updated_at'          => $loc['updated_at'],
+                            ]);
+                    } else {
+                        DB::table('product_locations')->insert($loc);
+                    }
                 }
             } else {
                 ProductLocationModel::upsert(
@@ -226,24 +231,29 @@ class EloquentProductRepository implements ProductRepositoryInterface
             if (!empty($locationData)) {
                 // SQLite in memory test does not have a composite primary key or unique constraint set
                 // up for product_id + location_id, causing upsert to fail.
-                // We'll fallback to updateOrCreate for locations, but wrapped in the transaction it's still fast.
+                // We'll fallback to manual update/insert for locations, but wrapped in the transaction it's still fast.
                 // Or try checking connection driver. For production postgres it works if unique constraint exists.
                 if (\Illuminate\Database\Capsule\Manager::connection()->getDriverName() === 'sqlite') {
                     foreach ($locationData as $loc) {
-                        ProductLocationModel::updateOrCreate(
-                            [
-                                'product_id' => $loc['product_id'],
-                                'location_id' => $loc['location_id'],
-                            ],
-                            [
-                                'stock_quantity'      => $loc['stock_quantity'],
-                                'open_box_quantity'   => $loc['open_box_quantity'],
-                                'damaged_quantity'    => $loc['damaged_quantity'],
-                                'allocated_quantity'  => $loc['allocated_quantity'],
-                                'in_transit_quantity' => $loc['in_transit_quantity'],
-                                'updated_at'          => $loc['updated_at'],
-                            ]
-                        );
+                        $exists = \Illuminate\Database\Capsule\Manager::table('product_locations')
+                            ->where('product_id', $loc['product_id'])
+                            ->where('location_id', $loc['location_id'])
+                            ->exists();
+                        if ($exists) {
+                            \Illuminate\Database\Capsule\Manager::table('product_locations')
+                                ->where('product_id', $loc['product_id'])
+                                ->where('location_id', $loc['location_id'])
+                                ->update([
+                                    'stock_quantity'      => $loc['stock_quantity'],
+                                    'open_box_quantity'   => $loc['open_box_quantity'],
+                                    'damaged_quantity'    => $loc['damaged_quantity'],
+                                    'allocated_quantity'  => $loc['allocated_quantity'],
+                                    'in_transit_quantity' => $loc['in_transit_quantity'],
+                                    'updated_at'          => $loc['updated_at'],
+                                ]);
+                        } else {
+                            \Illuminate\Database\Capsule\Manager::table('product_locations')->insert($loc);
+                        }
                     }
                 } else {
                     ProductLocationModel::upsert(

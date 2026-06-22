@@ -15,5 +15,6 @@ enum ReasonCode: string
     case Reconciliation  = 'reconciliation';
     case KitAssembly     = 'kit_assembly';
     case KitDisassembly  = 'kit_disassembly';
+    case Dispatch        = 'dispatch';
 }
 

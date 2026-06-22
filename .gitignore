@@ -8,4 +8,4 @@
 /node_modules/
 /db_data/
 /.jules/
-/.Jules/
+/tests/**/*.log

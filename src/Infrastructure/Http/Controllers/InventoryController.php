@@ -33,7 +33,21 @@ class InventoryController
             $locationId = new LocationId($validated['location_id']);
             $quantity = new Quantity($validated['quantity']);
 
-            $useCase->execute($sku, $locationId, $quantity);
+            $lotNumber = $validated['lot_number'] ?? $validated['lotNumber'] ?? null;
+            $expirationDateStr = $validated['expiration_date'] ?? $validated['expirationDate'] ?? null;
+            $expirationDate = $expirationDateStr ? new \DateTimeImmutable($expirationDateStr) : null;
+            $unitCostCents = isset($validated['unit_cost_cents']) ? (int)$validated['unit_cost_cents'] : (isset($validated['unitCostCents']) ? (int)$validated['unitCostCents'] : null);
+
+            $useCase->execute(
+                $sku,
+                $locationId,
+                $quantity,
+                $validated['reference'] ?? null,
+                $lotNumber,
+                $expirationDate,
+                $unitCostCents,
+                function_exists('tenantId') ? tenantId() : 'system'
+            );
 
             return new Response(['message' => 'Stock received successfully'], 200);
         } catch (Exception $e) {
@@ -55,7 +69,16 @@ class InventoryController
             $locationId = new LocationId($validated['location_id']);
             $quantity = new Quantity($validated['quantity']);
 
-            $useCase->execute($sku, $locationId, $quantity);
+            $lotNumber = $validated['lot_number'] ?? $validated['lotNumber'] ?? null;
+
+            $useCase->execute(
+                $sku,
+                $locationId,
+                $quantity,
+                $validated['reference'] ?? null,
+                $lotNumber,
+                function_exists('tenantId') ? tenantId() : 'system'
+            );
 
             return new Response(['message' => 'Stock dispatched successfully'], 200);
         } catch (Exception $e) {
@@ -217,6 +240,40 @@ class InventoryController
             $useCase->execute($sku, $quantity, $locationId);
 
             return new Response(['message' => 'In-transit stock received successfully'], 200);
+        } catch (Exception $e) {
+            $type = (new \ReflectionClass($e))->getShortName();
+            return new Response(['error' => $e->getMessage(), 'type' => $type], 400);
+        }
+    }
+
+    public function suggestFefoPick(RequestInterface $request, \InventoryApp\Domain\Inventory\Services\FEFOPickingSuggester $suggester)
+    {
+        try {
+            $sku = $request->query('sku');
+            $quantity = (int)$request->query('quantity', 0);
+
+            if (empty($sku)) {
+                throw new Exception("SKU is required.");
+            }
+            if ($quantity <= 0) {
+                throw new Exception("Quantity must be greater than 0.");
+            }
+
+            $suggestions = $suggester->suggestFefoPicking($sku, $quantity);
+
+            return new Response($suggestions, 200);
+        } catch (Exception $e) {
+            $type = (new \ReflectionClass($e))->getShortName();
+            return new Response(['error' => $e->getMessage(), 'type' => $type], 400);
+        }
+    }
+
+    public function traceRecall(RequestInterface $request, string $lotNumber, \InventoryApp\Domain\Inventory\Services\ProductRecallService $recallService)
+    {
+        try {
+            $dispatches = $recallService->traceProductRecall($lotNumber);
+
+            return new Response($dispatches, 200);
         } catch (Exception $e) {
             $type = (new \ReflectionClass($e))->getShortName();
             return new Response(['error' => $e->getMessage(), 'type' => $type], 400);

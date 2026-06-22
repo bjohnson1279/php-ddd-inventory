@@ -19,7 +19,9 @@ class CostLayerModel extends Model
         'remaining_quantity',
         'unit_cost_cents',
         'purchase_order_id',
-        'received_at'
+        'received_at',
+        'lot_number',
+        'expiration_date'
     ];
 
     protected $casts = [

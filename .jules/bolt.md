@@ -1,0 +1,3 @@
+## 2026-06-21 - N+1 Queries During Bulk Domain Event Emittance
+**Learning:** In PHP, event listeners inherently process one event at a time. If a batch operation emits multiple domain events (e.g., `SaleProcessed`), listeners attached to that event (like `SyncStockToShopify`) will trigger sequentially, potentially executing database lookup queries for each iteration, causing an N+1 performance bottleneck.
+**Action:** When a UseCase (like `ProcessSaleBatch` or `ShopifyOrderMapper`) triggers multiple domain events that will cause a downstream listener to perform lookups, inject the repository into the UseCase or Mapper and proactively bulk-preload the required data into the repository's in-memory static/instance cache before executing the batch.

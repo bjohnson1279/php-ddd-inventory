@@ -54,6 +54,40 @@ class ShopifyMappingRepository
     }
 
     /**
+     * Preload mappings for an array of SKUs to avoid N+1 queries.
+     *
+     * @param array<string> $skus
+     */
+    public function preloadSkuIds(array $skus): void
+    {
+        $missingSkus = [];
+        foreach ($skus as $sku) {
+            if (!array_key_exists($sku, $this->skuCache)) {
+                $missingSkus[] = $sku;
+            }
+        }
+
+        if (empty($missingSkus)) {
+            return;
+        }
+
+        $rows = DB::table('shopify_sku_mappings')
+            ->whereIn('sku', $missingSkus)
+            ->get(['sku', 'shopify_inventory_item_id']);
+
+        foreach ($rows as $row) {
+            $this->skuCache[$row->sku] = $row->shopify_inventory_item_id;
+        }
+
+        // Cache negative lookups
+        foreach ($missingSkus as $sku) {
+            if (!array_key_exists($sku, $this->skuCache)) {
+                $this->skuCache[$sku] = null;
+            }
+        }
+    }
+
+    /**
      * Resolve a Shopify location_id to our internal LocationId string.
      * Returns null if no mapping is registered.
      */

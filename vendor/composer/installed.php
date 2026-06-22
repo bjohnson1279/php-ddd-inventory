@@ -3,7 +3,7 @@
         'name' => 'ddd/inventory',
         'pretty_version' => 'dev-master',
         'version' => 'dev-master',
-        'reference' => '97829ce5e4351ad7d171dbee744a7e2b723e50ee',
+        'reference' => 'a01035ca135c11164954a9eac33a84eff887c19c',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -31,7 +31,7 @@
         'ddd/inventory' => array(
             'pretty_version' => 'dev-master',
             'version' => 'dev-master',
-            'reference' => '97829ce5e4351ad7d171dbee744a7e2b723e50ee',
+            'reference' => 'a01035ca135c11164954a9eac33a84eff887c19c',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
@@ -293,9 +293,9 @@
             'dev_requirement' => false,
         ),
         'ramsey/uuid' => array(
-            'pretty_version' => '4.7.6',
-            'version' => '4.7.6.0',
-            'reference' => '91039bc1faa45ba123c4328958e620d382ec7088',
+            'pretty_version' => '4.9.3',
+            'version' => '4.9.3.0',
+            'reference' => '1df15849d00943a67d677dc9cfd80795f038c9f8',
             'type' => 'library',
             'install_path' => __DIR__ . '/../ramsey/uuid',
             'aliases' => array(),
@@ -304,7 +304,7 @@
         'rhumsaa/uuid' => array(
             'dev_requirement' => false,
             'replaced' => array(
-                0 => '4.7.6',
+                0 => '4.9.3',
             ),
         ),
         'sebastian/cli-parser' => array(

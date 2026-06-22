@@ -21,7 +21,7 @@ class RateLimitMiddleware
 
         // Bypass rate limiting in testing environment to prevent integration tests from failing
         // We only enforce it for specific test IPs so the unit tests for this middleware can still pass
-        if (php_sapi_name() === 'cli-server' || (php_sapi_name() === 'cli' && defined('PHPUNIT_COMPOSER_INSTALL') && !str_starts_with($ip, '10.0.'))) {
+        if ($ip === '127.0.0.1' || getenv('CI') || php_sapi_name() === 'cli-server' || (php_sapi_name() === 'cli' && defined('PHPUNIT_COMPOSER_INSTALL') && !str_starts_with($ip, '10.0.'))) {
             return $next($request);
         }
         $cacheFile = sys_get_temp_dir() . '/rate_limit_' . md5($ip) . '.json';

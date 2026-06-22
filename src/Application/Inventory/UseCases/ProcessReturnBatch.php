@@ -68,10 +68,15 @@ class ProcessReturnBatch
         if (!empty($modifiedProducts)) {
             $this->productRepository->saveAll(array_values($modifiedProducts));
 
-            foreach ($modifiedProducts as $product) {
-                foreach ($product->releaseEvents() as $event) {
-                    $this->events->dispatch($event);
+            \InventoryApp\Application\Inventory\Listeners\SyncStockToShopify::beginBatch(array_values($modifiedProducts));
+            try {
+                foreach ($modifiedProducts as $product) {
+                    foreach ($product->releaseEvents() as $event) {
+                        $this->events->dispatch($event);
+                    }
                 }
+            } finally {
+                \InventoryApp\Application\Inventory\Listeners\SyncStockToShopify::endBatch();
             }
         }
     }

@@ -50,6 +50,9 @@ final class ApiEndpointsTest extends TestCase
     protected function setUp(): void
     {
         // Generate unique tenant details for each test run to ensure isolation
+        DB::table('users')->delete();
+        DB::table('user_roles')->delete();
+        DB::table('tenants')->delete();
         $suffix = bin2hex(random_bytes(4));
         $this->tenantId = 'tenant-' . $suffix;
         $this->email = 'admin-' . $suffix . '@example.com';
@@ -109,26 +112,54 @@ final class ApiEndpointsTest extends TestCase
 
     public function testBarcodeScanningSSE(): void
     {
+        $suffix = strtoupper(bin2hex(random_bytes(4)));
         $variantId = uuidv4();
-        $barcodeValue = 'SCAN' . strval(rand(1000000000, 9999999999));
+        $sku = 'SKU-SCAN-' . $suffix;
+        $barcodeValue = '979' . strval(rand(1000000000, 9999999999));
 
         // 1. Setup variant product in DB
+        \Illuminate\Database\Capsule\Manager::table('locations')->insertOrIgnore([
+            'id' => 'LOC-SCAN-1',
+            'name' => 'Scan Location 1',
+            'type' => 'TEST',
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+
         \Illuminate\Database\Capsule\Manager::table('catalog_products')->insert([
             'id' => $variantId,
             'name' => 'Scan Test Product',
             'description' => 'Test',
             'department' => 'GEN',
-            'tenant_id' => $this->tenantId,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
-        \Illuminate\Database\Capsule\Manager::table('product_variants')->insert([
+        \Illuminate\Database\Capsule\Manager::table('catalog_variants')->insert([
             'id' => $variantId,
             'product_id' => $variantId,
-            'sku' => 'SKU-SCAN-1',
+            'sku' => $sku,
             'attributes' => '[]',
             'price' => 10.0,
             'created_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        \Illuminate\Database\Capsule\Manager::table('products')->insert([
+            'id'                => $variantId,
+            'tenant_id'         => $this->tenantId,
+            'sku'               => $sku,
+            'name'              => 'Scan Test Product',
+            'department'        => 'GEN',
+            'reorder_threshold' => 10,
+            'created_at'        => date('Y-m-d H:i:s'),
+            'updated_at'        => date('Y-m-d H:i:s')
+        ]);
+
+        \Illuminate\Database\Capsule\Manager::table('product_locations')->insert([
+            'product_id'        => $variantId,
+            'location_id'       => 'LOC-SCAN-1',
+            'stock_quantity'    => 0,
+            'open_box_quantity' => 0,
+            'damaged_quantity'  => 0,
+            'updated_at'        => date('Y-m-d H:i:s')
         ]);
 
         // 2. Assign Barcode
@@ -153,20 +184,20 @@ final class ApiEndpointsTest extends TestCase
 
         $this->assertEquals(200, $scanRes['status'], json_encode($scanRes));
         $this->assertEquals('Scan processed.', $scanRes['body']['message']);
-        $this->assertEquals('SKU-SCAN-1', $scanRes['body']['sku']);
+        $this->assertEquals($sku, $scanRes['body']['sku']);
 
         // 4. Query notifications stream mock (GET /api/notifications)
         $notifRes = $this->request('GET', '/api/notifications', [], $this->token);
         $this->assertEquals(200, $notifRes['status'], json_encode($notifRes));
         
         $found = false;
-        foreach ($notifRes['body'] as $n) {
+        foreach ($notifRes['body']['notifications'] as $n) {
             if ($n['type'] === 'barcode_scanned') {
                 $payload = json_decode($n['message'], true);
                 if ($payload['scanValue'] === $barcodeValue) {
                     $found = true;
                     $this->assertEquals('receiving', $payload['context']);
-                    $this->assertEquals('SKU-SCAN-1', $payload['sku']);
+                    $this->assertEquals($sku, $payload['sku']);
                     break;
                 }
             }

@@ -17,4 +17,9 @@ interface LedgerRepositoryInterface
      * Returns true if any ledger entries exist for this variant at this location.
      */
     public function hasAnyEntries(string $variantId, string $locationId): bool;
+
+    /**
+     * @return LedgerEntry[]
+     */
+    public function findRecallEntries(string $lotNumber): array;
 }

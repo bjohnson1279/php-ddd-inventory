@@ -51,6 +51,9 @@ final class ReorderPolicyE2ETest extends TestCase
         Capsule::table('purchase_orders')->delete();
         Capsule::table('purchase_order_items')->delete();
         Capsule::table('products')->delete();
+        Capsule::table('users')->delete();
+        Capsule::table('user_roles')->delete();
+        Capsule::table('tenants')->delete();
         Capsule::table('product_locations')->delete();
         Capsule::table('inventory_transactions')->delete();
 

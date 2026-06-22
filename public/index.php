@@ -31,19 +31,38 @@ $dotenv->safeLoad();
 
 // ── Eloquent (Capsule) ────────────────────────────────────────────────────────
 $capsule = new Capsule;
-$capsule->addConnection([
-    'driver'    => getenv('DB_CONNECTION') ?: 'pgsql',
-    'host'      => getenv('DB_HOST')       ?: 'db',
-    'database'  => getenv('DB_DATABASE')   ?: 'ddd_inventory',
-    'username'  => getenv('DB_USERNAME')   ?: 'ddd_user',
-    'password'  => getenv('DB_PASSWORD')   ?: 'secret',
-    'port'      => getenv('DB_PORT')       ?: 5432,
-    'charset'   => 'utf8',
-    'collation' => 'utf8_unicode_ci',
-    'prefix'    => '',
-]);
+$driver = getenv('DB_CONNECTION') ?: 'pgsql';
+
+if ($driver === 'sqlite') {
+    $dbPath = getenv('DB_DATABASE') ?: 'storage/data/test.sqlite';
+    if ($dbPath !== ':memory:' && !str_starts_with($dbPath, '/') && !str_contains($dbPath, ':')) {
+        $dbPath = __DIR__ . '/../' . $dbPath;
+    }
+    $capsule->addConnection([
+        'driver'   => 'sqlite',
+        'database' => $dbPath,
+        'prefix'   => '',
+    ]);
+} else {
+    $capsule->addConnection([
+        'driver'    => $driver,
+        'host'      => getenv('DB_HOST')       ?: 'db',
+        'database'  => getenv('DB_DATABASE')   ?: 'ddd_inventory',
+        'username'  => getenv('DB_USERNAME')   ?: 'ddd_user',
+        'password'  => getenv('DB_PASSWORD')   ?: 'secret',
+        'port'      => getenv('DB_PORT')       ?: 5432,
+        'charset'   => 'utf8',
+        'collation' => 'utf8_unicode_ci',
+        'prefix'    => '',
+    ]);
+}
 $capsule->setAsGlobal();
 $capsule->bootEloquent();
+
+if ($driver === 'sqlite') {
+    require_once __DIR__ . '/../src/Infrastructure/Persistence/sqlite_setup.php';
+    \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
+}
 
 // ── Event listeners ──────────────────────────────────────────────────────────
 use InventoryApp\Infrastructure\ServiceContainer;
@@ -762,7 +781,13 @@ if ($method === 'POST' && $uri === '/api/inventory/receive') {
         ServiceContainer::productRepo(tenantId()),
         ServiceContainer::warehouseLocationRepo()
     );
-    $useCase  = new ReceiveStock(ServiceContainer::productRepo(tenantId()), $dispatcher, $capacityService);
+    $useCase  = new ReceiveStock(
+        ServiceContainer::productRepo(tenantId()),
+        $dispatcher,
+        $capacityService,
+        ServiceContainer::costLayerRepo(tenantId()),
+        ServiceContainer::ledgerRepo(tenantId())
+    );
     $response = (new InventoryController())->receive($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
@@ -772,8 +797,41 @@ if ($method === 'POST' && $uri === '/api/inventory/receive') {
 // ── Route: POST /api/inventory/dispatch ──────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/inventory/dispatch') {
     requireAuth();
-    $useCase  = new DispatchStock(ServiceContainer::productRepo(tenantId()), $dispatcher, ServiceContainer::reorderPolicyService());
+    $useCase  = new DispatchStock(
+        ServiceContainer::productRepo(tenantId()),
+        $dispatcher,
+        ServiceContainer::reorderPolicyService(),
+        ServiceContainer::ledgerRepo(tenantId()),
+        ServiceContainer::costLayerRepo(tenantId())
+    );
     $response = (new InventoryController())->dispatch($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: GET /api/inventory/fefo-pick ──────────────────────────────────────
+if ($method === 'GET' && $uri === '/api/inventory/fefo-pick') {
+    requireAuth();
+    $suggester = new \InventoryApp\Domain\Inventory\Services\FEFOPickingSuggester(
+        ServiceContainer::costLayerRepo(tenantId()),
+        ServiceContainer::ledgerRepo(tenantId()),
+        ServiceContainer::productRepo(tenantId())
+    );
+    $response = (new InventoryController())->suggestFefoPick($request, $suggester);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: GET /api/reports/recall/{lotNumber} ──────────────────────────────
+if ($method === 'GET' && preg_match('#^/api/reports/recall/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    $lotNumber = urldecode($m[1]);
+    $recallService = new \InventoryApp\Domain\Inventory\Services\ProductRecallService(
+        ServiceContainer::ledgerRepo(tenantId())
+    );
+    $response = (new InventoryController())->traceRecall($request, $lotNumber, $recallService);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
@@ -792,9 +850,9 @@ if ($method === 'POST' && $uri === '/api/inventory/transfer') {
 // ── Route: GET /api/inventory/{sku}/stock ────────────────────────────────────
 if ($method === 'GET' && preg_match('#^/api/inventory/([^/]+)/stock$#', $uri, $m)) {
     requireAuth();
-    $sku      = urldecode($m[1]);
-    $useCase  = new GetStockLevel(ServiceContainer::productRepo(tenantId()));
-    $response = (new InventoryController())->stockLevel($request, $sku, $useCase);
+    $sku          = urldecode($m[1]);
+    $queryService = ServiceContainer::getInstance()->make(\InventoryApp\Application\Inventory\Queries\StockQueryServiceInterface::class, ['tenantId' => tenantId()]);
+    $response     = (new InventoryController())->stockLevel($request, $sku, $queryService);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
@@ -803,9 +861,9 @@ if ($method === 'GET' && preg_match('#^/api/inventory/([^/]+)/stock$#', $uri, $m
 // ── Route: GET /api/inventory/{sku} ──────────────────────────────────────────
 if ($method === 'GET' && preg_match('#^/api/inventory/([^/]+)$#', $uri, $m)) {
     requireAuth();
-    $sku      = urldecode($m[1]);
-    $useCase  = new GetStockLevel(ServiceContainer::productRepo(tenantId()));
-    $response = (new InventoryController())->stockLevel($request, $sku, $useCase);
+    $sku          = urldecode($m[1]);
+    $queryService = ServiceContainer::getInstance()->make(\InventoryApp\Application\Inventory\Queries\StockQueryServiceInterface::class, ['tenantId' => tenantId()]);
+    $response     = (new InventoryController())->stockLevel($request, $sku, $queryService);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;

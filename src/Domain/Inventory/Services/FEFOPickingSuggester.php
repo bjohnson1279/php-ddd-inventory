@@ -5,7 +5,7 @@ namespace InventoryApp\Domain\Inventory\Services;
 use InventoryApp\Domain\Accounting\Repositories\CostLayerRepositoryInterface;
 use InventoryApp\Domain\Inventory\Repositories\LedgerRepositoryInterface;
 use InventoryApp\Domain\Inventory\Repositories\ProductRepositoryInterface;
-use InventoryApp\Domain\Inventory\ValueObjects\Sku;
+use InventoryApp\Domain\Inventory\ValueObjects\SKU;
 use Exception;
 
 class FEFOPickingSuggester

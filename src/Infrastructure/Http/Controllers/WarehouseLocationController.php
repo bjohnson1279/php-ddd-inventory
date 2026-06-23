@@ -71,10 +71,10 @@ class WarehouseLocationController
                     'maxVolumeCubicMeters' => $location->getMaxVolumeCubicMeters()
                 ]
             ], 200);
-        } catch (\InvalidArgumentException $e) {
+        } catch (\InvalidArgumentException | \ValidationException $e) {
             return new Response(['error' => $e->getMessage()], 400);
         } catch (Exception $e) {
-            error_log('WarehouseLocationController save error: ' . $e->getMessage());
+            error_log('[WarehouseLocationController] ' . $e->getMessage());
             return new Response(['error' => 'An internal server error occurred.'], 500);
         }
     }
@@ -99,7 +99,7 @@ class WarehouseLocationController
 
             return new Response($data, 200);
         } catch (Exception $e) {
-            error_log('WarehouseLocationController list error: ' . $e->getMessage());
+            error_log('[WarehouseLocationController] ' . $e->getMessage());
             return new Response(['error' => 'An internal server error occurred.'], 500);
         }
     }
@@ -109,10 +109,10 @@ class WarehouseLocationController
         try {
             $repo->delete(new LocationId($id));
             return new Response(['message' => 'Warehouse location deleted successfully.'], 200);
-        } catch (\InvalidArgumentException $e) {
+        } catch (\InvalidArgumentException | \ValidationException $e) {
             return new Response(['error' => $e->getMessage()], 400);
         } catch (Exception $e) {
-            error_log('WarehouseLocationController delete error: ' . $e->getMessage());
+            error_log('[WarehouseLocationController] ' . $e->getMessage());
             return new Response(['error' => 'An internal server error occurred.'], 500);
         }
     }
@@ -132,10 +132,10 @@ class WarehouseLocationController
             $suggestions = $suggester->suggestPutaway($sku, $qty);
 
             return new Response($suggestions, 200);
-        } catch (\InvalidArgumentException $e) {
+        } catch (\InvalidArgumentException | \ValidationException $e) {
             return new Response(['error' => $e->getMessage()], 400);
         } catch (Exception $e) {
-            error_log('WarehouseLocationController suggestPutaway error: ' . $e->getMessage());
+            error_log('[WarehouseLocationController] ' . $e->getMessage());
             return new Response(['error' => 'An internal server error occurred.'], 500);
         }
     }
@@ -156,10 +156,10 @@ class WarehouseLocationController
             $optimized = $optimizer->optimizeRoute($items);
 
             return new Response($optimized, 200);
-        } catch (\InvalidArgumentException $e) {
+        } catch (\InvalidArgumentException | \ValidationException $e) {
             return new Response(['error' => $e->getMessage()], 400);
         } catch (Exception $e) {
-            error_log('WarehouseLocationController optimizePickRoute error: ' . $e->getMessage());
+            error_log('[WarehouseLocationController] ' . $e->getMessage());
             return new Response(['error' => 'An internal server error occurred.'], 500);
         }
     }

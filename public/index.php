@@ -399,8 +399,15 @@ if ($method === 'POST' && $uri === '/api/setup') {
     }
     
     try {
+        $existingTenant = Capsule::table('tenants')->where('id', $tenantId)->first();
+        if ($existingTenant) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Forbidden: Tenant already exists.']);
+            exit;
+        }
+
         // 1. Insert tenant
-        Capsule::table('tenants')->insertOrIgnore([
+        Capsule::table('tenants')->insert([
             'id' => $tenantId,
             'name' => $orgName,
             'created_at' => date('Y-m-d H:i:s')

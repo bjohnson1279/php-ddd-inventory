@@ -149,16 +149,16 @@ export default function Serials() {
             <div className="section-title">Register Serial Number</div>
             <form onSubmit={handleRegister}>
               <div className="form-group">
-                <label>Variant ID (UUID)</label>
-                <input value={regVariantId} onChange={e => setRegVariantId(e.target.value)} placeholder="e.g. 550e8400-e29b-41d4-a716-446655440000" required />
+                <label htmlFor="regVariantId">Variant ID (UUID)</label>
+                <input id="regVariantId" value={regVariantId} onChange={e => setRegVariantId(e.target.value)} placeholder="e.g. 550e8400-e29b-41d4-a716-446655440000" required />
               </div>
               <div className="form-group">
-                <label>Serial Number (SN)</label>
-                <input value={regSerial} onChange={e => setRegSerial(e.target.value)} placeholder="e.g. SN-IPHONE15-8823" required />
+                <label htmlFor="regSerial">Serial Number (SN)</label>
+                <input id="regSerial" value={regSerial} onChange={e => setRegSerial(e.target.value)} placeholder="e.g. SN-IPHONE15-8823" required />
               </div>
               <div className="form-group">
-                <label>Initial Location</label>
-                <select value={regLocation} onChange={e => setRegLocation(e.target.value)}>
+                <label htmlFor="regLocation">Initial Location</label>
+                <select id="regLocation" value={regLocation} onChange={e => setRegLocation(e.target.value)}>
                   <option value="LOC-STOREFRONT">Sales Floor</option>
                   <option value="LOC-BACKROOM">Backroom Storage</option>
                 </select>
@@ -245,54 +245,54 @@ export default function Serials() {
                   {actionType === 'receive' && (
                     <>
                       <div className="form-group">
-                        <label>PO Number</label>
-                        <input value={actPoId} onChange={e => setActPoId(e.target.value)} placeholder="PO-1020" required />
+                        <label htmlFor="actPoId">PO Number</label>
+                        <input id="actPoId" value={actPoId} onChange={e => setActPoId(e.target.value)} placeholder="PO-1020" required />
                       </div>
                       <div className="form-group">
-                        <label>Location</label>
-                        <select value={actLocation} onChange={e => setActLocation(e.target.value)}>
+                        <label htmlFor="actLocation">Location</label>
+                        <select id="actLocation" value={actLocation} onChange={e => setActLocation(e.target.value)}>
                           <option value="LOC-STOREFRONT">Sales Floor</option>
                           <option value="LOC-BACKROOM">Backroom Storage</option>
                         </select>
                       </div>
                       <div className="form-group">
-                        <label>Unit Cost (in Cents)</label>
-                        <input type="number" value={actCostCents} onChange={e => setActCostCents(e.target.value)} placeholder="e.g. 2500 for $25.00" required />
+                        <label htmlFor="actCostCents">Unit Cost (in Cents)</label>
+                        <input id="actCostCents" type="number" value={actCostCents} onChange={e => setActCostCents(e.target.value)} placeholder="e.g. 2500 for $25.00" required />
                       </div>
                     </>
                   )}
 
                   {actionType === 'sell' && (
                     <div className="form-group">
-                      <label>Sale ID / Invoice</label>
-                      <input value={actSaleId} onChange={e => setActSaleId(e.target.value)} placeholder="SALE-9912" required />
+                      <label htmlFor="actSaleId">Sale ID / Invoice</label>
+                      <input id="actSaleId" value={actSaleId} onChange={e => setActSaleId(e.target.value)} placeholder="SALE-9912" required />
                     </div>
                   )}
 
                   {actionType === 'return' && (
                     <div className="form-group">
-                      <label>Return Claim ID</label>
-                      <input value={actReturnId} onChange={e => setActReturnId(e.target.value)} placeholder="RET-8812" required />
+                      <label htmlFor="actReturnId">Return Claim ID</label>
+                      <input id="actReturnId" value={actReturnId} onChange={e => setActReturnId(e.target.value)} placeholder="RET-8812" required />
                     </div>
                   )}
 
                   {actionType === 'restock' && (
                     <>
                       <div className="form-group">
-                        <label>Associated Return Claim ID</label>
-                        <input value={actReturnId} onChange={e => setActReturnId(e.target.value)} placeholder="RET-8812" required />
+                        <label htmlFor="actRestockReturnId">Associated Return Claim ID</label>
+                        <input id="actRestockReturnId" value={actReturnId} onChange={e => setActReturnId(e.target.value)} placeholder="RET-8812" required />
                       </div>
                       <div className="form-group">
-                        <label>Re-boarding Value (in Cents)</label>
-                        <input type="number" value={actCostCents} onChange={e => setActCostCents(e.target.value)} placeholder="e.g. 2400 for $24.00" required />
+                        <label htmlFor="actRestockCostCents">Re-boarding Value (in Cents)</label>
+                        <input id="actRestockCostCents" type="number" value={actCostCents} onChange={e => setActCostCents(e.target.value)} placeholder="e.g. 2400 for $24.00" required />
                       </div>
                     </>
                   )}
 
                   {actionType === 'write-off' && (
                     <div className="form-group">
-                      <label>Write-Off Reason Details</label>
-                      <input value={actReason} onChange={e => setActReason(e.target.value)} placeholder="e.g. Damaged in-store inspection" required />
+                      <label htmlFor="actReason">Write-Off Reason Details</label>
+                      <input id="actReason" value={actReason} onChange={e => setActReason(e.target.value)} placeholder="e.g. Damaged in-store inspection" required />
                     </div>
                   )}
 

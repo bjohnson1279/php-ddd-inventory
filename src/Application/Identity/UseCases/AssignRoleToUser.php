@@ -27,6 +27,10 @@ class AssignRoleToUser
             throw new Exception("User not found: {$targetUserId}");
         }
 
+        if ($actor->getTenantId()->getValue() !== $target->getTenantId()->getValue()) {
+            throw new Exception("Unauthorized: you cannot manage users in a different organization.");
+        }
+
         $role = Role::createDefault($roleSlug);
         $target->assignRole($role);
         $this->userRepository->save($target);

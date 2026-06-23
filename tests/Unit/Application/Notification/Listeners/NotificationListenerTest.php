@@ -16,6 +16,7 @@ use DateTimeImmutable;
 
 class NotificationListenerTest extends TestCase
 {
+
     private NotificationService $notificationServiceMock;
     private NotificationListener $listener;
     private string $tenantId = 'tenant-123';
@@ -123,5 +124,39 @@ class NotificationListenerTest extends TestCase
             );
 
         $this->listener->handleOpeningBalancePosted($event);
+    }
+
+    public function testHandleStockReceivedCreatesNotification(): void
+    {
+        $notificationService = $this->createMock(NotificationService::class);
+        $tenantId = 'test-tenant';
+
+        $listener = new NotificationListener($notificationService, $tenantId);
+
+        $sku = new SKU('PROD-123');
+        $locationId = new LocationId('LOC-STORE');
+        $quantity = 50;
+        $reference = 'PO-999';
+        $occurredOn = new DateTimeImmutable();
+
+        $event = new StockReceived(
+            $sku,
+            $locationId,
+            $quantity,
+            $reference,
+            $occurredOn
+        );
+
+        $notificationService->expects($this->once())
+            ->method('createNotification')
+            ->with(
+                $tenantId,
+                'Stock Received',
+                "Received {$quantity} units for SKU '{$sku->getValue()}' at location '{$locationId->getValue()}'.",
+                'success'
+            );
+
+        $listener->handleStockReceived($event);
+
     }
 }

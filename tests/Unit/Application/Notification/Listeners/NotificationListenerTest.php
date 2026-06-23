@@ -5,8 +5,10 @@ namespace Tests\Unit\Application\Notification\Listeners;
 use PHPUnit\Framework\TestCase;
 use InventoryApp\Application\Notification\Listeners\NotificationListener;
 use InventoryApp\Application\Notification\Services\NotificationService;
+use InventoryApp\Domain\Inventory\Events\StockReceived;
 use InventoryApp\Domain\Inventory\Events\LowStockDetected;
 use InventoryApp\Domain\Inventory\ValueObjects\SKU;
+use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
 use DateTimeImmutable;
 
 class NotificationListenerTest extends TestCase
@@ -16,6 +18,37 @@ class NotificationListenerTest extends TestCase
     protected function setUp(): void
     {
         $this->notificationServiceMock = $this->createMock(NotificationService::class);
+    }
+
+    public function testHandleStockReceivedCreatesNotification(): void
+    {
+        $tenantId = 'test-tenant';
+        $listener = new NotificationListener($this->notificationServiceMock, $tenantId);
+
+        $sku = new SKU('PROD-123');
+        $locationId = new LocationId('LOC-STORE');
+        $quantity = 50;
+        $reference = 'PO-999';
+        $occurredOn = new DateTimeImmutable();
+
+        $event = new StockReceived(
+            $sku,
+            $locationId,
+            $quantity,
+            $reference,
+            $occurredOn
+        );
+
+        $this->notificationServiceMock->expects($this->once())
+            ->method('createNotification')
+            ->with(
+                $tenantId,
+                'Stock Received',
+                "Received {$quantity} units for SKU '{$sku->getValue()}' at location '{$locationId->getValue()}'.",
+                'success'
+            );
+
+        $listener->handleStockReceived($event);
     }
 
     public function testHandleLowStockWithConstructorTenantId(): void

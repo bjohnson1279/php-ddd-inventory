@@ -130,15 +130,15 @@ export default function Onboarding() {
             <div className="section-title">New Onboarding Session</div>
             <form onSubmit={handleCreateSession}>
               <div className="form-group">
-                <label>Location</label>
-                <select value={newLocation} onChange={e => setNewLocation(e.target.value)}>
+                <label htmlFor="newLocation">Location</label>
+                <select id="newLocation" value={newLocation} onChange={e => setNewLocation(e.target.value)}>
                   <option value="LOC-STOREFRONT">Sales Floor</option>
                   <option value="LOC-BACKROOM">Backroom Storage</option>
                 </select>
               </div>
               <div className="form-group">
-                <label>As Of Date</label>
-                <input type="date" value={newAsOfDate} onChange={e => setNewAsOfDate(e.target.value)} required />
+                <label htmlFor="newAsOfDate">As Of Date</label>
+                <input id="newAsOfDate" type="date" value={newAsOfDate} onChange={e => setNewAsOfDate(e.target.value)} required />
               </div>
               <button type="submit" className="btn-primary" style={{ width: '100%' }}>Create Onboarding Session</button>
             </form>
@@ -212,17 +212,17 @@ export default function Onboarding() {
                   <div className="section-title">Add Onboarding Item</div>
                   <form onSubmit={handleAddItem}>
                     <div className="form-group">
-                      <label>Variant ID (UUID)</label>
-                      <input value={itemVariantId} onChange={e => setItemVariantId(e.target.value)} placeholder="e.g. 550e8400-e29b-41d4-a716-446655440000" required />
+                      <label htmlFor="itemVariantId">Variant ID (UUID)</label>
+                      <input id="itemVariantId" value={itemVariantId} onChange={e => setItemVariantId(e.target.value)} placeholder="e.g. 550e8400-e29b-41d4-a716-446655440000" required />
                     </div>
                     <div className="grid-2">
                       <div className="form-group">
-                        <label>Opening Quantity</label>
-                        <input type="number" min="0" value={itemQty} onChange={e => setItemQty(e.target.value)} placeholder="e.g. 100" required />
+                        <label htmlFor="itemQty">Opening Quantity</label>
+                        <input id="itemQty" type="number" min="0" value={itemQty} onChange={e => setItemQty(e.target.value)} placeholder="e.g. 100" required />
                       </div>
                       <div className="form-group">
-                        <label>Unit Cost (in Cents)</label>
-                        <input type="number" min="0" value={itemCostCents} onChange={e => setItemCostCents(e.target.value)} placeholder="e.g. 1250 for $12.50" required />
+                        <label htmlFor="itemCostCents">Unit Cost (in Cents)</label>
+                        <input id="itemCostCents" type="number" min="0" value={itemCostCents} onChange={e => setItemCostCents(e.target.value)} placeholder="e.g. 1250 for $12.50" required />
                       </div>
                     </div>
                     <button type="submit" className="btn-primary" style={{ width: '100%' }}>Add Item to Onboarding</button>

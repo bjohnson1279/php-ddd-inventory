@@ -1,0 +1,4 @@
+## 2024-05-18 - Fix Authorization Bypass in Setup Endpoint
+**Vulnerability:** The `/api/setup` endpoint allowed anyone to create an `admin` account in an *existing* tenant's organization because it relied on `insertOrIgnore` for the tenant record but continued executing user creation logic regardless.
+**Learning:** `insertOrIgnore` swallows unique constraint violations silently. If subsequent logic depends on the creation of that specific record to establish boundaries (like creating an initial admin user for a new tenant), using it allows attackers to piggyback onto existing records to escalate privileges or bypass authorization.
+**Prevention:** Always explicitly check for the existence of boundary/container records (like tenants or organizations) before creating initial administrative users. Do not rely on ignored constraint errors to handle existence checks if subsequent logic must only run for newly created boundaries.

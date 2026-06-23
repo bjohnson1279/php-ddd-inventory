@@ -20,36 +20,76 @@ class ShopifyMappingRepository
     private array $skuCache = [];
 
     /**
-     * Preload mappings for an array of Shopify location IDs to avoid N+1 queries.
+     * Preload mappings for a set of SKUs to prevent N+1 queries.
      *
-     * @param array<string> $shopifyLocationIds
+     * @param string[] $skus
      */
-    public function preloadLocationIds(array $shopifyLocationIds): void
+    public function preloadShopifyInventoryItemIds(array $skus): void
     {
-        $missingIds = [];
-        foreach ($shopifyLocationIds as $id) {
-            if (!array_key_exists($id, $this->locationCache)) {
-                $missingIds[] = $id;
-            }
-        }
-
-        if (empty($missingIds)) {
+        if (empty($skus)) {
             return;
         }
 
+        $missing = [];
+        foreach ($skus as $sku) {
+            if ($sku !== '' && !array_key_exists($sku, $this->skuCache)) {
+                $missing[] = $sku;
+            }
+        }
+
+        if (empty($missing)) {
+            return;
+        }
+
+        $missing = array_unique($missing);
+        $rows = DB::table('shopify_sku_mappings')
+            ->whereIn('sku', $missing)
+            ->get(['sku', 'shopify_inventory_item_id']);
+
+        // Mark missing as null initially, so we cache negative lookups too
+        foreach ($missing as $sku) {
+            $this->skuCache[$sku] = null;
+        }
+
+        foreach ($rows as $row) {
+            $this->skuCache[$row->sku] = $row->shopify_inventory_item_id;
+        }
+    }
+
+    /**
+     * Preload mappings for a set of Shopify location_ids to prevent N+1 queries.
+     *
+     * @param string[] $shopifyLocationIds
+     */
+    public function preloadShopifyLocationIds(array $shopifyLocationIds): void
+    {
+        if (empty($shopifyLocationIds)) {
+            return;
+        }
+
+        $missing = [];
+        foreach ($shopifyLocationIds as $id) {
+            if ($id !== '' && !array_key_exists($id, $this->locationCache)) {
+                $missing[] = $id;
+            }
+        }
+
+        if (empty($missing)) {
+            return;
+        }
+
+        $missing = array_unique($missing);
         $rows = DB::table('shopify_location_mappings')
-            ->whereIn('shopify_location_id', $missingIds)
+            ->whereIn('shopify_location_id', $missing)
             ->get(['shopify_location_id', 'our_location_id']);
+
+        // Mark missing as null initially, so we cache negative lookups too
+        foreach ($missing as $id) {
+            $this->locationCache[$id] = null;
+        }
 
         foreach ($rows as $row) {
             $this->locationCache[$row->shopify_location_id] = $row->our_location_id;
-        }
-
-        // Cache negative lookups
-        foreach ($missingIds as $id) {
-            if (!array_key_exists($id, $this->locationCache)) {
-                $this->locationCache[$id] = null;
-            }
         }
     }
 

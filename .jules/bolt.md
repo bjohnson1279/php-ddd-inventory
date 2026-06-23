@@ -13,3 +13,7 @@
 ## 2024-06-22 - Exception handling in static preloads
 **Learning:** Silently catching database exceptions during cache preloading in a queued listener causes permanent data inconsistency by making the worker skip critical logic and mark the job as successful.
 **Action:** When wrapping bulk database queries in `try/catch` for testing environments, ensure the fallback strictly checks for isolated test scenarios (like `sqlite` driver and 'no such table' messages) and re-throws the exception otherwise.
+
+## 2026-06-22 - Prevent N+1 queries during Shopify webhook batch processing
+**Learning:** Translating external webhooks into domains payloads can cause N+1 database queries if mapping repositories are queried in a loop.
+**Action:** When translating line items, implement and invoke preload methods (e.g. `preloadSkuIds`) using `whereIn` queries to populate the repository's in-memory cache before iterating through items.

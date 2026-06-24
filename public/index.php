@@ -433,8 +433,14 @@ if ($method === 'POST' && $uri === '/api/setup') {
         http_response_code(200);
         echo json_encode(['message' => 'Organization and admin account set up successfully.']);
     } catch (\Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -466,8 +472,14 @@ if ($method === 'GET' && $uri === '/api/users') {
         http_response_code(200);
         echo json_encode(['users' => $users]);
     } catch (\Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -503,8 +515,14 @@ if ($method === 'POST' && $uri === '/api/users') {
             'temporary_password' => $temporaryPassword,
         ]);
     } catch (\Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -570,8 +588,14 @@ if ($method === 'POST' && $uri === '/api/returns/rma') {
             'updatedAt' => $rma->getUpdatedAt()->format(DATE_ATOM)
         ]);
     } catch (\Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -595,8 +619,14 @@ if ($method === 'POST' && preg_match('#^/api/returns/rma/([^/]+)/authorize$#', $
         http_response_code(200);
         echo json_encode(['message' => 'RMA authorized successfully']);
     } catch (\Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -634,8 +664,14 @@ if ($method === 'POST' && preg_match('#^/api/returns/rma/([^/]+)/receive$#', $ur
         http_response_code(200);
         echo json_encode(['message' => 'RMA items received successfully']);
     } catch (\Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -678,8 +714,14 @@ if ($method === 'GET' && preg_match('#^/api/returns/rma/([^/]+)$#', $uri, $m)) {
             'updatedAt' => $rma->getUpdatedAt()->format(DATE_ATOM)
         ]);
     } catch (\Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -707,8 +749,14 @@ if ($method === 'GET' && $uri === '/api/returns/quarantine') {
         http_response_code(200);
         echo json_encode($results);
     } catch (\Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -738,8 +786,14 @@ if ($method === 'GET' && preg_match('#^/api/returns/quarantine/([^/]+)$#', $uri,
             'resolvedAt' => $item->getResolvedAt() ? $item->getResolvedAt()->format(DATE_ATOM) : null
         ]);
     } catch (\Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -775,8 +829,14 @@ if ($method === 'POST' && preg_match('#^/api/returns/quarantine/([^/]+)/resolve$
         http_response_code(200);
         echo json_encode(['message' => 'Quarantine item resolved successfully']);
     } catch (\Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -1033,8 +1093,14 @@ if ($method === 'GET' && $uri === '/api/catalog/products') {
         http_response_code(200);
         echo json_encode(['products' => array_values($productsMap)]);
     } catch (\Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -1120,8 +1186,14 @@ if ($method === 'GET' && $uri === '/api/serials') {
         http_response_code(200);
         echo json_encode(['items' => $items]);
     } catch (\Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -1251,8 +1323,14 @@ if ($method === 'GET' && $uri === '/api/onboardings') {
         http_response_code(200);
         echo json_encode(['onboardings' => $onboardings]);
     } catch (\Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -1424,8 +1502,14 @@ if ($method === 'GET' && $uri === '/api/kits') {
         http_response_code(200);
         echo json_encode(['kits' => array_values($kitsMap)]);
     } catch (\Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -1620,9 +1704,15 @@ if ($method === 'POST' && $uri === '/api/inventory/sale') {
         $useCase->execute($sku, $locationId, $quantity, $orderId);
         http_response_code(200);
         echo json_encode(['message' => 'Sale processed successfully']);
-    } catch (Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+    } catch (\Exception $e) {
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -1648,9 +1738,15 @@ if ($method === 'POST' && $uri === '/api/inventory/return') {
         $useCase->execute($sku, $locationId, $quantity, $condition, $orderId);
         http_response_code(200);
         echo json_encode(['message' => 'Return processed successfully']);
-    } catch (Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+    } catch (\Exception $e) {
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -1678,9 +1774,15 @@ if ($method === 'GET' && preg_match('#^/api/inventory/counts/([^/]+)$#', $uri, $
             'status' => $count->getStatus()->getValue(),
             'items'  => $items,
         ]);
-    } catch (Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+    } catch (\Exception $e) {
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -1704,9 +1806,15 @@ if ($method === 'PATCH' && preg_match('#^/api/users/([^/]+)/role$#', $uri, $m)) 
         $useCase->execute($targetUserId, $roleSlug, $actingUserId);
         http_response_code(200);
         echo json_encode(['message' => "Role '{$roleSlug}' assigned successfully"]);
-    } catch (Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+    } catch (\Exception $e) {
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }

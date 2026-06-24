@@ -17,10 +17,11 @@ class CreateInTransitTest extends TestCase
     public function testExecuteCreatesInTransitAndSavesProduct()
     {
         $repositoryMock = $this->createMock(ProductRepositoryInterface::class);
+        $skuObj = new SKU('TSHIRT-L-RED');
 
         $product = Product::create(
             'prod_123',
-            new SKU('TSHIRT-L-RED'),
+            $skuObj,
             'Large Red T-Shirt',
             new Department('APPAREL'),
             new LocationId('LOC-STOREFRONT'),
@@ -29,6 +30,9 @@ class CreateInTransitTest extends TestCase
 
         $repositoryMock->expects($this->once())
             ->method('findBySku')
+            ->with($this->callback(function (SKU $sku) use ($skuObj) {
+                return $sku->getValue() === $skuObj->getValue();
+            }))
             ->willReturn($product);
 
         $repositoryMock->expects($this->once())
@@ -38,21 +42,25 @@ class CreateInTransitTest extends TestCase
             }));
 
         $useCase = new CreateInTransit($repositoryMock);
-        $useCase->execute(new SKU('TSHIRT-L-RED'), new Quantity(5), new LocationId('LOC-STOREFRONT'));
+        $useCase->execute($skuObj, new Quantity(5), new LocationId('LOC-STOREFRONT'));
     }
 
     public function testExecuteThrowsExceptionWhenProductNotFound()
     {
         $repositoryMock = $this->createMock(ProductRepositoryInterface::class);
+        $skuObj = new SKU('TSHIRT-L-RED');
 
         $repositoryMock->expects($this->once())
             ->method('findBySku')
+            ->with($this->callback(function (SKU $sku) use ($skuObj) {
+                return $sku->getValue() === $skuObj->getValue();
+            }))
             ->willReturn(null);
 
         $this->expectException(Exception::class);
-        $this->expectExceptionMessage('Product not found with SKU: TSHIRT-L-RED');
+        $this->expectExceptionMessage('Product not found with SKU: ' . $skuObj->getValue());
 
         $useCase = new CreateInTransit($repositoryMock);
-        $useCase->execute(new SKU('TSHIRT-L-RED'), new Quantity(5), new LocationId('LOC-STOREFRONT'));
+        $useCase->execute($skuObj, new Quantity(5), new LocationId('LOC-STOREFRONT'));
     }
 }

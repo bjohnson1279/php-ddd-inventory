@@ -144,7 +144,7 @@ export default function Kits() {
                 <label htmlFor="kitName">Bundle Name</label>
                 <input id="kitName" value={kitName} onChange={e => setKitName(e.target.value)} placeholder="e.g. Summer Essentials Pack" required />
               </div>
-              <button type="submit" className="btn-primary" style={{ width: '100%', opacity: isCreatingKit ? 0.6 : 1, cursor: isCreatingKit ? 'not-allowed' : 'pointer' }} disabled={isCreatingKit} aria-busy={isCreatingKit}>
+              <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={isCreatingKit} aria-busy={isCreatingKit}>
                 {isCreatingKit ? 'Creating...' : 'Create Kit Bundle'}
               </button>
             </form>
@@ -218,7 +218,7 @@ export default function Kits() {
                     <label htmlFor="compQty">Quantity per Bundle</label>
                     <input id="compQty" type="number" min="1" value={compQty} onChange={e => setCompQty(e.target.value)} placeholder="e.g. 1" required />
                   </div>
-                  <button type="submit" className="btn-primary" style={{ width: '100%', opacity: isAddingComponent ? 0.6 : 1, cursor: isAddingComponent ? 'not-allowed' : 'pointer' }} disabled={isAddingComponent} aria-busy={isAddingComponent}>
+                  <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={isAddingComponent} aria-busy={isAddingComponent}>
                     {isAddingComponent ? 'Adding...' : 'Add Component'}
                   </button>
                 </form>
@@ -262,7 +262,7 @@ export default function Kits() {
                     <label htmlFor="sellSaleId">Sale ID / Invoice</label>
                     <input id="sellSaleId" value={sellSaleId} onChange={e => setSellSaleId(e.target.value)} placeholder="e.g. SALE-KIT-BND-10" required />
                   </div>
-                  <button type="submit" className="btn-primary" style={{ width: '100%', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', opacity: isSellingKit ? 0.6 : 1, cursor: isSellingKit ? 'not-allowed' : 'pointer' }} disabled={isSellingKit} aria-busy={isSellingKit}>
+                  <button type="submit" className="btn-primary" style={{ width: '100%', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }} disabled={isSellingKit} aria-busy={isSellingKit}>
                     {isSellingKit ? 'Processing...' : 'Process Bundle Sale'}
                   </button>
                 </form>

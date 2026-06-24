@@ -264,7 +264,7 @@ export default function Catalog() {
                   <option value="ACC">Accessories</option>
                 </select>
               </div>
-              <button type="submit" className="btn-primary" style={{ width: '100%', opacity: isCreatingProd ? 0.6 : 1, cursor: isCreatingProd ? 'not-allowed' : 'pointer' }} disabled={isCreatingProd} aria-busy={isCreatingProd}>
+              <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={isCreatingProd} aria-busy={isCreatingProd}>
                 {isCreatingProd ? 'Creating...' : 'Create Product'}
               </button>
             </form>
@@ -305,7 +305,7 @@ export default function Catalog() {
                   <input id="varSize" value={varSize} onChange={e => setVarSize(e.target.value)} placeholder="e.g. Medium" />
                 </div>
               </div>
-              <button type="submit" className="btn-primary" style={{ width: '100%', opacity: isAddingVar ? 0.6 : 1, cursor: isAddingVar ? 'not-allowed' : 'pointer' }} disabled={isAddingVar} aria-busy={isAddingVar}>
+              <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={isAddingVar} aria-busy={isAddingVar}>
                 {isAddingVar ? 'Adding...' : 'Add Variant'}
               </button>
             </form>
@@ -356,7 +356,7 @@ export default function Catalog() {
                 <input type="checkbox" checked={isPrimary} onChange={e => setIsPrimary(e.target.checked)} style={{ width: 'auto', marginTop: 0 }} id="is_primary" />
                 <label htmlFor="is_primary" style={{ margin: 0, cursor: 'pointer' }}>Make Primary Barcode</label>
               </div>
-              <button type="submit" className="btn-primary" style={{ width: '100%', opacity: isAssigning ? 0.6 : 1, cursor: isAssigning ? 'not-allowed' : 'pointer' }} disabled={isAssigning} aria-busy={isAssigning}>
+              <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={isAssigning} aria-busy={isAssigning}>
                 {isAssigning ? 'Assigning...' : 'Assign Barcode'}
               </button>
             </form>
@@ -375,7 +375,7 @@ export default function Catalog() {
                 <label htmlFor="lookupVal">Scan / Type Code</label>
                 <input id="lookupVal" value={lookupVal} onChange={e => setLookupVal(e.target.value)} placeholder="Scan barcode..." required />
               </div>
-              <button type="submit" className="btn-primary" style={{ opacity: isResolving ? 0.6 : 1, cursor: isResolving ? 'not-allowed' : 'pointer' }} disabled={isResolving} aria-busy={isResolving}>
+              <button type="submit" className="btn-primary" disabled={isResolving} aria-busy={isResolving}>
                 {isResolving ? 'Resolving...' : 'Resolve'}
               </button>
             </form>

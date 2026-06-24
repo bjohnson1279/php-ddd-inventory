@@ -37,6 +37,9 @@ class FulfillAllocationTest extends TestCase
 
         $repositoryMock->expects($this->once())
             ->method('findBySku')
+            ->with($this->callback(function (SKU $s) {
+                return $s->getValue() === 'TSHIRT-L-RED';
+            }))
             ->willReturn($product);
 
         $repositoryMock->expects($this->once())
@@ -67,6 +70,9 @@ class FulfillAllocationTest extends TestCase
 
         $repositoryMock->expects($this->once())
             ->method('findBySku')
+            ->with($this->callback(function (SKU $s) {
+                return $s->getValue() === 'INVALID-SKU';
+            }))
             ->willReturn(null);
 
         $repositoryMock->expects($this->never())
@@ -80,5 +86,44 @@ class FulfillAllocationTest extends TestCase
 
         $useCase = new FulfillAllocation($repositoryMock, $eventsMock);
         $useCase->execute(new SKU('INVALID-SKU'), new Quantity(2), new LocationId('LOC-STOREFRONT'));
+    }
+
+    public function testExecuteThrowsExceptionIfFulfillAllocationFails()
+    {
+        $repositoryMock = $this->createMock(ProductRepositoryInterface::class);
+        $eventsMock = $this->createMock(EventDispatcherInterface::class);
+
+        $product = Product::create(
+            'prod_123',
+            new SKU('TSHIRT-L-RED'),
+            'Large Red T-Shirt',
+            new Department('APPAREL'),
+            new LocationId('LOC-STOREFRONT'),
+            new Quantity(10)
+        );
+        $product->releaseEvents();
+
+        // Allocate only 1
+        $product->allocateStockAt(new LocationId('LOC-STOREFRONT'), new Quantity(1));
+
+        $repositoryMock->expects($this->once())
+            ->method('findBySku')
+            ->with($this->callback(function (SKU $s) {
+                return $s->getValue() === 'TSHIRT-L-RED';
+            }))
+            ->willReturn($product);
+
+        $repositoryMock->expects($this->never())
+            ->method('save');
+
+        $eventsMock->expects($this->never())
+            ->method('dispatch');
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage("Cannot fulfill allocation of 2 because only 1 is allocated.");
+
+        $useCase = new FulfillAllocation($repositoryMock, $eventsMock);
+        // Try to fulfill 2, but only 1 is allocated
+        $useCase->execute(new SKU('TSHIRT-L-RED'), new Quantity(2), new LocationId('LOC-STOREFRONT'));
     }
 }

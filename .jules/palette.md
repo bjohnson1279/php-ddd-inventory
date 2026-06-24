@@ -1,3 +1,10 @@
 ## 2025-02-28 - Missing label-to-input association in React app
 **Learning:** Multiple forms across this React app wrap text in `<label>` tags but fail to explicitly link them to inputs using `htmlFor` and `id` attributes. This breaks screen reader accessibility and reduces click target sizes, making the UI harder to use for users with impaired motor skills.
 **Action:** When creating or auditing new forms in this app, ensure every `<label>` has an `htmlFor` attribute that exactly matches the `id` of its corresponding `<input>` or `<select>`.
+## 2024-06-24 - Focus States and Button Accessibility
+**Learning:** The application lacked clear `focus-visible` outlines for interactive elements, which is a major accessibility issue for keyboard users.
+**Action:** Added `focus-visible` styles to `button` elements to ensure clear keyboard focus indicators. Also ensured buttons with `disabled` state communicate this visually by reducing opacity and changing the cursor to `not-allowed`.
+
+## 2024-06-24 - Cursor Style Cleanup
+**Learning:** Inline styles with conditional `cursor: not-allowed` were being used extensively when disabled styles were better handled centrally in CSS for consistency.
+**Action:** Centralized disabled button styles in `styles.css` using `button:disabled` to improve maintainability and ensure consistent UX across all buttons.

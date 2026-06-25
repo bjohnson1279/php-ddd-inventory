@@ -3,6 +3,7 @@
 namespace Tests\Unit\Application\Returns\UseCases;
 
 use Exception;
+use InvalidArgumentException;
 use InventoryApp\Application\Returns\UseCases\AuthorizeRMA;
 use InventoryApp\Domain\Returns\Aggregates\RMA;
 use InventoryApp\Domain\Returns\Repositories\RMARepositoryInterface;
@@ -28,6 +29,31 @@ class AuthorizeRMATest extends TestCase
         $rmaRepository->expects($this->once())
             ->method('save')
             ->with($rma);
+
+        $useCase = new AuthorizeRMA($rmaRepository);
+        $useCase->execute($rmaId);
+    }
+
+    public function testExecuteThrowsExceptionWhenRmaCannotBeAuthorized(): void
+    {
+        $rmaRepository = $this->createMock(RMARepositoryInterface::class);
+        $rma = $this->createMock(RMA::class);
+        $rmaId = 'rma-789';
+
+        $rmaRepository->expects($this->once())
+            ->method('findById')
+            ->with($rmaId)
+            ->willReturn($rma);
+
+        $rma->expects($this->once())
+            ->method('authorize')
+            ->willThrowException(new InvalidArgumentException("RMA must be in Requested status to be authorized."));
+
+        $rmaRepository->expects($this->never())
+            ->method('save');
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("RMA must be in Requested status to be authorized.");
 
         $useCase = new AuthorizeRMA($rmaRepository);
         $useCase->execute($rmaId);

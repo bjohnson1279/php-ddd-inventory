@@ -1,6 +1,7 @@
 -- Initial PostgreSQL schema for DDD Inventory
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
 
 -- Tenants table
 CREATE TABLE IF NOT EXISTS tenants (
@@ -112,15 +113,18 @@ CREATE TABLE IF NOT EXISTS product_locations (
 
 -- Inventory transactions (Ledger)
 CREATE TABLE IF NOT EXISTS inventory_transactions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID DEFAULT uuid_generate_v4(),
   tenant_id VARCHAR(50) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   type VARCHAR(50) NOT NULL,
   quantity_change INTEGER NOT NULL,
   condition VARCHAR(50) NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  reference_id TEXT
+  reference_id TEXT,
+  PRIMARY KEY (id, created_at)
 );
+
+SELECT create_hypertable('inventory_transactions', 'created_at', if_not_exists => TRUE);
 
 -- Inventory counts
 CREATE TABLE IF NOT EXISTS inventory_counts (
@@ -152,7 +156,7 @@ INSERT INTO locations (id, name, type) VALUES ('LOC-BACKROOM', 'Backroom Storage
 
 -- Ledger entries (append-only)
 CREATE TABLE IF NOT EXISTS ledger_entries (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID DEFAULT uuid_generate_v4(),
   tenant_id VARCHAR(50) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   variant_id TEXT NOT NULL,
   quantity INTEGER NOT NULL,
@@ -161,8 +165,11 @@ CREATE TABLE IF NOT EXISTS ledger_entries (
   reference_id TEXT,
   occurred_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   metadata JSONB DEFAULT '{}',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  PRIMARY KEY (id, occurred_at)
 );
+
+SELECT create_hypertable('ledger_entries', 'occurred_at', if_not_exists => TRUE);
 CREATE INDEX IF NOT EXISTS idx_ledger_variant ON ledger_entries(variant_id);
 CREATE INDEX IF NOT EXISTS idx_ledger_tenant ON ledger_entries(tenant_id);
 

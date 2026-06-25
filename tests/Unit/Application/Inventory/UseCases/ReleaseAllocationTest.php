@@ -54,6 +54,9 @@ class ReleaseAllocationTest extends TestCase
         $repositoryMock = $this->createMock(ProductRepositoryInterface::class);
         $repositoryMock->method('findBySku')->willReturn(null);
 
+        $repositoryMock->expects($this->never())
+            ->method('save');
+
         $this->expectException(Exception::class);
         $this->expectExceptionMessage('Product not found with SKU: GHOST-SKU');
 
@@ -88,5 +91,43 @@ class ReleaseAllocationTest extends TestCase
 
         $useCase = new ReleaseAllocation($repositoryMock);
         $useCase->execute(new SKU('TSHIRT-L-RED'), new Quantity(5), new LocationId('LOC-STOREFRONT'));
+    }
+
+    public function testExecuteReleasesAllocationFromCorrectLocation(): void
+    {
+        $repositoryMock = $this->createMock(ProductRepositoryInterface::class);
+
+        $product = Product::create(
+            'prod_123',
+            new SKU('TSHIRT-L-RED'),
+            'Large Red T-Shirt',
+            new Department('APPAREL'),
+            new LocationId('LOC-STOREFRONT'),
+            new Quantity(20)
+        );
+
+        $product->receiveStockAt(new LocationId('LOC-BACKROOM'), new Quantity(15), 'INITIAL_STOCK');
+
+        // Pre-allocate stock at both locations
+        $product->allocateStockAt(new LocationId('LOC-STOREFRONT'), new Quantity(4));
+        $product->allocateStockAt(new LocationId('LOC-BACKROOM'), new Quantity(8));
+
+        $repositoryMock->expects($this->once())
+            ->method('findBySku')
+            ->willReturn($product);
+
+        $repositoryMock->expects($this->once())
+            ->method('save')
+            ->with($this->callback(function (Product $p) {
+                $storefrontAllocated = $p->getStockAt(new LocationId('LOC-STOREFRONT'))->getAllocatedQuantity()->getValue();
+                $backroomAllocated = $p->getStockAt(new LocationId('LOC-BACKROOM'))->getAllocatedQuantity()->getValue();
+
+                // Storefront releases 3 (4 - 3 = 1)
+                // Backroom remains unchanged (8)
+                return $storefrontAllocated === 1 && $backroomAllocated === 8;
+            }));
+
+        $useCase = new ReleaseAllocation($repositoryMock);
+        $useCase->execute(new SKU('TSHIRT-L-RED'), new Quantity(3), new LocationId('LOC-STOREFRONT'));
     }
 }

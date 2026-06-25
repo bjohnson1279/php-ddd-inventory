@@ -27,6 +27,12 @@ class NotificationListenerTest extends TestCase
         $this->listener = new NotificationListener($this->notificationServiceMock, $this->tenantId);
     }
 
+    protected function tearDown(): void
+    {
+        unset($_SERVER['auth.tenant_id']);
+        parent::tearDown();
+    }
+
     public function testHandleLowStock(): void
     {
         $sku = new SKU('SKU-100');
@@ -60,6 +66,47 @@ class NotificationListenerTest extends TestCase
             );
 
         $this->listener->handleStockReceived($event);
+    }
+
+    public function testHandleStockReceivedWithServerTenantId(): void
+    {
+        $_SERVER['auth.tenant_id'] = 'server-tenant-123';
+        $listener = new NotificationListener($this->notificationServiceMock, null);
+
+        $sku = new SKU('SKU-201');
+        $locationId = new LocationId('LOC-SUB');
+        $event = new StockReceived($sku, $locationId, 10, 'REF-456', new DateTimeImmutable());
+
+        $this->notificationServiceMock->expects($this->once())
+            ->method('createNotification')
+            ->with(
+                'server-tenant-123',
+                'Stock Received',
+                "Received 10 units for SKU 'SKU-201' at location 'LOC-SUB'.",
+                'success'
+            );
+
+        $listener->handleStockReceived($event);
+    }
+
+    public function testHandleStockReceivedWithSystemTenantId(): void
+    {
+        $listener = new NotificationListener($this->notificationServiceMock, null);
+
+        $sku = new SKU('SKU-202');
+        $locationId = new LocationId('LOC-SYS');
+        $event = new StockReceived($sku, $locationId, 20, 'REF-789', new DateTimeImmutable());
+
+        $this->notificationServiceMock->expects($this->once())
+            ->method('createNotification')
+            ->with(
+                'system',
+                'Stock Received',
+                "Received 20 units for SKU 'SKU-202' at location 'LOC-SYS'.",
+                'success'
+            );
+
+        $listener->handleStockReceived($event);
     }
 
     public function testHandleOnboardingSubmitted(): void

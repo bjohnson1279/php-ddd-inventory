@@ -32,6 +32,9 @@ class ReleaseAllocationTest extends TestCase
 
         $repositoryMock->expects($this->once())
             ->method('findBySku')
+            ->with($this->callback(function (SKU $s) {
+                return $s->getValue() === 'TSHIRT-L-RED';
+            }))
             ->willReturn($product);
 
         $repositoryMock->expects($this->once())
@@ -56,5 +59,34 @@ class ReleaseAllocationTest extends TestCase
 
         $useCase = new ReleaseAllocation($repositoryMock);
         $useCase->execute(new SKU('GHOST-SKU'), new Quantity(1), new LocationId('LOC-A'));
+    }
+
+    public function testExecuteThrowsWhenReleasingMoreThanAllocated(): void
+    {
+        $repositoryMock = $this->createMock(ProductRepositoryInterface::class);
+
+        $product = Product::create(
+            'prod_123',
+            new SKU('TSHIRT-L-RED'),
+            'Large Red T-Shirt',
+            new Department('APPAREL'),
+            new LocationId('LOC-STOREFRONT'),
+            new Quantity(10)
+        );
+
+        $product->allocateStockAt(new LocationId('LOC-STOREFRONT'), new Quantity(2));
+
+        $repositoryMock->expects($this->once())
+            ->method('findBySku')
+            ->willReturn($product);
+
+        $repositoryMock->expects($this->never())
+            ->method('save');
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('Cannot release allocation of 5 because only 2 is allocated.');
+
+        $useCase = new ReleaseAllocation($repositoryMock);
+        $useCase->execute(new SKU('TSHIRT-L-RED'), new Quantity(5), new LocationId('LOC-STOREFRONT'));
     }
 }

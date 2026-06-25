@@ -8,6 +8,7 @@ use InventoryApp\Domain\Returns\Repositories\RMARepositoryInterface;
 use InventoryApp\Domain\Returns\Aggregates\RMA;
 use InventoryApp\Domain\Returns\Enums\RMAStatus;
 use Exception;
+use InvalidArgumentException;
 
 class CreateRMATest extends TestCase
 {
@@ -176,5 +177,63 @@ class CreateRMATest extends TestCase
         $this->assertEquals('var-1', $rma->getItems()[0]->getVariantId());
         $this->assertEquals(2, $rma->getItems()[0]->getQuantity());
         $this->assertEquals(1000, $rma->getItems()[0]->getUnitCostCents());
+    }
+
+    public function testExecuteThrowsExceptionAndDoesNotSaveWhenItemDataIsInvalid()
+    {
+        $repositoryMock = $this->createMock(RMARepositoryInterface::class);
+
+        $dto = [
+            'rmaNumber' => 'RMA-INVALID-ITEM',
+            'tenantId' => 'tenant-1',
+            'customerId' => 'cust-1',
+            'locationId' => 'LOC-1',
+            'items' => [
+                [
+                    'variantId' => 'var-1',
+                    'quantity' => -5, // Invalid quantity
+                    'unitCostCents' => 1000,
+                ],
+            ],
+        ];
+
+        $repositoryMock->expects($this->once())
+            ->method('findByNumber')
+            ->with('RMA-INVALID-ITEM')
+            ->willReturn(null);
+
+        $repositoryMock->expects($this->never())
+            ->method('save');
+
+        $this->expectException(InvalidArgumentException::class);
+
+        $useCase = new CreateRMA($repositoryMock);
+        $useCase->execute($dto);
+    }
+
+    public function testExecuteThrowsExceptionAndDoesNotSaveWhenTenantIdIsInvalid()
+    {
+        $repositoryMock = $this->createMock(RMARepositoryInterface::class);
+
+        $dto = [
+            'rmaNumber' => 'RMA-INVALID-TENANT',
+            'tenantId' => '', // Invalid tenantId
+            'customerId' => 'cust-1',
+            'locationId' => 'LOC-1',
+            'items' => [],
+        ];
+
+        $repositoryMock->expects($this->once())
+            ->method('findByNumber')
+            ->with('RMA-INVALID-TENANT')
+            ->willReturn(null);
+
+        $repositoryMock->expects($this->never())
+            ->method('save');
+
+        $this->expectException(InvalidArgumentException::class);
+
+        $useCase = new CreateRMA($repositoryMock);
+        $useCase->execute($dto);
     }
 }

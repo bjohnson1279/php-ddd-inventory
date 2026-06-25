@@ -48,10 +48,15 @@ final class AssembleKitTest extends TestCase
         Capsule::table('inventory_cost_layers')->delete();
         Capsule::table('ledger_entries')->delete();
 
-        $this->productRepo = new EloquentProductRepository('tenant-1');
+                // Create the test tenant because postgres enforces foreign keys
+        Capsule::table('tenants')->insertOrIgnore([
+            ['id' => 'test-tenant', 'name' => 'Test Tenant 1']
+        ]);
+
+        $this->productRepo = new EloquentProductRepository('test-tenant');
         $this->kitRepo = new EloquentKitRepository();
-        $this->costLayerRepo = new EloquentCostLayerRepository('tenant-1');
-        $this->ledgerRepo = new EloquentLedgerRepository('tenant-1');
+        $this->costLayerRepo = new EloquentCostLayerRepository('test-tenant');
+        $this->ledgerRepo = new EloquentLedgerRepository('test-tenant');
 
         $this->journalRepoMock = $this->createMock(JournalRepositoryInterface::class);
         $journalService = new AccountingJournalService($this->journalRepoMock, new CostLayerService($this->costLayerRepo));
@@ -82,8 +87,8 @@ final class AssembleKitTest extends TestCase
         $this->productRepo->save($kitProduct);
 
         // 3. Setup Cost Layers for Components
-        $cl1 = new InventoryCostLayer(Uuid::uuid4()->toString(), $compId1, 'tenant-1', 10, 1500, new DateTimeImmutable());
-        $cl2 = new InventoryCostLayer(Uuid::uuid4()->toString(), $compId2, 'tenant-1', 20, 2500, new DateTimeImmutable());
+        $cl1 = new InventoryCostLayer(Uuid::uuid4()->toString(), $compId1, 'test-tenant', 10, 1500, new DateTimeImmutable());
+        $cl2 = new InventoryCostLayer(Uuid::uuid4()->toString(), $compId2, 'test-tenant', 20, 2500, new DateTimeImmutable());
         $this->costLayerRepo->save($cl1);
         $this->costLayerRepo->save($cl2);
 
@@ -125,7 +130,7 @@ final class AssembleKitTest extends TestCase
 
         // 5. Execute Use Case
         $this->useCase->execute([
-            'tenantId' => 'tenant-1',
+            'tenantId' => 'test-tenant',
             'locationId' => 'LOC-1',
             'kitSku' => 'KIT-1',
             'quantity' => 1,

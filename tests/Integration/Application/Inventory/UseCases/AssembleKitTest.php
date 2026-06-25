@@ -53,6 +53,11 @@ final class AssembleKitTest extends TestCase
             ['id' => 'test-tenant', 'name' => 'Test Tenant 1']
         ]);
 
+        // Create the test location because postgres enforces foreign keys
+        Capsule::table('locations')->insertOrIgnore([
+            ['id' => 'LOC-1', 'name' => 'Test Location 1', 'type' => 'WAREHOUSE']
+        ]);
+
         $this->productRepo = new EloquentProductRepository('test-tenant');
         $this->kitRepo = new EloquentKitRepository();
         $this->costLayerRepo = new EloquentCostLayerRepository('test-tenant');

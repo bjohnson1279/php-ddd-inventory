@@ -45,6 +45,39 @@ class CreateInTransitTest extends TestCase
         $useCase->execute($skuObj, new Quantity(5), new LocationId('LOC-STOREFRONT'));
     }
 
+    public function testExecuteCreatesInTransitAtCorrectLocationWithoutAffectingOthers()
+    {
+        $repositoryMock = $this->createMock(ProductRepositoryInterface::class);
+        $skuObj = new SKU('TSHIRT-L-RED');
+
+        $product = Product::create(
+            'prod_123',
+            $skuObj,
+            'Large Red T-Shirt',
+            new Department('APPAREL'),
+            new LocationId('LOC-STOREFRONT'),
+            new Quantity(10)
+        );
+        $product->createInTransitAt(new LocationId('LOC-WAREHOUSE'), new Quantity(2));
+
+        $repositoryMock->expects($this->once())
+            ->method('findBySku')
+            ->with($this->callback(function (SKU $sku) use ($skuObj) {
+                return $sku->getValue() === $skuObj->getValue();
+            }))
+            ->willReturn($product);
+
+        $repositoryMock->expects($this->once())
+            ->method('save')
+            ->with($this->callback(function (Product $p) {
+                return $p->getStockAt(new LocationId('LOC-STOREFRONT'))->getInTransitQuantity()->getValue() === 5 &&
+                       $p->getStockAt(new LocationId('LOC-WAREHOUSE'))->getInTransitQuantity()->getValue() === 2;
+            }));
+
+        $useCase = new CreateInTransit($repositoryMock);
+        $useCase->execute($skuObj, new Quantity(5), new LocationId('LOC-STOREFRONT'));
+    }
+
     public function testExecuteThrowsExceptionWhenProductNotFound()
     {
         $repositoryMock = $this->createMock(ProductRepositoryInterface::class);
@@ -56,6 +89,9 @@ class CreateInTransitTest extends TestCase
                 return $sku->getValue() === $skuObj->getValue();
             }))
             ->willReturn(null);
+
+        $repositoryMock->expects($this->never())
+            ->method('save');
 
         $this->expectException(Exception::class);
         $this->expectExceptionMessage('Product not found with SKU: ' . $skuObj->getValue());

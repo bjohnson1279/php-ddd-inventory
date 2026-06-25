@@ -199,6 +199,48 @@ class NotificationListenerTest extends TestCase
         $this->listener->handleStockReconciled($event);
     }
 
+    public function testHandleStockReconciledWithServerTenantId(): void
+    {
+        $listenerWithoutTenant = new NotificationListener($this->notificationServiceMock, null);
+        $_SERVER['auth.tenant_id'] = 'server-tenant';
+
+        $sku = new SKU('SKU-301');
+        $locationId = new LocationId('LOC-MAIN');
+        $event = new StockReconciled($sku, $locationId, 100, -5, 'REF-789', new DateTimeImmutable());
+
+        $this->notificationServiceMock->expects($this->once())
+            ->method('createNotification')
+            ->with(
+                'server-tenant',
+                'Stock Reconciled',
+                "Physical count reconciliation adjusted stock for SKU 'SKU-301' to 100.",
+                'info'
+            );
+
+        $listenerWithoutTenant->handleStockReconciled($event);
+    }
+
+    public function testHandleStockReconciledFallsBackToSystem(): void
+    {
+        $listenerWithoutTenant = new NotificationListener($this->notificationServiceMock, null);
+        unset($_SERVER['auth.tenant_id']);
+
+        $sku = new SKU('SKU-302');
+        $locationId = new LocationId('LOC-MAIN');
+        $event = new StockReconciled($sku, $locationId, 200, 20, 'REF-999', new DateTimeImmutable());
+
+        $this->notificationServiceMock->expects($this->once())
+            ->method('createNotification')
+            ->with(
+                'system',
+                'Stock Reconciled',
+                "Physical count reconciliation adjusted stock for SKU 'SKU-302' to 200.",
+                'info'
+            );
+
+        $listenerWithoutTenant->handleStockReconciled($event);
+    }
+
     public function testHandleOpeningBalancePosted(): void
     {
         $event = new OpeningBalancePosted(

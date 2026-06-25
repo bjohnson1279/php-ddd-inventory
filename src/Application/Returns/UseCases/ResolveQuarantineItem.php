@@ -74,6 +74,8 @@ class ResolveQuarantineItem
                 $costBreakdown->totalCostCents,
                 new \DateTimeImmutable()
             );
+        } else {
+            throw new \InvalidArgumentException("Invalid resolution type: {$dto['resolution']}");
         }
 
         $this->quarantineRepository->save($qItem);

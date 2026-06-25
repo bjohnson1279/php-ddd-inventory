@@ -219,4 +219,26 @@ class ResolveQuarantineItemTest extends TestCase
 
         $this->useCase->execute(['quarantineItemId' => 'q-123', 'resolution' => 'RTV']);
     }
+
+    public function testExecuteThrowsExceptionForInvalidResolution()
+    {
+        $qItem = $this->createQuarantineItem('q-123', 'v-1', 5, 'LOC-1');
+        $product = $this->createProduct('v-1');
+        $product->receiveStockAt(new LocationId('LOC-1-quarantine'), new Quantity(5), 'TEST-IN');
+
+        $this->quarantineRepoMock->expects($this->once())
+            ->method('findById')
+            ->with('q-123')
+            ->willReturn($qItem);
+
+        $this->productRepoMock->expects($this->once())
+            ->method('findById')
+            ->with('v-1')
+            ->willReturn($product);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage("Invalid resolution type: INVALID");
+
+        $this->useCase->execute(['quarantineItemId' => 'q-123', 'resolution' => 'INVALID']);
+    }
 }

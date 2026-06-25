@@ -17,3 +17,10 @@
 ## 2026-06-22 - Prevent N+1 queries during Shopify webhook batch processing
 **Learning:** Translating external webhooks into domains payloads can cause N+1 database queries if mapping repositories are queried in a loop.
 **Action:** When translating line items, implement and invoke preload methods (e.g. `preloadSkuIds`) using `whereIn` queries to populate the repository's in-memory cache before iterating through items.
+
+## 2026-06-25 - TimescaleDB Hypertables and Composite Primary Keys
+**Learning:** Standard single-column primary keys (e.g. `id UUID PRIMARY KEY`) are incompatible with TimescaleDB hypertables, which require any primary key or unique constraint to include the time-partitioning column.
+**Action:** When working with append-only time-series tables (like `ledger_entries`, `inventory_transactions`, or `dispatch_records`):
+- Ensure that the primary key is defined as a composite key containing both the unique ID and the timestamp column (e.g. `PRIMARY KEY (id, occurred_at)` or `@@id([id, occurredAt])`).
+- Convert the table to a hypertable immediately upon creation/migration using `SELECT create_hypertable('table_name', 'time_column', if_not_exists => TRUE);`.
+- For Node.js/Prisma setups, ensure the datasource provider is set to PostgreSQL (not SQLite) to maintain database parity across all service variants.

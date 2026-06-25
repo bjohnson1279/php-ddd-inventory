@@ -12,3 +12,11 @@
 **Vulnerability:** Information leakage via generic exception messages. 18 API routes in `public/index.php` were catching raw `\Exception` objects and echoing `$e->getMessage()` with a 400 status directly to clients, bypassing safe error formatting.
 **Learning:** Returning `$e->getMessage()` unconditionally directly exposes backend system internals (stack traces, SQL errors, logic paths) to users, enabling reconnaissance.
 **Prevention:** Always restrict error exposition to known-safe domains (e.g. `\InvalidArgumentException` or custom `\ValidationException`). Use `error_log()` for unexpected exceptions and return a generic `500` status with a sanitized message.
+
+## 2026-06-25 - TimescaleDB Setup and Database Parity Constraints
+**Learning:** In multi-variant backends (GraphQL, Express, Laravel), switching database engines (e.g., reverting the Express backend to SQLite or using mock local SQLite files) breaks TimescaleDB hypertable features and causes database drift. Additionally, database connection configuration must be securely validated.
+**Action:** 
+- Maintain database engine parity across all service variants by strictly using PostgreSQL for physical datastores.
+- Do not run `prisma db push` during automated npm package installation (`postinstall`) in CI or production build environments, as it will fail due to the absence of a running database. Limit postinstall steps to `prisma generate` and execute migrations/pushes in dedicated pipeline steps or deployment startup phases.
+- Ensure that any dynamic database connection strings (like `DATABASE_URL` built from separate components) are validated on server startup and fallback safely to trusted local defaults for development environments.
+- Protect raw SQL queries used to enable the `timescaledb` extension or initialize hypertables from SQL injection vulnerabilities by using parameterized queries or strict schema names.

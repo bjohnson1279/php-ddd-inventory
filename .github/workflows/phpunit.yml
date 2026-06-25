@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: public.ecr.aws/docker/library/postgres:15-alpine
+        image: timescale/timescaledb:latest-pg15-alpine
         env:
           POSTGRES_USER: ddd_user
           POSTGRES_PASSWORD: secret

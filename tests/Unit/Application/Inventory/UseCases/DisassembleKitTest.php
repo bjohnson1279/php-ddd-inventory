@@ -186,4 +186,175 @@ class DisassembleKitTest extends TestCase
             'referenceId' => 'ref-1'
         ]);
     }
+
+    public function testExecuteThrowsExceptionWhenComponentProductNotFound(): void
+    {
+        $kit = new Kit('kit-id', 'KIT-1', 'Test Kit');
+        $kit->addComponent('comp-1', 2);
+
+        $kitProduct = Product::create(
+            'prod_kit_1',
+            new SKU('KIT-1'),
+            'Test Kit',
+            new Department('KITS'),
+            new LocationId('LOC-1'),
+            new Quantity(5)
+        );
+
+        $this->kitRepository->method('findBySku')->willReturn($kit);
+
+        $this->productRepository->method('findBySku')
+            ->with($this->callback(function (SKU $sku) {
+                return $sku->getValue() === 'KIT-1';
+            }))
+            ->willReturn($kitProduct);
+
+        $this->productRepository->method('findById')->willReturn(null);
+
+        $this->ledgerRepository->method('currentQuantity')->willReturn(5);
+
+        $kitLayer = new InventoryCostLayer('layer-1', 'prod_kit_1', 'tenant-1', 5, 2000, new \DateTimeImmutable(), 'ref-1');
+
+        $this->costLayerRepository->method('getActiveLayers')->willReturnCallback(function($variantId) use ($kitLayer) {
+            if ($variantId === 'prod_kit_1') {
+                return [$kitLayer];
+            }
+            return [];
+        });
+
+        $this->expectException(\Exception::class);
+        $this->expectExceptionMessage("Product variant comp-1 not found.");
+
+        $this->useCase->execute([
+            'tenantId' => 'tenant-1',
+            'locationId' => 'LOC-1',
+            'kitSku' => 'KIT-1',
+            'quantity' => 1,
+            'actorId' => 'actor-1',
+            'referenceId' => 'ref-1'
+        ]);
+    }
+
+    public function testExecuteFallsBackToDefaultCostWhenGetActiveLayersThrowsException(): void
+    {
+        $kit = new Kit('kit-id', 'KIT-1', 'Test Kit');
+        $kit->addComponent('comp-1', 2);
+
+        $kitProduct = Product::create(
+            'prod_kit_1',
+            new SKU('KIT-1'),
+            'Test Kit',
+            new Department('KITS'),
+            new LocationId('LOC-1'),
+            new Quantity(5)
+        );
+
+        $compProduct = Product::create(
+            'comp-1',
+            new SKU('COMP-1'),
+            'Test Component 1',
+            new Department('PARTS'),
+            new LocationId('LOC-1'),
+            new Quantity(10)
+        );
+
+        $this->kitRepository->method('findBySku')->willReturn($kit);
+
+        $this->productRepository->method('findBySku')
+            ->with($this->callback(function (SKU $sku) {
+                return $sku->getValue() === 'KIT-1';
+            }))
+            ->willReturn($kitProduct);
+
+        $this->productRepository->method('findById')->willReturnMap([
+            ['comp-1', $compProduct]
+        ]);
+
+        $this->ledgerRepository->method('currentQuantity')->willReturn(5);
+
+        $kitLayer = new InventoryCostLayer('layer-1', 'prod_kit_1', 'tenant-1', 5, 2000, new \DateTimeImmutable(), 'ref-1');
+
+        $this->costLayerRepository->method('getActiveLayers')->willReturnCallback(function($variantId) use ($kitLayer) {
+            if ($variantId === 'prod_kit_1') {
+                return [$kitLayer];
+            }
+            throw new \Exception("Database error");
+        });
+
+        $this->costLayerRepository->expects($this->once())->method('save')->with($this->callback(function (InventoryCostLayer $layer) {
+            return $layer->unitCostCents === 1000;
+        }));
+
+        $this->useCase->execute([
+            'tenantId' => 'tenant-1',
+            'locationId' => 'LOC-1',
+            'kitSku' => 'KIT-1',
+            'quantity' => 1,
+            'actorId' => 'actor-1',
+            'referenceId' => 'ref-1'
+        ]);
+    }
+
+    public function testExecuteTakesFirstLayerCostWhenTotalUnitsZero(): void
+    {
+        $kit = new Kit('kit-id', 'KIT-1', 'Test Kit');
+        $kit->addComponent('comp-1', 2);
+
+        $kitProduct = Product::create(
+            'prod_kit_1',
+            new SKU('KIT-1'),
+            'Test Kit',
+            new Department('KITS'),
+            new LocationId('LOC-1'),
+            new Quantity(5)
+        );
+
+        $compProduct = Product::create(
+            'comp-1',
+            new SKU('COMP-1'),
+            'Test Component 1',
+            new Department('PARTS'),
+            new LocationId('LOC-1'),
+            new Quantity(10)
+        );
+
+        $this->kitRepository->method('findBySku')->willReturn($kit);
+
+        $this->productRepository->method('findBySku')
+            ->with($this->callback(function (SKU $sku) {
+                return $sku->getValue() === 'KIT-1';
+            }))
+            ->willReturn($kitProduct);
+
+        $this->productRepository->method('findById')->willReturnMap([
+            ['comp-1', $compProduct]
+        ]);
+
+        $this->ledgerRepository->method('currentQuantity')->willReturn(5);
+
+        $kitLayer = new InventoryCostLayer('layer-1', 'prod_kit_1', 'tenant-1', 5, 2000, new \DateTimeImmutable(), 'ref-1');
+
+        $compLayer = new InventoryCostLayer('layer-2', 'comp-1', 'tenant-1', 10, 500, new \DateTimeImmutable(), 'ref-1');
+        $compLayer->setRemainingQuantity(0);
+
+        $this->costLayerRepository->method('getActiveLayers')->willReturnCallback(function($variantId) use ($kitLayer, $compLayer) {
+            if ($variantId === 'prod_kit_1') {
+                return [$kitLayer];
+            }
+            return [$compLayer];
+        });
+
+        $this->costLayerRepository->expects($this->once())->method('save')->with($this->callback(function (InventoryCostLayer $layer) {
+            return $layer->unitCostCents === 1000;
+        }));
+
+        $this->useCase->execute([
+            'tenantId' => 'tenant-1',
+            'locationId' => 'LOC-1',
+            'kitSku' => 'KIT-1',
+            'quantity' => 1,
+            'actorId' => 'actor-1',
+            'referenceId' => 'ref-1'
+        ]);
+    }
 }

@@ -131,6 +131,26 @@ class NotificationListenerTest extends TestCase
         $this->listener->handleOnboardingSubmitted($event);
     }
 
+    public function testHandleOnboardingSubmittedBubblesUpException(): void
+    {
+        $event = new StockOnboardingSubmitted(
+            'onboarding-error',
+            $this->tenantId,
+            'LOC-MAIN',
+            new DateTimeImmutable(),
+            new DateTimeImmutable()
+        );
+
+        $this->notificationServiceMock->expects($this->once())
+            ->method('createNotification')
+            ->willThrowException(new \RuntimeException('Notification service is down'));
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Notification service is down');
+
+        $this->listener->handleOnboardingSubmitted($event);
+    }
+
     public function testHandleOnboardingSubmittedResolvesTenantFromGlobal(): void
     {
         $listenerWithoutTenant = new NotificationListener($this->notificationServiceMock, null);

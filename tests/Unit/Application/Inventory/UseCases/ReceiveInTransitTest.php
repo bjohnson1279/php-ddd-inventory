@@ -70,4 +70,40 @@ class ReceiveInTransitTest extends TestCase
         $useCase = new ReceiveInTransit($repositoryMock, $eventsMock);
         $useCase->execute(new SKU('TSHIRT-L-RED'), new Quantity(5), new LocationId('LOC-STOREFRONT'));
     }
+
+    public function testExecuteThrowsExceptionWhenInsufficientInTransitStock()
+    {
+        $repositoryMock = $this->createMock(ProductRepositoryInterface::class);
+        $eventsMock = $this->createMock(EventDispatcherInterface::class);
+
+        $product = Product::create(
+            'prod_123',
+            new SKU('TSHIRT-L-RED'),
+            'Large Red T-Shirt',
+            new Department('APPAREL'),
+            new LocationId('LOC-STOREFRONT'),
+            new Quantity(10)
+        );
+
+        // Intentionally create only 2 in transit
+        $product->createInTransitAt(new LocationId('LOC-STOREFRONT'), new Quantity(2));
+
+        $repositoryMock->expects($this->once())
+            ->method('findBySku')
+            ->willReturn($product);
+
+        $repositoryMock->expects($this->never())
+            ->method('save');
+
+        $eventsMock->expects($this->never())
+            ->method('dispatch');
+
+        $useCase = new ReceiveInTransit($repositoryMock, $eventsMock);
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage("Cannot receive in transit of 5 because only 2 is in transit.");
+
+        // Attempt to receive 5, which is more than the 2 in transit
+        $useCase->execute(new SKU('TSHIRT-L-RED'), new Quantity(5), new LocationId('LOC-STOREFRONT'));
+    }
 }

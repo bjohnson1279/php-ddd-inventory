@@ -27,6 +27,12 @@ class NotificationListenerTest extends TestCase
         $this->listener = new NotificationListener($this->notificationServiceMock, $this->tenantId);
     }
 
+    protected function tearDown(): void
+    {
+        unset($_SERVER['auth.tenant_id']);
+        parent::tearDown();
+    }
+
     public function testHandleLowStock(): void
     {
         $sku = new SKU('SKU-100');
@@ -82,6 +88,56 @@ class NotificationListenerTest extends TestCase
             );
 
         $this->listener->handleOnboardingSubmitted($event);
+    }
+
+    public function testHandleOnboardingSubmittedResolvesTenantFromGlobal(): void
+    {
+        $listenerWithoutTenant = new NotificationListener($this->notificationServiceMock, null);
+        $_SERVER['auth.tenant_id'] = 'global-tenant';
+
+        $event = new StockOnboardingSubmitted(
+            'onboarding-2',
+            'global-tenant',
+            'LOC-MAIN',
+            new DateTimeImmutable(),
+            new DateTimeImmutable()
+        );
+
+        $this->notificationServiceMock->expects($this->once())
+            ->method('createNotification')
+            ->with(
+                'global-tenant',
+                'Inventory Onboarding Submitted',
+                'A draft stock onboarding batch was submitted for validation.',
+                'info'
+            );
+
+        $listenerWithoutTenant->handleOnboardingSubmitted($event);
+    }
+
+    public function testHandleOnboardingSubmittedFallsBackToSystem(): void
+    {
+        $listenerWithoutTenant = new NotificationListener($this->notificationServiceMock, null);
+        unset($_SERVER['auth.tenant_id']);
+
+        $event = new StockOnboardingSubmitted(
+            'onboarding-3',
+            'system',
+            'LOC-MAIN',
+            new DateTimeImmutable(),
+            new DateTimeImmutable()
+        );
+
+        $this->notificationServiceMock->expects($this->once())
+            ->method('createNotification')
+            ->with(
+                'system',
+                'Inventory Onboarding Submitted',
+                'A draft stock onboarding batch was submitted for validation.',
+                'info'
+            );
+
+        $listenerWithoutTenant->handleOnboardingSubmitted($event);
     }
 
     public function testHandleStockReconciled(): void

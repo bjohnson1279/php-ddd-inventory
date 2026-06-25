@@ -10,6 +10,7 @@ use InventoryApp\Domain\Inventory\ValueObjects\SKU;
 use InventoryApp\Domain\Inventory\ValueObjects\Quantity;
 use InventoryApp\Domain\Inventory\ValueObjects\Department;
 use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
+use InventoryApp\Domain\Inventory\Exceptions\InsufficientAvailableStockException;
 use Exception;
 
 class AllocateStockTest extends TestCase
@@ -62,5 +63,36 @@ class AllocateStockTest extends TestCase
         $this->expectExceptionMessage("Product not found with SKU: INVALID-SKU");
 
         $useCase->execute(new SKU('INVALID-SKU'), new Quantity(5), new LocationId('LOC-STOREFRONT'));
+    }
+
+    public function testExecuteThrowsExceptionWhenInsufficientAvailableStock()
+    {
+        $repositoryMock = $this->createMock(ProductRepositoryInterface::class);
+
+        $product = Product::create(
+            'prod_123',
+            new SKU('TSHIRT-L-RED'),
+            'Large Red T-Shirt',
+            new Department('APPAREL'),
+            new LocationId('LOC-STOREFRONT'),
+            new Quantity(10) // 10 in stock
+        );
+
+        $repositoryMock->expects($this->once())
+            ->method('findBySku')
+            ->with($this->callback(function (SKU $sku) {
+                return $sku->getValue() === 'TSHIRT-L-RED';
+            }))
+            ->willReturn($product);
+
+        $repositoryMock->expects($this->never())
+            ->method('save');
+
+        $useCase = new AllocateStock($repositoryMock);
+
+        $this->expectException(InsufficientAvailableStockException::class);
+
+        // Attempting to allocate 15, which is more than the 10 available
+        $useCase->execute(new SKU('TSHIRT-L-RED'), new Quantity(15), new LocationId('LOC-STOREFRONT'));
     }
 }

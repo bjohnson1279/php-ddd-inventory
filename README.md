@@ -56,7 +56,7 @@ This repository contains a small Domain-Driven Design inventory example (PHP 8.1
 
 - Workflow: `.github/workflows/phpunit.yml` runs two jobs:
   - `unit`: runs fast unit tests and excludes tests marked with `@group integration`.
-  - `integration`: spins up a `timescale/timescaledb:latest-pg15-alpine` service, applies database migrations from `docker/postgres/init/` (starting with `01_init.sql`), and runs `tests/Integration`.
+  - `integration`: spins up a `timescale/timescaledb:latest-pg15` service, applies database migrations from `docker/postgres/init/` (starting with `01_init.sql`), and runs `tests/Integration`.
 
 Integration tests are annotated with `@group integration` (see tests/Integration) so unit CI stays fast.
 

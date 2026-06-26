@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/client';
+import Spinner from '../components/Spinner';
 
 type KitComponent = {
   id: string;
@@ -144,8 +145,8 @@ export default function Kits() {
                 <label htmlFor="kitName">Bundle Name</label>
                 <input id="kitName" value={kitName} onChange={e => setKitName(e.target.value)} placeholder="e.g. Summer Essentials Pack" required />
               </div>
-              <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={isCreatingKit} aria-busy={isCreatingKit}>
-                {isCreatingKit ? 'Creating...' : 'Create Kit Bundle'}
+              <button type="submit" className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isCreatingKit} aria-busy={isCreatingKit}>
+                {isCreatingKit && <Spinner />} {isCreatingKit ? 'Creating...' : 'Create Kit Bundle'}
               </button>
             </form>
             <p style={{ color: createMsg.includes('Error') ? '#f87171' : '#34d399' }}>{createMsg}</p>
@@ -218,8 +219,8 @@ export default function Kits() {
                     <label htmlFor="compQty">Quantity per Bundle</label>
                     <input id="compQty" type="number" min="1" value={compQty} onChange={e => setCompQty(e.target.value)} placeholder="e.g. 1" required />
                   </div>
-                  <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={isAddingComponent} aria-busy={isAddingComponent}>
-                    {isAddingComponent ? 'Adding...' : 'Add Component'}
+                  <button type="submit" className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isAddingComponent} aria-busy={isAddingComponent}>
+                    {isAddingComponent && <Spinner />} {isAddingComponent ? 'Adding...' : 'Add Component'}
                   </button>
                 </form>
                 <p style={{ color: compMsg.includes('Failed') || compMsg.includes('Error') ? '#f87171' : '#34d399' }}>{compMsg}</p>
@@ -262,8 +263,8 @@ export default function Kits() {
                     <label htmlFor="sellSaleId">Sale ID / Invoice</label>
                     <input id="sellSaleId" value={sellSaleId} onChange={e => setSellSaleId(e.target.value)} placeholder="e.g. SALE-KIT-BND-10" required />
                   </div>
-                  <button type="submit" className="btn-primary" style={{ width: '100%', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }} disabled={isSellingKit} aria-busy={isSellingKit}>
-                    {isSellingKit ? 'Processing...' : 'Process Bundle Sale'}
+                  <button type="submit" className="btn-primary" style={{ width: '100%', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isSellingKit} aria-busy={isSellingKit}>
+                    {isSellingKit && <Spinner />} {isSellingKit ? 'Processing...' : 'Process Bundle Sale'}
                   </button>
                 </form>
                 <p style={{ color: sellMsg.includes('failed') || sellMsg.includes('Ensure') ? '#f87171' : '#34d399' }}>{sellMsg}</p>

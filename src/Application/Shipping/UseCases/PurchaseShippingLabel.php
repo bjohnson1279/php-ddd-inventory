@@ -19,7 +19,6 @@ use InventoryApp\Domain\Accounting\Aggregates\JournalEntry;
 use InventoryApp\Domain\Accounting\Enums\DebitCredit;
 use InventoryApp\Domain\Accounting\Enums\AccountingMethod;
 use InventoryApp\Domain\Accounting\ValueObjects\AccountCode;
-use InventoryApp\Domain\Accounting\Enums\AccountCategory;
 use InventoryApp\Domain\Inventory\Exceptions\InsufficientStockException;
 
 use DateTimeImmutable;
@@ -135,8 +134,8 @@ class PurchaseShippingLabel
             $method
         );
 
-        $freightExpense = new AccountCode("5400", "Shipping & Freight Expense", AccountCategory::Expense);
-        $freightLiability = new AccountCode("2100", "Accrued Shipping Liabilities", AccountCategory::Liability);
+        $freightExpense = new AccountCode("5400", "Shipping & Freight Expense", "expense");
+        $freightLiability = new AccountCode("2100", "Accrued Shipping Liabilities", "liability");
 
         $entry->addLine($freightExpense, $labelResult->rateCents, DebitCredit::Debit, "Carrier shipping expense");
         $entry->addLine($freightLiability, $labelResult->rateCents, DebitCredit::Credit, "Accrued carrier liabilities");

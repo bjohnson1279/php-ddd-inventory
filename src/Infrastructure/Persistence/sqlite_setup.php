@@ -14,7 +14,8 @@ class SqliteSetup
             self::getAccountingQueries(),
             self::getIntegrationQueries(),
             self::getSystemQueries(),
-            self::getReturnsQueries()
+            self::getReturnsQueries(),
+            self::getForecastingQueries()
         );
 
         foreach ($queries as $q) {
@@ -414,6 +415,24 @@ class SqliteSetup
               location_id VARCHAR(50) NOT NULL,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               resolved_at DATETIME DEFAULT NULL
+            )"
+        ];
+    }
+
+    private static function getForecastingQueries(): array
+    {
+        return [
+            "CREATE TABLE IF NOT EXISTS demand_forecasts (
+              id TEXT PRIMARY KEY,
+              sku TEXT NOT NULL,
+              location_id VARCHAR(50) NOT NULL,
+              forecasted_quantity INTEGER NOT NULL,
+              period_start DATETIME NOT NULL,
+              period_end DATETIME NOT NULL,
+              confidence_level NUMERIC NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              UNIQUE (sku, location_id, period_start, period_end)
             )"
         ];
     }

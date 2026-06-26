@@ -50,6 +50,48 @@ class NotificationListenerTest extends TestCase
         $this->listener->handleLowStock($event);
     }
 
+    public function testHandleLowStockUsesServerTenantIdWhenNotProvidedInConstructor(): void
+    {
+        $_SERVER['auth.tenant_id'] = 'server-tenant-456';
+
+        $listener = new NotificationListener($this->notificationServiceMock);
+
+        $sku = new SKU('SKU-100');
+        $event = new LowStockDetected($sku, 5, 10, new DateTimeImmutable());
+
+        $this->notificationServiceMock->expects($this->once())
+            ->method('createNotification')
+            ->with(
+                'server-tenant-456',
+                'Low Stock Warning',
+                "Variant with SKU 'SKU-100' is low on stock (5 remaining, threshold: 10).",
+                'warning'
+            );
+
+        $listener->handleLowStock($event);
+    }
+
+    public function testHandleLowStockUsesSystemTenantIdWhenNoneProvided(): void
+    {
+        unset($_SERVER['auth.tenant_id']);
+
+        $listener = new NotificationListener($this->notificationServiceMock);
+
+        $sku = new SKU('SKU-100');
+        $event = new LowStockDetected($sku, 5, 10, new DateTimeImmutable());
+
+        $this->notificationServiceMock->expects($this->once())
+            ->method('createNotification')
+            ->with(
+                'system',
+                'Low Stock Warning',
+                "Variant with SKU 'SKU-100' is low on stock (5 remaining, threshold: 10).",
+                'warning'
+            );
+
+        $listener->handleLowStock($event);
+    }
+
     public function testHandleStockReceived(): void
     {
         $sku = new SKU('SKU-200');

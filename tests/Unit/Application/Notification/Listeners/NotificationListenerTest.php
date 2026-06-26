@@ -109,6 +109,33 @@ class NotificationListenerTest extends TestCase
         $listener->handleStockReceived($event);
     }
 
+    public function testHandleStockReceivedPropagatesException(): void
+    {
+        $notificationServiceMock = $this->createMock(NotificationService::class);
+        $listener = new NotificationListener($notificationServiceMock, 'tenant-err');
+
+        $sku = new SKU('SKU-ERR');
+        $locationId = new LocationId('LOC-ERR');
+        $event = new StockReceived($sku, $locationId, 50, 'REF-ERR', new \DateTimeImmutable());
+
+        $expectedException = new \RuntimeException('Database error saving notification');
+
+        $notificationServiceMock->expects($this->once())
+            ->method('createNotification')
+            ->with(
+                'tenant-err',
+                'Stock Received',
+                "Received 50 units for SKU 'SKU-ERR' at location 'LOC-ERR'.",
+                'success'
+            )
+            ->willThrowException($expectedException);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Database error saving notification');
+
+        $listener->handleStockReceived($event);
+    }
+
     public function testHandleOnboardingSubmitted(): void
     {
         $event = new StockOnboardingSubmitted(

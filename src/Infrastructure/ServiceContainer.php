@@ -29,6 +29,8 @@ use InventoryApp\Infrastructure\Persistence\Repositories\EloquentProductUomConfi
 use InventoryApp\Infrastructure\Persistence\Repositories\EloquentKitRepository;
 use InventoryApp\Domain\Inventory\Repositories\WarehouseLocationRepositoryInterface;
 use InventoryApp\Infrastructure\Persistence\Repositories\EloquentWarehouseLocationRepository;
+use InventoryApp\Domain\Inventory\Repositories\DemandForecastRepositoryInterface;
+use InventoryApp\Infrastructure\Persistence\Repositories\EloquentDemandForecastRepository;
 use Illuminate\Container\Container;
 
 class ServiceContainer
@@ -58,6 +60,7 @@ class ServiceContainer
         $container->singleton(ProductUomConfigurationRepositoryInterface::class, EloquentProductUomConfigurationRepository::class);
         $container->singleton(KitRepositoryInterface::class, EloquentKitRepository::class);
         $container->singleton(WarehouseLocationRepositoryInterface::class, EloquentWarehouseLocationRepository::class);
+        $container->singleton(DemandForecastRepositoryInterface::class, EloquentDemandForecastRepository::class);
         $container->singleton(\InventoryApp\Domain\Returns\Repositories\RMARepositoryInterface::class, \InventoryApp\Infrastructure\Persistence\Repositories\EloquentRMARepository::class);
         $container->singleton(\InventoryApp\Domain\Returns\Repositories\QuarantineRepositoryInterface::class, \InventoryApp\Infrastructure\Persistence\Repositories\EloquentQuarantineRepository::class);
         $container->singleton(\InventoryApp\Domain\Procurement\Repositories\PurchaseOrderRepositoryInterface::class, \InventoryApp\Infrastructure\Persistence\Repositories\EloquentPurchaseOrderRepository::class);
@@ -210,6 +213,11 @@ class ServiceContainer
     public static function reorderPolicyRepo(): \InventoryApp\Domain\Procurement\Repositories\ReorderPolicyRepositoryInterface
     {
         return self::getInstance()->make(\InventoryApp\Domain\Procurement\Repositories\ReorderPolicyRepositoryInterface::class);
+    }
+
+    public static function demandForecastRepo(): DemandForecastRepositoryInterface
+    {
+        return self::getInstance()->make(DemandForecastRepositoryInterface::class);
     }
 
     public static function reorderPolicyService(): \InventoryApp\Domain\Procurement\Services\ReorderPolicyService

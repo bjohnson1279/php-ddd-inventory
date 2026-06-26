@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/client';
+import Spinner from '../components/Spinner';
 
 type User = { id: string; email: string; role: string };
 
@@ -61,8 +62,8 @@ export default function UserManagement() {
             disabled={isInviting}
             style={{ margin: 0 }}
           />
-          <button type="submit" className="btn-primary" disabled={isInviting || !email} aria-busy={isInviting}>
-            {isInviting ? 'Inviting...' : 'Invite'}
+          <button type="submit" className="btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isInviting || !email} aria-busy={isInviting}>
+            {isInviting && <Spinner />} {isInviting ? 'Inviting...' : 'Invite'}
           </button>
         </div>
       </form>

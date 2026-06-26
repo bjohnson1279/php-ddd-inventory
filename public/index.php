@@ -1951,6 +1951,52 @@ if ($method === 'GET' && preg_match('#^/api/reorder-policies/([^/]+)/([^/]+)$#',
     exit;
 }
 
+// ── Route: GET /api/forecasting/report ───────────────────────────────────────
+if ($method === 'GET' && $uri === '/api/forecasting/report') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:read')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ForecastingController())
+        ->getReport(
+            $request,
+            ServiceContainer::productRepo(tenantId()),
+            ServiceContainer::ledgerRepo(tenantId()),
+            ServiceContainer::reorderPolicyRepo(),
+            ServiceContainer::demandForecastRepo()
+        );
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/forecasting/forecast ──────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/forecasting/forecast') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ForecastingController())
+        ->generateForecast(
+            $request,
+            ServiceContainer::productRepo(tenantId()),
+            ServiceContainer::ledgerRepo(tenantId()),
+            ServiceContainer::reorderPolicyRepo(),
+            ServiceContainer::demandForecastRepo()
+        );
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
 // ── Shopify Webhooks ──────────────────────────────────────────────────────────
 // The raw body MUST be read before any JSON decoding; the HMAC is computed over
 // the exact bytes Shopify sent, not the re-encoded JSON.

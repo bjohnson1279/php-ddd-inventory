@@ -46,7 +46,8 @@ export default function Login() {
       </div>
 
       <button type="submit" className="btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isLoading} aria-busy={isLoading}>
-        {isLoading && <Spinner />} {isLoading ? 'Signing in...' : 'Sign in'}
+        {isLoading && <Spinner />}
+        {isLoading ? 'Signing in...' : 'Sign in'}
       </button>
 
       {msg && <p role="alert" className={msg === 'Signed in' ? 'text-success' : 'text-danger'}>{msg}</p>}

@@ -2112,6 +2112,25 @@ if ($method === 'GET' && $uri === '/api/forecasting/report') {
     exit;
 }
 
+// ── Route: GET /api/forecasting/stock-velocity ─────────────────────────────────
+if ($method === 'GET' && $uri === '/api/forecasting/stock-velocity') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:read')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ForecastingController())
+        ->getStockVelocityReport(
+            $request
+        );
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
 // ── Route: POST /api/forecasting/forecast ──────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/forecasting/forecast') {
     requireAuth();

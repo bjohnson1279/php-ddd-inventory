@@ -269,7 +269,7 @@ export default function Catalog() {
               </button>
             </form>
             {prodMsg && (
-              <p style={{ color: prodMsg === 'Product created successfully!' ? '#34d399' : '#f87171' }}>
+              <p role="alert" style={{ color: prodMsg === 'Product created successfully!' ? '#34d399' : '#f87171' }}>
                 {prodMsg}
               </p>
             )}
@@ -310,7 +310,7 @@ export default function Catalog() {
               </button>
             </form>
             {varMsg && (
-              <p style={{ color: varMsg === 'Variant added successfully!' ? '#34d399' : '#f87171' }}>
+              <p role="alert" style={{ color: varMsg === 'Variant added successfully!' ? '#34d399' : '#f87171' }}>
                 {varMsg}
               </p>
             )}
@@ -361,7 +361,7 @@ export default function Catalog() {
               </button>
             </form>
             {barcodeMsg && (
-              <p style={{ color: barcodeMsg === 'Barcode assigned successfully!' ? '#34d399' : '#f87171' }}>
+              <p role="alert" style={{ color: barcodeMsg === 'Barcode assigned successfully!' ? '#34d399' : '#f87171' }}>
                 {barcodeMsg}
               </p>
             )}
@@ -380,12 +380,12 @@ export default function Catalog() {
               </button>
             </form>
             {lookupResult && (
-              <div className="text-success" style={{ marginTop: '1rem', fontSize: '0.95rem' }}>
+              <div role="alert" className="text-success" style={{ marginTop: '1rem', fontSize: '0.95rem' }}>
                 ✓ Resolved Variant ID: <strong>{lookupResult}</strong>
               </div>
             )}
             {lookupError && (
-              <div className="text-danger" style={{ marginTop: '1rem', fontSize: '0.95rem' }}>
+              <div role="alert" className="text-danger" style={{ marginTop: '1rem', fontSize: '0.95rem' }}>
                 ✗ Error: {lookupError}
               </div>
             )}

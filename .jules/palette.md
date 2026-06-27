@@ -12,3 +12,6 @@
 ## 2026-06-25 - Handling Time-Series Data in UI Components
 **Learning:** Displaying time-series historical data (like ledger entries or stock transactions) requires clean sorting and efficient pagination to prevent DOM bloat and layout shift when huge lists are loaded.
 **Action:** Always implement server-side pagination, sorting by timestamp, and clear date/time formatters in UI displays of ledger, transaction, or dispatch lists. Ensure that dynamic alert messages or state loading components (like fetching older history chunks) use appropriate ARIA live regions to notify the user of background updates.
+## 2026-06-27 - Dynamic Form Feedback
+**Learning:** Dynamically rendered form status messages require role="alert" to notify screen readers.
+**Action:** Always add role="alert" to dynamic success/error message containers.

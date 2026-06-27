@@ -20,3 +20,8 @@
 - Do not run `prisma db push` during automated npm package installation (`postinstall`) in CI or production build environments, as it will fail due to the absence of a running database. Limit postinstall steps to `prisma generate` and execute migrations/pushes in dedicated pipeline steps or deployment startup phases.
 - Ensure that any dynamic database connection strings (like `DATABASE_URL` built from separate components) are validated on server startup and fallback safely to trusted local defaults for development environments.
 - Protect raw SQL queries used to enable the `timescaledb` extension or initialize hypertables from SQL injection vulnerabilities by using parameterized queries or strict schema names.
+
+## 2024-05-24 - [Fix information disclosure in controllers]
+**Vulnerability:** Generic exception messages leaking internal information to the client via 400 API responses.
+**Learning:** A number of controllers were using catch blocks that threw `$e->getMessage()` for generic `Exception` objects directly to clients. This could expose stack traces, DB queries, or internal logic.
+**Prevention:** Explicitly catch expected domain exceptions (e.g. `\InvalidArgumentException`, `ValidationException`) and safely pass their messages to the client. For generic unexpected exceptions, catch them, log the original error message with `error_log()`, and return a generic "An internal server error occurred." response.

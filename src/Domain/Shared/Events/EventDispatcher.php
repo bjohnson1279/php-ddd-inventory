@@ -18,6 +18,18 @@ class EventDispatcher implements EventDispatcherInterface
 {
     /** @var array<string, callable[]> */
     private array $listeners = [];
+    private ?\InventoryApp\Infrastructure\Messaging\KafkaMessageBroker $kafkaBroker = null;
+
+    private function getKafkaBroker(): ?\InventoryApp\Infrastructure\Messaging\KafkaMessageBroker
+    {
+        if ($this->kafkaBroker === null) {
+            $kafkaUrl = getenv('KAFKA_URL');
+            if ($kafkaUrl) {
+                $this->kafkaBroker = new \InventoryApp\Infrastructure\Messaging\KafkaMessageBroker($kafkaUrl);
+            }
+        }
+        return $this->kafkaBroker;
+    }
 
     public function subscribe(string $eventClass, callable $listener): void
     {
@@ -31,6 +43,12 @@ class EventDispatcher implements EventDispatcherInterface
     public function dispatch(object $event): object
     {
         $eventClass = get_class($event);
+
+        $broker = $this->getKafkaBroker();
+        if ($broker) {
+            $broker->publish('inventory-events', $event);
+        }
+
         foreach ($this->listeners[$eventClass] ?? [] as $listener) {
             // Check if this listener should be executed asynchronously
             if (is_array($listener) && count($listener) === 2 && is_object($listener[0])) {

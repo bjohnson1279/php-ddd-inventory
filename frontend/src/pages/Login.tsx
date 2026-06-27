@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
+import Spinner from '../components/Spinner';
 
 export default function Login() {
   const [tenantId,setTenantId]=useState('');
@@ -44,7 +45,8 @@ export default function Login() {
         <input id="password" type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" required />
       </div>
 
-      <button type="submit" className="btn-primary" disabled={isLoading} aria-busy={isLoading}>
+      <button type="submit" className="btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isLoading} aria-busy={isLoading}>
+        {isLoading && <Spinner />}
         {isLoading ? 'Signing in...' : 'Sign in'}
       </button>
 

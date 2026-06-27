@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/client';
+import Spinner from '../components/Spinner';
 
 export default function Inventory() {
   // Stock Ops
@@ -169,8 +170,8 @@ export default function Inventory() {
                   </select>
                 </div>
               )}
-              <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={isProcessingOp} aria-busy={isProcessingOp}>
-                {isProcessingOp ? 'Processing...' : opType === 'receive' ? 'Receive Stock' : opType === 'dispatch' ? 'Dispatch Stock' : 'Transfer Stock'}
+              <button type="submit" className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isProcessingOp} aria-busy={isProcessingOp}>
+                {isProcessingOp && <Spinner />} {isProcessingOp ? 'Processing...' : opType === 'receive' ? 'Receive Stock' : opType === 'dispatch' ? 'Dispatch Stock' : 'Transfer Stock'}
               </button>
             </form>
             <p style={{ color: opMsg.includes('failed') || opMsg.includes('Error') ? '#f87171' : '#34d399' }}>{opMsg}</p>
@@ -192,8 +193,8 @@ export default function Inventory() {
                   <option value="ALL">All Combined (ALL)</option>
                 </select>
               </div>
-              <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={isCheckingStock} aria-busy={isCheckingStock}>
-                {isCheckingStock ? 'Checking...' : 'Check Level'}
+              <button type="submit" className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isCheckingStock} aria-busy={isCheckingStock}>
+                {isCheckingStock && <Spinner />} {isCheckingStock ? 'Checking...' : 'Check Level'}
               </button>
             </form>
             {stockLevel !== null && (
@@ -213,8 +214,8 @@ export default function Inventory() {
             {!activeCountId ? (
               <div style={{ textAlign: 'center', padding: '2rem 0' }}>
                 <p className="text-muted" style={{ marginBottom: '1.5rem' }}>No active inventory count session running.</p>
-                <button onClick={startCount} className="btn-primary" disabled={isStartingCount} aria-busy={isStartingCount}>
-                  {isStartingCount ? 'Starting...' : 'Start New Count Session'}
+                <button onClick={startCount} className="btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', margin: '0 auto' }} disabled={isStartingCount} aria-busy={isStartingCount}>
+                  {isStartingCount && <Spinner />} {isStartingCount ? 'Starting...' : 'Start New Count Session'}
                 </button>
               </div>
             ) : (
@@ -234,8 +235,8 @@ export default function Inventory() {
                     <label htmlFor="countQty">Counted Quantity</label>
                     <input id="countQty" type="number" min="0" value={countQty} onChange={e => setCountQty(e.target.value)} placeholder="Quantity found" required />
                   </div>
-                  <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={isRecordingItem} aria-busy={isRecordingItem}>
-                    {isRecordingItem ? 'Submitting...' : 'Submit Item Count'}
+                  <button type="submit" className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isRecordingItem} aria-busy={isRecordingItem}>
+                    {isRecordingItem && <Spinner />} {isRecordingItem ? 'Submitting...' : 'Submit Item Count'}
                   </button>
                 </form>
 
@@ -253,8 +254,8 @@ export default function Inventory() {
                   </div>
                 )}
 
-                <button onClick={completeCount} className="btn-primary" style={{ width: '100%', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)' }} disabled={isCompletingCount} aria-busy={isCompletingCount}>
-                  {isCompletingCount ? 'Completing...' : 'Complete Session & Reconcile'}
+                <button onClick={completeCount} className="btn-primary" style={{ width: '100%', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isCompletingCount} aria-busy={isCompletingCount}>
+                  {isCompletingCount && <Spinner />} {isCompletingCount ? 'Completing...' : 'Complete Session & Reconcile'}
                 </button>
               </div>
             )}

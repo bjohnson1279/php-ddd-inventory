@@ -9,7 +9,7 @@ if (file_exists(__DIR__ . '/../../../vendor/autoload.php')) {
 
 // Load environment from project root .env if vlucas/phpdotenv is available
 if (class_exists(\Dotenv\Dotenv::class)) {
-    $dotenv = \Dotenv\Dotenv::createImmutable(__DIR__ . '/../../../../');
+    $dotenv = \Dotenv\Dotenv::createImmutable(__DIR__ . '/../../../');
     $dotenv->safeLoad();
 }
 

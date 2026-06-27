@@ -126,4 +126,46 @@ class FulfillAllocationTest extends TestCase
         // Try to fulfill 2, but only 1 is allocated
         $useCase->execute(new SKU('TSHIRT-L-RED'), new Quantity(2), new LocationId('LOC-STOREFRONT'));
     }
+
+    public function testExecuteThrowsExceptionIfInsufficientStockForFulfillment()
+    {
+        $repositoryMock = $this->createMock(ProductRepositoryInterface::class);
+        $eventsMock = $this->createMock(EventDispatcherInterface::class);
+
+        $product = Product::create(
+            'prod_123',
+            new SKU('TSHIRT-L-RED'),
+            'Large Red T-Shirt',
+            new Department('APPAREL'),
+            new LocationId('LOC-STOREFRONT'),
+            new Quantity(10)
+        );
+        $product->releaseEvents();
+
+        // Allocate 5
+        $product->allocateStockAt(new LocationId('LOC-STOREFRONT'), new Quantity(5));
+
+        // Dispatch 8, leaving only 2 physical stock
+        $product->dispatchStockAt(new LocationId('LOC-STOREFRONT'), new Quantity(8));
+
+        $repositoryMock->expects($this->once())
+            ->method('findBySku')
+            ->with($this->callback(function (SKU $s) {
+                return $s->getValue() === 'TSHIRT-L-RED';
+            }))
+            ->willReturn($product);
+
+        $repositoryMock->expects($this->never())
+            ->method('save');
+
+        $eventsMock->expects($this->never())
+            ->method('dispatch');
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage("Cannot fulfill allocation of 5 because only 2 is in stock.");
+
+        $useCase = new FulfillAllocation($repositoryMock, $eventsMock);
+        // Try to fulfill 5, which is allocated, but stock is only 2
+        $useCase->execute(new SKU('TSHIRT-L-RED'), new Quantity(5), new LocationId('LOC-STOREFRONT'));
+    }
 }

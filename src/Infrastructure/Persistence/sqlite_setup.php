@@ -14,7 +14,9 @@ class SqliteSetup
             self::getAccountingQueries(),
             self::getIntegrationQueries(),
             self::getSystemQueries(),
-            self::getReturnsQueries()
+            self::getReturnsQueries(),
+            self::getForecastingQueries(),
+            self::getShippingQueries()
         );
 
         foreach ($queries as $q) {
@@ -414,6 +416,53 @@ class SqliteSetup
               location_id VARCHAR(50) NOT NULL,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               resolved_at DATETIME DEFAULT NULL
+            )"
+        ];
+    }
+
+    private static function getForecastingQueries(): array
+    {
+        return [
+            "CREATE TABLE IF NOT EXISTS demand_forecasts (
+              id TEXT PRIMARY KEY,
+              sku TEXT NOT NULL,
+              location_id VARCHAR(50) NOT NULL,
+              forecasted_quantity INTEGER NOT NULL,
+              period_start DATETIME NOT NULL,
+              period_end DATETIME NOT NULL,
+              confidence_level NUMERIC NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              UNIQUE (sku, location_id, period_start, period_end)
+            )"
+        ];
+    }
+
+    private static function getShippingQueries(): array
+    {
+        return [
+            "CREATE TABLE IF NOT EXISTS shipments (
+              id VARCHAR(50) PRIMARY KEY,
+              sku TEXT NOT NULL,
+              quantity INTEGER NOT NULL,
+              destination_address TEXT NOT NULL,
+              carrier VARCHAR(50) NOT NULL,
+              tracking_number VARCHAR(100),
+              label_url TEXT,
+              shipping_rate_cents INTEGER NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS outbox_events (
+              id VARCHAR(50) PRIMARY KEY,
+              event_name VARCHAR(255) NOT NULL,
+              payload TEXT NOT NULL,
+              occurred_on DATETIME NOT NULL,
+              processed_at DATETIME DEFAULT NULL,
+              attempts INTEGER NOT NULL DEFAULT 0,
+              last_error TEXT DEFAULT NULL,
+              next_attempt_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
             )"
         ];
     }

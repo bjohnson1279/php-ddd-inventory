@@ -318,4 +318,273 @@ class ReceiveRMATest extends TestCase
 
         $this->useCase->execute($dto);
     }
+
+    public function testExecuteHandlesSerializedItemsForQuarantine(): void
+    {
+        $dto = [
+            'rmaId' => 'rma_1',
+            'items' => [
+                [
+                    'variantId' => 'var_1',
+                    'quantityReceived' => 1,
+                    'disposition' => 'QUARANTINE',
+                    'serialNumbers' => ['SN1']
+                ]
+            ]
+        ];
+
+        $rmaItem = $this->createRmaItemMock('var_1', 1000);
+        $rma = $this->createRmaMock('rma_1', 'tenant_1', 'LOC-1', [$rmaItem]);
+        $product = $this->createProductMock();
+        $serialItem = $this->createMock(SerializedItem::class);
+
+        $this->rmaRepositoryMock->method('findById')->willReturn($rma);
+        $this->productRepositoryMock->method('findById')->willReturn($product);
+
+        $this->serializedRepositoryMock->expects($this->once())
+            ->method('findBySerial')
+            ->with($this->callback(fn(SerialNumber $sn) => $sn->value === 'SN1'), 'tenant_1')
+            ->willReturn($serialItem);
+
+        $serialItem->expects($this->once())
+            ->method('acceptReturn')
+            ->with('rma_1', 'system');
+
+        $serialItem->expects($this->once())
+            ->method('quarantine')
+            ->with("Quarantined from RMA RMA-1234", 'system', 'rma_1');
+
+        $this->serializedRepositoryMock->expects($this->once())
+            ->method('save')
+            ->with($serialItem);
+
+        $this->useCase->execute($dto);
+    }
+
+    public function testExecuteHandlesSerializedItemsForScrap(): void
+    {
+        $dto = [
+            'rmaId' => 'rma_1',
+            'items' => [
+                [
+                    'variantId' => 'var_1',
+                    'quantityReceived' => 1,
+                    'disposition' => 'SCRAP',
+                    'serialNumbers' => ['SN1']
+                ]
+            ]
+        ];
+
+        $rmaItem = $this->createRmaItemMock('var_1', 1000);
+        $rma = $this->createRmaMock('rma_1', 'tenant_1', 'LOC-1', [$rmaItem]);
+        $product = $this->createProductMock();
+        $serialItem = $this->createMock(SerializedItem::class);
+
+        $this->rmaRepositoryMock->method('findById')->willReturn($rma);
+        $this->productRepositoryMock->method('findById')->willReturn($product);
+
+        $this->serializedRepositoryMock->expects($this->once())
+            ->method('findBySerial')
+            ->with($this->callback(fn(SerialNumber $sn) => $sn->value === 'SN1'), 'tenant_1')
+            ->willReturn($serialItem);
+
+        $serialItem->expects($this->once())
+            ->method('acceptReturn')
+            ->with('rma_1', 'system');
+
+        $serialItem->expects($this->once())
+            ->method('writeOff')
+            ->with("Scrapped from RMA RMA-1234", 'system', 'rma_1');
+
+        $this->serializedRepositoryMock->expects($this->once())
+            ->method('save')
+            ->with($serialItem);
+
+        $mockLayer = new \InventoryApp\Domain\Accounting\Entities\InventoryCostLayer(
+            'layer_1', 'var_1', 'tenant_1', 1, 1000, new \DateTimeImmutable(), 'ref'
+        );
+
+        $this->costLayerRepositoryMock->expects($this->once())
+            ->method('getActiveLayers')
+            ->willReturn([$mockLayer]);
+
+        $this->useCase->execute($dto);
+    }
+
+    public function testExecuteHandlesSerializedItemsNotFound(): void
+    {
+        $dto = [
+            'rmaId' => 'rma_1',
+            'items' => [
+                [
+                    'variantId' => 'var_1',
+                    'quantityReceived' => 1,
+                    'disposition' => 'RESTOCK',
+                    'serialNumbers' => ['SN1']
+                ]
+            ]
+        ];
+
+        $rmaItem = $this->createRmaItemMock('var_1', 1000);
+        $rma = $this->createRmaMock('rma_1', 'tenant_1', 'LOC-1', [$rmaItem]);
+        $product = $this->createProductMock();
+
+        $this->rmaRepositoryMock->method('findById')->willReturn($rma);
+        $this->productRepositoryMock->method('findById')->willReturn($product);
+
+        $this->serializedRepositoryMock->expects($this->once())
+            ->method('findBySerial')
+            ->with($this->callback(fn(SerialNumber $sn) => $sn->value === 'SN1'), 'tenant_1')
+            ->willReturn(null);
+
+        $this->serializedRepositoryMock->expects($this->never())
+            ->method('save');
+
+        $this->useCase->execute($dto);
+    }
+
+    public function testExecuteStopsAndDoesNotSaveIfDomainThrowsException(): void
+    {
+        $dto = [
+            'rmaId' => 'rma_1',
+            'items' => [
+                [
+                    'variantId' => 'var_1',
+                    'quantityReceived' => 5,
+                    'disposition' => 'RESTOCK',
+                    'serialNumbers' => []
+                ]
+            ]
+        ];
+
+        $rmaItem = $this->createRmaItemMock('var_1', 1000);
+        $rma = $this->createRmaMock('rma_1', 'tenant_1', 'LOC-1', [$rmaItem]);
+
+        $this->rmaRepositoryMock->method('findById')->willReturn($rma);
+
+        $rma->expects($this->once())
+            ->method('receiveItem')
+            ->willThrowException(new \InvalidArgumentException("Invalid state."));
+
+        $this->productRepositoryMock->expects($this->never())->method('save');
+        $this->costLayerRepositoryMock->expects($this->never())->method('save');
+        $this->rmaRepositoryMock->expects($this->never())->method('save');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage("Invalid state.");
+
+        $this->useCase->execute($dto);
+    }
+
+    public function testExecuteThrowsExceptionAndDoesNotSaveIfDispositionIsInvalid(): void
+    {
+        $dto = [
+            'rmaId' => 'rma_1',
+            'items' => [
+                [
+                    'variantId' => 'var_1',
+                    'quantityReceived' => 5,
+                    'disposition' => 'INVALID_DISPOSITION',
+                    'serialNumbers' => []
+                ]
+            ]
+        ];
+
+        $rmaItem = $this->createRmaItemMock('var_1', 1000);
+        $rma = $this->createRmaMock('rma_1', 'tenant_1', 'LOC-1', [$rmaItem]);
+
+        $this->rmaRepositoryMock->method('findById')->willReturn($rma);
+
+        $this->productRepositoryMock->expects($this->never())->method('save');
+        $this->costLayerRepositoryMock->expects($this->never())->method('save');
+        $this->rmaRepositoryMock->expects($this->never())->method('save');
+
+        $this->expectException(\ValueError::class);
+
+        $this->useCase->execute($dto);
+    }
+
+    public function testExecuteProcessesMultipleItemsSuccessfully(): void
+    {
+        $dto = [
+            'rmaId' => 'rma_1',
+            'items' => [
+                [
+                    'variantId' => 'var_1',
+                    'quantityReceived' => 5,
+                    'disposition' => 'RESTOCK',
+                    'serialNumbers' => []
+                ],
+                [
+                    'variantId' => 'var_2',
+                    'quantityReceived' => 2,
+                    'disposition' => 'RESTOCK',
+                    'serialNumbers' => []
+                ]
+            ]
+        ];
+
+        $rmaItem1 = $this->createRmaItemMock('var_1', 1000);
+        $rmaItem2 = $this->createRmaItemMock('var_2', 1500);
+        $rma = $this->createRmaMock('rma_1', 'tenant_1', 'LOC-1', [$rmaItem1, $rmaItem2]);
+
+        $product1 = $this->createProductMock();
+        $product2 = $this->createProductMock();
+
+        $this->rmaRepositoryMock->expects($this->once())
+            ->method('findById')
+            ->with('rma_1')
+            ->willReturn($rma);
+
+        $rma->expects($this->exactly(2))
+            ->method('receiveItem')
+            ->withConsecutive(
+                ['var_1', 5, RMADisposition::Restock],
+                ['var_2', 2, RMADisposition::Restock]
+            );
+
+        $this->productRepositoryMock->expects($this->exactly(2))
+            ->method('findById')
+            ->willReturnMap([
+                ['var_1', $product1],
+                ['var_2', $product2]
+            ]);
+
+        $product1->expects($this->once())
+            ->method('receiveStockAt')
+            ->with(
+                $this->callback(fn(LocationId $loc) => $loc->getValue() === 'LOC-1'),
+                $this->callback(fn($qty) => $qty->getValue() === 5),
+                'RMA-rma_1'
+            );
+
+        $product2->expects($this->once())
+            ->method('receiveStockAt')
+            ->with(
+                $this->callback(fn(LocationId $loc) => $loc->getValue() === 'LOC-1'),
+                $this->callback(fn($qty) => $qty->getValue() === 2),
+                'RMA-rma_1'
+            );
+
+        $this->productRepositoryMock->expects($this->exactly(2))
+            ->method('save')
+            ->withConsecutive([$product1], [$product2]);
+
+        $this->costLayerRepositoryMock->expects($this->exactly(2))
+            ->method('save')
+            ->with($this->isInstanceOf(InventoryCostLayer::class));
+
+        $this->journalServiceMock->expects($this->exactly(2))
+            ->method('onStockReturned')
+            ->withConsecutive(
+                ['tenant_1', 'var_1', 5000, 'rma_1', $this->isInstanceOf(\DateTimeImmutable::class)],
+                ['tenant_1', 'var_2', 3000, 'rma_1', $this->isInstanceOf(\DateTimeImmutable::class)]
+            );
+
+        $this->rmaRepositoryMock->expects($this->once())
+            ->method('save')
+            ->with($rma);
+
+        $this->useCase->execute($dto);
+    }
 }

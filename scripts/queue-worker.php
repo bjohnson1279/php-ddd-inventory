@@ -25,11 +25,12 @@ do {
                 ->first();
                 
             if ($job) {
+                $job->attempts = $job->attempts + 1;
                 DB::table('queued_jobs')
                     ->where('id', $job->id)
                     ->update([
                         'reserved_at' => date('Y-m-d H:i:s'),
-                        'attempts'    => $job->attempts + 1
+                        'attempts'    => $job->attempts
                     ]);
             }
         });

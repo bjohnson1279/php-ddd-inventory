@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import api from '../api/client';
+import Spinner from '../components/Spinner';
 
 type Variant = {
   id: string;
@@ -264,8 +265,8 @@ export default function Catalog() {
                   <option value="ACC">Accessories</option>
                 </select>
               </div>
-              <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={isCreatingProd} aria-busy={isCreatingProd}>
-                {isCreatingProd ? 'Creating...' : 'Create Product'}
+              <button type="submit" className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isCreatingProd} aria-busy={isCreatingProd}>
+                {isCreatingProd && <Spinner />} {isCreatingProd ? 'Creating...' : 'Create Product'}
               </button>
             </form>
             {prodMsg && (
@@ -305,8 +306,8 @@ export default function Catalog() {
                   <input id="varSize" value={varSize} onChange={e => setVarSize(e.target.value)} placeholder="e.g. Medium" />
                 </div>
               </div>
-              <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={isAddingVar} aria-busy={isAddingVar}>
-                {isAddingVar ? 'Adding...' : 'Add Variant'}
+              <button type="submit" className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isAddingVar} aria-busy={isAddingVar}>
+                {isAddingVar && <Spinner />} {isAddingVar ? 'Adding...' : 'Add Variant'}
               </button>
             </form>
             {varMsg && (
@@ -356,8 +357,8 @@ export default function Catalog() {
                 <input type="checkbox" checked={isPrimary} onChange={e => setIsPrimary(e.target.checked)} style={{ width: 'auto', marginTop: 0 }} id="is_primary" />
                 <label htmlFor="is_primary" style={{ margin: 0, cursor: 'pointer' }}>Make Primary Barcode</label>
               </div>
-              <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={isAssigning} aria-busy={isAssigning}>
-                {isAssigning ? 'Assigning...' : 'Assign Barcode'}
+              <button type="submit" className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isAssigning} aria-busy={isAssigning}>
+                {isAssigning && <Spinner />} {isAssigning ? 'Assigning...' : 'Assign Barcode'}
               </button>
             </form>
             {barcodeMsg && (
@@ -375,8 +376,8 @@ export default function Catalog() {
                 <label htmlFor="lookupVal">Scan / Type Code</label>
                 <input id="lookupVal" value={lookupVal} onChange={e => setLookupVal(e.target.value)} placeholder="Scan barcode..." required />
               </div>
-              <button type="submit" className="btn-primary" disabled={isResolving} aria-busy={isResolving}>
-                {isResolving ? 'Resolving...' : 'Resolve'}
+              <button type="submit" className="btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isResolving} aria-busy={isResolving}>
+                {isResolving && <Spinner />} {isResolving ? 'Resolving...' : 'Resolve'}
               </button>
             </form>
             {lookupResult && (

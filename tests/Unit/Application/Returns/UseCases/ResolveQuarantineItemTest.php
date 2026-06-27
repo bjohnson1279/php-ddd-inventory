@@ -73,6 +73,12 @@ class ResolveQuarantineItemTest extends TestCase
             ->with('q-123')
             ->willReturn(null);
 
+        $this->productRepoMock->expects($this->never())
+            ->method('save');
+
+        $this->quarantineRepoMock->expects($this->never())
+            ->method('save');
+
         $this->expectException(Exception::class);
         $this->expectExceptionMessage("Quarantine item with ID q-123 not found.");
 
@@ -93,8 +99,43 @@ class ResolveQuarantineItemTest extends TestCase
             ->with('v-1')
             ->willReturn(null);
 
+        $this->productRepoMock->expects($this->never())
+            ->method('save');
+
+        $this->quarantineRepoMock->expects($this->never())
+            ->method('save');
+
         $this->expectException(Exception::class);
         $this->expectExceptionMessage("Product not found for variant v-1");
+
+        $this->useCase->execute(['quarantineItemId' => 'q-123', 'resolution' => 'RESTOCK']);
+    }
+
+    public function testExecuteThrowsExceptionWhenInsufficientQuarantineStock()
+    {
+        $qItem = $this->createQuarantineItem('q-123', 'v-1', 5, 'LOC-1');
+        $product = $this->createProduct('v-1');
+
+        // Intentionally do NOT receive stock in the quarantine location, so stock is 0.
+        // Trying to dispatch 5 from a location with 0 stock will throw an InsufficientStockException.
+
+        $this->quarantineRepoMock->expects($this->once())
+            ->method('findById')
+            ->with('q-123')
+            ->willReturn($qItem);
+
+        $this->productRepoMock->expects($this->once())
+            ->method('findById')
+            ->with('v-1')
+            ->willReturn($product);
+
+        $this->productRepoMock->expects($this->never())
+            ->method('save');
+
+        $this->quarantineRepoMock->expects($this->never())
+            ->method('save');
+
+        $this->expectException(\InventoryApp\Domain\Inventory\Exceptions\InsufficientStockException::class);
 
         $this->useCase->execute(['quarantineItemId' => 'q-123', 'resolution' => 'RESTOCK']);
     }
@@ -218,5 +259,27 @@ class ResolveQuarantineItemTest extends TestCase
             }));
 
         $this->useCase->execute(['quarantineItemId' => 'q-123', 'resolution' => 'RTV']);
+    }
+
+    public function testExecuteThrowsExceptionForInvalidResolution()
+    {
+        $qItem = $this->createQuarantineItem('q-123', 'v-1', 5, 'LOC-1');
+        $product = $this->createProduct('v-1');
+        $product->receiveStockAt(new LocationId('LOC-1-quarantine'), new Quantity(5), 'TEST-IN');
+
+        $this->quarantineRepoMock->expects($this->once())
+            ->method('findById')
+            ->with('q-123')
+            ->willReturn($qItem);
+
+        $this->productRepoMock->expects($this->once())
+            ->method('findById')
+            ->with('v-1')
+            ->willReturn($product);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage("Invalid resolution type: INVALID");
+
+        $this->useCase->execute(['quarantineItemId' => 'q-123', 'resolution' => 'INVALID']);
     }
 }

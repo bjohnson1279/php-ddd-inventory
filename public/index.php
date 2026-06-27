@@ -1410,6 +1410,136 @@ if ($method === 'GET' && $uri === '/api/reports/valuation') {
     exit;
 }
 
+// ── Shipping Carrier Integration ────────────────────────────────────────────────
+// Route: GET /api/shipping/rates
+if ($method === 'GET' && $uri === '/api/shipping/rates') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:read')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden: You do not have permission to view rates.']);
+        exit;
+    }
+    $useCase = new \InventoryApp\Application\Shipping\UseCases\CalculateShippingRates(ServiceContainer::carrierService());
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ShippingController())->getRates($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: POST /api/shipping/labels
+if ($method === 'POST' && $uri === '/api/shipping/labels') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden: You do not have permission to purchase shipping labels.']);
+        exit;
+    }
+    $useCase = new \InventoryApp\Application\Shipping\UseCases\PurchaseShippingLabel(
+        ServiceContainer::shipmentRepo(),
+        ServiceContainer::carrierService(),
+        ServiceContainer::productRepo(tenantId()),
+        ServiceContainer::ledgerRepo(tenantId()),
+        ServiceContainer::journalRepo(),
+        ServiceContainer::outboxRepo(),
+        ServiceContainer::costLayerRepo(tenantId())
+    );
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ShippingController())->purchaseLabel($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: GET /api/shipping/shipments
+if ($method === 'GET' && $uri === '/api/shipping/shipments') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:read')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden: You do not have permission to view shipments.']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ShippingController())->getShipments($request, ServiceContainer::shipmentRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: POST /api/shipping/shipments/{id}/track
+if ($method === 'POST' && preg_match('#^/api/shipping/shipments/([^/]+)/track$#', $uri, $m)) {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden: You do not have permission to track shipments.']);
+        exit;
+    }
+    $shipmentId = urldecode($m[1]);
+    $useCase = new \InventoryApp\Application\Shipping\UseCases\UpdateShipmentStatus(
+        ServiceContainer::shipmentRepo(),
+        ServiceContainer::outboxRepo()
+    );
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ShippingController())->trackShipment($request, $shipmentId, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Outbox ──────────────────────────────────────────────────────────────────────
+// Route: GET /api/outbox/stats
+if ($method === 'GET' && $uri === '/api/outbox/stats') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:read')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\OutboxController())->getStats($request, ServiceContainer::outboxRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: GET /api/outbox/dead-letter
+if ($method === 'GET' && $uri === '/api/outbox/dead-letter') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:read')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\OutboxController())->listDeadLettered($request, ServiceContainer::outboxRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: POST /api/outbox/{id}/retry
+if ($method === 'POST' && preg_match('#^/api/outbox/([^/]+)/retry$#', $uri, $m)) {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden']);
+        exit;
+    }
+    $eventId = urldecode($m[1]);
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\OutboxController())->retry($request, $eventId, ServiceContainer::outboxRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
 // ── Unit of Measure (UoM) ────────────────────────────────────────────────────
 // Route: POST /api/uom/configurations
 if ($method === 'POST' && $uri === '/api/uom/configurations') {
@@ -1948,6 +2078,52 @@ if ($method === 'GET' && preg_match('#^/api/reorder-policies/([^/]+)/([^/]+)$#',
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReorderPolicyController())
         ->get($request, $sku, $locationId, ServiceContainer::reorderPolicyRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: GET /api/forecasting/report ───────────────────────────────────────
+if ($method === 'GET' && $uri === '/api/forecasting/report') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:read')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ForecastingController())
+        ->getReport(
+            $request,
+            ServiceContainer::productRepo(tenantId()),
+            ServiceContainer::ledgerRepo(tenantId()),
+            ServiceContainer::reorderPolicyRepo(),
+            ServiceContainer::demandForecastRepo()
+        );
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/forecasting/forecast ──────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/forecasting/forecast') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ForecastingController())
+        ->generateForecast(
+            $request,
+            ServiceContainer::productRepo(tenantId()),
+            ServiceContainer::ledgerRepo(tenantId()),
+            ServiceContainer::reorderPolicyRepo(),
+            ServiceContainer::demandForecastRepo()
+        );
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;

@@ -27,6 +27,12 @@ class NotificationListenerTest extends TestCase
         $this->listener = new NotificationListener($this->notificationServiceMock, $this->tenantId);
     }
 
+    protected function tearDown(): void
+    {
+        unset($_SERVER['auth.tenant_id']);
+        parent::tearDown();
+    }
+
     public function testHandleLowStock(): void
     {
         $sku = new SKU('SKU-100');
@@ -42,6 +48,48 @@ class NotificationListenerTest extends TestCase
             );
 
         $this->listener->handleLowStock($event);
+    }
+
+    public function testHandleLowStockUsesServerTenantIdWhenNotProvidedInConstructor(): void
+    {
+        $_SERVER['auth.tenant_id'] = 'server-tenant-456';
+
+        $listener = new NotificationListener($this->notificationServiceMock);
+
+        $sku = new SKU('SKU-100');
+        $event = new LowStockDetected($sku, 5, 10, new DateTimeImmutable());
+
+        $this->notificationServiceMock->expects($this->once())
+            ->method('createNotification')
+            ->with(
+                'server-tenant-456',
+                'Low Stock Warning',
+                "Variant with SKU 'SKU-100' is low on stock (5 remaining, threshold: 10).",
+                'warning'
+            );
+
+        $listener->handleLowStock($event);
+    }
+
+    public function testHandleLowStockUsesSystemTenantIdWhenNoneProvided(): void
+    {
+        unset($_SERVER['auth.tenant_id']);
+
+        $listener = new NotificationListener($this->notificationServiceMock);
+
+        $sku = new SKU('SKU-100');
+        $event = new LowStockDetected($sku, 5, 10, new DateTimeImmutable());
+
+        $this->notificationServiceMock->expects($this->once())
+            ->method('createNotification')
+            ->with(
+                'system',
+                'Low Stock Warning',
+                "Variant with SKU 'SKU-100' is low on stock (5 remaining, threshold: 10).",
+                'warning'
+            );
+
+        $listener->handleLowStock($event);
     }
 
     public function testHandleStockReceived(): void
@@ -60,6 +108,74 @@ class NotificationListenerTest extends TestCase
             );
 
         $this->listener->handleStockReceived($event);
+    }
+
+    public function testHandleStockReceivedWithServerTenantId(): void
+    {
+        $_SERVER['auth.tenant_id'] = 'server-tenant-123';
+        $listener = new NotificationListener($this->notificationServiceMock, null);
+
+        $sku = new SKU('SKU-201');
+        $locationId = new LocationId('LOC-SUB');
+        $event = new StockReceived($sku, $locationId, 10, 'REF-456', new DateTimeImmutable());
+
+        $this->notificationServiceMock->expects($this->once())
+            ->method('createNotification')
+            ->with(
+                'server-tenant-123',
+                'Stock Received',
+                "Received 10 units for SKU 'SKU-201' at location 'LOC-SUB'.",
+                'success'
+            );
+
+        $listener->handleStockReceived($event);
+    }
+
+    public function testHandleStockReceivedWithSystemTenantId(): void
+    {
+        $listener = new NotificationListener($this->notificationServiceMock, null);
+
+        $sku = new SKU('SKU-202');
+        $locationId = new LocationId('LOC-SYS');
+        $event = new StockReceived($sku, $locationId, 20, 'REF-789', new DateTimeImmutable());
+
+        $this->notificationServiceMock->expects($this->once())
+            ->method('createNotification')
+            ->with(
+                'system',
+                'Stock Received',
+                "Received 20 units for SKU 'SKU-202' at location 'LOC-SYS'.",
+                'success'
+            );
+
+        $listener->handleStockReceived($event);
+    }
+
+    public function testHandleStockReceivedPropagatesException(): void
+    {
+        $notificationServiceMock = $this->createMock(NotificationService::class);
+        $listener = new NotificationListener($notificationServiceMock, 'tenant-err');
+
+        $sku = new SKU('SKU-ERR');
+        $locationId = new LocationId('LOC-ERR');
+        $event = new StockReceived($sku, $locationId, 50, 'REF-ERR', new \DateTimeImmutable());
+
+        $expectedException = new \RuntimeException('Database error saving notification');
+
+        $notificationServiceMock->expects($this->once())
+            ->method('createNotification')
+            ->with(
+                'tenant-err',
+                'Stock Received',
+                "Received 50 units for SKU 'SKU-ERR' at location 'LOC-ERR'.",
+                'success'
+            )
+            ->willThrowException($expectedException);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Database error saving notification');
+
+        $listener->handleStockReceived($event);
     }
 
     public function testHandleOnboardingSubmitted(): void
@@ -84,6 +200,76 @@ class NotificationListenerTest extends TestCase
         $this->listener->handleOnboardingSubmitted($event);
     }
 
+    public function testHandleOnboardingSubmittedBubblesUpException(): void
+    {
+        $event = new StockOnboardingSubmitted(
+            'onboarding-error',
+            $this->tenantId,
+            'LOC-MAIN',
+            new DateTimeImmutable(),
+            new DateTimeImmutable()
+        );
+
+        $this->notificationServiceMock->expects($this->once())
+            ->method('createNotification')
+            ->willThrowException(new \RuntimeException('Notification service is down'));
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Notification service is down');
+
+        $this->listener->handleOnboardingSubmitted($event);
+    }
+
+    public function testHandleOnboardingSubmittedResolvesTenantFromGlobal(): void
+    {
+        $listenerWithoutTenant = new NotificationListener($this->notificationServiceMock, null);
+        $_SERVER['auth.tenant_id'] = 'global-tenant';
+
+        $event = new StockOnboardingSubmitted(
+            'onboarding-2',
+            'global-tenant',
+            'LOC-MAIN',
+            new DateTimeImmutable(),
+            new DateTimeImmutable()
+        );
+
+        $this->notificationServiceMock->expects($this->once())
+            ->method('createNotification')
+            ->with(
+                'global-tenant',
+                'Inventory Onboarding Submitted',
+                'A draft stock onboarding batch was submitted for validation.',
+                'info'
+            );
+
+        $listenerWithoutTenant->handleOnboardingSubmitted($event);
+    }
+
+    public function testHandleOnboardingSubmittedFallsBackToSystem(): void
+    {
+        $listenerWithoutTenant = new NotificationListener($this->notificationServiceMock, null);
+        unset($_SERVER['auth.tenant_id']);
+
+        $event = new StockOnboardingSubmitted(
+            'onboarding-3',
+            'system',
+            'LOC-MAIN',
+            new DateTimeImmutable(),
+            new DateTimeImmutable()
+        );
+
+        $this->notificationServiceMock->expects($this->once())
+            ->method('createNotification')
+            ->with(
+                'system',
+                'Inventory Onboarding Submitted',
+                'A draft stock onboarding batch was submitted for validation.',
+                'info'
+            );
+
+        $listenerWithoutTenant->handleOnboardingSubmitted($event);
+    }
+
     public function testHandleStockReconciled(): void
     {
         $sku = new SKU('SKU-300');
@@ -100,6 +286,48 @@ class NotificationListenerTest extends TestCase
             );
 
         $this->listener->handleStockReconciled($event);
+    }
+
+    public function testHandleStockReconciledWithServerTenantId(): void
+    {
+        $listenerWithoutTenant = new NotificationListener($this->notificationServiceMock, null);
+        $_SERVER['auth.tenant_id'] = 'server-tenant';
+
+        $sku = new SKU('SKU-301');
+        $locationId = new LocationId('LOC-MAIN');
+        $event = new StockReconciled($sku, $locationId, 100, -5, 'REF-789', new DateTimeImmutable());
+
+        $this->notificationServiceMock->expects($this->once())
+            ->method('createNotification')
+            ->with(
+                'server-tenant',
+                'Stock Reconciled',
+                "Physical count reconciliation adjusted stock for SKU 'SKU-301' to 100.",
+                'info'
+            );
+
+        $listenerWithoutTenant->handleStockReconciled($event);
+    }
+
+    public function testHandleStockReconciledFallsBackToSystem(): void
+    {
+        $listenerWithoutTenant = new NotificationListener($this->notificationServiceMock, null);
+        unset($_SERVER['auth.tenant_id']);
+
+        $sku = new SKU('SKU-302');
+        $locationId = new LocationId('LOC-MAIN');
+        $event = new StockReconciled($sku, $locationId, 200, 20, 'REF-999', new DateTimeImmutable());
+
+        $this->notificationServiceMock->expects($this->once())
+            ->method('createNotification')
+            ->with(
+                'system',
+                'Stock Reconciled',
+                "Physical count reconciliation adjusted stock for SKU 'SKU-302' to 200.",
+                'info'
+            );
+
+        $listenerWithoutTenant->handleStockReconciled($event);
     }
 
     public function testHandleOpeningBalancePosted(): void

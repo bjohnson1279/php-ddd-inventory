@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/client';
+import Spinner from '../components/Spinner';
 
 type Transition = {
   from: string;
@@ -163,8 +164,8 @@ export default function Serials() {
                   <option value="LOC-BACKROOM">Backroom Storage</option>
                 </select>
               </div>
-              <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={isRegistering} aria-busy={isRegistering}>
-                {isRegistering ? 'Registering...' : 'Register Serial'}
+              <button type="submit" className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isRegistering} aria-busy={isRegistering}>
+                {isRegistering && <Spinner />} {isRegistering ? 'Registering...' : 'Register Serial'}
               </button>
             </form>
             <p style={{ color: regMsg.includes('failed') || regMsg.includes('Error') ? '#f87171' : '#34d399' }}>{regMsg}</p>
@@ -296,8 +297,8 @@ export default function Serials() {
                     </div>
                   )}
 
-                  <button type="submit" className="btn-primary" style={{ width: '100%', textTransform: 'capitalize' }} disabled={isProcessingAction} aria-busy={isProcessingAction}>
-                    {isProcessingAction ? 'Processing...' : `Process ${actionType.replace('-', ' ')}`}
+                  <button type="submit" className="btn-primary" style={{ width: '100%', textTransform: 'capitalize', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isProcessingAction} aria-busy={isProcessingAction}>
+                    {isProcessingAction && <Spinner />} {isProcessingAction ? 'Processing...' : `Process ${actionType.replace('-', ' ')}`}
                   </button>
                 </form>
                 <p style={{ color: actMsg.includes('failed') || actMsg.includes('Error') ? '#f87171' : '#34d399' }}>{actMsg}</p>

@@ -363,4 +363,59 @@ final class DatabaseQueueTest extends TestCase
         $this->assertNotNull($mappingRepo->findNetSuiteJournalId($entryId));
         $this->assertStringContainsString('mock-netsuite-journal-', $mappingRepo->findNetSuiteJournalId($entryId));
     }
+
+    public function testQueueWorkerHandlesFailureAndBackoff(): void
+    {
+        $jobId = uuidv4();
+
+        // 1. Insert a job that will fail to resolve
+        DB::table('queued_jobs')->insert([
+            'id'             => $jobId,
+            'tenant_id'      => 'test-tenant',
+            'listener_class' => 'NonExistentListenerClass',
+            'event_data'     => base64_encode(serialize(new \stdClass())),
+            'attempts'       => 0,
+            'reserved_at'    => null,
+            'available_at'   => date('Y-m-d H:i:s'),
+            'created_at'     => date('Y-m-d H:i:s')
+        ]);
+
+        $this->assertEquals(1, DB::table('queued_jobs')->count());
+
+        // 2. Run queue worker
+        $output = [];
+        $resultCode = -1;
+        $cmd = "php scripts/queue-worker.php --once";
+        exec($cmd, $output, $resultCode);
+
+        // Verify exit code is 0 (failures are caught and job is released/deleted)
+        $this->assertEquals(0, $resultCode, implode("\n", $output));
+
+        // The job should still exist in the queue but with attempts incremented and reserved_at nullified
+        $this->assertEquals(1, DB::table('queued_jobs')->count());
+        $job = DB::table('queued_jobs')->where('id', $jobId)->first();
+        $this->assertEquals(1, $job->attempts);
+        $this->assertNull($job->reserved_at);
+
+        // Check that available_at is set in the future (retry delay is 30 * attempts = 30 seconds)
+        $availableAt = new \DateTime($job->available_at);
+        $now = new \DateTime();
+        $diff = $availableAt->getTimestamp() - $now->getTimestamp();
+        $this->assertGreaterThanOrEqual(25, $diff); // Allow slight timing variations
+
+        // 3. Now test that max attempts deleting works (set attempts to 5)
+        DB::table('queued_jobs')->where('id', $jobId)->update([
+            'attempts'     => 5,
+            'available_at' => date('Y-m-d H:i:s') // Make it available again
+        ]);
+
+        $output = [];
+        $resultCode = -1;
+        exec($cmd, $output, $resultCode);
+
+        $this->assertEquals(0, $resultCode, implode("\n", $output));
+
+        // Job should now be deleted because attempts reached 5
+        $this->assertEquals(0, DB::table('queued_jobs')->where('id', $jobId)->count());
+    }
 }

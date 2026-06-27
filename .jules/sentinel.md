@@ -21,6 +21,10 @@
 - Ensure that any dynamic database connection strings (like `DATABASE_URL` built from separate components) are validated on server startup and fallback safely to trusted local defaults for development environments.
 - Protect raw SQL queries used to enable the `timescaledb` extension or initialize hypertables from SQL injection vulnerabilities by using parameterized queries or strict schema names.
 
+## 2024-05-24 - [Fix information disclosure in controllers]
+**Vulnerability:** Generic exception messages leaking internal information to the client via 400 API responses.
+**Learning:** A number of controllers were using catch blocks that threw `$e->getMessage()` for generic `Exception` objects directly to clients. This could expose stack traces, DB queries, or internal logic.
+**Prevention:** Explicitly catch expected domain exceptions (e.g. `\InvalidArgumentException`, `ValidationException`) and safely pass their messages to the client. For generic unexpected exceptions, catch them, log the original error message with `error_log()`, and return a generic "An internal server error occurred." response.
 ## 2026-06-27 - Rate Limit Registration Endpoints
 **Vulnerability:** The `/auth/register` and `/api/setup` endpoints lacked rate limiting, exposing the system to automated brute-force attacks and bulk user creation.
 **Learning:** Sensitive endpoints like registration and setup must always be protected against automated abuse, even if they aren't part of standard user authentication flows. Inline API routes in `public/index.php` that use `echo` directly need to be refactored to return proper `Response` objects before middleware can be applied correctly.

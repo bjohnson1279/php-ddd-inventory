@@ -244,6 +244,14 @@ function requireAuth(): void
     // Make the resolved identity available to the rest of the request
     $_SERVER['auth.user_id']   = $tokenData->user_id;
     $_SERVER['auth.tenant_id'] = $tokenData->tenant_id;
+
+    if (getenv('DB_CONNECTION') === 'pgsql' || getenv('DB_CONNECTION') === '') {
+        try {
+            \Illuminate\Database\Capsule\Manager::statement("SET app.current_tenant_id = '{$tokenData->tenant_id}'");
+        } catch (\Throwable $e) {
+            // Ignore during setup or in environments where DB is not fully bootstrapped
+        }
+    }
 }
 
 function tenantId(): string

@@ -16,6 +16,8 @@ services:
       - ./:/var/www/html
     networks:
       - ddd-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - db
 

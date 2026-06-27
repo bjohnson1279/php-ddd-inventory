@@ -18,12 +18,12 @@ class ReportController
             }
 
             // 1. Fetch all products for tenant
-            $products = DB::table('products')->where('tenant_id', $tenantId)->get();
+            $products = DB::table('products')->where('tenant_id', $tenantId)->get(['id', 'sku', 'name', 'reorder_threshold']);
             $productIds = $products->pluck('id')->toArray();
             $productSkus = $products->pluck('sku')->toArray();
 
             // Fetch all locations to initialize location names
-            $locations = DB::table('locations')->get()->keyBy('id')->toArray();
+            $locations = DB::table('locations')->get(['id', 'name'])->keyBy('id')->toArray();
 
             // Fetch ALL stock locations for these products once (to avoid N+1)
             $allStocks = $this->fetchStocksMap($productIds);
@@ -50,7 +50,7 @@ class ReportController
         }
         return DB::table('product_locations')
             ->whereIn('product_id', $productIds)
-            ->get()
+            ->get(['product_id', 'location_id', 'stock_quantity'])
             ->groupBy('product_id');
     }
 
@@ -63,7 +63,7 @@ class ReportController
             ->where('tenant_id', $tenantId)
             ->whereIn('variant_id', $productSkus)
             ->where('remaining_quantity', '>', 0)
-            ->get()
+            ->get(['variant_id', 'remaining_quantity', 'unit_cost_cents', 'received_at'])
             ->groupBy('variant_id');
     }
 
@@ -74,7 +74,7 @@ class ReportController
         }
         return DB::table('catalog_variants')
             ->whereIn('sku', $productSkus)
-            ->get()
+            ->get(['sku', 'price'])
             ->keyBy('sku');
     }
 
@@ -235,7 +235,7 @@ class ReportController
             ->where('tenant_id', $tenantId)
             ->orderBy('created_at', 'desc')
             ->limit(5)
-            ->get();
+            ->get(['id', 'product_id', 'type', 'quantity_change', 'condition', 'created_at']);
 
         if ($transactions->isEmpty()) {
             return [];
@@ -246,7 +246,7 @@ class ReportController
         // we extract the unique product IDs and perform a single O(1) batched query.
         // This solves an N+1 query issue for the activity feed.
         $productIds = $transactions->pluck('product_id')->unique()->toArray();
-        $products = DB::table('products')->whereIn('id', $productIds)->get()->keyBy('id');
+        $products = DB::table('products')->whereIn('id', $productIds)->get(['id', 'name', 'sku'])->keyBy('id');
 
         $activity = [];
         foreach ($transactions as $t) {

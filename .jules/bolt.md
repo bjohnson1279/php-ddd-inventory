@@ -24,3 +24,7 @@
 - Ensure that the primary key is defined as a composite key containing both the unique ID and the timestamp column (e.g. `PRIMARY KEY (id, occurred_at)` or `@@id([id, occurredAt])`).
 - Convert the table to a hypertable immediately upon creation/migration using `SELECT create_hypertable('table_name', 'time_column', if_not_exists => TRUE);`.
 - For Node.js/Prisma setups, ensure the datasource provider is set to PostgreSQL (not SQLite) to maintain database parity across all service variants.
+
+## 2026-06-27 - Eloquent/Query Builder Mass Selection Overhead
+**Learning:** In Laravel's Query Builder (and Eloquent), calling `->get()` without specifying columns fetches every column from the table (`SELECT *`). For large tables like `products` or `inventory_transactions`, this significantly increases database payload size, network latency, and memory consumption during object instantiation, especially for large tenant reporting.
+**Action:** When writing queries for batch processing, mapping, or reporting (like `ReportController`), explicitly list only the required columns in the `->get(['id', 'sku', ...])` method to minimize the memory footprint and execution time.

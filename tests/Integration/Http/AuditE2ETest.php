@@ -64,7 +64,7 @@ final class AuditE2ETest extends TestCase
             'adminEmail'    => $this->email,
             'adminPassword' => $this->password,
         ]);
-        $this->assertEquals(200, $setupRes['status']);
+        $this->assertEquals(200, $setupRes['status'], json_encode($setupRes));
 
         $loginRes = $this->request('POST', '/api/auth/login', [
             'tenant_id' => $this->tenantId,
@@ -78,6 +78,25 @@ final class AuditE2ETest extends TestCase
         putenv("SHOPIFY_SHOP_URL=mock.myshopify.com");
         putenv("SHOPIFY_ACCESS_TOKEN=mock-token");
         putenv("QUICKBOOKS_ACCESS_TOKEN=mock-qbo-token");
+
+        // Seed catalog product and variant for FK constraints
+        $catalogProductId = uuidv4();
+        Capsule::table('catalog_products')->insert([
+            'id' => $catalogProductId,
+            'name' => 'iPhone 15 Catalog',
+            'description' => 'Test Description',
+            'department' => 'Electronics',
+            'tenant_id' => $this->tenantId
+        ]);
+
+        $catalogVariantId = uuidv4();
+        Capsule::table('catalog_variants')->insert([
+            'id' => $catalogVariantId,
+            'product_id' => $catalogProductId,
+            'sku' => 'SKU-DIFF',
+            'attributes' => '{}',
+            'price' => 999.00
+        ]);
 
         // Seed product with a valid UUID
         $productId = uuidv4();

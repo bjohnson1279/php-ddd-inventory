@@ -33,3 +33,7 @@
 **Learning:** Standalone scripts (like queue-worker.php) that bootstrap their database connections through helper files might execute in a different working directory or contain hardcoded parent directory paths (e.g. `../../../../`) that point outside the project directory. When this occurs, `.env` loading fails silently, triggering fallbacks like empty in-memory SQLite instances or incorrect database connections that lack tables.
 **Action:** Ensure that standalone bootstrap files resolve paths relative to the current file using `__DIR__` and traverse exactly to the project's root folder where the `.env` resides (e.g. `__DIR__ . '/../../../'`), matching the paths verified in unit/integration test bootstraps.
 
+
+## 2024-06-28 - Optimizing Multiple Aggregate Queries
+**Learning:** Performing multiple `sum()` calls on the same Eloquent query builder results in multiple database round-trips for the same dataset, creating a performance bottleneck when checking stock levels.
+**Action:** Use `selectRaw` with `COALESCE(SUM(...), 0)` to combine multiple aggregations into a single query and reduce database overhead.

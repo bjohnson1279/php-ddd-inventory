@@ -79,9 +79,10 @@ final class AuditE2ETest extends TestCase
         putenv("SHOPIFY_ACCESS_TOKEN=mock-token");
         putenv("QUICKBOOKS_ACCESS_TOKEN=mock-qbo-token");
 
-        // Seed product
+        // Seed product with a valid UUID
+        $productId = uuidv4();
         Capsule::table('products')->insert([
-            'id' => 'prod-1',
+            'id' => $productId,
             'tenant_id' => $this->tenantId,
             'sku' => 'SKU-DIFF', // ends with -DIFF to mock Shopify mismatch
             'name' => 'iPhone 15',
@@ -92,13 +93,13 @@ final class AuditE2ETest extends TestCase
 
         // Seed shopify mappings
         Capsule::table('shopify_sku_mappings')->insert([
-            'id' => 'map-1',
+            'id' => uuidv4(),
             'sku' => 'SKU-DIFF',
             'shopify_inventory_item_id' => 'inv-item-123'
         ]);
 
         Capsule::table('shopify_location_mappings')->insert([
-            'id' => 'loc-map-1',
+            'id' => uuidv4(),
             'our_location_id' => 'default',
             'shopify_location_id' => 'gid://shopify/Location/12345'
         ]);
@@ -107,7 +108,7 @@ final class AuditE2ETest extends TestCase
         Capsule::table('ledger_entries')->insert([
             'id' => uuidv4(),
             'tenant_id' => $this->tenantId,
-            'variant_id' => 'prod-1',
+            'variant_id' => $productId,
             'quantity' => 10,
             'reason' => 'opening_balance',
             'actor_id' => 'system',

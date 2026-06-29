@@ -25,3 +25,8 @@
 **Vulnerability:** Generic exception messages leaking internal information to the client via 400 API responses.
 **Learning:** A number of controllers were using catch blocks that threw `$e->getMessage()` for generic `Exception` objects directly to clients. This could expose stack traces, DB queries, or internal logic.
 **Prevention:** Explicitly catch expected domain exceptions (e.g. `\InvalidArgumentException`, `ValidationException`) and safely pass their messages to the client. For generic unexpected exceptions, catch them, log the original error message with `error_log()`, and return a generic "An internal server error occurred." response.
+
+## 2026-06-28 - Prevent Functional Regressions in Error Masking
+**Vulnerability:** Masking all generic `Exception` types as 500 server errors to prevent information leakage can inadvertently convert valid domain-level errors (which often extend `Exception` and expect a 400 response) into server errors, breaking API clients.
+**Learning:** Naively catching `Exception` and returning 500 without type checking creates regressions when the application relies on exceptions inheriting from `Exception` for standard business logic control flow.
+**Prevention:** When mitigating information disclosure, explicitly differentiate between system-level exceptions (like `PDOException`, `RuntimeException`, or raw `Exception`) that should be masked/logged and domain-level exceptions (like `ValidationException`, `InvalidArgumentException`, or ones ending in 'Exception') that should be safely returned as 400 Bad Requests.

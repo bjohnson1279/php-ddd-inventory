@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/client';
+import Spinner from '../components/Spinner';
 
 type OnboardingItem = {
   id: string;
@@ -32,6 +33,11 @@ export default function Onboarding() {
   const [itemCostCents, setItemCostCents] = useState('1500'); // $15.00
   const [itemMsg, setItemMsg] = useState('');
 
+  // Loading states
+  const [isCreatingSession, setIsCreatingSession] = useState(false);
+  const [isAddingItem, setIsAddingItem] = useState(false);
+  const [isSubmittingSession, setIsSubmittingSession] = useState(false);
+
   useEffect(() => {
     fetchSessions();
   }, []);
@@ -51,6 +57,7 @@ export default function Onboarding() {
   const handleCreateSession = async (e: React.FormEvent) => {
     e.preventDefault();
     setSessionMsg('Creating onboarding session...');
+    setIsCreatingSession(true);
     try {
       const res = await api.post('/onboardings', {
         location_id: newLocation,
@@ -64,6 +71,8 @@ export default function Onboarding() {
       }
     } catch (err: any) {
       setSessionMsg(err.message || 'Error creating session');
+    } finally {
+      setIsCreatingSession(false);
     }
   };
 
@@ -80,6 +89,7 @@ export default function Onboarding() {
     e.preventDefault();
     if (!selectedSession) return;
     setItemMsg('Adding item...');
+    setIsAddingItem(true);
     try {
       await api.post(`/onboardings/${selectedSession.id}/items`, {
         variant_id: itemVariantId,
@@ -92,6 +102,8 @@ export default function Onboarding() {
       handleSelectSession(selectedSession.id);
     } catch (err: any) {
       setItemMsg(err.message || 'Error adding item');
+    } finally {
+      setIsAddingItem(false);
     }
   };
 
@@ -108,6 +120,7 @@ export default function Onboarding() {
   const handleSubmitSession = async () => {
     if (!selectedSession) return;
     setItemMsg('Submitting and reconciling balances...');
+    setIsSubmittingSession(true);
     try {
       await api.post(`/onboardings/${selectedSession.id}/submit`);
       setItemMsg('Onboarding session submitted & opening balances posted successfully!');
@@ -115,6 +128,8 @@ export default function Onboarding() {
       handleSelectSession(selectedSession.id);
     } catch (err: any) {
       setItemMsg(err.message || 'Submission failed');
+    } finally {
+      setIsSubmittingSession(false);
     }
   };
 
@@ -140,7 +155,9 @@ export default function Onboarding() {
                 <label htmlFor="newAsOfDate">As Of Date</label>
                 <input id="newAsOfDate" type="date" value={newAsOfDate} onChange={e => setNewAsOfDate(e.target.value)} required />
               </div>
-              <button type="submit" className="btn-primary" style={{ width: '100%' }}>Create Onboarding Session</button>
+              <button type="submit" className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isCreatingSession} aria-busy={isCreatingSession}>
+                {isCreatingSession && <Spinner />} {isCreatingSession ? 'Creating...' : 'Create Onboarding Session'}
+              </button>
             </form>
             <p style={{ color: sessionMsg.includes('Error') ? '#f87171' : '#34d399' }}>{sessionMsg}</p>
           </div>
@@ -225,7 +242,9 @@ export default function Onboarding() {
                         <input id="itemCostCents" type="number" min="0" value={itemCostCents} onChange={e => setItemCostCents(e.target.value)} placeholder="e.g. 1250 for $12.50" required />
                       </div>
                     </div>
-                    <button type="submit" className="btn-primary" style={{ width: '100%' }}>Add Item to Onboarding</button>
+                    <button type="submit" className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isAddingItem} aria-busy={isAddingItem}>
+                      {isAddingItem && <Spinner />} {isAddingItem ? 'Adding...' : 'Add Item to Onboarding'}
+                    </button>
                   </form>
                   <p style={{ color: itemMsg.includes('Error') || itemMsg.includes('failed') ? '#f87171' : '#34d399' }}>{itemMsg}</p>
                 </div>
@@ -236,8 +255,8 @@ export default function Onboarding() {
                 <div className="section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>Onboarding Items</span>
                   {selectedSession.status === 'draft' && selectedSession.items && selectedSession.items.length > 0 && (
-                    <button onClick={handleSubmitSession} className="btn-sm btn-primary" style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}>
-                      Submit & Lock
+                    <button onClick={handleSubmitSession} className="btn-sm btn-primary" style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }} disabled={isSubmittingSession} aria-busy={isSubmittingSession}>
+                      {isSubmittingSession && <Spinner />} {isSubmittingSession ? 'Submitting...' : 'Submit & Lock'}
                     </button>
                   )}
                 </div>

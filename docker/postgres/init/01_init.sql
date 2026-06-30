@@ -186,10 +186,12 @@ SELECT
 FROM ledger_entries
 GROUP BY bucket, tenant_id, variant_id;
 
--- Enable Row-Level Security on the materialized view
-ALTER MATERIALIZED VIEW daily_stock_velocity ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS tenant_isolation ON daily_stock_velocity;
-CREATE POLICY tenant_isolation ON daily_stock_velocity USING (tenant_id = current_setting('app.current_tenant_id', true));
+-- In PostgreSQL, Row-Level Security cannot be applied directly to a TimescaleDB continuous aggregate
+-- or materialized view using ALTER MATERIALIZED VIEW.
+-- To enforce tenant isolation securely, we create a secure standard view over the materialized view.
+CREATE OR REPLACE VIEW stock_velocity_report AS
+SELECT * FROM daily_stock_velocity
+WHERE tenant_id = current_setting('app.current_tenant_id', true);
 
 -- Add continuous aggregate policy to update the view automatically in background
 SELECT add_continuous_aggregate_policy('daily_stock_velocity',

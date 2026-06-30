@@ -24,8 +24,11 @@ class InventoryCountController
                 'message' => 'Inventory count started successfully.',
                 'count_id' => $countId
             ], 201);
-        } catch (Exception $e) {
+        } catch (\InvalidArgumentException | \ValidationException $e) {
             return new Response(['error' => $e->getMessage()], 400);
+        } catch (Exception $e) {
+            error_log('[InventoryCountController] ' . $e->getMessage());
+            return new Response(['error' => 'An internal server error occurred.'], 500);
         }
     }
 
@@ -41,8 +44,11 @@ class InventoryCountController
             $useCase->execute($countId, $validated['sku'], $validated['location_id'], $validated['quantity']);
 
             return new Response(['message' => 'Item count recorded successfully.']);
-        } catch (Exception $e) {
+        } catch (\InvalidArgumentException | \ValidationException $e) {
             return new Response(['error' => $e->getMessage()], 400);
+        } catch (Exception $e) {
+            error_log('[InventoryCountController] ' . $e->getMessage());
+            return new Response(['error' => 'An internal server error occurred.'], 500);
         }
     }
 
@@ -52,8 +58,11 @@ class InventoryCountController
             $useCase->execute($countId);
 
             return new Response(['message' => 'Inventory count completed and stock reconciled.']);
-        } catch (Exception $e) {
+        } catch (\InvalidArgumentException | \ValidationException $e) {
             return new Response(['error' => $e->getMessage()], 400);
+        } catch (Exception $e) {
+            error_log('[InventoryCountController] ' . $e->getMessage());
+            return new Response(['error' => 'An internal server error occurred.'], 500);
         }
     }
 }

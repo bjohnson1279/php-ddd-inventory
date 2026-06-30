@@ -40,7 +40,7 @@ class AuthControllerTest extends TestCase
         $useCaseMock = $this->createMock(RegisterUser::class);
         $useCaseMock->expects($this->once())
             ->method('execute')
-            ->willThrowException(new Exception('A user with email \'test@example.com\' already exists for this tenant.'));
+            ->willThrowException(new \DomainException('A user with email \'test@example.com\' already exists for this tenant.'));
 
         // Act
         $response = $this->controller->register($requestMock, $useCaseMock);
@@ -69,7 +69,7 @@ class AuthControllerTest extends TestCase
         $useCaseMock = $this->createMock(AuthenticateUser::class);
         $useCaseMock->expects($this->once())
             ->method('execute')
-            ->willThrowException(new Exception('Invalid credentials.'));
+            ->willThrowException(new \DomainException('Invalid credentials.'));
 
         // Act
         $response = $this->controller->login($requestMock, $useCaseMock);

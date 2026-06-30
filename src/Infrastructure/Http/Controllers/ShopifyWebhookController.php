@@ -83,6 +83,10 @@ class ShopifyWebhookController
 
             return new Response(['message' => 'Webhook topic not supported, ignored'], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[ShopifyWebhookController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 400); // 400 so Shopify won't retry
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }

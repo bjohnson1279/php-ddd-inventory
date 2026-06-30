@@ -4,7 +4,7 @@ namespace InventoryApp\Domain\Inventory\Exceptions;
 
 use Exception;
 
-class CapacityExceededException extends Exception
+class CapacityExceededException extends \DomainException
 {
     private string $locationId;
     private string $limitType;

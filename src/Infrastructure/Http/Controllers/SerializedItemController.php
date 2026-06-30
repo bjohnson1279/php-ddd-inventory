@@ -33,7 +33,12 @@ class SerializedItemController
                 'id'      => $item->id,
             ], 201);
         } catch (Exception $e) {
-            return new Response(['error' => $e->getMessage()], 400);
+            $type = (new \ReflectionClass($e))->getShortName();
+            if ($e instanceof \InvalidArgumentException || $type === 'ValidationException' || (str_ends_with($type, 'Exception') && $type !== 'Exception' && $type !== 'RuntimeException' && $type !== 'PDOException')) {
+                return new Response(['error' => $e->getMessage()], 400);
+            }
+            error_log('[SerializedItemController] ' . $e->getMessage());
+            return new Response(['error' => 'An internal server error occurred.'], 500);
         }
     }
 
@@ -60,7 +65,12 @@ class SerializedItemController
 
             return new Response(['message' => 'Serial item received'], 200);
         } catch (Exception $e) {
-            return new Response(['error' => $e->getMessage()], 400);
+            $type = (new \ReflectionClass($e))->getShortName();
+            if ($e instanceof \InvalidArgumentException || $type === 'ValidationException' || (str_ends_with($type, 'Exception') && $type !== 'Exception' && $type !== 'RuntimeException' && $type !== 'PDOException')) {
+                return new Response(['error' => $e->getMessage()], 400);
+            }
+            error_log('[SerializedItemController] ' . $e->getMessage());
+            return new Response(['error' => 'An internal server error occurred.'], 500);
         }
     }
 
@@ -82,7 +92,12 @@ class SerializedItemController
 
             return new Response(['message' => 'Serial item sold'], 200);
         } catch (Exception $e) {
-            return new Response(['error' => $e->getMessage()], 400);
+            $type = (new \ReflectionClass($e))->getShortName();
+            if ($e instanceof \InvalidArgumentException || $type === 'ValidationException' || (str_ends_with($type, 'Exception') && $type !== 'Exception' && $type !== 'RuntimeException' && $type !== 'PDOException')) {
+                return new Response(['error' => $e->getMessage()], 400);
+            }
+            error_log('[SerializedItemController] ' . $e->getMessage());
+            return new Response(['error' => 'An internal server error occurred.'], 500);
         }
     }
 
@@ -104,7 +119,12 @@ class SerializedItemController
 
             return new Response(['message' => 'Serial item return accepted'], 200);
         } catch (Exception $e) {
-            return new Response(['error' => $e->getMessage()], 400);
+            $type = (new \ReflectionClass($e))->getShortName();
+            if ($e instanceof \InvalidArgumentException || $type === 'ValidationException' || (str_ends_with($type, 'Exception') && $type !== 'Exception' && $type !== 'RuntimeException' && $type !== 'PDOException')) {
+                return new Response(['error' => $e->getMessage()], 400);
+            }
+            error_log('[SerializedItemController] ' . $e->getMessage());
+            return new Response(['error' => 'An internal server error occurred.'], 500);
         }
     }
 
@@ -127,7 +147,12 @@ class SerializedItemController
 
             return new Response(['message' => 'Serial item restocked'], 200);
         } catch (Exception $e) {
-            return new Response(['error' => $e->getMessage()], 400);
+            $type = (new \ReflectionClass($e))->getShortName();
+            if ($e instanceof \InvalidArgumentException || $type === 'ValidationException' || (str_ends_with($type, 'Exception') && $type !== 'Exception' && $type !== 'RuntimeException' && $type !== 'PDOException')) {
+                return new Response(['error' => $e->getMessage()], 400);
+            }
+            error_log('[SerializedItemController] ' . $e->getMessage());
+            return new Response(['error' => 'An internal server error occurred.'], 500);
         }
     }
 
@@ -153,7 +178,12 @@ class SerializedItemController
 
             return new Response(['message' => 'Serial item written off'], 200);
         } catch (Exception $e) {
-            return new Response(['error' => $e->getMessage()], 400);
+            $type = (new \ReflectionClass($e))->getShortName();
+            if ($e instanceof \InvalidArgumentException || $type === 'ValidationException' || (str_ends_with($type, 'Exception') && $type !== 'Exception' && $type !== 'RuntimeException' && $type !== 'PDOException')) {
+                return new Response(['error' => $e->getMessage()], 400);
+            }
+            error_log('[SerializedItemController] ' . $e->getMessage());
+            return new Response(['error' => 'An internal server error occurred.'], 500);
         }
     }
 
@@ -174,7 +204,12 @@ class SerializedItemController
 
             return new Response($this->serializeItem($item), 200);
         } catch (Exception $e) {
-            return new Response(['error' => $e->getMessage()], 400);
+            $type = (new \ReflectionClass($e))->getShortName();
+            if ($e instanceof \InvalidArgumentException || $type === 'ValidationException' || (str_ends_with($type, 'Exception') && $type !== 'Exception' && $type !== 'RuntimeException' && $type !== 'PDOException')) {
+                return new Response(['error' => $e->getMessage()], 400);
+            }
+            error_log('[SerializedItemController] ' . $e->getMessage());
+            return new Response(['error' => 'An internal server error occurred.'], 500);
         }
     }
 
@@ -195,7 +230,12 @@ class SerializedItemController
 
             return new Response(['items' => $serialized], 200);
         } catch (Exception $e) {
-            return new Response(['error' => $e->getMessage()], 400);
+            $type = (new \ReflectionClass($e))->getShortName();
+            if ($e instanceof \InvalidArgumentException || $type === 'ValidationException' || (str_ends_with($type, 'Exception') && $type !== 'Exception' && $type !== 'RuntimeException' && $type !== 'PDOException')) {
+                return new Response(['error' => $e->getMessage()], 400);
+            }
+            error_log('[SerializedItemController] ' . $e->getMessage());
+            return new Response(['error' => 'An internal server error occurred.'], 500);
         }
     }
 
@@ -215,7 +255,12 @@ class SerializedItemController
 
             return new Response(['count' => $count], 200);
         } catch (Exception $e) {
-            return new Response(['error' => $e->getMessage()], 400);
+            $type = (new \ReflectionClass($e))->getShortName();
+            if ($e instanceof \InvalidArgumentException || $type === 'ValidationException' || (str_ends_with($type, 'Exception') && $type !== 'Exception' && $type !== 'RuntimeException' && $type !== 'PDOException')) {
+                return new Response(['error' => $e->getMessage()], 400);
+            }
+            error_log('[SerializedItemController] ' . $e->getMessage());
+            return new Response(['error' => 'An internal server error occurred.'], 500);
         }
     }
 

@@ -1,0 +1,39 @@
+<<<<<<< SEARCH
+-- TimescaleDB Continuous Aggregate for Stock Velocity
+CREATE MATERIALIZED VIEW IF NOT EXISTS daily_stock_velocity
+WITH (timescaledb.continuous) AS
+SELECT
+  time_bucket('1 day', occurred_at) AS bucket,
+  tenant_id,
+  variant_id,
+  COALESCE(SUM(CASE WHEN quantity < 0 THEN abs(quantity) ELSE 0 END), 0) AS units_dispatched,
+  COALESCE(SUM(CASE WHEN quantity > 0 THEN quantity ELSE 0 END), 0) AS units_received,
+  COUNT(*) as transaction_count
+FROM ledger_entries
+GROUP BY bucket, tenant_id, variant_id;
+
+-- Enable Row-Level Security on the materialized view
+ALTER MATERIALIZED VIEW daily_stock_velocity ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON daily_stock_velocity;
+CREATE POLICY tenant_isolation ON daily_stock_velocity USING (tenant_id = current_setting('app.current_tenant_id', true));
+=======
+-- TimescaleDB Continuous Aggregate for Stock Velocity
+CREATE MATERIALIZED VIEW IF NOT EXISTS daily_stock_velocity
+WITH (timescaledb.continuous) AS
+SELECT
+  time_bucket('1 day', occurred_at) AS bucket,
+  tenant_id,
+  variant_id,
+  COALESCE(SUM(CASE WHEN quantity < 0 THEN abs(quantity) ELSE 0 END), 0) AS units_dispatched,
+  COALESCE(SUM(CASE WHEN quantity > 0 THEN quantity ELSE 0 END), 0) AS units_received,
+  COUNT(*) as transaction_count
+FROM ledger_entries
+GROUP BY bucket, tenant_id, variant_id;
+
+-- In PostgreSQL, Row-Level Security cannot be applied directly to a TimescaleDB continuous aggregate
+-- or materialized view using ALTER MATERIALIZED VIEW.
+-- To enforce tenant isolation securely, we create a secure standard view over the materialized view.
+CREATE OR REPLACE VIEW stock_velocity_report AS
+SELECT * FROM daily_stock_velocity
+WHERE tenant_id = current_setting('app.current_tenant_id', true);
+>>>>>>> REPLACE

@@ -101,7 +101,7 @@ class SerializedItemControllerTest extends TestCase
 
         $this->requestMock->expects($this->once())
             ->method('validate')
-            ->willThrowException(new Exception('Validation failed'));
+            ->willThrowException(new \InvalidArgumentException('Validation failed'));
 
         $response = $this->controller->receive($this->requestMock, $id, $this->serviceMock, $this->repoMock);
 
@@ -129,7 +129,7 @@ class SerializedItemControllerTest extends TestCase
 
         $this->serviceMock->expects($this->once())
             ->method('receive')
-            ->willThrowException(new Exception('Domain logic error'));
+            ->willThrowException(new \InventoryApp\Domain\Inventory\Exceptions\InvalidSKUException('Domain logic error'));
 
         $response = $this->controller->receive($this->requestMock, $id, $this->serviceMock, $this->repoMock);
 
@@ -146,7 +146,7 @@ class SerializedItemControllerTest extends TestCase
         ]);
 
         $service = $this->createMock(SerializedInventoryService::class);
-        $service->method('receive')->willThrowException(new Exception('Simulated Service Error'));
+        $service->method('receive')->willThrowException(new \InvalidArgumentException('Simulated Service Error'));
 
         $repo = $this->createMock(SerializedItemRepositoryInterface::class);
 
@@ -164,5 +164,20 @@ class SerializedItemControllerTest extends TestCase
 
         $this->assertEquals(400, $response->getStatusCode());
         $this->assertStringContainsString('Simulated Service Error', $response->getContent());
+    }
+
+    public function testReceiveGenericExceptionReturns500(): void
+    {
+        $id = 'item-123';
+
+        $this->requestMock->expects($this->once())
+            ->method('validate')
+            ->willThrowException(new \RuntimeException('Unexpected database failure'));
+
+        $response = $this->controller->receive($this->requestMock, $id, $this->serviceMock, $this->repoMock);
+
+        $this->assertEquals(500, $response->getStatusCode());
+        $this->assertStringContainsString('An internal server error occurred', $response->getContent());
+        $this->assertStringNotContainsString('Unexpected database failure', $response->getContent());
     }
 }

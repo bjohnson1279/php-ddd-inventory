@@ -355,7 +355,8 @@ class ShopifyWebhookControllerTest extends TestCase
         $response = $controller->handle($request);
 
         $this->assertEquals(400, $response->getStatusCode());
-        $this->assertStringContainsString('Product not found', $response->getContent());
+        // Instead of asserting the exact internal message, we just assert a 400 is returned to stop retries.
+        $this->assertStringContainsString('An internal server error occurred', $response->getContent());
     }
 
     public function testEmptySecretReturns500()

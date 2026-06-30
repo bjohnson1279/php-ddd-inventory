@@ -25,9 +25,9 @@ do {
     }
 
     foreach ($pending as $event) {
-        $id = $event->getId();
-        $name = $event->getEventName();
-        $payloadStr = $event->getPayload();
+        $id = $event->id;
+        $name = $event->eventName;
+        $payloadStr = $event->payload;
 
         echo "Processing Outbox Event ID: {$id} ({$name})...\n";
 
@@ -47,7 +47,7 @@ do {
                 $kafkaPayload = [
                     'type' => $name,
                     'payload' => array_merge($payloadData, [
-                        'occurredAt' => $event->getOccurredOn()->format(\DateTimeInterface::ATOM),
+                        'occurredAt' => $event->occurredOn->format(\DateTimeInterface::ATOM),
                         'tenantId' => $tenantId
                     ])
                 ];

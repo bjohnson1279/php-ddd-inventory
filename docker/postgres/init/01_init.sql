@@ -187,7 +187,6 @@ FROM ledger_entries
 GROUP BY bucket, tenant_id, variant_id;
 
 -- Enable Row-Level Security on the materialized view
--- RLS removed on continuous aggregate due to TimescaleDB restrictions
 -- ALTER MATERIALIZED VIEW daily_stock_velocity ENABLE ROW LEVEL SECURITY;
 -- DROP POLICY IF EXISTS tenant_isolation ON daily_stock_velocity;
 -- CREATE POLICY tenant_isolation ON daily_stock_velocity USING (tenant_id = current_setting('app.current_tenant_id', true));

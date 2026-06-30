@@ -16,3 +16,7 @@
 ## 2025-02-28 - Immediate Visual Feedback for Async Operations
 **Learning:** During form submission or async actions, relying solely on text changes (e.g., "Processing...") can lack visual prominence, making users unsure if an action was registered. Adding an animated spinner alongside the text creates an immediate, noticeable visual cue that prevents double-submissions.
 **Action:** Always include a visual loading indicator (like an animated SVG spinner) within primary action buttons when the application enters a loading state. Ensure the button utilizes flexbox for proper alignment between the spinner and text.
+
+## 2025-02-28 - Standardizing Loading States and ARIA attributes
+**Learning:** The application contained hardcoded emojis (like `⏳`) used as loading indicators, which can be misread by screen readers and visually inconsistent. Furthermore, manually setting `disabled` utility classes instead of using the native HTML `disabled` attribute reduces accessibility and native keyboard protections.
+**Action:** Always replace informal loading emojis with the standardized `<Spinner />` component. Ensure buttons use the native `disabled={isLoading}` attribute to prevent duplicate actions and apply `aria-busy={isLoading}` to accurately communicate the asynchronous loading state to screen readers.

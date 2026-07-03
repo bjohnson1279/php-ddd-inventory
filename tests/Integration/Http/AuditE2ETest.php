@@ -116,6 +116,13 @@ final class AuditE2ETest extends TestCase
             'shopify_inventory_item_id' => 'inv-item-123'
         ]);
 
+        // Ensure 'default' location exists
+        Capsule::table('locations')->insertOrIgnore([
+            'id' => 'default',
+            'name' => 'Default Location',
+            'type' => 'warehouse'
+        ]);
+
         Capsule::table('shopify_location_mappings')->insert([
             'id' => uuidv4(),
             'our_location_id' => 'default',

@@ -16,3 +16,6 @@
 ## 2025-02-28 - Immediate Visual Feedback for Async Operations
 **Learning:** During form submission or async actions, relying solely on text changes (e.g., "Processing...") can lack visual prominence, making users unsure if an action was registered. Adding an animated spinner alongside the text creates an immediate, noticeable visual cue that prevents double-submissions.
 **Action:** Always include a visual loading indicator (like an animated SVG spinner) within primary action buttons when the application enters a loading state. Ensure the button utilizes flexbox for proper alignment between the spinner and text.
+## 2024-07-03 - CSS :has() for Required Fields
+**Learning:** Using the `:has(:required)` CSS pseudo-class to automatically style labels for required form fields is a highly scalable and robust way to improve form accessibility and usability across an entire application, avoiding the fragility of manually updating individual components.
+**Action:** Always prefer CSS-level styling for global UX patterns like required indicators when possible to ensure consistency and maintainability.

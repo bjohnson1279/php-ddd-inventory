@@ -67,7 +67,6 @@ final class AuditE2ETest extends TestCase
         $this->assertEquals(200, $setupRes['status'], json_encode($setupRes));
 
         $loginRes = $this->request('POST', '/api/auth/login', [
-            ,
             'email'     => $this->email,
             'password'  => $this->password,
         ]);
@@ -101,7 +100,6 @@ final class AuditE2ETest extends TestCase
         $productId = uuidv4();
         Capsule::table('products')->insert([
             'id' => $productId,
-            ,
             'sku' => 'SKU-DIFF', // ends with -DIFF to mock Shopify mismatch
             'name' => 'iPhone 15',
             'department' => 'Electronics',
@@ -126,7 +124,6 @@ final class AuditE2ETest extends TestCase
         Capsule::table('ledger_entries')->insert([
             'id' => uuidv4(),
             ,
-            'variant_id' => $productId,
             'quantity' => 10,
             'reason' => 'opening_balance',
             'actor_id' => 'system',
@@ -138,11 +135,9 @@ final class AuditE2ETest extends TestCase
         // Seed journal entry without mapping
         Capsule::table('journal_entries')->insert([
             'id' => 'je-1',
-            ,
             'entry_date' => date('Y-m-d'),
             'description' => 'Test unmapped journal',
             'method' => 'accrual',
-            'lines' => '[]',
             'created_at' => date('Y-m-d H:i:s')
         ]);
     }

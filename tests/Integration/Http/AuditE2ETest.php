@@ -85,8 +85,7 @@ final class AuditE2ETest extends TestCase
             'id' => $catalogProductId,
             'name' => 'iPhone 15 Catalog',
             'description' => 'Test Description',
-            'department' => 'Electronics',
-            'tenant_id' => $this->tenantId
+            'department' => 'Electronics'
         ]);
 
         $catalogVariantId = uuidv4();

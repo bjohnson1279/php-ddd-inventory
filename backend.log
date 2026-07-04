@@ -1,0 +1,375 @@
+[Sat Jul  4 09:43:49 2026] PHP 8.3.6 Development Server (http://0.0.0.0:8000) started
+[Sat Jul  4 09:44:20 2026] 127.0.0.1:60286 Accepted
+[Sat Jul  4 09:44:20 2026] PHP Warning:  require(/app/vendor/composer/../ramsey/uuid/src/functions.php): Failed to open stream: No such file or directory in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:44:20 2026] PHP Fatal error:  Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:44:20 2026] 127.0.0.1:60286 [500]: GET /api/notifications - Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:44:20 2026] 127.0.0.1:60286 Closing
+[Sat Jul  4 09:44:20 2026] 127.0.0.1:60290 Accepted
+[Sat Jul  4 09:44:20 2026] PHP Warning:  require(/app/vendor/composer/../ramsey/uuid/src/functions.php): Failed to open stream: No such file or directory in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:44:20 2026] PHP Fatal error:  Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:44:20 2026] 127.0.0.1:60290 [500]: GET /api/notifications/subscribe?token=fake-token - Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:44:20 2026] 127.0.0.1:60290 Closing
+[Sat Jul  4 09:44:21 2026] 127.0.0.1:60294 Accepted
+[Sat Jul  4 09:44:21 2026] PHP Warning:  require(/app/vendor/composer/../ramsey/uuid/src/functions.php): Failed to open stream: No such file or directory in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:44:21 2026] PHP Fatal error:  Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:44:21 2026] 127.0.0.1:60294 [500]: GET /api/catalog/products - Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:44:21 2026] 127.0.0.1:60294 Closing
+[Sat Jul  4 09:45:26 2026] 127.0.0.1:37222 Accepted
+[Sat Jul  4 09:45:26 2026] PHP Warning:  require(/app/vendor/composer/../ramsey/uuid/src/functions.php): Failed to open stream: No such file or directory in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:45:26 2026] PHP Fatal error:  Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:45:26 2026] 127.0.0.1:37222 [500]: GET /api/notifications - Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:45:26 2026] 127.0.0.1:37222 Closing
+[Sat Jul  4 09:45:26 2026] 127.0.0.1:37224 Accepted
+[Sat Jul  4 09:45:26 2026] PHP Warning:  require(/app/vendor/composer/../ramsey/uuid/src/functions.php): Failed to open stream: No such file or directory in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:45:26 2026] PHP Fatal error:  Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:45:26 2026] 127.0.0.1:37224 [500]: GET /api/notifications/subscribe?token=fake-token - Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:45:26 2026] 127.0.0.1:37224 Closing
+[Sat Jul  4 09:45:26 2026] 127.0.0.1:37226 Accepted
+[Sat Jul  4 09:45:26 2026] PHP Warning:  require(/app/vendor/composer/../ramsey/uuid/src/functions.php): Failed to open stream: No such file or directory in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:45:26 2026] PHP Fatal error:  Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:45:26 2026] 127.0.0.1:37226 [500]: GET /api/catalog/products - Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:45:26 2026] 127.0.0.1:37226 Closing
+[Sat Jul  4 09:46:22 2026] 127.0.0.1:38570 Accepted
+[Sat Jul  4 09:46:22 2026] PHP Warning:  require(/app/vendor/composer/../ramsey/uuid/src/functions.php): Failed to open stream: No such file or directory in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:46:22 2026] PHP Fatal error:  Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:46:22 2026] 127.0.0.1:38570 [500]: GET /api/notifications - Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:46:22 2026] 127.0.0.1:38570 Closing
+[Sat Jul  4 09:46:22 2026] 127.0.0.1:38574 Accepted
+[Sat Jul  4 09:46:22 2026] PHP Warning:  require(/app/vendor/composer/../ramsey/uuid/src/functions.php): Failed to open stream: No such file or directory in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:46:22 2026] PHP Fatal error:  Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:46:22 2026] 127.0.0.1:38574 [500]: GET /api/notifications/subscribe?token=fake-token - Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:46:22 2026] 127.0.0.1:38574 Closing
+[Sat Jul  4 09:46:22 2026] 127.0.0.1:38582 Accepted
+[Sat Jul  4 09:46:22 2026] PHP Warning:  require(/app/vendor/composer/../ramsey/uuid/src/functions.php): Failed to open stream: No such file or directory in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:46:22 2026] PHP Fatal error:  Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:46:22 2026] 127.0.0.1:38582 [500]: GET /api/catalog/products - Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:46:22 2026] 127.0.0.1:38582 Closing
+[Sat Jul  4 09:46:42 2026] 127.0.0.1:39912 Accepted
+[Sat Jul  4 09:46:42 2026] PHP Warning:  require(/app/vendor/composer/../ramsey/uuid/src/functions.php): Failed to open stream: No such file or directory in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:46:42 2026] PHP Fatal error:  Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:46:42 2026] 127.0.0.1:39912 [500]: GET /api/notifications - Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:46:42 2026] 127.0.0.1:39912 Closing
+[Sat Jul  4 09:46:43 2026] 127.0.0.1:39922 Accepted
+[Sat Jul  4 09:46:43 2026] PHP Warning:  require(/app/vendor/composer/../ramsey/uuid/src/functions.php): Failed to open stream: No such file or directory in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:46:43 2026] PHP Fatal error:  Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:46:43 2026] 127.0.0.1:39922 [500]: GET /api/notifications/subscribe?token=fake-token - Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:46:43 2026] 127.0.0.1:39922 Closing
+[Sat Jul  4 09:46:43 2026] 127.0.0.1:39934 Accepted
+[Sat Jul  4 09:46:43 2026] PHP Warning:  require(/app/vendor/composer/../ramsey/uuid/src/functions.php): Failed to open stream: No such file or directory in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:46:43 2026] PHP Fatal error:  Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:46:43 2026] 127.0.0.1:39934 [500]: GET /api/catalog/products - Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:46:43 2026] 127.0.0.1:39934 Closing
+[Sat Jul  4 09:47:26 2026] 127.0.0.1:49950 Accepted
+[Sat Jul  4 09:47:26 2026] PHP Warning:  require(/app/vendor/composer/../ramsey/uuid/src/functions.php): Failed to open stream: No such file or directory in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:26 2026] PHP Fatal error:  Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:26 2026] 127.0.0.1:49950 [500]: GET /api/notifications - Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:26 2026] 127.0.0.1:49950 Closing
+[Sat Jul  4 09:47:26 2026] 127.0.0.1:49956 Accepted
+[Sat Jul  4 09:47:26 2026] 127.0.0.1:49968 Accepted
+[Sat Jul  4 09:47:26 2026] PHP Warning:  require(/app/vendor/composer/../ramsey/uuid/src/functions.php): Failed to open stream: No such file or directory in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:26 2026] PHP Fatal error:  Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:26 2026] 127.0.0.1:49956 [500]: GET /api/notifications/subscribe?token=fake-token - Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:26 2026] 127.0.0.1:49956 Closing
+[Sat Jul  4 09:47:26 2026] PHP Warning:  require(/app/vendor/composer/../ramsey/uuid/src/functions.php): Failed to open stream: No such file or directory in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:26 2026] PHP Fatal error:  Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:26 2026] 127.0.0.1:49968 [500]: GET /api/catalog/products - Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:26 2026] 127.0.0.1:49968 Closing
+[Sat Jul  4 09:47:26 2026] 127.0.0.1:49976 Accepted
+[Sat Jul  4 09:47:26 2026] PHP Warning:  require(/app/vendor/composer/../ramsey/uuid/src/functions.php): Failed to open stream: No such file or directory in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:26 2026] PHP Fatal error:  Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:26 2026] 127.0.0.1:49976 [500]: GET /api/onboardings - Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:26 2026] 127.0.0.1:49976 Closing
+[Sat Jul  4 09:47:26 2026] 127.0.0.1:49984 Accepted
+[Sat Jul  4 09:47:26 2026] PHP Warning:  require(/app/vendor/composer/../ramsey/uuid/src/functions.php): Failed to open stream: No such file or directory in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:26 2026] PHP Fatal error:  Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:26 2026] 127.0.0.1:49984 [500]: GET /api/catalog/products - Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:26 2026] 127.0.0.1:49984 Closing
+[Sat Jul  4 09:47:45 2026] 127.0.0.1:42112 Accepted
+[Sat Jul  4 09:47:45 2026] PHP Warning:  require(/app/vendor/composer/../ramsey/uuid/src/functions.php): Failed to open stream: No such file or directory in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:45 2026] PHP Fatal error:  Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:45 2026] 127.0.0.1:42112 [500]: GET /api/notifications - Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:45 2026] 127.0.0.1:42112 Closing
+[Sat Jul  4 09:47:45 2026] 127.0.0.1:42128 Accepted
+[Sat Jul  4 09:47:45 2026] 127.0.0.1:42132 Accepted
+[Sat Jul  4 09:47:45 2026] PHP Warning:  require(/app/vendor/composer/../ramsey/uuid/src/functions.php): Failed to open stream: No such file or directory in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:45 2026] PHP Fatal error:  Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:45 2026] 127.0.0.1:42128 [500]: GET /api/notifications/subscribe?token=fake-token - Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:45 2026] 127.0.0.1:42128 Closing
+[Sat Jul  4 09:47:45 2026] PHP Warning:  require(/app/vendor/composer/../ramsey/uuid/src/functions.php): Failed to open stream: No such file or directory in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:45 2026] PHP Fatal error:  Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:45 2026] 127.0.0.1:42132 [500]: GET /api/catalog/products - Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:45 2026] 127.0.0.1:42132 Closing
+[Sat Jul  4 09:47:45 2026] 127.0.0.1:42136 Accepted
+[Sat Jul  4 09:47:45 2026] PHP Warning:  require(/app/vendor/composer/../ramsey/uuid/src/functions.php): Failed to open stream: No such file or directory in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:45 2026] PHP Fatal error:  Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:45 2026] 127.0.0.1:42136 [500]: GET /api/onboardings - Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:45 2026] 127.0.0.1:42136 Closing
+[Sat Jul  4 09:47:45 2026] 127.0.0.1:42146 Accepted
+[Sat Jul  4 09:47:45 2026] PHP Warning:  require(/app/vendor/composer/../ramsey/uuid/src/functions.php): Failed to open stream: No such file or directory in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:45 2026] PHP Fatal error:  Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:45 2026] 127.0.0.1:42146 [500]: GET /api/catalog/products - Uncaught Error: Failed opening required '/app/vendor/composer/../ramsey/uuid/src/functions.php' (include_path='.:/usr/share/php') in /app/vendor/composer/autoload_real.php:41
+Stack trace:
+#0 /app/vendor/composer/autoload_real.php(45): {closure}()
+#1 /app/vendor/autoload.php(22): ComposerAutoloaderInit8d6e1b92110b56fb656632a24a105240::getLoader()
+#2 /app/public/index.php(3): require('...')
+#3 {main}
+  thrown in /app/vendor/composer/autoload_real.php on line 41
+[Sat Jul  4 09:47:45 2026] 127.0.0.1:42146 Closing

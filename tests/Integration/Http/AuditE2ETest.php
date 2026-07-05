@@ -119,7 +119,7 @@ final class AuditE2ETest extends TestCase
 
         Capsule::table('shopify_location_mappings')->insert([
             'id' => uuidv4(),
-            'our_location_id' => 'default',
+            'our_location_id' => 'LOC-STOREFRONT',
             'shopify_location_id' => 'gid://shopify/Location/12345'
         ]);
 

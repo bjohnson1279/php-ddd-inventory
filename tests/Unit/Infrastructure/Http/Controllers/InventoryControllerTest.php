@@ -68,7 +68,7 @@ class InventoryControllerTest extends TestCase
         $requestMock = $this->createMock(RequestInterface::class);
         $requestMock->expects($this->once())
             ->method('validate')
-            ->willThrowException(new Exception('Validation failed: Missing required field'));
+            ->willThrowException(new \DomainException('Validation failed: Missing required field'));
 
         $response = $this->controller->receive($requestMock, $this->receiveStockMock);
 
@@ -93,7 +93,7 @@ class InventoryControllerTest extends TestCase
 
         $this->receiveStockMock->expects($this->once())
             ->method('execute')
-            ->willThrowException(new Exception('Product not found with SKU: NONEXISTENT-SKU'));
+            ->willThrowException(new \DomainException('Product not found with SKU: NONEXISTENT-SKU'));
 
         $response = $this->controller->receive($requestMock, $this->receiveStockMock);
 
@@ -110,7 +110,7 @@ class InventoryControllerTest extends TestCase
         $requestMock = $this->createMock(RequestInterface::class);
         $requestMock->expects($this->once())
             ->method('validate')
-            ->willThrowException(new Exception('Validation failed: Quantity must be at least 1'));
+            ->willThrowException(new \DomainException('Validation failed: Quantity must be at least 1'));
 
         $response = $this->controller->receive($requestMock, $this->receiveStockMock);
 
@@ -161,7 +161,7 @@ class InventoryControllerTest extends TestCase
         $requestMock = $this->createMock(RequestInterface::class);
         $requestMock->expects($this->once())
             ->method('validate')
-            ->willThrowException(new Exception('Validation failed: Missing location_id'));
+            ->willThrowException(new \DomainException('Validation failed: Missing location_id'));
 
         $response = $this->controller->dispatch($requestMock, $this->dispatchStockMock);
 
@@ -186,7 +186,7 @@ class InventoryControllerTest extends TestCase
 
         $this->dispatchStockMock->expects($this->once())
             ->method('execute')
-            ->willThrowException(new Exception('Insufficient stock at location'));
+            ->willThrowException(new \DomainException('Insufficient stock at location'));
 
         $response = $this->controller->dispatch($requestMock, $this->dispatchStockMock);
 
@@ -261,7 +261,7 @@ class InventoryControllerTest extends TestCase
         $this->getStockLevelMock->expects($this->once())
             ->method('getStockLevel')
             ->with('NONEXISTENT-SKU', null)
-            ->willThrowException(new Exception('Product not found with SKU: NONEXISTENT-SKU'));
+            ->willThrowException(new \DomainException('Product not found with SKU: NONEXISTENT-SKU'));
 
         $response = $this->controller->stockLevel($requestMock, 'NONEXISTENT-SKU', $this->getStockLevelMock);
 
@@ -283,7 +283,7 @@ class InventoryControllerTest extends TestCase
 
         $this->getStockLevelMock->expects($this->once())
             ->method('getStockLevel')
-            ->willThrowException(new Exception('Invalid location identifier'));
+            ->willThrowException(new \DomainException('Invalid location identifier'));
 
         $response = $this->controller->stockLevel($requestMock, 'ITEM-001', $this->getStockLevelMock);
 

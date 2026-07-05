@@ -29,6 +29,10 @@ class ShippingController
 
             return new Response(array_map(fn($r) => $r->toArray(), $rates), 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[ShippingController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             $type = (new \ReflectionClass($e))->getShortName();
             return new Response(['error' => $e->getMessage(), 'type' => $type], 400);
         }
@@ -63,6 +67,10 @@ class ShippingController
                 'message' => 'Shipping label purchased successfully.'
             ], $result->toArray()), 201);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[ShippingController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             $type = (new \ReflectionClass($e))->getShortName();
             return new Response(['error' => $e->getMessage(), 'type' => $type], 400);
         }
@@ -87,6 +95,10 @@ class ShippingController
                 'updatedAt' => $s->updatedAt ? $s->updatedAt->format(\DateTimeInterface::ATOM) : null,
             ], $shipments), 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[ShippingController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }
@@ -110,6 +122,10 @@ class ShippingController
                 'status' => $status->value
             ], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[ShippingController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             $type = (new \ReflectionClass($e))->getShortName();
             return new Response(['error' => $e->getMessage(), 'type' => $type], 400);
         }

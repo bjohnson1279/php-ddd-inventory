@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import api from '../api/client';
+import Spinner from '../components/Spinner';
 
 export default function InitialSetup() {
   const [orgName, setOrgName] = useState('');
@@ -59,8 +60,8 @@ export default function InitialSetup() {
         <input id="adminPassword" type="password" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} placeholder="•••••••• (Min 8 characters)" />
       </div>
 
-      <button type="submit" className="btn-primary" disabled={isLoading} aria-busy={isLoading}>
-        {isLoading ? 'Setting up...' : 'Run Initial Setup'}
+      <button type="submit" className="btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isLoading} aria-busy={isLoading}>
+        {isLoading && <Spinner />} {isLoading ? 'Setting up...' : 'Run Initial Setup'}
       </button>
 
       {message && (

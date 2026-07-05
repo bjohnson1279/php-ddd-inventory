@@ -154,7 +154,7 @@ class Product extends AggregateRoot
     // Stock mutations — each fires a typed domain event
     // -----------------------------------------------------------------
 
-    public function receiveStockAt(LocationId $locationId, Quantity $quantity, ?string $reference = null): void
+    public function receiveStockAt(LocationId $locationId, Quantity $quantity, ?string $reference = null, bool $skipCostLayerCreation = false): void
     {
         $stock = $this->getOrCreateLocationStock($locationId);
         $stock->addStock($quantity, new Condition(Condition::NEW));
@@ -172,6 +172,7 @@ class Product extends AggregateRoot
             $quantity->getValue(),
             $reference,
             new DateTimeImmutable(),
+            $skipCostLayerCreation
         ));
     }
 
@@ -305,14 +306,12 @@ class Product extends AggregateRoot
     {
         $stock = $this->getOrCreateLocationStock($locationId);
         $stock->allocate($quantity, $this->sku->getValue());
-        $this->incrementVersion();
     }
 
     public function releaseAllocationAt(LocationId $locationId, Quantity $quantity): void
     {
         $stock = $this->getOrCreateLocationStock($locationId);
         $stock->releaseAllocation($quantity);
-        $this->incrementVersion();
     }
 
     public function fulfillAllocationAt(LocationId $locationId, Quantity $quantity): void
@@ -335,7 +334,6 @@ class Product extends AggregateRoot
             new DateTimeImmutable()
         ));
         
-        $this->incrementVersion();
         $this->recordLowStockIfNeeded();
     }
 
@@ -343,7 +341,6 @@ class Product extends AggregateRoot
     {
         $stock = $this->getOrCreateLocationStock($locationId);
         $stock->createInTransit($quantity);
-        $this->incrementVersion();
     }
 
     public function receiveInTransitAt(LocationId $locationId, Quantity $quantity): void
@@ -365,15 +362,12 @@ class Product extends AggregateRoot
             "RECEIVE_IN_TRANSIT",
             new DateTimeImmutable()
         ));
-        
-        $this->incrementVersion();
     }
 
     public function cancelInTransitAt(LocationId $locationId, Quantity $quantity): void
     {
         $stock = $this->getOrCreateLocationStock($locationId);
         $stock->cancelInTransit($quantity);
-        $this->incrementVersion();
     }
 
     // -----------------------------------------------------------------

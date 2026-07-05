@@ -78,21 +78,36 @@ class EloquentRMARepository implements RMARepositoryInterface
                 ]
             );
 
+            $itemData = [];
             foreach ($rma->getItems() as $item) {
-                $itemDbId = $this->ensureUuid($item->getId());
-                RMAItemModel::updateOrCreate(
-                    ['id' => $itemDbId],
-                    [
-                        'rma_id' => $dbId,
-                        'variant_id' => $this->ensureUuid($item->getVariantId()),
-                        'quantity' => $item->getQuantity(),
-                        'received_quantity' => $item->getReceivedQuantity(),
-                        'unit_cost_cents' => $item->getUnitCostCents(),
-                        'status' => $item->getStatus()->value,
-                        'disposition' => $item->getDisposition() ? $item->getDisposition()->value : null,
-                        'created_at' => date('Y-m-d H:i:s')
-                    ]
-                );
+                $itemData[] = [
+                    'id'                => $this->ensureUuid($item->getId()),
+                    'rma_id'            => $dbId,
+                    'variant_id'        => $this->ensureUuid($item->getVariantId()),
+                    'quantity'          => $item->getQuantity(),
+                    'received_quantity' => $item->getReceivedQuantity(),
+                    'unit_cost_cents'   => $item->getUnitCostCents(),
+                    'status'            => $item->getStatus()->value,
+                    'disposition'       => $item->getDisposition() ? $item->getDisposition()->value : null,
+                    'created_at'        => date('Y-m-d H:i:s')
+                ];
+            }
+
+            if (!empty($itemData)) {
+                if ((new RMAItemModel)->getConnection()->getDriverName() === 'sqlite') {
+                    foreach ($itemData as $itemRow) {
+                        RMAItemModel::updateOrCreate(
+                            ['id' => $itemRow['id']],
+                            $itemRow
+                        );
+                    }
+                } else {
+                    RMAItemModel::upsert(
+                        $itemData,
+                        ['id'],
+                        ['rma_id', 'variant_id', 'quantity', 'received_quantity', 'unit_cost_cents', 'status', 'disposition', 'created_at']
+                    );
+                }
             }
         });
     }

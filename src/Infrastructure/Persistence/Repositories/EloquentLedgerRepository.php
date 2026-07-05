@@ -42,11 +42,16 @@ class EloquentLedgerRepository implements LedgerRepositoryInterface
     }
 
     /** @return LedgerEntry[] */
-    public function entriesFor(string $variantId): array
+    public function entriesFor(string $variantId, ?string $locationId = null): array
     {
-        return LedgerEntryModel::where('tenant_id', $this->tenantId)
-            ->where('variant_id', $variantId)
-            ->orderBy('occurred_at')
+        $query = LedgerEntryModel::where('tenant_id', $this->tenantId)
+            ->where('variant_id', $variantId);
+
+        if ($locationId !== null) {
+            $query->whereRaw("metadata->>'locationId' = ?", [$locationId]);
+        }
+
+        return $query->orderBy('occurred_at')
             ->get()
             ->map(fn($row) => new LedgerEntry(
                 id:          $row->id,
@@ -67,5 +72,25 @@ class EloquentLedgerRepository implements LedgerRepositoryInterface
             ->where('variant_id', $variantId)
             ->whereRaw("metadata->>'locationId' = ?", [$locationId])
             ->exists();
+    }
+
+    /** @return LedgerEntry[] */
+    public function findRecallEntries(string $lotNumber): array
+    {
+        $rows = LedgerEntryModel::where('tenant_id', $this->tenantId)
+            ->where('metadata->lotNumber', $lotNumber)
+            ->orderBy('occurred_at', 'desc')
+            ->get();
+
+        return $rows->map(fn($row) => new LedgerEntry(
+            id:          $row->id,
+            variantId:   $row->variant_id,
+            quantity:    (int) $row->quantity,
+            reason:      ReasonCode::from($row->reason),
+            actorId:     $row->actor_id,
+            referenceId: $row->reference_id,
+            occurredAt:  new \DateTimeImmutable($row->occurred_at),
+            metadata:    $row->metadata ?? [],
+        ))->all();
     }
 }

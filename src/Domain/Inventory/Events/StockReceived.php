@@ -15,6 +15,7 @@ final class StockReceived implements DomainEvent
         public readonly int            $quantity,
         public readonly ?string        $reference,
         private readonly DateTimeImmutable $occurredOn,
+        public readonly bool           $skipCostLayerCreation = false,
     ) {}
 
     public function getSku(): SKU           { return $this->sku; }

@@ -56,7 +56,7 @@ class NotificationListener
         $this->notificationService->createNotification(
             $this->resolveTenantId(),
             "Stock Reconciled",
-            "Physical count reconciliation adjusted stock for SKU '{$event->getSku()->getValue()}' to {$event->newQuantity}.",
+            "Physical count reconciliation adjusted stock for SKU '{$event->getSku()->getValue()}' to {$event->actualQuantity}.",
             'info'
         );
     }

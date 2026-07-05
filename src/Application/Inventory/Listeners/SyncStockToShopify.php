@@ -8,6 +8,7 @@ use InventoryApp\Domain\Inventory\Repositories\ProductRepositoryInterface;
 use InventoryApp\Domain\Inventory\ValueObjects\SKU;
 
 use InventoryApp\Domain\Shared\Events\QueuedListenerInterface;
+use Illuminate\Database\Capsule\Manager as DB;
 
 /**
  * Listens to any of our stock-mutation domain events and pushes the updated
@@ -28,9 +29,97 @@ use InventoryApp\Domain\Shared\Events\QueuedListenerInterface;
  */
 class SyncStockToShopify implements QueuedListenerInterface
 {
+    private static array $productCache = [];
+    private static array $itemCache = [];
+    private static array $locationCache = [];
+    private static bool $isBatching = false;
+
     private ShopifyInventorySync $sync;
     private ShopifyMappingRepository $mappings;
     private ProductRepositoryInterface $productRepository;
+
+    /**
+     * @param \InventoryApp\Domain\Inventory\Entities\Product[] $products
+     */
+    public static function beginBatch(array $products): void
+    {
+        self::$isBatching = true;
+        self::$productCache = [];
+        self::$itemCache = [];
+        self::$locationCache = [];
+
+        if (empty($products)) {
+            return;
+        }
+
+        $skus = [];
+        $locationIds = [];
+
+        foreach ($products as $product) {
+            $tenantId = method_exists($product, 'getTenantId') ? $product->getTenantId() : 'system';
+            $sku = $product->getSku()->getValue();
+            self::$productCache[$tenantId . ':' . $sku] = $product;
+
+            $skus[] = $sku;
+            foreach ($product->getLocationStocks() as $locationStock) {
+                $locationIds[] = $locationStock->getLocationId()->getValue();
+            }
+        }
+
+        $uniqueSkus = array_unique($skus);
+        foreach (array_chunk($uniqueSkus, 500) as $chunk) {
+            try {
+                $rows = DB::table('shopify_sku_mappings')
+                    ->whereIn('sku', $chunk)
+                    ->get(['sku', 'shopify_inventory_item_id']);
+                foreach ($rows as $row) {
+                    self::$itemCache[$row->sku] = $row->shopify_inventory_item_id;
+                }
+            } catch (\Throwable $e) {
+                if (DB::connection()->getDriverName() === 'sqlite' && str_contains($e->getMessage(), 'no such table')) {
+                    // Ignore missing table during isolated SQLite tests
+                } else {
+                    throw $e;
+                }
+            }
+            foreach ($chunk as $sku) {
+                if (!array_key_exists($sku, self::$itemCache)) {
+                    self::$itemCache[$sku] = null;
+                }
+            }
+        }
+
+        $uniqueLocationIds = array_unique($locationIds);
+        foreach (array_chunk($uniqueLocationIds, 500) as $chunk) {
+            try {
+                $rows = DB::table('shopify_location_mappings')
+                    ->whereIn('our_location_id', $chunk)
+                    ->get(['our_location_id', 'shopify_location_id']);
+                foreach ($rows as $row) {
+                    self::$locationCache[$row->our_location_id] = $row->shopify_location_id;
+                }
+            } catch (\Throwable $e) {
+                if (DB::connection()->getDriverName() === 'sqlite' && str_contains($e->getMessage(), 'no such table')) {
+                    // Ignore missing table during isolated SQLite tests
+                } else {
+                    throw $e;
+                }
+            }
+            foreach ($chunk as $locId) {
+                if (!array_key_exists($locId, self::$locationCache)) {
+                    self::$locationCache[$locId] = null;
+                }
+            }
+        }
+    }
+
+    public static function endBatch(): void
+    {
+        self::$isBatching = false;
+        self::$productCache = [];
+        self::$itemCache = [];
+        self::$locationCache = [];
+    }
 
     public function __construct(
         ShopifyInventorySync $sync,
@@ -56,8 +145,13 @@ class SyncStockToShopify implements QueuedListenerInterface
         $locationId = $event->getLocationId()->getValue();
 
         // Look up the Shopify-specific IDs from our mapping tables
-        $shopifyInventoryItemId = $this->mappings->findShopifyInventoryItemId($sku);
-        $shopifyLocationId      = $this->mappings->findShopifyLocationId($locationId);
+        if (self::$isBatching) {
+            $shopifyInventoryItemId = self::$itemCache[$sku] ?? null;
+            $shopifyLocationId      = self::$locationCache[$locationId] ?? null;
+        } else {
+            $shopifyInventoryItemId = $this->mappings->findShopifyInventoryItemId($sku);
+            $shopifyLocationId      = $this->mappings->findShopifyLocationId($locationId);
+        }
 
         // Skip if this SKU or location hasn't been mapped to Shopify yet
         if ($shopifyInventoryItemId === null || $shopifyLocationId === null) {
@@ -65,7 +159,19 @@ class SyncStockToShopify implements QueuedListenerInterface
         }
 
         // Fetch the current authoritative stock quantity for this location
-        $product  = $this->productRepository->findBySku(new SKU($sku));
+        $product = null;
+        if (self::$isBatching) {
+            $tenantId = method_exists($this->productRepository, 'getTenantId')
+                ? $this->productRepository->getTenantId()
+                : 'system';
+            $cacheKey = $tenantId . ':' . $sku;
+            $product = self::$productCache[$cacheKey] ?? null;
+        }
+
+        if (!$product) {
+            $product = $this->productRepository->findBySku(new SKU($sku));
+        }
+
         if (!$product) {
             return;
         }

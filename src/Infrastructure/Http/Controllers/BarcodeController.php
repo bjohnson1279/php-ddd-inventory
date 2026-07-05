@@ -29,6 +29,10 @@ class BarcodeController
 
             return new Response(['variant_id' => $variantId], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[BarcodeController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }
@@ -65,6 +69,10 @@ class BarcodeController
 
             return new Response(['message' => 'Barcode assigned successfully'], 201);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[BarcodeController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }
@@ -90,6 +98,67 @@ class BarcodeController
                 'assignments' => $assignments,
             ], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[BarcodeController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
+            return new Response(['error' => $e->getMessage()], 400);
+        }
+    }
+
+    public function scan(RequestInterface $request, BarcodeRepositoryInterface $repo, string $tenantId)
+    {
+        try {
+            $validated = $request->validate([
+                'rawScan' => 'required|string',
+                'context' => 'required|string',
+            ]);
+
+            $payload = json_decode(file_get_contents('php://input'), true) ?: [];
+            $scanPayload = $payload['payload'] ?? [];
+
+            $events = \InventoryApp\Infrastructure\ServiceContainer::dispatcher();
+            $productRepo = \InventoryApp\Infrastructure\ServiceContainer::productRepo($tenantId);
+            $countRepo = \InventoryApp\Infrastructure\ServiceContainer::inventoryCountRepo($tenantId);
+
+            $dispatchStock = new \InventoryApp\Application\Inventory\UseCases\DispatchStock($productRepo, $events);
+            $receiveStock = new \InventoryApp\Application\Inventory\UseCases\ReceiveStock($productRepo, $events);
+            $recordCountItem = new \InventoryApp\Application\Inventory\UseCases\RecordCountItem($countRepo);
+
+            $dispatcher = new BarcodeScanDispatcher($repo);
+            $dispatcher->register(ScanContext::PointOfSale, new POSScanHandler($dispatchStock));
+            $dispatcher->register(ScanContext::Receiving, new ReceivingScanHandler($receiveStock));
+            $dispatcher->register(ScanContext::CycleCount, new CycleCountScanHandler($recordCountItem));
+
+            $sku = $dispatcher->dispatch($validated['rawScan'], $validated['context'], $scanPayload);
+
+            $notificationService = new \InventoryApp\Application\Notification\Services\NotificationService();
+            $notificationService->createNotification(
+                $tenantId,
+                'Barcode Scanned',
+                json_encode([
+                    'scanValue' => $validated['rawScan'],
+                    'symbology' => 'unknown',
+                    'context' => $validated['context'],
+                    'status' => 'success',
+                    'time' => date('Y-m-d H:i:s'),
+                    'payload' => json_encode($scanPayload),
+                    'sku' => $sku
+                ]),
+                'barcode_scanned'
+            );
+
+            return new Response([
+                'message' => 'Scan processed.',
+                'sku' => $sku,
+                'context' => $validated['context'],
+                'dispatched' => true
+            ], 200);
+        } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[BarcodeController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }

@@ -22,7 +22,7 @@ class FEFOPickingSuggester
             throw new Exception("Pick quantity must be positive.");
         }
 
-        $product = $this->productRepo->findBySku(new Sku($skuStr));
+        $product = $this->productRepo->findBySku(new SKU($skuStr));
         if (!$product) {
             throw new Exception("Product variant with SKU {$skuStr} not found.");
         }

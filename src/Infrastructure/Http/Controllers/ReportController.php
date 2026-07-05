@@ -18,12 +18,12 @@ class ReportController
             }
 
             // 1. Fetch all products for tenant
-            $products = DB::table('products')->where('tenant_id', $tenantId)->get();
+            $products = DB::table('products')->where('tenant_id', $tenantId)->get(['id', 'sku', 'name', 'reorder_threshold']);
             $productIds = $products->pluck('id')->toArray();
             $productSkus = $products->pluck('sku')->toArray();
 
             // Fetch all locations to initialize location names
-            $locations = DB::table('locations')->get()->keyBy('id')->toArray();
+            $locations = DB::table('locations')->get(['id', 'name'])->keyBy('id')->toArray();
 
             // Fetch ALL stock locations for these products once (to avoid N+1)
             $allStocks = $this->fetchStocksMap($productIds);
@@ -38,8 +38,11 @@ class ReportController
             $reportData['recent_activity'] = $this->getRecentActivity($tenantId);
 
             return new Response($reportData, 200);
-        } catch (Exception $e) {
+        } catch (\InvalidArgumentException | \ValidationException $e) {
             return new Response(['error' => $e->getMessage()], 400);
+        } catch (Exception $e) {
+            error_log('[ReportController] ' . $e->getMessage());
+            return new Response(['error' => 'An internal server error occurred.'], 500);
         }
     }
 
@@ -53,12 +56,12 @@ class ReportController
             $results = $results->concat(
                 DB::table('product_locations')
                     ->whereIn('product_id', $chunk)
-                    ->get()
+                    ->get(['product_id', 'location_id', 'stock_quantity'])
             );
         }
         return $results->groupBy('product_id');
     }
-
+ 
     private function fetchCostLayersMap(string $tenantId, array $productSkus): \Illuminate\Support\Collection
     {
         if (empty($productSkus)) {
@@ -71,12 +74,12 @@ class ReportController
                     ->where('tenant_id', $tenantId)
                     ->whereIn('variant_id', $chunk)
                     ->where('remaining_quantity', '>', 0)
-                    ->get()
+                    ->get(['variant_id', 'remaining_quantity', 'unit_cost_cents', 'received_at'])
             );
         }
         return $results->groupBy('variant_id');
     }
-
+ 
     private function fetchCatalogVariantsMap(array $productSkus): \Illuminate\Support\Collection
     {
         if (empty($productSkus)) {
@@ -87,7 +90,7 @@ class ReportController
             $results = $results->concat(
                 DB::table('catalog_variants')
                     ->whereIn('sku', $chunk)
-                    ->get()
+                    ->get(['sku', 'price'])
             );
         }
         return $results->keyBy('sku');
@@ -250,7 +253,7 @@ class ReportController
             ->where('tenant_id', $tenantId)
             ->orderBy('created_at', 'desc')
             ->limit(5)
-            ->get();
+            ->get(['id', 'product_id', 'type', 'quantity_change', 'condition', 'created_at']);
 
         if ($transactions->isEmpty()) {
             return [];
@@ -261,7 +264,7 @@ class ReportController
         // we extract the unique product IDs and perform a single O(1) batched query.
         // This solves an N+1 query issue for the activity feed.
         $productIds = $transactions->pluck('product_id')->unique()->toArray();
-        $products = DB::table('products')->whereIn('id', $productIds)->get()->keyBy('id');
+        $products = DB::table('products')->whereIn('id', $productIds)->get(['id', 'name', 'sku'])->keyBy('id');
 
         $activity = [];
         foreach ($transactions as $t) {

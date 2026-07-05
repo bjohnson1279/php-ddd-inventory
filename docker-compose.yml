@@ -16,6 +16,8 @@ services:
       - ./:/var/www/html
     networks:
       - ddd-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - db
 
@@ -35,7 +37,7 @@ services:
       - db
 
   db:
-    image: postgres:15-alpine
+    image: timescale/timescaledb:latest-pg15
     container_name: ddd_inventory_db
     restart: unless-stopped
     environment:
@@ -46,9 +48,62 @@ services:
       - db_data:/var/lib/postgresql/data
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     ports:
-      - "5432:5432"
+      - "5436:5432"
     networks:
       - ddd-network
+
+  db-backup:
+    image: prodrigestivill/postgres-backup-local:15-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${DB_DATABASE}
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - BACKUP_NUM_KEEP=7
+      - BACKUP_FREQUENCY=daily
+      - SCHEDULE=@daily
+    volumes:
+      - ./infra/db/backups:/backups
+    networks:
+      - ddd-network
+    depends_on:
+      - db
+
+  outbox-worker:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: ddd_inventory_outbox_worker
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: ["php", "scripts/outbox-worker.php"]
+    env_file:
+      - .env
+    volumes:
+      - ./:/var/www/html
+    networks:
+      - ddd-network
+    depends_on:
+      - db
+
+  queue-worker:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: ddd_inventory_queue_worker
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: ["php", "scripts/queue-worker.php"]
+    env_file:
+      - .env
+    volumes:
+      - ./:/var/www/html
+    networks:
+      - ddd-network
+    depends_on:
+      - db
 
 networks:
   ddd-network:

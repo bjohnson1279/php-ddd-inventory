@@ -186,7 +186,7 @@ final class ApiEndpointsTest extends TestCase
         // 4. Query notifications stream mock (GET /api/notifications)
         $notifRes = $this->request('GET', '/api/notifications', [], $this->token);
         $this->assertEquals(200, $notifRes['status'], json_encode($notifRes));
-
+        
         $found = false;
         foreach ($notifRes['body']['notifications'] as $n) {
             if ($n['type'] === 'barcode_scanned') {

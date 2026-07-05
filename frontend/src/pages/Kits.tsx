@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/client';
+import Spinner from '../components/Spinner';
 
 type KitComponent = {
   id: string;
@@ -137,15 +138,15 @@ export default function Kits() {
             <div className="section-title">Assemble New Kit Bundle</div>
             <form onSubmit={handleCreateKit}>
               <div className="form-group">
-                <label>Bundle SKU</label>
-                <input value={kitSku} onChange={e => setKitSku(e.target.value)} placeholder="e.g. KIT-SUMMER-BUNDLE" required />
+                <label htmlFor="kitSku">Bundle SKU</label>
+                <input id="kitSku" value={kitSku} onChange={e => setKitSku(e.target.value)} placeholder="e.g. KIT-SUMMER-BUNDLE" required />
               </div>
               <div className="form-group">
-                <label>Bundle Name</label>
-                <input value={kitName} onChange={e => setKitName(e.target.value)} placeholder="e.g. Summer Essentials Pack" required />
+                <label htmlFor="kitName">Bundle Name</label>
+                <input id="kitName" value={kitName} onChange={e => setKitName(e.target.value)} placeholder="e.g. Summer Essentials Pack" required />
               </div>
-              <button type="submit" className="btn-primary" style={{ width: '100%', opacity: isCreatingKit ? 0.6 : 1, cursor: isCreatingKit ? 'not-allowed' : 'pointer' }} disabled={isCreatingKit} aria-busy={isCreatingKit}>
-                {isCreatingKit ? 'Creating...' : 'Create Kit Bundle'}
+              <button type="submit" className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isCreatingKit} aria-busy={isCreatingKit}>
+                {isCreatingKit && <Spinner />} {isCreatingKit ? 'Creating...' : 'Create Kit Bundle'}
               </button>
             </form>
             <p style={{ color: createMsg.includes('Error') ? '#f87171' : '#34d399' }}>{createMsg}</p>
@@ -211,15 +212,15 @@ export default function Kits() {
                 <div className="section-title">Add Subcomponent to Kit</div>
                 <form onSubmit={handleAddComponent}>
                   <div className="form-group">
-                    <label>Variant ID (UUID)</label>
-                    <input value={compVariantId} onChange={e => setCompVariantId(e.target.value)} placeholder="Variant UUID..." required />
+                    <label htmlFor="compVariantId">Variant ID (UUID)</label>
+                    <input id="compVariantId" value={compVariantId} onChange={e => setCompVariantId(e.target.value)} placeholder="Variant UUID..." required />
                   </div>
                   <div className="form-group">
-                    <label>Quantity per Bundle</label>
-                    <input type="number" min="1" value={compQty} onChange={e => setCompQty(e.target.value)} placeholder="e.g. 1" required />
+                    <label htmlFor="compQty">Quantity per Bundle</label>
+                    <input id="compQty" type="number" min="1" value={compQty} onChange={e => setCompQty(e.target.value)} placeholder="e.g. 1" required />
                   </div>
-                  <button type="submit" className="btn-primary" style={{ width: '100%', opacity: isAddingComponent ? 0.6 : 1, cursor: isAddingComponent ? 'not-allowed' : 'pointer' }} disabled={isAddingComponent} aria-busy={isAddingComponent}>
-                    {isAddingComponent ? 'Adding...' : 'Add Component'}
+                  <button type="submit" className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isAddingComponent} aria-busy={isAddingComponent}>
+                    {isAddingComponent && <Spinner />} {isAddingComponent ? 'Adding...' : 'Add Component'}
                   </button>
                 </form>
                 <p style={{ color: compMsg.includes('Failed') || compMsg.includes('Error') ? '#f87171' : '#34d399' }}>{compMsg}</p>
@@ -255,15 +256,15 @@ export default function Kits() {
                 <div className="section-title">Sell Kit Bundle</div>
                 <form onSubmit={handleSellKit}>
                   <div className="form-group">
-                    <label>Sale Quantity</label>
-                    <input type="number" min="1" value={sellQty} onChange={e => setSellQty(e.target.value)} placeholder="e.g. 1" required />
+                    <label htmlFor="sellQty">Sale Quantity</label>
+                    <input id="sellQty" type="number" min="1" value={sellQty} onChange={e => setSellQty(e.target.value)} placeholder="e.g. 1" required />
                   </div>
                   <div className="form-group">
-                    <label>Sale ID / Invoice</label>
-                    <input value={sellSaleId} onChange={e => setSellSaleId(e.target.value)} placeholder="e.g. SALE-KIT-BND-10" required />
+                    <label htmlFor="sellSaleId">Sale ID / Invoice</label>
+                    <input id="sellSaleId" value={sellSaleId} onChange={e => setSellSaleId(e.target.value)} placeholder="e.g. SALE-KIT-BND-10" required />
                   </div>
-                  <button type="submit" className="btn-primary" style={{ width: '100%', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', opacity: isSellingKit ? 0.6 : 1, cursor: isSellingKit ? 'not-allowed' : 'pointer' }} disabled={isSellingKit} aria-busy={isSellingKit}>
-                    {isSellingKit ? 'Processing...' : 'Process Bundle Sale'}
+                  <button type="submit" className="btn-primary" style={{ width: '100%', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isSellingKit} aria-busy={isSellingKit}>
+                    {isSellingKit && <Spinner />} {isSellingKit ? 'Processing...' : 'Process Bundle Sale'}
                   </button>
                 </form>
                 <p style={{ color: sellMsg.includes('failed') || sellMsg.includes('Ensure') ? '#f87171' : '#34d399' }}>{sellMsg}</p>

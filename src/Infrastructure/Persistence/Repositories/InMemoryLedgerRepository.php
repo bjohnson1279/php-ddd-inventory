@@ -54,12 +54,20 @@ class InMemoryLedgerRepository implements LedgerRepositoryInterface
         return $sum;
     }
 
-    public function entriesFor(string $variantId): array
+    public function entriesFor(string $variantId, ?string $locationId = null): array
     {
         $rows = $this->read();
         $out = [];
         foreach ($rows as $r) {
             if ($r['variantId'] !== $variantId) continue;
+
+            if ($locationId !== null) {
+                $meta = $r['metadata'] ?? [];
+                if (!isset($meta['locationId']) || $meta['locationId'] !== $locationId) {
+                    continue;
+                }
+            }
+
             $out[] = new LedgerEntry(
                 $r['id'],
                 $r['variantId'],

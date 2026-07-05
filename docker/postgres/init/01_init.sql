@@ -1,6 +1,7 @@
 -- Initial PostgreSQL schema for DDD Inventory
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
 
 -- Tenants table
 CREATE TABLE IF NOT EXISTS tenants (
@@ -11,6 +12,7 @@ CREATE TABLE IF NOT EXISTS tenants (
 
 -- Catalog Context
 CREATE TABLE IF NOT EXISTS catalog_products (
+  tenant_id TEXT NOT NULL DEFAULT 'system',
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
   description TEXT,
@@ -112,15 +114,18 @@ CREATE TABLE IF NOT EXISTS product_locations (
 
 -- Inventory transactions (Ledger)
 CREATE TABLE IF NOT EXISTS inventory_transactions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID DEFAULT uuid_generate_v4(),
   tenant_id VARCHAR(50) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   type VARCHAR(50) NOT NULL,
   quantity_change INTEGER NOT NULL,
   condition VARCHAR(50) NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  reference_id TEXT
+  reference_id TEXT,
+  PRIMARY KEY (id, created_at)
 );
+
+SELECT create_hypertable('inventory_transactions', 'created_at', if_not_exists => TRUE);
 
 -- Inventory counts
 CREATE TABLE IF NOT EXISTS inventory_counts (
@@ -152,7 +157,7 @@ INSERT INTO locations (id, name, type) VALUES ('LOC-BACKROOM', 'Backroom Storage
 
 -- Ledger entries (append-only)
 CREATE TABLE IF NOT EXISTS ledger_entries (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID DEFAULT uuid_generate_v4(),
   tenant_id VARCHAR(50) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   variant_id TEXT NOT NULL,
   quantity INTEGER NOT NULL,
@@ -161,10 +166,38 @@ CREATE TABLE IF NOT EXISTS ledger_entries (
   reference_id TEXT,
   occurred_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   metadata JSONB DEFAULT '{}',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  PRIMARY KEY (id, occurred_at)
 );
+
+SELECT create_hypertable('ledger_entries', 'occurred_at', if_not_exists => TRUE);
 CREATE INDEX IF NOT EXISTS idx_ledger_variant ON ledger_entries(variant_id);
 CREATE INDEX IF NOT EXISTS idx_ledger_tenant ON ledger_entries(tenant_id);
+
+-- TimescaleDB Continuous Aggregate for Stock Velocity
+CREATE MATERIALIZED VIEW IF NOT EXISTS daily_stock_velocity
+WITH (timescaledb.continuous) AS
+SELECT 
+  time_bucket('1 day', occurred_at) AS bucket,
+  tenant_id,
+  variant_id,
+  COALESCE(SUM(CASE WHEN quantity < 0 THEN abs(quantity) ELSE 0 END), 0) AS units_dispatched,
+  COALESCE(SUM(CASE WHEN quantity > 0 THEN quantity ELSE 0 END), 0) AS units_received,
+  COUNT(*) as transaction_count
+FROM ledger_entries
+GROUP BY bucket, tenant_id, variant_id;
+
+-- Enable Row-Level Security on the materialized view
+-- ALTER MATERIALIZED VIEW daily_stock_velocity ENABLE ROW LEVEL SECURITY;
+-- DROP POLICY IF EXISTS tenant_isolation ON daily_stock_velocity;
+-- CREATE POLICY tenant_isolation ON daily_stock_velocity USING (tenant_id = current_setting('app.current_tenant_id', true));
+
+-- Add continuous aggregate policy to update the view automatically in background
+SELECT add_continuous_aggregate_policy('daily_stock_velocity',
+  start_offset => INTERVAL '1 month',
+  end_offset => INTERVAL '1 hour',
+  schedule_interval => INTERVAL '1 hour',
+  if_not_exists => TRUE);
 
 -- Serialized item tracking
 CREATE TABLE IF NOT EXISTS serialized_items (

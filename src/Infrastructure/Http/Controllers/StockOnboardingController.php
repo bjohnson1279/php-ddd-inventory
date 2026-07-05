@@ -33,6 +33,10 @@ class StockOnboardingController
                 'id'      => $id,
             ], 201);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[StockOnboardingController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }
@@ -52,6 +56,10 @@ class StockOnboardingController
 
             return new Response(['message' => 'Onboarding item set successfully'], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[StockOnboardingController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }
@@ -65,6 +73,10 @@ class StockOnboardingController
 
             return new Response(['message' => 'Onboarding item removed successfully'], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[StockOnboardingController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }
@@ -83,6 +95,10 @@ class StockOnboardingController
 
             return new Response(['message' => 'Stock onboarding submitted and processed successfully'], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[StockOnboardingController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }
@@ -93,6 +109,10 @@ class StockOnboardingController
             $onboarding = $repo->findOrFail($id);
             return new Response($this->serializeOnboarding($onboarding), 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[StockOnboardingController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }

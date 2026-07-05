@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS tenants (
 
 -- Catalog Context
 CREATE TABLE IF NOT EXISTS catalog_products (
+  tenant_id TEXT NOT NULL DEFAULT 'system',
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
   description TEXT,

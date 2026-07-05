@@ -2,9 +2,7 @@
 
 namespace InventoryApp\Domain\Inventory\Exceptions;
 
-use Exception;
-
-class InvalidSKUException extends Exception
+class InvalidSKUException extends \DomainException
 {
     public function __construct(string $sku)
     {

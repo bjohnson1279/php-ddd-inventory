@@ -244,6 +244,14 @@ function requireAuth(): void
     // Make the resolved identity available to the rest of the request
     $_SERVER['auth.user_id']   = $tokenData->user_id;
     $_SERVER['auth.tenant_id'] = $tokenData->tenant_id;
+
+    if (getenv('DB_CONNECTION') === 'pgsql' || getenv('DB_CONNECTION') === '') {
+        try {
+            \Illuminate\Database\Capsule\Manager::statement("SET app.current_tenant_id = '{$tokenData->tenant_id}'");
+        } catch (\Throwable $e) {
+            // Ignore during setup or in environments where DB is not fully bootstrapped
+        }
+    }
 }
 
 function tenantId(): string
@@ -368,6 +376,55 @@ if ($method === 'POST' && preg_match('#^/api/notifications/([^/]+)/read$#', $uri
     requireAuth();
     $id = urldecode($m[1]);
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\NotificationController())->read($request, tenantId(), $id);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/audit/run ────────────────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/audit/run') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:reconcile')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\AuditController())->runAudit($request, tenantId());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: GET /api/audit/discrepancies ───────────────────────────────────────
+if ($method === 'GET' && $uri === '/api/audit/discrepancies') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:read')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\AuditController())->listDiscrepancies($request, tenantId());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/audit/discrepancies/{id}/resolve ──────────────────────────
+if ($method === 'POST' && preg_match('#^/api/audit/discrepancies/([^/]+)/resolve$#', $uri, $m)) {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:reconcile')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $id = urldecode($m[1]);
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\AuditController())->resolveDiscrepancy($request, tenantId(), $id);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
@@ -2102,6 +2159,25 @@ if ($method === 'GET' && $uri === '/api/forecasting/report') {
             ServiceContainer::ledgerRepo(tenantId()),
             ServiceContainer::reorderPolicyRepo(),
             ServiceContainer::demandForecastRepo()
+        );
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: GET /api/forecasting/stock-velocity ─────────────────────────────────
+if ($method === 'GET' && $uri === '/api/forecasting/stock-velocity') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:read')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ForecastingController())
+        ->getStockVelocityReport(
+            $request
         );
     http_response_code($response->getStatusCode());
     echo $response->getContent();

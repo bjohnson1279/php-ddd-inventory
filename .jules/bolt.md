@@ -28,3 +28,8 @@
 ## 2026-06-27 - Eloquent/Query Builder Mass Selection Overhead
 **Learning:** In Laravel's Query Builder (and Eloquent), calling `->get()` without specifying columns fetches every column from the table (`SELECT *`). For large tables like `products` or `inventory_transactions`, this significantly increases database payload size, network latency, and memory consumption during object instantiation, especially for large tenant reporting.
 **Action:** When writing queries for batch processing, mapping, or reporting (like `ReportController`), explicitly list only the required columns in the `->get(['id', 'sku', ...])` method to minimize the memory footprint and execution time.
+
+## 2026-06-27 - Parent Folder Traversal for Dotenv in Standalone Scripts
+**Learning:** Standalone scripts (like queue-worker.php) that bootstrap their database connections through helper files might execute in a different working directory or contain hardcoded parent directory paths (e.g. `../../../../`) that point outside the project directory. When this occurs, `.env` loading fails silently, triggering fallbacks like empty in-memory SQLite instances or incorrect database connections that lack tables.
+**Action:** Ensure that standalone bootstrap files resolve paths relative to the current file using `__DIR__` and traverse exactly to the project's root folder where the `.env` resides (e.g. `__DIR__ . '/../../../'`), matching the paths verified in unit/integration test bootstraps.
+

@@ -21,6 +21,8 @@ final class DatabaseQueueTest extends TestCase
     {
         // Clean up queued jobs and mapping/catalog tables to ensure run-to-run isolation
         if (getenv('DB_CONNECTION') === 'sqlite' || DB::connection()->getDriverName() === 'sqlite') {
+            require_once __DIR__ . '/../../../src/Infrastructure/Persistence/sqlite_setup.php';
+            \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema(DB::connection());
             DB::table('queued_jobs')->delete();
             DB::table('shopify_sync_failures')->delete();
         } else {

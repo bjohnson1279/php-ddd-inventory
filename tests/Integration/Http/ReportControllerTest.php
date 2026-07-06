@@ -21,7 +21,7 @@ final class ReportControllerTest extends TestCase
     public static function setUpBeforeClass(): void
     {
         $output = [];
-        $command = "DB_CONNECTION=sqlite DB_DATABASE=storage/data/test.sqlite php -S 127.0.0.1:8089 public/index.php > tests/Integration/Http/server_report.log 2>&1 & echo $!";
+        $command = "php -S 127.0.0.1:8089 public/index.php > tests/Integration/Http/server_report.log 2>&1 & echo $!";
         
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);

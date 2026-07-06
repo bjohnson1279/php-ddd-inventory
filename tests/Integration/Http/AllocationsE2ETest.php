@@ -51,7 +51,7 @@ final class AllocationsE2ETest extends TestCase
         Capsule::table('products')->delete();
         Capsule::table('user_roles')->delete();
         Capsule::table('users')->delete();
-        Capsule::table('tenants')->delete();
+        Capsule::table('tenants')->where('id', '!=', 'test-tenant')->delete();
 
         $suffix = bin2hex(random_bytes(4));
         $this->tenantId = 'tenant-' . $suffix;

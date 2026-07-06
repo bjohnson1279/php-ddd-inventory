@@ -53,7 +53,7 @@ final class ApiEndpointsTest extends TestCase
         // Generate unique tenant details for each test run to ensure isolation
         DB::table('users')->delete();
         DB::table('user_roles')->delete();
-        DB::table('tenants')->delete();
+        DB::table('tenants')->where('id', '!=', 'test-tenant')->delete();
         $suffix = bin2hex(random_bytes(4));
         $this->tenantId = 'tenant-' . $suffix;
         $this->email = 'admin-' . $suffix . '@example.com';

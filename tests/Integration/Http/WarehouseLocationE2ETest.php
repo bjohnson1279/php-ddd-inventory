@@ -50,7 +50,7 @@ final class WarehouseLocationE2ETest extends TestCase
         Capsule::table('warehouse_locations')->delete();
         Capsule::table('users')->delete();
         Capsule::table('user_roles')->delete();
-        Capsule::table('tenants')->delete();
+        Capsule::table('tenants')->where('id', '!=', 'test-tenant')->delete();
         Capsule::table('catalog_variants')->delete();
         Capsule::table('catalog_products')->delete();
         Capsule::table('locations')->where('id', '!=', 'LOC-INT')->delete();

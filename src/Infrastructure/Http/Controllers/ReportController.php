@@ -51,10 +51,15 @@ class ReportController
         if (empty($productIds)) {
             return collect([]);
         }
-        return DB::table('product_locations')
-            ->whereIn('product_id', $productIds)
-            ->get(['product_id', 'location_id', 'stock_quantity'])
-            ->groupBy('product_id');
+        $results = collect();
+        foreach (array_chunk($productIds, 500) as $chunk) {
+            $results = $results->concat(
+                DB::table('product_locations')
+                    ->whereIn('product_id', $chunk)
+                    ->get(['product_id', 'location_id', 'stock_quantity'])
+            );
+        }
+        return $results->groupBy('product_id');
     }
 
     private function fetchCostLayersMap(string $tenantId, array $productSkus): \Illuminate\Support\Collection
@@ -62,12 +67,17 @@ class ReportController
         if (empty($productSkus)) {
             return collect([]);
         }
-        return DB::table('inventory_cost_layers')
-            ->where('tenant_id', $tenantId)
-            ->whereIn('variant_id', $productSkus)
-            ->where('remaining_quantity', '>', 0)
-            ->get(['variant_id', 'remaining_quantity', 'unit_cost_cents', 'received_at'])
-            ->groupBy('variant_id');
+        $results = collect();
+        foreach (array_chunk($productSkus, 500) as $chunk) {
+            $results = $results->concat(
+                DB::table('inventory_cost_layers')
+                    ->where('tenant_id', $tenantId)
+                    ->whereIn('variant_id', $chunk)
+                    ->where('remaining_quantity', '>', 0)
+                    ->get(['variant_id', 'remaining_quantity', 'unit_cost_cents', 'received_at'])
+            );
+        }
+        return $results->groupBy('variant_id');
     }
 
     private function fetchCatalogVariantsMap(array $productSkus): \Illuminate\Support\Collection
@@ -75,10 +85,15 @@ class ReportController
         if (empty($productSkus)) {
             return collect([]);
         }
-        return DB::table('catalog_variants')
-            ->whereIn('sku', $productSkus)
-            ->get(['sku', 'price'])
-            ->keyBy('sku');
+        $results = collect();
+        foreach (array_chunk($productSkus, 500) as $chunk) {
+            $results = $results->concat(
+                DB::table('catalog_variants')
+                    ->whereIn('sku', $chunk)
+                    ->get(['sku', 'price'])
+            );
+        }
+        return $results->keyBy('sku');
     }
 
     private function buildReportData(

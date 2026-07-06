@@ -22,7 +22,7 @@ class EloquentRMARepository implements RMARepositoryInterface
         if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
             return strtolower($id);
         }
-        $hash = md5($id);
+        $hash = substr(hash('sha256', $id), 0, 32);
         return sprintf('%s-%s-%s-%s-%s',
             substr($hash, 0, 8),
             substr($hash, 8, 4),

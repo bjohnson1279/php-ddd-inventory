@@ -29,6 +29,10 @@ class BarcodeController
 
             return new Response(['variant_id' => $variantId], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[BarcodeController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }
@@ -65,6 +69,10 @@ class BarcodeController
 
             return new Response(['message' => 'Barcode assigned successfully'], 201);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[BarcodeController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }
@@ -90,6 +98,10 @@ class BarcodeController
                 'assignments' => $assignments,
             ], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[BarcodeController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }
@@ -143,6 +155,10 @@ class BarcodeController
                 'dispatched' => true
             ], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[BarcodeController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }

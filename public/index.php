@@ -61,7 +61,19 @@ $capsule->bootEloquent();
 
 if ($driver === 'sqlite') {
     require_once __DIR__ . '/../src/Infrastructure/Persistence/sqlite_setup.php';
-    \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
+    $conn = $capsule->getConnection();
+    \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($conn);
+    $conn->table('locations')->insertOrIgnore([
+        ['id' => 'LOC-INT', 'name' => 'Integration Location', 'type' => 'TEST']
+    ]);
+    $conn->table('tenants')->insertOrIgnore([
+        ['id' => 'test-tenant', 'name' => 'Test Tenant']
+    ]);
+    $conn->table('roles')->insertOrIgnore([
+        ['id' => 'admin',   'name' => 'Administrator'],
+        ['id' => 'manager', 'name' => 'Manager'],
+        ['id' => 'staff',   'name' => 'Staff']
+    ]);
 }
 
 // ── Event listeners ──────────────────────────────────────────────────────────
@@ -432,8 +444,12 @@ if ($method === 'POST' && preg_match('#^/api/audit/discrepancies/([^/]+)/resolve
 
 // ── Route: POST /auth/register ────────────────────────────────────────────────
 if ($method === 'POST' && $uri === '/auth/register') {
-    $useCase  = new RegisterUser(ServiceContainer::userRepo(), $dispatcher);
-    $response = (new AuthController())->register($request, $useCase);
+    $middleware = new \InventoryApp\Infrastructure\Http\Middleware\RateLimitMiddleware(5, 60);
+    $response = $middleware->handle($request, function ($req) use ($dispatcher) {
+        $useCase  = new RegisterUser(ServiceContainer::userRepo(), $dispatcher);
+        return (new AuthController())->register($req, $useCase);
+    });
+
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
@@ -441,64 +457,63 @@ if ($method === 'POST' && $uri === '/auth/register') {
 
 // ── Route: POST /api/setup ───────────────────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/setup') {
-    $body = json_decode(file_get_contents('php://input'), true) ?: [];
-    
-    $orgName = $body['orgName'] ?? '';
-    $tenantId = $body['tenantId'] ?? '';
-    $adminName = $body['adminName'] ?? '';
-    $adminEmail = $body['adminEmail'] ?? '';
-    $adminPassword = $body['adminPassword'] ?? '';
-    
-    if (empty($orgName) || empty($tenantId) || empty($adminName) || empty($adminEmail) || empty($adminPassword)) {
-        http_response_code(400);
-        echo json_encode(['error' => 'All fields (orgName, tenantId, adminName, adminEmail, adminPassword) are required.']);
-        exit;
-    }
-    
-    try {
-        $existingTenant = Capsule::table('tenants')->where('id', $tenantId)->first();
-        if ($existingTenant) {
-            http_response_code(403);
-            echo json_encode(['error' => 'Forbidden: Tenant already exists.']);
-            exit;
+    $middleware = new \InventoryApp\Infrastructure\Http\Middleware\RateLimitMiddleware(5, 60);
+    $response = $middleware->handle($request, function ($req) {
+        $body = json_decode(file_get_contents('php://input'), true) ?: [];
+        
+        $orgName = $body['orgName'] ?? '';
+        $tenantId = $body['tenantId'] ?? '';
+        $adminName = $body['adminName'] ?? '';
+        $adminEmail = $body['adminEmail'] ?? '';
+        $adminPassword = $body['adminPassword'] ?? '';
+        
+        if (empty($orgName) || empty($tenantId) || empty($adminName) || empty($adminEmail) || empty($adminPassword)) {
+            return new \InventoryApp\Infrastructure\Http\Response(['error' => 'All fields (orgName, tenantId, adminName, adminEmail, adminPassword) are required.'], 400);
         }
+        
+        try {
+            $existingTenant = Capsule::table('tenants')->where('id', $tenantId)->first();
+            if ($existingTenant) {
+                return new \InventoryApp\Infrastructure\Http\Response(['error' => 'Forbidden: Tenant already exists.'], 403);
+            }
 
-        // 1. Insert tenant
-        Capsule::table('tenants')->insert([
-            'id' => $tenantId,
-            'name' => $orgName,
-            'created_at' => date('Y-m-d H:i:s')
-        ]);
-        
-        // 2. Register admin user
-        $userRepo = ServiceContainer::userRepo();
-        $adminId = \Ramsey\Uuid\Uuid::uuid4()->toString();
-        
-        $existing = $userRepo->findByEmail($adminEmail, new \InventoryApp\Domain\Identity\ValueObjects\TenantId($tenantId));
-        if (!$existing) {
-            $user = \InventoryApp\Domain\Identity\Entities\User::register(
-                $adminId,
-                new \InventoryApp\Domain\Identity\ValueObjects\TenantId($tenantId),
-                $adminEmail,
-                $adminPassword,
-                $adminName
-            );
-            $user->assignRole(\InventoryApp\Domain\Identity\Entities\Role::createDefault('admin'));
-            $userRepo->save($user);
+            // 1. Insert tenant
+            Capsule::table('tenants')->insert([
+                'id' => $tenantId,
+                'name' => $orgName,
+                'created_at' => date('Y-m-d H:i:s')
+            ]);
+
+            // 2. Register admin user
+            $userRepo = ServiceContainer::userRepo();
+            $adminId = \Ramsey\Uuid\Uuid::uuid4()->toString();
+
+            $existing = $userRepo->findByEmail($adminEmail, new \InventoryApp\Domain\Identity\ValueObjects\TenantId($tenantId));
+            if (!$existing) {
+                $user = \InventoryApp\Domain\Identity\Entities\User::register(
+                    $adminId,
+                    new \InventoryApp\Domain\Identity\ValueObjects\TenantId($tenantId),
+                    $adminEmail,
+                    $adminPassword,
+                    $adminName
+                );
+                $user->assignRole(\InventoryApp\Domain\Identity\Entities\Role::createDefault('admin'));
+                $userRepo->save($user);
+            }
+
+            return new \InventoryApp\Infrastructure\Http\Response(['message' => 'Organization and admin account set up successfully.'], 200);
+        } catch (\Exception $e) {
+            if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+                return new \InventoryApp\Infrastructure\Http\Response(['error' => $e->getMessage()], 400);
+            } else {
+                error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+                return new \InventoryApp\Infrastructure\Http\Response(['error' => 'An internal server error occurred.'], 500);
+            }
         }
-        
-        http_response_code(200);
-        echo json_encode(['message' => 'Organization and admin account set up successfully.']);
-    } catch (\Exception $e) {
-        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
-            http_response_code(400);
-            echo json_encode(['error' => $e->getMessage()]);
-        } else {
-            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
-            http_response_code(500);
-            echo json_encode(['error' => 'An internal server error occurred.']);
-        }
-    }
+    });
+
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
     exit;
 }
 
@@ -544,43 +559,44 @@ if ($method === 'GET' && $uri === '/api/users') {
 // ── Route: POST /api/users ────────────────────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/users') {
     requireAuth();
-    $body = json_decode(file_get_contents('php://input'), true) ?: [];
+    $middleware = new \InventoryApp\Infrastructure\Http\Middleware\RateLimitMiddleware(5, 60);
+    $response = $middleware->handle($request, function ($req) use ($dispatcher) {
+        $body = json_decode(file_get_contents('php://input'), true) ?: [];
 
-    $email = $body['email'] ?? '';
-    if (empty($email)) {
-        http_response_code(400);
-        echo json_encode(['error' => 'Email is required.']);
-        exit;
-    }
-
-    try {
-        $tenantId        = tenantId();
-        $userId          = \Ramsey\Uuid\Uuid::uuid4()->toString();
-        // Generate a secure random temporary password (returned once to the caller).
-        // The invited user must change it on first login.
-        $temporaryPassword = bin2hex(random_bytes(12)); // 24 hex chars
-        $name            = explode('@', $email)[0];
-        $actingUserId    = $_SERVER['auth.user_id'] ?? '';
-
-        $useCase = new RegisterUser(ServiceContainer::userRepo(), $dispatcher);
-        $useCase->execute($userId, $tenantId, $email, $temporaryPassword, $name, $actingUserId);
-
-        http_response_code(201);
-        echo json_encode([
-            'message'            => 'User invited successfully.',
-            'user_id'            => $userId,
-            'temporary_password' => $temporaryPassword,
-        ]);
-    } catch (\Exception $e) {
-        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
-            http_response_code(400);
-            echo json_encode(['error' => $e->getMessage()]);
-        } else {
-            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
-            http_response_code(500);
-            echo json_encode(['error' => 'An internal server error occurred.']);
+        $email = $body['email'] ?? '';
+        if (empty($email)) {
+            return new \InventoryApp\Infrastructure\Http\Response(['error' => 'Email is required.'], 400);
         }
-    }
+
+        try {
+            $tenantId        = tenantId();
+            $userId          = \Ramsey\Uuid\Uuid::uuid4()->toString();
+            // Generate a secure random temporary password (returned once to the caller).
+            // The invited user must change it on first login.
+            $temporaryPassword = bin2hex(random_bytes(12)); // 24 hex chars
+            $name            = explode('@', $email)[0];
+            $actingUserId    = $_SERVER['auth.user_id'] ?? '';
+
+            $useCase = new RegisterUser(ServiceContainer::userRepo(), $dispatcher);
+            $useCase->execute($userId, $tenantId, $email, $temporaryPassword, $name, $actingUserId);
+
+            return new \InventoryApp\Infrastructure\Http\Response([
+                'message'            => 'User invited successfully.',
+                'user_id'            => $userId,
+                'temporary_password' => $temporaryPassword,
+            ], 201);
+        } catch (\Exception $e) {
+            if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+                return new \InventoryApp\Infrastructure\Http\Response(['error' => $e->getMessage()], 400);
+            } else {
+                error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+                return new \InventoryApp\Infrastructure\Http\Response(['error' => 'An internal server error occurred.'], 500);
+            }
+        }
+    });
+
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
     exit;
 }
 

@@ -48,6 +48,9 @@ final class ReturnsE2ETest extends TestCase
     protected function setUp(): void
     {
         // Generate unique tenant details for each test run to ensure isolation
+        Capsule::table('users')->delete();
+        Capsule::table('user_roles')->delete();
+        Capsule::table('tenants')->delete();
         $suffix = bin2hex(random_bytes(4));
         $this->tenantId = 'tenant-' . $suffix;
         $this->email = 'admin-' . $suffix . '@example.com';

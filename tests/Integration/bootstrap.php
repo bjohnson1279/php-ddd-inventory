@@ -12,7 +12,7 @@ $driver = getenv('DB_CONNECTION') ?: 'pgsql';
 $capsule = new Capsule;
 
 if ($driver === 'sqlite') {
-    $dbPath = getenv('DB_DATABASE') ?: ':memory:';
+    $dbPath = getenv('DB_DATABASE') ?: 'storage/data/test.sqlite';
     if ($dbPath !== ':memory:' && !str_starts_with($dbPath, '/') && !str_contains($dbPath, ':')) {
         $dbPath = __DIR__ . '/../../' . $dbPath;
     }

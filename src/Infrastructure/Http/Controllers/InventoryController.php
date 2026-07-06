@@ -323,38 +323,4 @@ class InventoryController
             return new Response(['error' => $e->getMessage(), 'type' => $type], 400);
         }
     }
-
-    public function suggestFefoPick(RequestInterface $request, \InventoryApp\Domain\Inventory\Services\FEFOPickingSuggester $suggester)
-    {
-        try {
-            $sku = $request->query('sku');
-            $quantity = (int)$request->query('quantity', 0);
-
-            if (empty($sku)) {
-                throw new Exception("SKU is required.");
-            }
-            if ($quantity <= 0) {
-                throw new Exception("Quantity must be greater than 0.");
-            }
-
-            $suggestions = $suggester->suggestFefoPicking($sku, $quantity);
-
-            return new Response($suggestions, 200);
-        } catch (Exception $e) {
-            $type = (new \ReflectionClass($e))->getShortName();
-            return new Response(['error' => $e->getMessage(), 'type' => $type], 400);
-        }
-    }
-
-    public function traceRecall(RequestInterface $request, string $lotNumber, \InventoryApp\Domain\Inventory\Services\ProductRecallService $recallService)
-    {
-        try {
-            $dispatches = $recallService->traceProductRecall($lotNumber);
-
-            return new Response($dispatches, 200);
-        } catch (Exception $e) {
-            $type = (new \ReflectionClass($e))->getShortName();
-            return new Response(['error' => $e->getMessage(), 'type' => $type], 400);
-        }
-    }
 }

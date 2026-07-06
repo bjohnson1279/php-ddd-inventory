@@ -91,8 +91,7 @@ final class AuditE2ETest extends TestCase
             'id' => $catalogProductId,
             'name' => 'iPhone 15 Catalog',
             'description' => 'Test Description',
-            'department' => 'Electronics',
-            'tenant_id' => $this->tenantId
+            'department' => 'Electronics'
         ]);
 
         $catalogVariantId = uuidv4();
@@ -121,6 +120,13 @@ final class AuditE2ETest extends TestCase
             'id' => uuidv4(),
             'sku' => 'SKU-DIFF',
             'shopify_inventory_item_id' => 'inv-item-123'
+        ]);
+
+        // Ensure 'default' location exists
+        Capsule::table('locations')->insertOrIgnore([
+            'id' => 'default',
+            'name' => 'Default Location',
+            'type' => 'warehouse'
         ]);
 
         Capsule::table('shopify_location_mappings')->insert([

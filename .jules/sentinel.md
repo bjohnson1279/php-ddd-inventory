@@ -25,7 +25,6 @@
 **Vulnerability:** Generic exception messages leaking internal information to the client via 400 API responses.
 **Learning:** A number of controllers were using catch blocks that threw `$e->getMessage()` for generic `Exception` objects directly to clients. This could expose stack traces, DB queries, or internal logic.
 **Prevention:** Explicitly catch expected domain exceptions (e.g. `\InvalidArgumentException`, `ValidationException`) and safely pass their messages to the client. For generic unexpected exceptions, catch them, log the original error message with `error_log()`, and return a generic "An internal server error occurred." response.
-
 ## 2024-05-24 - [Fix Information Leakage in Controller Catch Blocks]
 **Vulnerability:** Controller classes in `src/Infrastructure/Http/Controllers/` caught generic `Exception` objects and directly exposed their `$e->getMessage()` payload back to clients in a 400 Bad Request response. This exposes backend internals and database exceptions.
 **Learning:** Returning `$e->getMessage()` unconditionally directly exposes backend system internals (stack traces, SQL errors, logic paths) to users, enabling reconnaissance. When patching this, be mindful that simply changing `catch (Exception $e)` to specific exception types may break existing unit tests that expect `Exception` to be caught by the general catch block, thus failing the test due to 500 error instead of 400 or 404, because the underlying service actually throws `Exception` (or unit tests mock generic `Exception`).

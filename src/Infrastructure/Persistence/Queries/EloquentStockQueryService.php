@@ -29,9 +29,17 @@ class EloquentStockQueryService implements StockQueryServiceInterface
             $query->where('location_id', $locationId);
         }
 
-        $totalStock = (int) $query->sum('stock_quantity');
-        $totalAllocated = (int) $query->sum('allocated_quantity');
-        $totalInTransit = (int) $query->sum('in_transit_quantity');
+        // Bolt optimization: Replace three separate aggregate queries with a single query
+        // Expected Impact: Reduces database round-trips by 66% when querying stock levels
+        $totals = (clone $query)->selectRaw('
+            COALESCE(SUM(stock_quantity), 0) as total_stock,
+            COALESCE(SUM(allocated_quantity), 0) as total_allocated,
+            COALESCE(SUM(in_transit_quantity), 0) as total_in_transit
+        ')->first();
+
+        $totalStock = (int) $totals->total_stock;
+        $totalAllocated = (int) $totals->total_allocated;
+        $totalInTransit = (int) $totals->total_in_transit;
         $available = $totalStock - $totalAllocated + $totalInTransit;
         if ($available < 0) {
             $available = 0;

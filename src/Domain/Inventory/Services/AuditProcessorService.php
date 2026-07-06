@@ -30,11 +30,34 @@ class AuditProcessorService
             $skuMappings = Capsule::table('shopify_sku_mappings')->get();
             $locMappings = Capsule::table('shopify_location_mappings')->get();
 
+            // Bolt optimization: Pre-fetch products to avoid N+1 queries
+            $skus = $skuMappings->pluck('sku')->toArray();
+            $productsBySku = ProductModel::where('tenant_id', $tenantId)
+                ->whereIn('sku', $skus)
+                ->get()
+                ->keyBy('sku');
+
+            // Bolt optimization: Pre-aggregate ledger entries to avoid N+1 queries
+            $productIds = $productsBySku->pluck('id')->toArray();
+
+            $ledgerSumsMap = [];
+            if (!empty($productIds)) {
+                $ledgerSums = LedgerEntryModel::where('tenant_id', $tenantId)
+                    ->whereIn('variant_id', $productIds)
+                    ->selectRaw("variant_id, metadata->>'locationId' as loc_id, SUM(quantity) as total_qty")
+                    ->groupBy('variant_id', Capsule::raw("metadata->>'locationId'"))
+                    ->get();
+
+                foreach ($ledgerSums as $row) {
+                    $ledgerSumsMap[$row->variant_id][$row->loc_id] = (int) $row->total_qty;
+                }
+            }
+
             foreach ($skuMappings as $skuMap) {
                 $sku = $skuMap->sku;
                 $inventoryItemId = $skuMap->shopify_inventory_item_id;
 
-                $product = ProductModel::where('tenant_id', $tenantId)->where('sku', $sku)->first();
+                $product = $productsBySku->get($sku);
                 if (!$product) {
                     continue;
                 }
@@ -43,11 +66,8 @@ class AuditProcessorService
                     $ourLocationId = $locMap->our_location_id;
                     $shopifyLocationId = $locMap->shopify_location_id;
 
-                    // Aggregate local stock level from ledger entries
-                    $localQty = (int) LedgerEntryModel::where('tenant_id', $tenantId)
-                        ->where('variant_id', $product->id)
-                        ->whereRaw("metadata->>'locationId' = ?", [$ourLocationId])
-                        ->sum('quantity');
+                    // Fetch pre-aggregated local stock level
+                    $localQty = $ledgerSumsMap[$product->id][$ourLocationId] ?? 0;
 
                     $shopifyQty = $localQty;
                     if ($accessToken !== 'mock-token' && strpos($storeDomain, 'mock') === false) {

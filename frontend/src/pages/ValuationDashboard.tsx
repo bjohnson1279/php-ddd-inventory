@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/client';
+import Spinner from '../components/Spinner';
 
 type LocationValuation = {
   location_id: string;
@@ -73,7 +74,7 @@ export default function ValuationDashboard() {
   if (loading) {
     return (
       <div className="empty-state-text" style={{ padding: '5rem 0' }}>
-        <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔄</div>
+        <div style={{ fontSize: '2rem', marginBottom: '1rem' }}><Spinner /></div>
         <p style={{ color: '#9ca3af' }}>Calculating inventory valuation layers...</p>
       </div>
     );
@@ -127,8 +128,9 @@ export default function ValuationDashboard() {
             onClick={fetchReport}
             className={`btn-refresh ${refreshing ? 'disabled' : ''}`}
             disabled={refreshing}
+            aria-busy={refreshing}
           >
-            <span className={refreshing ? 'spin' : ''}>🔄</span>
+            {refreshing && <Spinner />}
             {refreshing ? 'Re-valuing...' : 'Recalculate'}
           </button>
         </div>

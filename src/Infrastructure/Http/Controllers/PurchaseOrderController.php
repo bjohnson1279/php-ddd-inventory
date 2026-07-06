@@ -44,6 +44,10 @@ class PurchaseOrderController
                 ], $po->getItems())
             ], 201);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[PurchaseOrderController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }
@@ -72,6 +76,10 @@ class PurchaseOrderController
                 ], $po->getItems())
             ], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[PurchaseOrderController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }
@@ -89,6 +97,10 @@ class PurchaseOrderController
 
             return new Response(['message' => 'Purchase order approved successfully'], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[PurchaseOrderController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }
@@ -106,6 +118,10 @@ class PurchaseOrderController
 
             return new Response(['message' => 'Purchase order sent to vendor successfully'], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[PurchaseOrderController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }
@@ -131,6 +147,10 @@ class PurchaseOrderController
 
             return new Response(['message' => 'Items received successfully'], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[PurchaseOrderController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }

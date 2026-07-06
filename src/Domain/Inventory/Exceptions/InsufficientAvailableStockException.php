@@ -2,9 +2,7 @@
 
 namespace InventoryApp\Domain\Inventory\Exceptions;
 
-use Exception;
-
-class InsufficientAvailableStockException extends Exception
+class InsufficientAvailableStockException extends \DomainException
 {
     public function __construct(
         private readonly string $sku,

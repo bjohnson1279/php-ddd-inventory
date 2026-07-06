@@ -2,9 +2,7 @@
 
 namespace InventoryApp\Domain\Inventory\Exceptions;
 
-use Exception;
-
-class InvalidQuantityException extends Exception
+class InvalidQuantityException extends \DomainException
 {
     public function __construct(int $quantity)
     {

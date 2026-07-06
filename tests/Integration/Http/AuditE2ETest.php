@@ -20,6 +20,11 @@ final class AuditE2ETest extends TestCase
 
     public static function setUpBeforeClass(): void
     {
+        // Configure mock env variables for the test server
+        putenv("SHOPIFY_SHOP_URL=mock.myshopify.com");
+        putenv("SHOPIFY_ACCESS_TOKEN=mock-token");
+        putenv("QUICKBOOKS_ACCESS_TOKEN=mock-qbo-token");
+
         $output = [];
         $command = "php -S 127.0.0.1:8092 public/index.php > tests/Integration/Http/server_audit.log 2>&1 & echo $!";
         exec($command, $output);
@@ -52,6 +57,12 @@ final class AuditE2ETest extends TestCase
         Capsule::table('ledger_entries')->delete();
         Capsule::table('journal_entries')->delete();
 
+        Capsule::table('locations')->insertOrIgnore([
+            'id' => 'LOC-STOREFRONT',
+            'name' => 'Storefront',
+            'type' => 'STOREFRONT'
+        ]);
+
         $suffix = bin2hex(random_bytes(4));
         $this->tenantId = 'tenant-' . $suffix;
         $this->email = 'admin-' . $suffix . '@example.com';
@@ -67,16 +78,12 @@ final class AuditE2ETest extends TestCase
         $this->assertEquals(200, $setupRes['status'], json_encode($setupRes));
 
         $loginRes = $this->request('POST', '/api/auth/login', [
+            'tenant_id' => $this->tenantId,
             'email'     => $this->email,
             'password'  => $this->password,
         ]);
         $this->assertEquals(200, $loginRes['status']);
         $this->token = $loginRes['body']['token'];
-
-        // Configure mock env variables in php environment
-        putenv("SHOPIFY_SHOP_URL=mock.myshopify.com");
-        putenv("SHOPIFY_ACCESS_TOKEN=mock-token");
-        putenv("QUICKBOOKS_ACCESS_TOKEN=mock-qbo-token");
 
         // Seed catalog product and variant for FK constraints
         $catalogProductId = uuidv4();
@@ -84,7 +91,7 @@ final class AuditE2ETest extends TestCase
             'id' => $catalogProductId,
             'name' => 'iPhone 15 Catalog',
             'description' => 'Test Description',
-            'department' => 'Electronics',
+            'department' => 'Electronics'
         ]);
 
         $catalogVariantId = uuidv4();
@@ -100,6 +107,7 @@ final class AuditE2ETest extends TestCase
         $productId = uuidv4();
         Capsule::table('products')->insert([
             'id' => $productId,
+            'tenant_id' => $this->tenantId,
             'sku' => 'SKU-DIFF', // ends with -DIFF to mock Shopify mismatch
             'name' => 'iPhone 15',
             'department' => 'Electronics',
@@ -114,16 +122,24 @@ final class AuditE2ETest extends TestCase
             'shopify_inventory_item_id' => 'inv-item-123'
         ]);
 
+        // Ensure 'default' location exists
+        Capsule::table('locations')->insertOrIgnore([
+            'id' => 'default',
+            'name' => 'Default Location',
+            'type' => 'warehouse'
+        ]);
+
         Capsule::table('shopify_location_mappings')->insert([
             'id' => uuidv4(),
-            'our_location_id' => 'default',
+            'our_location_id' => 'LOC-STOREFRONT',
             'shopify_location_id' => 'gid://shopify/Location/12345'
         ]);
 
         // Seed ledger entry with quantity
         Capsule::table('ledger_entries')->insert([
             'id' => uuidv4(),
-            ,
+            'tenant_id' => $this->tenantId,
+            'variant_id' => $productId,
             'quantity' => 10,
             'reason' => 'opening_balance',
             'actor_id' => 'system',
@@ -134,10 +150,12 @@ final class AuditE2ETest extends TestCase
 
         // Seed journal entry without mapping
         Capsule::table('journal_entries')->insert([
-            'id' => 'je-1',
+            'id' => uuidv4(),
+            'tenant_id' => $this->tenantId,
             'entry_date' => date('Y-m-d'),
             'description' => 'Test unmapped journal',
             'method' => 'accrual',
+            'lines' => '[]',
             'created_at' => date('Y-m-d H:i:s')
         ]);
     }

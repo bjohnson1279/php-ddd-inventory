@@ -47,7 +47,7 @@ do {
                 $kafkaPayload = [
                     'type' => $name,
                     'payload' => array_merge($payloadData, [
-                        'occurredAt' => $event->getOccurredOn()->format(\DateTimeInterface::ATOM),
+                        'occurredAt' => $event->occurredOn->format(\DateTimeInterface::ATOM),
                         'tenantId' => $tenantId
                     ])
                 ];

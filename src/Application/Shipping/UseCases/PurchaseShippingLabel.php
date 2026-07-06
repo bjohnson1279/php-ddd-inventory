@@ -144,16 +144,14 @@ class PurchaseShippingLabel
         $this->journalRepository->save($entry);
 
         // 7. Write outbox event
-        $this->outboxRepository->save([
-            'occurredOn' => new DateTimeImmutable(),
-            'eventName' => 'ShipmentCreatedEvent',
-            'shipmentId' => $shipmentId,
-            'sku' => $sku,
-            'quantity' => $quantity,
-            'carrier' => $carrier,
-            'trackingNumber' => $labelResult->trackingNumber,
-            'rateCents' => $labelResult->rateCents,
-        ]);
+        $this->outboxRepository->save(new \InventoryApp\Domain\Shipping\Events\ShipmentCreatedEvent(
+            shipmentId: $shipmentId,
+            sku: $sku,
+            quantity: $quantity,
+            carrier: $carrier,
+            trackingNumber: $labelResult->trackingNumber,
+            rateCents: $labelResult->rateCents
+        ));
 
         return new PurchaseShippingLabelResult(
             $shipmentId,

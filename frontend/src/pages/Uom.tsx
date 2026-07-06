@@ -261,8 +261,8 @@ export default function Uom() {
                 <div className="section-title">Configure Workflow Operations</div>
                 <form onSubmit={handleSetUnits}>
                   <div className="form-group">
-                    <label htmlFor="purchaseUnitIndex">Purchase Unit</label>
-                    <select id="purchaseUnitIndex" value={purchaseUnitIndex} onChange={e => setPurchaseUnitIndex(e.target.value)}>
+                    <label htmlFor="purchaseUnit">Purchase Unit</label>
+                    <select id="purchaseUnit" value={purchaseUnitIndex} onChange={e => setPurchaseUnitIndex(e.target.value)}>
                       <option value="-1">Base Unit: {config.base_unit.name}</option>
                       {config.rules.map((r, i) => (
                         <option key={r.id} value={i.toString()}>{r.unit.name} ({r.unit.abbreviation})</option>
@@ -270,8 +270,8 @@ export default function Uom() {
                     </select>
                   </div>
                   <div className="form-group">
-                    <label htmlFor="saleUnitIndex">Sale Unit</label>
-                    <select id="saleUnitIndex" value={saleUnitIndex} onChange={e => setSaleUnitIndex(e.target.value)}>
+                    <label htmlFor="saleUnit">Sale Unit</label>
+                    <select id="saleUnit" value={saleUnitIndex} onChange={e => setSaleUnitIndex(e.target.value)}>
                       <option value="-1">Base Unit: {config.base_unit.name}</option>
                       {config.rules.map((r, i) => (
                         <option key={r.id} value={i.toString()}>{r.unit.name} ({r.unit.abbreviation})</option>

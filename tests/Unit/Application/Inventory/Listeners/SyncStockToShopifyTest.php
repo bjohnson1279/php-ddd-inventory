@@ -22,6 +22,19 @@ class SyncStockToShopifyTest extends TestCase
 
     protected function setUp(): void
     {
+        // Setup in-memory SQLite Capsule
+        $capsule = new \Illuminate\Database\Capsule\Manager();
+        $capsule->addConnection([
+            'driver' => 'sqlite',
+            'database' => ':memory:',
+            'prefix' => '',
+        ]);
+        $capsule->setAsGlobal();
+        $capsule->bootEloquent();
+
+        require_once __DIR__ . '/../../../../../src/Infrastructure/Persistence/sqlite_setup.php';
+        \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
+
         $this->sync = $this->createMock(ShopifyInventorySync::class);
         $this->mappings = $this->createMock(ShopifyMappingRepository::class);
         $this->productRepo = $this->createMock(ProductRepositoryInterface::class);

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import api from '../api/client';
+import Spinner from '../components/Spinner';
 
 type Variant = {
   id: string;
@@ -264,12 +265,12 @@ export default function Catalog() {
                   <option value="ACC">Accessories</option>
                 </select>
               </div>
-              <button type="submit" className="btn-primary" style={{ width: '100%', opacity: isCreatingProd ? 0.6 : 1, cursor: isCreatingProd ? 'not-allowed' : 'pointer' }} disabled={isCreatingProd} aria-busy={isCreatingProd}>
-                {isCreatingProd ? 'Creating...' : 'Create Product'}
+              <button type="submit" className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isCreatingProd} aria-busy={isCreatingProd}>
+                {isCreatingProd && <Spinner />} {isCreatingProd ? 'Creating...' : 'Create Product'}
               </button>
             </form>
             {prodMsg && (
-              <p style={{ color: prodMsg === 'Product created successfully!' ? '#34d399' : '#f87171' }}>
+              <p role="alert" style={{ color: prodMsg === 'Product created successfully!' ? '#34d399' : '#f87171' }}>
                 {prodMsg}
               </p>
             )}
@@ -305,12 +306,12 @@ export default function Catalog() {
                   <input id="varSize" value={varSize} onChange={e => setVarSize(e.target.value)} placeholder="e.g. Medium" />
                 </div>
               </div>
-              <button type="submit" className="btn-primary" style={{ width: '100%', opacity: isAddingVar ? 0.6 : 1, cursor: isAddingVar ? 'not-allowed' : 'pointer' }} disabled={isAddingVar} aria-busy={isAddingVar}>
-                {isAddingVar ? 'Adding...' : 'Add Variant'}
+              <button type="submit" className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isAddingVar} aria-busy={isAddingVar}>
+                {isAddingVar && <Spinner />} {isAddingVar ? 'Adding...' : 'Add Variant'}
               </button>
             </form>
             {varMsg && (
-              <p style={{ color: varMsg === 'Variant added successfully!' ? '#34d399' : '#f87171' }}>
+              <p role="alert" style={{ color: varMsg === 'Variant added successfully!' ? '#34d399' : '#f87171' }}>
                 {varMsg}
               </p>
             )}
@@ -356,12 +357,12 @@ export default function Catalog() {
                 <input type="checkbox" checked={isPrimary} onChange={e => setIsPrimary(e.target.checked)} style={{ width: 'auto', marginTop: 0 }} id="is_primary" />
                 <label htmlFor="is_primary" style={{ margin: 0, cursor: 'pointer' }}>Make Primary Barcode</label>
               </div>
-              <button type="submit" className="btn-primary" style={{ width: '100%', opacity: isAssigning ? 0.6 : 1, cursor: isAssigning ? 'not-allowed' : 'pointer' }} disabled={isAssigning} aria-busy={isAssigning}>
-                {isAssigning ? 'Assigning...' : 'Assign Barcode'}
+              <button type="submit" className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isAssigning} aria-busy={isAssigning}>
+                {isAssigning && <Spinner />} {isAssigning ? 'Assigning...' : 'Assign Barcode'}
               </button>
             </form>
             {barcodeMsg && (
-              <p style={{ color: barcodeMsg === 'Barcode assigned successfully!' ? '#34d399' : '#f87171' }}>
+              <p role="alert" style={{ color: barcodeMsg === 'Barcode assigned successfully!' ? '#34d399' : '#f87171' }}>
                 {barcodeMsg}
               </p>
             )}
@@ -375,17 +376,17 @@ export default function Catalog() {
                 <label htmlFor="lookupVal">Scan / Type Code</label>
                 <input id="lookupVal" value={lookupVal} onChange={e => setLookupVal(e.target.value)} placeholder="Scan barcode..." required />
               </div>
-              <button type="submit" className="btn-primary" style={{ opacity: isResolving ? 0.6 : 1, cursor: isResolving ? 'not-allowed' : 'pointer' }} disabled={isResolving} aria-busy={isResolving}>
-                {isResolving ? 'Resolving...' : 'Resolve'}
+              <button type="submit" className="btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isResolving} aria-busy={isResolving}>
+                {isResolving && <Spinner />} {isResolving ? 'Resolving...' : 'Resolve'}
               </button>
             </form>
             {lookupResult && (
-              <div className="text-success" style={{ marginTop: '1rem', fontSize: '0.95rem' }}>
+              <div role="alert" className="text-success" style={{ marginTop: '1rem', fontSize: '0.95rem' }}>
                 ✓ Resolved Variant ID: <strong>{lookupResult}</strong>
               </div>
             )}
             {lookupError && (
-              <div className="text-danger" style={{ marginTop: '1rem', fontSize: '0.95rem' }}>
+              <div role="alert" className="text-danger" style={{ marginTop: '1rem', fontSize: '0.95rem' }}>
                 ✗ Error: {lookupError}
               </div>
             )}

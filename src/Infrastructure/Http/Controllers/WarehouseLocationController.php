@@ -71,8 +71,11 @@ class WarehouseLocationController
                     'maxVolumeCubicMeters' => $location->getMaxVolumeCubicMeters()
                 ]
             ], 200);
-        } catch (Exception $e) {
+        } catch (\InvalidArgumentException | \ValidationException $e) {
             return new Response(['error' => $e->getMessage()], 400);
+        } catch (Exception $e) {
+            error_log('[WarehouseLocationController] ' . $e->getMessage());
+            return new Response(['error' => 'An internal server error occurred.'], 500);
         }
     }
 
@@ -96,7 +99,8 @@ class WarehouseLocationController
 
             return new Response($data, 200);
         } catch (Exception $e) {
-            return new Response(['error' => $e->getMessage()], 500);
+            error_log('[WarehouseLocationController] ' . $e->getMessage());
+            return new Response(['error' => 'An internal server error occurred.'], 500);
         }
     }
 
@@ -105,8 +109,11 @@ class WarehouseLocationController
         try {
             $repo->delete(new LocationId($id));
             return new Response(['message' => 'Warehouse location deleted successfully.'], 200);
-        } catch (Exception $e) {
+        } catch (\InvalidArgumentException | \ValidationException $e) {
             return new Response(['error' => $e->getMessage()], 400);
+        } catch (Exception $e) {
+            error_log('[WarehouseLocationController] ' . $e->getMessage());
+            return new Response(['error' => 'An internal server error occurred.'], 500);
         }
     }
 
@@ -125,8 +132,11 @@ class WarehouseLocationController
             $suggestions = $suggester->suggestPutaway($sku, $qty);
 
             return new Response($suggestions, 200);
-        } catch (Exception $e) {
+        } catch (\InvalidArgumentException | \ValidationException $e) {
             return new Response(['error' => $e->getMessage()], 400);
+        } catch (Exception $e) {
+            error_log('[WarehouseLocationController] ' . $e->getMessage());
+            return new Response(['error' => 'An internal server error occurred.'], 500);
         }
     }
 
@@ -139,15 +149,18 @@ class WarehouseLocationController
 
             $items = $body['items'];
             if (!is_array($items)) {
-                throw new Exception("Items array is required.");
+                throw new \InvalidArgumentException("Items array is required.");
             }
 
             $optimizer = new PickingRouteOptimizer($locationRepo);
             $optimized = $optimizer->optimizeRoute($items);
 
             return new Response($optimized, 200);
-        } catch (Exception $e) {
+        } catch (\InvalidArgumentException | \ValidationException $e) {
             return new Response(['error' => $e->getMessage()], 400);
+        } catch (Exception $e) {
+            error_log('[WarehouseLocationController] ' . $e->getMessage());
+            return new Response(['error' => 'An internal server error occurred.'], 500);
         }
     }
 }

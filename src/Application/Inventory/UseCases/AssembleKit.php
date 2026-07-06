@@ -50,7 +50,12 @@ class AssembleKit
             throw new Exception("Kit with SKU {$kitSkuStr} not found.");
         }
 
-        // 2. Validate component stock level
+        $kitProduct = $this->productRepository->findBySku(new SKU($kitSkuStr));
+        if (!$kitProduct) {
+            throw new Exception("Product variant for Kit SKU {$kitSkuStr} not found.");
+        }
+
+        // 2. Validate component stock level and pre-fetch products
         $componentsToConsume = [];
         foreach ($kit->components() as $component) {
             $needed = $component->quantity * $quantity;
@@ -58,9 +63,16 @@ class AssembleKit
             if ($available < $needed) {
                 throw new Exception("Insufficient stock for component variant ID {$component->variantId}. Needed: {$needed}, Available: {$available}");
             }
+
+            $product = $this->productRepository->findById($component->variantId);
+            if (!$product) {
+                throw new Exception("Product variant {$component->variantId} not found.");
+            }
+
             $componentsToConsume[] = [
                 'variantId' => $component->variantId,
-                'needed' => $needed
+                'needed' => $needed,
+                'product' => $product
             ];
         }
 
@@ -71,10 +83,7 @@ class AssembleKit
             $totalCostCents += $breakdown->totalCostCents;
 
             // Deduct stock on Product aggregate root
-            $product = $this->productRepository->findById($comp['variantId']);
-            if (!$product) {
-                throw new Exception("Product variant {$comp['variantId']} not found.");
-            }
+            $product = $comp['product'];
             $product->dispatchStockAt(new LocationId($locationId), new Quantity($comp['needed']), $referenceId);
             $this->productRepository->save($product);
 
@@ -96,10 +105,6 @@ class AssembleKit
         $unitCostCents = (int) round($totalCostCents / $quantity);
 
         // 5. Create new costing layer for the assembled Kit variant
-        $kitProduct = $this->productRepository->findBySku(new SKU($kitSkuStr));
-        if (!$kitProduct) {
-            throw new Exception("Product variant for Kit SKU {$kitSkuStr} not found.");
-        }
 
         $kitLayer = new InventoryCostLayer(
             id: Uuid::uuid4()->toString(),

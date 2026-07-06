@@ -33,3 +33,7 @@
 **Learning:** Using the `:has(:required)` CSS pseudo-class to automatically style labels for required form fields is a highly scalable and robust way to improve form accessibility and usability across an entire application, avoiding the fragility of manually updating individual components.
 **Action:** Always prefer CSS-level styling for global UX patterns like required indicators when possible to ensure consistency and maintainability.
 >>>>>>> master
+
+## 2024-05-24 - Async Loading States for Multi-Trigger Operations
+**Learning:** When adding loading states to API functions that can be triggered manually (e.g., a "Search" button) or automatically in the background (e.g., refreshing data after an update), applying the loading state at the button handler level misses the background operations, leaving users with a disappearing UI and no feedback.
+**Action:** Always wrap the core data-fetching function (e.g., `fetchConfig`) with the loading state, rather than just the specific button click handlers, to ensure consistent loading feedback across all interaction paths.

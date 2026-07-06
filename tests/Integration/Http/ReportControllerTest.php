@@ -49,8 +49,8 @@ final class ReportControllerTest extends TestCase
         DB::table('users')->delete();
         DB::table('user_roles')->delete();
         DB::table('tenants')->where('id', '!=', 'test-tenant')->delete();
-        \Illuminate\Database\Capsule\Manager::table('tenants')->upsert([['id' => 'test-tenant', 'name' => 'Test Tenant']], ['id'], ['name']);
-        $suffix = bin2hex(random_bytes(4));
+        \Illuminate\Database\Capsule\Manager::table('tenants')->insertOrIgnore([['id' => 'test-tenant', 'name' => 'Test Tenant']]);
+                $suffix = bin2hex(random_bytes(4));
         $this->tenantId = 'tenant-' . $suffix;
         $this->email = 'admin-' . $suffix . '@example.com';
         $this->password = 'SecurePassword123';

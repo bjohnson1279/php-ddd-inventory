@@ -86,17 +86,33 @@ class EloquentPurchaseOrderRepository implements PurchaseOrderRepositoryInterfac
                 ->whereNotIn('id', $itemIds)
                 ->delete();
 
+            $itemData = [];
             foreach ($po->getItems() as $item) {
-                PurchaseOrderItemModel::updateOrCreate(
-                    ['id' => $item->id],
-                    [
-                        'purchase_order_id' => $po->id,
-                        'variant_id'        => $item->variantId,
-                        'quantity'          => $item->quantity,
-                        'received_quantity' => $item->getReceivedQuantity(),
-                        'unit_cost_cents'   => $item->unitCostCents,
-                    ]
-                );
+                $itemData[] = [
+                    'id'                => $item->id,
+                    'purchase_order_id' => $po->id,
+                    'variant_id'        => $item->variantId,
+                    'quantity'          => $item->quantity,
+                    'received_quantity' => $item->getReceivedQuantity(),
+                    'unit_cost_cents'   => $item->unitCostCents,
+                ];
+            }
+
+            if (!empty($itemData)) {
+                if ((new PurchaseOrderItemModel)->getConnection()->getDriverName() === 'sqlite') {
+                    foreach ($itemData as $itemRow) {
+                        PurchaseOrderItemModel::updateOrCreate(
+                            ['id' => $itemRow['id']],
+                            $itemRow
+                        );
+                    }
+                } else {
+                    PurchaseOrderItemModel::upsert(
+                        $itemData,
+                        ['id'],
+                        ['purchase_order_id', 'variant_id', 'quantity', 'received_quantity', 'unit_cost_cents']
+                    );
+                }
             }
         });
     }

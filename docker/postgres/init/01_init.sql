@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS tenants (
 
 -- Catalog Context
 CREATE TABLE IF NOT EXISTS catalog_products (
+  tenant_id TEXT NOT NULL DEFAULT 'system',
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
   description TEXT,
@@ -172,6 +173,31 @@ CREATE TABLE IF NOT EXISTS ledger_entries (
 SELECT create_hypertable('ledger_entries', 'occurred_at', if_not_exists => TRUE);
 CREATE INDEX IF NOT EXISTS idx_ledger_variant ON ledger_entries(variant_id);
 CREATE INDEX IF NOT EXISTS idx_ledger_tenant ON ledger_entries(tenant_id);
+
+-- TimescaleDB Continuous Aggregate for Stock Velocity
+CREATE MATERIALIZED VIEW IF NOT EXISTS daily_stock_velocity
+WITH (timescaledb.continuous) AS
+SELECT 
+  time_bucket('1 day', occurred_at) AS bucket,
+  tenant_id,
+  variant_id,
+  COALESCE(SUM(CASE WHEN quantity < 0 THEN abs(quantity) ELSE 0 END), 0) AS units_dispatched,
+  COALESCE(SUM(CASE WHEN quantity > 0 THEN quantity ELSE 0 END), 0) AS units_received,
+  COUNT(*) as transaction_count
+FROM ledger_entries
+GROUP BY bucket, tenant_id, variant_id;
+
+-- Enable Row-Level Security on the materialized view
+-- ALTER MATERIALIZED VIEW daily_stock_velocity ENABLE ROW LEVEL SECURITY;
+-- DROP POLICY IF EXISTS tenant_isolation ON daily_stock_velocity;
+-- CREATE POLICY tenant_isolation ON daily_stock_velocity USING (tenant_id = current_setting('app.current_tenant_id', true));
+
+-- Add continuous aggregate policy to update the view automatically in background
+SELECT add_continuous_aggregate_policy('daily_stock_velocity',
+  start_offset => INTERVAL '1 month',
+  end_offset => INTERVAL '1 hour',
+  schedule_interval => INTERVAL '1 hour',
+  if_not_exists => TRUE);
 
 -- Serialized item tracking
 CREATE TABLE IF NOT EXISTS serialized_items (

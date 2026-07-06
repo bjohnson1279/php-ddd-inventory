@@ -10,14 +10,14 @@ use DateTimeImmutable;
 interface DemandForecastRepositoryInterface
 {
     public function save(DemandForecast $forecast): void;
-
+    
     public function findForecast(
         SKU $sku,
         LocationId $locationId,
         DateTimeImmutable $periodStart,
         DateTimeImmutable $periodEnd
     ): ?DemandForecast;
-
+    
     /**
      * @return DemandForecast[]
      */

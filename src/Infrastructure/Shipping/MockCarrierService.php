@@ -40,7 +40,7 @@ class MockCarrierService implements CarrierServiceInterface
     public function generateLabel(string $sku, int $quantity, string $destinationAddress, string $carrier): LabelResult
     {
         $rates = $this->fetchRates($sku, $quantity, $destinationAddress);
-
+        
         $selectedRate = null;
         foreach ($rates as $rate) {
             if (strcasecmp($rate->carrier, $carrier) === 0) {
@@ -48,7 +48,7 @@ class MockCarrierService implements CarrierServiceInterface
                 break;
             }
         }
-
+        
         if ($selectedRate === null) {
             $selectedRate = $rates[0];
         }

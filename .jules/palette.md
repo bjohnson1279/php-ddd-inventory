@@ -12,6 +12,7 @@
 ## 2026-06-25 - Handling Time-Series Data in UI Components
 **Learning:** Displaying time-series historical data (like ledger entries or stock transactions) requires clean sorting and efficient pagination to prevent DOM bloat and layout shift when huge lists are loaded.
 **Action:** Always implement server-side pagination, sorting by timestamp, and clear date/time formatters in UI displays of ledger, transaction, or dispatch lists. Ensure that dynamic alert messages or state loading components (like fetching older history chunks) use appropriate ARIA live regions to notify the user of background updates.
+<<<<<<< HEAD
 ## 2025-02-28 - Immediate Visual Feedback for Async Operations
 **Learning:** During form submission or async actions, relying solely on text changes (e.g., "Processing...") can lack visual prominence, making users unsure if an action was registered. Adding an animated spinner alongside the text creates an immediate, noticeable visual cue that prevents double-submissions.
 **Action:** Always include a visual loading indicator (like an animated SVG spinner) within primary action buttons when the application enters a loading state. Ensure the button utilizes flexbox for proper alignment between the spinner and text.
@@ -19,3 +20,16 @@
 ## 2026-06-27 - Dynamic Form Feedback
 **Learning:** Dynamically rendered form status messages require role="alert" to notify screen readers.
 **Action:** Always add role="alert" to dynamic success/error message containers.
+=======
+
+## 2025-02-28 - Immediate Visual Feedback for Async Operations
+**Learning:** During form submission or async actions, relying solely on text changes (e.g., "Processing...") can lack visual prominence, making users unsure if an action was registered. Adding an animated spinner alongside the text creates an immediate, noticeable visual cue that prevents double-submissions.
+**Action:** Always include a visual loading indicator (like an animated SVG spinner) within primary action buttons when the application enters a loading state. Ensure the button utilizes flexbox for proper alignment between the spinner and text.
+## 2025-02-28 - Standardizing Loading States and ARIA attributes
+**Learning:** The application contained hardcoded emojis (like `⏳`) used as loading indicators, which can be misread by screen readers and visually inconsistent. Furthermore, manually setting `disabled` utility classes instead of using the native HTML `disabled` attribute reduces accessibility and native keyboard protections.
+**Action:** Always replace informal loading emojis with the standardized `<Spinner />` component. Ensure buttons use the native `disabled={isLoading}` attribute to prevent duplicate actions and apply `aria-busy={isLoading}` to accurately communicate the asynchronous loading state to screen readers.
+
+## 2024-07-03 - CSS :has() for Required Fields
+**Learning:** Using the `:has(:required)` CSS pseudo-class to automatically style labels for required form fields is a highly scalable and robust way to improve form accessibility and usability across an entire application, avoiding the fragility of manually updating individual components.
+**Action:** Always prefer CSS-level styling for global UX patterns like required indicators when possible to ensure consistency and maintainability.
+>>>>>>> master

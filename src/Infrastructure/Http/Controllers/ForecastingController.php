@@ -59,6 +59,10 @@ class ForecastingController
 
             return new Response($formattedReport, 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[ForecastingController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }
@@ -106,7 +110,36 @@ class ForecastingController
                 ]
             ], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[ForecastingController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
+        }
+    }
+
+    public function getStockVelocityReport(RequestInterface $request)
+    {
+        try {
+            $variantId = $request->query('variantId');
+            if (!$variantId) {
+                return new Response(['error' => 'Missing required parameter: variantId'], 400);
+            }
+
+            $results = \Illuminate\Database\Capsule\Manager::select("
+                SELECT bucket::text, units_dispatched as \"unitsDispatched\", units_received as \"unitsReceived\", transaction_count as \"transactionCount\"
+                FROM stock_velocity_report
+                WHERE variant_id = :variant_id
+                ORDER BY bucket DESC
+            ", ['variant_id' => $variantId]);
+
+            return new Response($results, 200);
+        } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[ForecastingController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
+            return new Response(['error' => 'Failed to fetch stock velocity: ' . $e->getMessage()], 500);
         }
     }
 }

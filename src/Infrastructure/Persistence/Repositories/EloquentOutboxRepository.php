@@ -20,31 +20,31 @@ class EloquentOutboxRepository implements OutboxRepositoryInterface
         if (is_array($event)) {
             $eventName = $event['eventName'] ?? 'UnknownEvent';
             $occurredOn = $event['occurredOn'] ?? new DateTimeImmutable();
-
+            
             $payloadData = $event;
             unset($payloadData['eventName']);
             unset($payloadData['occurredOn']);
-
+            
             // Format dates inside payload if any
             foreach ($payloadData as $k => $v) {
                 if ($v instanceof DateTimeInterface) {
                     $payloadData[$k] = $v->format(DateTimeInterface::ATOM);
                 }
             }
-
+            
             $payload = json_encode($payloadData);
         } else {
             $eventName = (new ReflectionClass($event))->getShortName();
             $occurredOn = $event->occurredOn();
-
+            
             $payloadData = $this->serializeEvent($event);
             unset($payloadData['occurredOn']);
-
+            
             $payload = json_encode($payloadData);
         }
 
-        $occurredOnStr = $occurredOn instanceof DateTimeInterface
-            ? $occurredOn->format('Y-m-d H:i:s')
+        $occurredOnStr = $occurredOn instanceof DateTimeInterface 
+            ? $occurredOn->format('Y-m-d H:i:s') 
             : date('Y-m-d H:i:s');
 
         OutboxEventModel::create([

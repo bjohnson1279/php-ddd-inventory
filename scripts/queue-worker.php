@@ -53,6 +53,10 @@ do {
     echo "Processing Job ID: {$job->id} (Listener: {$job->listener_class}, Tenant: {$job->tenant_id})...\n";
 
     try {
+        if (getenv('DB_CONNECTION') === 'pgsql' || getenv('DB_CONNECTION') === '') {
+            DB::statement("SET app.current_tenant_id = '{$job->tenant_id}'");
+        }
+
         // Reconstruct event object from serialized data
         $event = unserialize(base64_decode($job->event_data));
         

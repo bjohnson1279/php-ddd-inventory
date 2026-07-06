@@ -154,6 +154,7 @@ final class ReturnsE2ETest extends TestCase
         ]);
 
         // Seed products and product locations
+        Capsule::table('tenants')->insertOrIgnore(['id' => $this->tenantId, 'name' => 'Test Tenant']);
         Capsule::table('products')->insert([
             [
                 'id' => $varX,

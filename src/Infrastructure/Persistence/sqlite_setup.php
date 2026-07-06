@@ -14,7 +14,9 @@ class SqliteSetup
             self::getAccountingQueries(),
             self::getIntegrationQueries(),
             self::getSystemQueries(),
-            self::getReturnsQueries()
+            self::getReturnsQueries(),
+            self::getForecastingQueries(),
+            self::getShippingQueries()
         );
 
         foreach ($queries as $q) {
@@ -73,6 +75,7 @@ class SqliteSetup
               name TEXT NOT NULL,
               description TEXT,
               department TEXT NOT NULL,
+              tenant_id VARCHAR(50),
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )",
             "CREATE TABLE IF NOT EXISTS catalog_variants (
@@ -91,6 +94,8 @@ class SqliteSetup
               department TEXT NOT NULL,
               reorder_threshold INTEGER NOT NULL DEFAULT 10,
               version_id INTEGER NOT NULL DEFAULT 1,
+              weight_grams INTEGER,
+              volume_cubic_meters NUMERIC,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               UNIQUE(tenant_id, sku)
@@ -149,8 +154,53 @@ class SqliteSetup
               stock_quantity INTEGER NOT NULL DEFAULT 0,
               open_box_quantity INTEGER NOT NULL DEFAULT 0,
               damaged_quantity INTEGER NOT NULL DEFAULT 0,
+              allocated_quantity INTEGER NOT NULL DEFAULT 0,
+              in_transit_quantity INTEGER NOT NULL DEFAULT 0,
               updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               PRIMARY KEY (product_id, location_id)
+            )",
+            "CREATE TABLE IF NOT EXISTS warehouse_locations (
+              id VARCHAR(50) PRIMARY KEY,
+              warehouse_id VARCHAR(50) NOT NULL,
+              zone VARCHAR(50) NOT NULL,
+              aisle VARCHAR(50) NOT NULL,
+              rack VARCHAR(50) NOT NULL,
+              shelf VARCHAR(50) NOT NULL,
+              bin VARCHAR(50) NOT NULL,
+              max_weight_grams INTEGER NOT NULL,
+              max_volume_cubic_meters NUMERIC NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              UNIQUE(warehouse_id, zone, aisle, rack, shelf, bin)
+            )",
+            "CREATE TABLE IF NOT EXISTS purchase_orders (
+              id VARCHAR(50) PRIMARY KEY,
+              purchase_order_number VARCHAR(100) NOT NULL UNIQUE,
+              vendor_id VARCHAR(50) NOT NULL,
+              tenant_id VARCHAR(50) NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              location_id VARCHAR(50) NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS purchase_order_items (
+              id VARCHAR(50) PRIMARY KEY,
+              purchase_order_id VARCHAR(50) NOT NULL,
+              variant_id VARCHAR(50) NOT NULL,
+              quantity INTEGER NOT NULL,
+              received_quantity INTEGER NOT NULL DEFAULT 0,
+              unit_cost_cents INTEGER NOT NULL,
+              FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS reorder_policies (
+              id VARCHAR(50) PRIMARY KEY,
+              sku VARCHAR(50) NOT NULL,
+              location_id VARCHAR(50) NOT NULL,
+              reorder_point INTEGER NOT NULL,
+              reorder_quantity INTEGER NOT NULL,
+              safety_stock INTEGER NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              UNIQUE(sku, location_id)
             )"
         ];
     }
@@ -232,7 +282,9 @@ class SqliteSetup
               unit_cost_cents           INTEGER NOT NULL,
               purchase_order_id         VARCHAR(50),
               received_at               DATETIME DEFAULT CURRENT_TIMESTAMP,
-              serial_number             VARCHAR(100)
+              serial_number             VARCHAR(100),
+              lot_number                VARCHAR(100),
+              expiration_date           DATETIME
             )"
         ];
     }
@@ -364,6 +416,65 @@ class SqliteSetup
               location_id VARCHAR(50) NOT NULL,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               resolved_at DATETIME DEFAULT NULL
+            )"
+        ];
+    }
+
+    private static function getForecastingQueries(): array
+    {
+        return [
+            "CREATE TABLE IF NOT EXISTS demand_forecasts (
+              id TEXT PRIMARY KEY,
+              sku TEXT NOT NULL,
+              location_id VARCHAR(50) NOT NULL,
+              forecasted_quantity INTEGER NOT NULL,
+              period_start DATETIME NOT NULL,
+              period_end DATETIME NOT NULL,
+              confidence_level NUMERIC NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              UNIQUE (sku, location_id, period_start, period_end)
+            )"
+        ];
+    }
+
+    private static function getShippingQueries(): array
+    {
+        return [
+            "CREATE TABLE IF NOT EXISTS shipments (
+              id VARCHAR(50) PRIMARY KEY,
+              sku TEXT NOT NULL,
+              quantity INTEGER NOT NULL,
+              destination_address TEXT NOT NULL,
+              carrier VARCHAR(50) NOT NULL,
+              tracking_number VARCHAR(100),
+              label_url TEXT,
+              shipping_rate_cents INTEGER NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS outbox_events (
+              id VARCHAR(50) PRIMARY KEY,
+              event_name VARCHAR(255) NOT NULL,
+              payload TEXT NOT NULL,
+              occurred_on DATETIME NOT NULL,
+              processed_at DATETIME DEFAULT NULL,
+              attempts INTEGER NOT NULL DEFAULT 0,
+              last_error TEXT DEFAULT NULL,
+              next_attempt_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS audit_discrepancies (
+              id VARCHAR(255) PRIMARY KEY,
+              tenant_id VARCHAR(255) NOT NULL,
+              type VARCHAR(255) NOT NULL,
+              reference_id VARCHAR(255) NOT NULL,
+              external_ref_id VARCHAR(255),
+              description TEXT NOT NULL,
+              status VARCHAR(50) DEFAULT 'OPEN',
+              occurred_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              resolved_at DATETIME,
+              resolution_notes TEXT
             )"
         ];
     }

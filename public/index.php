@@ -31,19 +31,38 @@ $dotenv->safeLoad();
 
 // ── Eloquent (Capsule) ────────────────────────────────────────────────────────
 $capsule = new Capsule;
-$capsule->addConnection([
-    'driver'    => getenv('DB_CONNECTION') ?: 'pgsql',
-    'host'      => getenv('DB_HOST')       ?: 'db',
-    'database'  => getenv('DB_DATABASE')   ?: 'ddd_inventory',
-    'username'  => getenv('DB_USERNAME')   ?: 'ddd_user',
-    'password'  => getenv('DB_PASSWORD')   ?: 'secret',
-    'port'      => getenv('DB_PORT')       ?: 5432,
-    'charset'   => 'utf8',
-    'collation' => 'utf8_unicode_ci',
-    'prefix'    => '',
-]);
+$driver = getenv('DB_CONNECTION') ?: 'pgsql';
+
+if ($driver === 'sqlite') {
+    $dbPath = getenv('DB_DATABASE') ?: 'storage/data/test.sqlite';
+    if ($dbPath !== ':memory:' && !str_starts_with($dbPath, '/') && !str_contains($dbPath, ':')) {
+        $dbPath = __DIR__ . '/../' . $dbPath;
+    }
+    $capsule->addConnection([
+        'driver'   => 'sqlite',
+        'database' => $dbPath,
+        'prefix'   => '',
+    ]);
+} else {
+    $capsule->addConnection([
+        'driver'    => $driver,
+        'host'      => getenv('DB_HOST')       ?: 'db',
+        'database'  => getenv('DB_DATABASE')   ?: 'ddd_inventory',
+        'username'  => getenv('DB_USERNAME')   ?: 'ddd_user',
+        'password'  => getenv('DB_PASSWORD')   ?: 'secret',
+        'port'      => getenv('DB_PORT')       ?: 5432,
+        'charset'   => 'utf8',
+        'collation' => 'utf8_unicode_ci',
+        'prefix'    => '',
+    ]);
+}
 $capsule->setAsGlobal();
 $capsule->bootEloquent();
+
+if ($driver === 'sqlite') {
+    require_once __DIR__ . '/../src/Infrastructure/Persistence/sqlite_setup.php';
+    \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
+}
 
 // ── Event listeners ──────────────────────────────────────────────────────────
 use InventoryApp\Infrastructure\ServiceContainer;
@@ -225,6 +244,14 @@ function requireAuth(): void
     // Make the resolved identity available to the rest of the request
     $_SERVER['auth.user_id']   = $tokenData->user_id;
     $_SERVER['auth.tenant_id'] = $tokenData->tenant_id;
+
+    if (getenv('DB_CONNECTION') === 'pgsql' || getenv('DB_CONNECTION') === '') {
+        try {
+            \Illuminate\Database\Capsule\Manager::statement("SET app.current_tenant_id = '{$tokenData->tenant_id}'");
+        } catch (\Throwable $e) {
+            // Ignore during setup or in environments where DB is not fully bootstrapped
+        }
+    }
 }
 
 function tenantId(): string
@@ -251,6 +278,11 @@ use InventoryApp\Application\Catalog\UseCases\AddVariant;
 use InventoryApp\Application\Inventory\UseCases\ReceiveStock;
 use InventoryApp\Application\Inventory\UseCases\DispatchStock;
 use InventoryApp\Application\Inventory\UseCases\TransferStock;
+use InventoryApp\Application\Inventory\UseCases\AllocateStock;
+use InventoryApp\Application\Inventory\UseCases\ReleaseAllocation;
+use InventoryApp\Application\Inventory\UseCases\FulfillAllocation;
+use InventoryApp\Application\Inventory\UseCases\CreateInTransit;
+use InventoryApp\Application\Inventory\UseCases\ReceiveInTransit;
 use InventoryApp\Application\Inventory\UseCases\ProcessSale;
 use InventoryApp\Application\Inventory\UseCases\ProcessReturn;
 use InventoryApp\Application\Inventory\UseCases\GetStockLevel;
@@ -349,10 +381,63 @@ if ($method === 'POST' && preg_match('#^/api/notifications/([^/]+)/read$#', $uri
     exit;
 }
 
+// ── Route: POST /api/audit/run ────────────────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/audit/run') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:reconcile')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\AuditController())->runAudit($request, tenantId());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: GET /api/audit/discrepancies ───────────────────────────────────────
+if ($method === 'GET' && $uri === '/api/audit/discrepancies') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:read')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\AuditController())->listDiscrepancies($request, tenantId());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/audit/discrepancies/{id}/resolve ──────────────────────────
+if ($method === 'POST' && preg_match('#^/api/audit/discrepancies/([^/]+)/resolve$#', $uri, $m)) {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:reconcile')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $id = urldecode($m[1]);
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\AuditController())->resolveDiscrepancy($request, tenantId(), $id);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
 // ── Route: POST /auth/register ────────────────────────────────────────────────
 if ($method === 'POST' && $uri === '/auth/register') {
-    $useCase  = new RegisterUser(ServiceContainer::userRepo(), $dispatcher);
-    $response = (new AuthController())->register($request, $useCase);
+    $middleware = new \InventoryApp\Infrastructure\Http\Middleware\RateLimitMiddleware(5, 60);
+    $response = $middleware->handle($request, function ($req) use ($dispatcher) {
+        $useCase  = new RegisterUser(ServiceContainer::userRepo(), $dispatcher);
+        return (new AuthController())->register($req, $useCase);
+    });
+
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
@@ -360,51 +445,63 @@ if ($method === 'POST' && $uri === '/auth/register') {
 
 // ── Route: POST /api/setup ───────────────────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/setup') {
-    $body = json_decode(file_get_contents('php://input'), true) ?: [];
-    
-    $orgName = $body['orgName'] ?? '';
-    $tenantId = $body['tenantId'] ?? '';
-    $adminName = $body['adminName'] ?? '';
-    $adminEmail = $body['adminEmail'] ?? '';
-    $adminPassword = $body['adminPassword'] ?? '';
-    
-    if (empty($orgName) || empty($tenantId) || empty($adminName) || empty($adminEmail) || empty($adminPassword)) {
-        http_response_code(400);
-        echo json_encode(['error' => 'All fields (orgName, tenantId, adminName, adminEmail, adminPassword) are required.']);
-        exit;
-    }
-    
-    try {
-        // 1. Insert tenant
-        Capsule::table('tenants')->insertOrIgnore([
-            'id' => $tenantId,
-            'name' => $orgName,
-            'created_at' => date('Y-m-d H:i:s')
-        ]);
+    $middleware = new \InventoryApp\Infrastructure\Http\Middleware\RateLimitMiddleware(5, 60);
+    $response = $middleware->handle($request, function ($req) {
+        $body = json_decode(file_get_contents('php://input'), true) ?: [];
         
-        // 2. Register admin user
-        $userRepo = ServiceContainer::userRepo();
-        $adminId = \Ramsey\Uuid\Uuid::uuid4()->toString();
+        $orgName = $body['orgName'] ?? '';
+        $tenantId = $body['tenantId'] ?? '';
+        $adminName = $body['adminName'] ?? '';
+        $adminEmail = $body['adminEmail'] ?? '';
+        $adminPassword = $body['adminPassword'] ?? '';
         
-        $existing = $userRepo->findByEmail($adminEmail, new \InventoryApp\Domain\Identity\ValueObjects\TenantId($tenantId));
-        if (!$existing) {
-            $user = \InventoryApp\Domain\Identity\Entities\User::register(
-                $adminId,
-                new \InventoryApp\Domain\Identity\ValueObjects\TenantId($tenantId),
-                $adminEmail,
-                $adminPassword,
-                $adminName
-            );
-            $user->assignRole(\InventoryApp\Domain\Identity\Entities\Role::createDefault('admin'));
-            $userRepo->save($user);
+        if (empty($orgName) || empty($tenantId) || empty($adminName) || empty($adminEmail) || empty($adminPassword)) {
+            return new \InventoryApp\Infrastructure\Http\Response(['error' => 'All fields (orgName, tenantId, adminName, adminEmail, adminPassword) are required.'], 400);
         }
         
-        http_response_code(200);
-        echo json_encode(['message' => 'Organization and admin account set up successfully.']);
-    } catch (\Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
-    }
+        try {
+            $existingTenant = Capsule::table('tenants')->where('id', $tenantId)->first();
+            if ($existingTenant) {
+                return new \InventoryApp\Infrastructure\Http\Response(['error' => 'Forbidden: Tenant already exists.'], 403);
+            }
+
+            // 1. Insert tenant
+            Capsule::table('tenants')->insert([
+                'id' => $tenantId,
+                'name' => $orgName,
+                'created_at' => date('Y-m-d H:i:s')
+            ]);
+
+            // 2. Register admin user
+            $userRepo = ServiceContainer::userRepo();
+            $adminId = \Ramsey\Uuid\Uuid::uuid4()->toString();
+
+            $existing = $userRepo->findByEmail($adminEmail, new \InventoryApp\Domain\Identity\ValueObjects\TenantId($tenantId));
+            if (!$existing) {
+                $user = \InventoryApp\Domain\Identity\Entities\User::register(
+                    $adminId,
+                    new \InventoryApp\Domain\Identity\ValueObjects\TenantId($tenantId),
+                    $adminEmail,
+                    $adminPassword,
+                    $adminName
+                );
+                $user->assignRole(\InventoryApp\Domain\Identity\Entities\Role::createDefault('admin'));
+                $userRepo->save($user);
+            }
+
+            return new \InventoryApp\Infrastructure\Http\Response(['message' => 'Organization and admin account set up successfully.'], 200);
+        } catch (\Exception $e) {
+            if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+                return new \InventoryApp\Infrastructure\Http\Response(['error' => $e->getMessage()], 400);
+            } else {
+                error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+                return new \InventoryApp\Infrastructure\Http\Response(['error' => 'An internal server error occurred.'], 500);
+            }
+        }
+    });
+
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
     exit;
 }
 
@@ -435,8 +532,14 @@ if ($method === 'GET' && $uri === '/api/users') {
         http_response_code(200);
         echo json_encode(['users' => $users]);
     } catch (\Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -444,37 +547,44 @@ if ($method === 'GET' && $uri === '/api/users') {
 // ── Route: POST /api/users ────────────────────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/users') {
     requireAuth();
-    $body = json_decode(file_get_contents('php://input'), true) ?: [];
+    $middleware = new \InventoryApp\Infrastructure\Http\Middleware\RateLimitMiddleware(5, 60);
+    $response = $middleware->handle($request, function ($req) use ($dispatcher) {
+        $body = json_decode(file_get_contents('php://input'), true) ?: [];
 
-    $email = $body['email'] ?? '';
-    if (empty($email)) {
-        http_response_code(400);
-        echo json_encode(['error' => 'Email is required.']);
-        exit;
-    }
+        $email = $body['email'] ?? '';
+        if (empty($email)) {
+            return new \InventoryApp\Infrastructure\Http\Response(['error' => 'Email is required.'], 400);
+        }
 
-    try {
-        $tenantId        = tenantId();
-        $userId          = \Ramsey\Uuid\Uuid::uuid4()->toString();
-        // Generate a secure random temporary password (returned once to the caller).
-        // The invited user must change it on first login.
-        $temporaryPassword = bin2hex(random_bytes(12)); // 24 hex chars
-        $name            = explode('@', $email)[0];
-        $actingUserId    = $_SERVER['auth.user_id'] ?? '';
+        try {
+            $tenantId        = tenantId();
+            $userId          = \Ramsey\Uuid\Uuid::uuid4()->toString();
+            // Generate a secure random temporary password (returned once to the caller).
+            // The invited user must change it on first login.
+            $temporaryPassword = bin2hex(random_bytes(12)); // 24 hex chars
+            $name            = explode('@', $email)[0];
+            $actingUserId    = $_SERVER['auth.user_id'] ?? '';
 
-        $useCase = new RegisterUser(ServiceContainer::userRepo(), $dispatcher);
-        $useCase->execute($userId, $tenantId, $email, $temporaryPassword, $name, $actingUserId);
+            $useCase = new RegisterUser(ServiceContainer::userRepo(), $dispatcher);
+            $useCase->execute($userId, $tenantId, $email, $temporaryPassword, $name, $actingUserId);
 
-        http_response_code(201);
-        echo json_encode([
-            'message'            => 'User invited successfully.',
-            'user_id'            => $userId,
-            'temporary_password' => $temporaryPassword,
-        ]);
-    } catch (\Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
-    }
+            return new \InventoryApp\Infrastructure\Http\Response([
+                'message'            => 'User invited successfully.',
+                'user_id'            => $userId,
+                'temporary_password' => $temporaryPassword,
+            ], 201);
+        } catch (\Exception $e) {
+            if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+                return new \InventoryApp\Infrastructure\Http\Response(['error' => $e->getMessage()], 400);
+            } else {
+                error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+                return new \InventoryApp\Infrastructure\Http\Response(['error' => 'An internal server error occurred.'], 500);
+            }
+        }
+    });
+
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
     exit;
 }
 
@@ -539,8 +649,14 @@ if ($method === 'POST' && $uri === '/api/returns/rma') {
             'updatedAt' => $rma->getUpdatedAt()->format(DATE_ATOM)
         ]);
     } catch (\Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -564,8 +680,14 @@ if ($method === 'POST' && preg_match('#^/api/returns/rma/([^/]+)/authorize$#', $
         http_response_code(200);
         echo json_encode(['message' => 'RMA authorized successfully']);
     } catch (\Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -603,8 +725,14 @@ if ($method === 'POST' && preg_match('#^/api/returns/rma/([^/]+)/receive$#', $ur
         http_response_code(200);
         echo json_encode(['message' => 'RMA items received successfully']);
     } catch (\Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -647,8 +775,14 @@ if ($method === 'GET' && preg_match('#^/api/returns/rma/([^/]+)$#', $uri, $m)) {
             'updatedAt' => $rma->getUpdatedAt()->format(DATE_ATOM)
         ]);
     } catch (\Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -676,8 +810,14 @@ if ($method === 'GET' && $uri === '/api/returns/quarantine') {
         http_response_code(200);
         echo json_encode($results);
     } catch (\Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -707,8 +847,14 @@ if ($method === 'GET' && preg_match('#^/api/returns/quarantine/([^/]+)$#', $uri,
             'resolvedAt' => $item->getResolvedAt() ? $item->getResolvedAt()->format(DATE_ATOM) : null
         ]);
     } catch (\Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -744,8 +890,14 @@ if ($method === 'POST' && preg_match('#^/api/returns/quarantine/([^/]+)/resolve$
         http_response_code(200);
         echo json_encode(['message' => 'Quarantine item resolved successfully']);
     } catch (\Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -753,7 +905,17 @@ if ($method === 'POST' && preg_match('#^/api/returns/quarantine/([^/]+)/resolve$
 // ── Route: POST /api/inventory/receive ───────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/inventory/receive') {
     requireAuth();
-    $useCase  = new ReceiveStock(ServiceContainer::productRepo(tenantId()), $dispatcher);
+    $capacityService = new \InventoryApp\Domain\Inventory\Services\WMSCapacityService(
+        ServiceContainer::productRepo(tenantId()),
+        ServiceContainer::warehouseLocationRepo()
+    );
+    $useCase  = new ReceiveStock(
+        ServiceContainer::productRepo(tenantId()),
+        $dispatcher,
+        $capacityService,
+        ServiceContainer::costLayerRepo(tenantId()),
+        ServiceContainer::ledgerRepo(tenantId())
+    );
     $response = (new InventoryController())->receive($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
@@ -763,8 +925,41 @@ if ($method === 'POST' && $uri === '/api/inventory/receive') {
 // ── Route: POST /api/inventory/dispatch ──────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/inventory/dispatch') {
     requireAuth();
-    $useCase  = new DispatchStock(ServiceContainer::productRepo(tenantId()), $dispatcher);
+    $useCase  = new DispatchStock(
+        ServiceContainer::productRepo(tenantId()),
+        $dispatcher,
+        ServiceContainer::reorderPolicyService(),
+        ServiceContainer::ledgerRepo(tenantId()),
+        ServiceContainer::costLayerRepo(tenantId())
+    );
     $response = (new InventoryController())->dispatch($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: GET /api/inventory/fefo-pick ──────────────────────────────────────
+if ($method === 'GET' && $uri === '/api/inventory/fefo-pick') {
+    requireAuth();
+    $suggester = new \InventoryApp\Domain\Inventory\Services\FEFOPickingSuggester(
+        ServiceContainer::costLayerRepo(tenantId()),
+        ServiceContainer::ledgerRepo(tenantId()),
+        ServiceContainer::productRepo(tenantId())
+    );
+    $response = (new InventoryController())->suggestFefoPick($request, $suggester);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: GET /api/reports/recall/{lotNumber} ──────────────────────────────
+if ($method === 'GET' && preg_match('#^/api/reports/recall/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    $lotNumber = urldecode($m[1]);
+    $recallService = new \InventoryApp\Domain\Inventory\Services\ProductRecallService(
+        ServiceContainer::ledgerRepo(tenantId())
+    );
+    $response = (new InventoryController())->traceRecall($request, $lotNumber, $recallService);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
@@ -783,9 +978,105 @@ if ($method === 'POST' && $uri === '/api/inventory/transfer') {
 // ── Route: GET /api/inventory/{sku}/stock ────────────────────────────────────
 if ($method === 'GET' && preg_match('#^/api/inventory/([^/]+)/stock$#', $uri, $m)) {
     requireAuth();
-    $sku      = urldecode($m[1]);
-    $useCase  = new GetStockLevel(ServiceContainer::productRepo(tenantId()));
-    $response = (new InventoryController())->stockLevel($request, $sku, $useCase);
+    $sku          = urldecode($m[1]);
+    $queryService = ServiceContainer::getInstance()->make(\InventoryApp\Application\Inventory\Queries\StockQueryServiceInterface::class, ['tenantId' => tenantId()]);
+    $response     = (new InventoryController())->stockLevel($request, $sku, $queryService);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: GET /api/inventory/{sku} ──────────────────────────────────────────
+if ($method === 'GET' && preg_match('#^/api/inventory/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    $sku          = urldecode($m[1]);
+    $queryService = ServiceContainer::getInstance()->make(\InventoryApp\Application\Inventory\Queries\StockQueryServiceInterface::class, ['tenantId' => tenantId()]);
+    $response     = (new InventoryController())->stockLevel($request, $sku, $queryService);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/inventory/allocate ──────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/inventory/allocate') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $useCase  = new AllocateStock(ServiceContainer::productRepo(tenantId()));
+    $response = (new InventoryController())->allocate($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/inventory/release-allocation ────────────────────────────
+if ($method === 'POST' && $uri === '/api/inventory/release-allocation') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $useCase  = new ReleaseAllocation(ServiceContainer::productRepo(tenantId()));
+    $response = (new InventoryController())->releaseAllocation($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/inventory/fulfill-allocation ────────────────────────────
+if ($method === 'POST' && $uri === '/api/inventory/fulfill-allocation') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $useCase  = new FulfillAllocation(ServiceContainer::productRepo(tenantId()), $dispatcher);
+    $response = (new InventoryController())->fulfillAllocation($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/inventory/create-in-transit ─────────────────────────────
+if ($method === 'POST' && $uri === '/api/inventory/create-in-transit') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $useCase  = new CreateInTransit(ServiceContainer::productRepo(tenantId()));
+    $response = (new InventoryController())->createInTransit($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/inventory/receive-in-transit ────────────────────────────
+if ($method === 'POST' && $uri === '/api/inventory/receive-in-transit') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $useCase  = new ReceiveInTransit(ServiceContainer::productRepo(tenantId()), $dispatcher);
+    $response = (new InventoryController())->receiveInTransit($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
@@ -863,8 +1154,14 @@ if ($method === 'GET' && $uri === '/api/catalog/products') {
         http_response_code(200);
         echo json_encode(['products' => array_values($productsMap)]);
     } catch (\Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -909,6 +1206,16 @@ if ($method === 'GET' && preg_match('#^/api/barcodes/variants/([^/]+)$#', $uri, 
     exit;
 }
 
+// Route: POST /api/barcodes/scan
+if ($method === 'POST' && $uri === '/api/barcodes/scan') {
+    requireAuth();
+    $response = (new BarcodeController())->scan($request, ServiceContainer::barcodeRepo(tenantId()), tenantId());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+
 // ── Serial Number Tracking ─────────────────────────────────────────────────────
 // Route: POST /api/serials
 if ($method === 'POST' && $uri === '/api/serials') {
@@ -940,8 +1247,14 @@ if ($method === 'GET' && $uri === '/api/serials') {
         http_response_code(200);
         echo json_encode(['items' => $items]);
     } catch (\Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -1071,8 +1384,14 @@ if ($method === 'GET' && $uri === '/api/onboardings') {
         http_response_code(200);
         echo json_encode(['onboardings' => $onboardings]);
     } catch (\Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -1145,6 +1464,136 @@ if ($method === 'GET' && $uri === '/api/journal/entries') {
 if ($method === 'GET' && $uri === '/api/reports/valuation') {
     requireAuth();
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReportController())->valuation($request, tenantId());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Shipping Carrier Integration ────────────────────────────────────────────────
+// Route: GET /api/shipping/rates
+if ($method === 'GET' && $uri === '/api/shipping/rates') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:read')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden: You do not have permission to view rates.']);
+        exit;
+    }
+    $useCase = new \InventoryApp\Application\Shipping\UseCases\CalculateShippingRates(ServiceContainer::carrierService());
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ShippingController())->getRates($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: POST /api/shipping/labels
+if ($method === 'POST' && $uri === '/api/shipping/labels') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden: You do not have permission to purchase shipping labels.']);
+        exit;
+    }
+    $useCase = new \InventoryApp\Application\Shipping\UseCases\PurchaseShippingLabel(
+        ServiceContainer::shipmentRepo(),
+        ServiceContainer::carrierService(),
+        ServiceContainer::productRepo(tenantId()),
+        ServiceContainer::ledgerRepo(tenantId()),
+        ServiceContainer::journalRepo(),
+        ServiceContainer::outboxRepo(),
+        ServiceContainer::costLayerRepo(tenantId())
+    );
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ShippingController())->purchaseLabel($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: GET /api/shipping/shipments
+if ($method === 'GET' && $uri === '/api/shipping/shipments') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:read')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden: You do not have permission to view shipments.']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ShippingController())->getShipments($request, ServiceContainer::shipmentRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: POST /api/shipping/shipments/{id}/track
+if ($method === 'POST' && preg_match('#^/api/shipping/shipments/([^/]+)/track$#', $uri, $m)) {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden: You do not have permission to track shipments.']);
+        exit;
+    }
+    $shipmentId = urldecode($m[1]);
+    $useCase = new \InventoryApp\Application\Shipping\UseCases\UpdateShipmentStatus(
+        ServiceContainer::shipmentRepo(),
+        ServiceContainer::outboxRepo()
+    );
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ShippingController())->trackShipment($request, $shipmentId, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Outbox ──────────────────────────────────────────────────────────────────────
+// Route: GET /api/outbox/stats
+if ($method === 'GET' && $uri === '/api/outbox/stats') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:read')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\OutboxController())->getStats($request, ServiceContainer::outboxRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: GET /api/outbox/dead-letter
+if ($method === 'GET' && $uri === '/api/outbox/dead-letter') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:read')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\OutboxController())->listDeadLettered($request, ServiceContainer::outboxRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: POST /api/outbox/{id}/retry
+if ($method === 'POST' && preg_match('#^/api/outbox/([^/]+)/retry$#', $uri, $m)) {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden']);
+        exit;
+    }
+    $eventId = urldecode($m[1]);
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\OutboxController())->retry($request, $eventId, ServiceContainer::outboxRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
@@ -1244,8 +1693,14 @@ if ($method === 'GET' && $uri === '/api/kits') {
         http_response_code(200);
         echo json_encode(['kits' => array_values($kitsMap)]);
     } catch (\Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -1346,6 +1801,71 @@ if ($method === 'POST' && $uri === '/api/kits/disassemble') {
     exit;
 }
 
+// ── Route: POST /api/warehouse-locations ───────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/warehouse-locations') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized: you do not have permission to manage warehouse locations.']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\WarehouseLocationController())
+        ->save($request, ServiceContainer::warehouseLocationRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: DELETE /api/warehouse-locations/{id} ─────────────────────────────────
+if ($method === 'DELETE' && preg_match('#^/api/warehouse-locations/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized: you do not have permission to manage warehouse locations.']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\WarehouseLocationController())
+        ->delete($request, $id, ServiceContainer::warehouseLocationRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: GET /api/warehouse-locations ───────────────────────────────────────
+if ($method === 'GET' && $uri === '/api/warehouse-locations') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\WarehouseLocationController())
+        ->list($request, ServiceContainer::warehouseLocationRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/warehouse-locations/putaway-suggestions ────────────────────
+if ($method === 'POST' && $uri === '/api/warehouse-locations/putaway-suggestions') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\WarehouseLocationController())
+        ->suggestPutaway($request, ServiceContainer::productRepo(tenantId()), ServiceContainer::warehouseLocationRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/warehouse-locations/optimize-pick-route ────────────────────
+if ($method === 'POST' && $uri === '/api/warehouse-locations/optimize-pick-route') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\WarehouseLocationController())
+        ->optimizePickRoute($request, ServiceContainer::warehouseLocationRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
 // ── Route: POST /api/webhooks/shopify ────────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/webhooks/shopify') {
     // Note: Do not call requireAuth() here because Shopify uses HMAC signature headers instead of API bearer tokens
@@ -1375,9 +1895,15 @@ if ($method === 'POST' && $uri === '/api/inventory/sale') {
         $useCase->execute($sku, $locationId, $quantity, $orderId);
         http_response_code(200);
         echo json_encode(['message' => 'Sale processed successfully']);
-    } catch (Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+    } catch (\Exception $e) {
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -1403,9 +1929,15 @@ if ($method === 'POST' && $uri === '/api/inventory/return') {
         $useCase->execute($sku, $locationId, $quantity, $condition, $orderId);
         http_response_code(200);
         echo json_encode(['message' => 'Return processed successfully']);
-    } catch (Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+    } catch (\Exception $e) {
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -1433,9 +1965,15 @@ if ($method === 'GET' && preg_match('#^/api/inventory/counts/([^/]+)$#', $uri, $
             'status' => $count->getStatus()->getValue(),
             'items'  => $items,
         ]);
-    } catch (Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+    } catch (\Exception $e) {
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
     exit;
 }
@@ -1459,10 +1997,213 @@ if ($method === 'PATCH' && preg_match('#^/api/users/([^/]+)/role$#', $uri, $m)) 
         $useCase->execute($targetUserId, $roleSlug, $actingUserId);
         http_response_code(200);
         echo json_encode(['message' => "Role '{$roleSlug}' assigned successfully"]);
-    } catch (Exception $e) {
-        http_response_code(400);
-        echo json_encode(['error' => $e->getMessage()]);
+    } catch (\Exception $e) {
+        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+            http_response_code(400);
+            echo json_encode(['error' => $e->getMessage()]);
+        } else {
+            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'An internal server error occurred.']);
+        }
     }
+    exit;
+}
+
+// ── Route: POST /api/purchase-orders ─────────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/purchase-orders') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\PurchaseOrderController())
+        ->create($request, ServiceContainer::purchaseOrderRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: GET /api/purchase-orders/{id} ──────────────────────────────────────
+if ($method === 'GET' && preg_match('#^/api/purchase-orders/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:read')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\PurchaseOrderController())
+        ->get($request, $id, ServiceContainer::purchaseOrderRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/purchase-orders/{id}/approve ─────────────────────────────
+if ($method === 'POST' && preg_match('#^/api/purchase-orders/([^/]+)/approve$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\PurchaseOrderController())
+        ->approve($request, $id, ServiceContainer::purchaseOrderRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/purchase-orders/{id}/send ────────────────────────────────
+if ($method === 'POST' && preg_match('#^/api/purchase-orders/([^/]+)/send$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\PurchaseOrderController())
+        ->send($request, $id, ServiceContainer::purchaseOrderRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/purchase-orders/{id}/receive ─────────────────────────────
+if ($method === 'POST' && preg_match('#^/api/purchase-orders/([^/]+)/receive$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\PurchaseOrderController())
+        ->receive(
+            $request,
+            $id,
+            ServiceContainer::purchaseOrderRepo(),
+            ServiceContainer::productRepo(tenantId()),
+            ServiceContainer::costLayerRepo(tenantId()),
+            $dispatcher
+        );
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/reorder-policies ────────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/reorder-policies') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReorderPolicyController())
+        ->createOrUpdate($request, ServiceContainer::reorderPolicyRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: GET /api/reorder-policies/{sku}/{locationId} ──────────────────────
+if ($method === 'GET' && preg_match('#^/api/reorder-policies/([^/]+)/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    $sku = urldecode($m[1]);
+    $locationId = urldecode($m[2]);
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:read')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReorderPolicyController())
+        ->get($request, $sku, $locationId, ServiceContainer::reorderPolicyRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: GET /api/forecasting/report ───────────────────────────────────────
+if ($method === 'GET' && $uri === '/api/forecasting/report') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:read')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ForecastingController())
+        ->getReport(
+            $request,
+            ServiceContainer::productRepo(tenantId()),
+            ServiceContainer::ledgerRepo(tenantId()),
+            ServiceContainer::reorderPolicyRepo(),
+            ServiceContainer::demandForecastRepo()
+        );
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: GET /api/forecasting/stock-velocity ─────────────────────────────────
+if ($method === 'GET' && $uri === '/api/forecasting/stock-velocity') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:read')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ForecastingController())
+        ->getStockVelocityReport(
+            $request
+        );
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/forecasting/forecast ──────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/forecasting/forecast') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ForecastingController())
+        ->generateForecast(
+            $request,
+            ServiceContainer::productRepo(tenantId()),
+            ServiceContainer::ledgerRepo(tenantId()),
+            ServiceContainer::reorderPolicyRepo(),
+            ServiceContainer::demandForecastRepo()
+        );
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
     exit;
 }
 

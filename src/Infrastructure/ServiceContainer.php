@@ -27,6 +27,16 @@ use InventoryApp\Domain\Uom\Repositories\ProductUomConfigurationRepositoryInterf
 use InventoryApp\Domain\Kit\Repositories\KitRepositoryInterface;
 use InventoryApp\Infrastructure\Persistence\Repositories\EloquentProductUomConfigurationRepository;
 use InventoryApp\Infrastructure\Persistence\Repositories\EloquentKitRepository;
+use InventoryApp\Domain\Inventory\Repositories\WarehouseLocationRepositoryInterface;
+use InventoryApp\Infrastructure\Persistence\Repositories\EloquentWarehouseLocationRepository;
+use InventoryApp\Domain\Inventory\Repositories\DemandForecastRepositoryInterface;
+use InventoryApp\Infrastructure\Persistence\Repositories\EloquentDemandForecastRepository;
+use InventoryApp\Domain\Shared\Repositories\OutboxRepositoryInterface;
+use InventoryApp\Domain\Shipping\Repositories\ShipmentRepositoryInterface;
+use InventoryApp\Infrastructure\Persistence\Repositories\EloquentOutboxRepository;
+use InventoryApp\Infrastructure\Persistence\Repositories\EloquentShipmentRepository;
+use InventoryApp\Application\Ports\CarrierServiceInterface;
+use InventoryApp\Infrastructure\Shipping\MockCarrierService;
 use Illuminate\Container\Container;
 
 class ServiceContainer
@@ -55,8 +65,22 @@ class ServiceContainer
         $container->singleton(\InventoryApp\Domain\Catalog\Repositories\CatalogProductRepositoryInterface::class, EloquentCatalogProductRepository::class);
         $container->singleton(ProductUomConfigurationRepositoryInterface::class, EloquentProductUomConfigurationRepository::class);
         $container->singleton(KitRepositoryInterface::class, EloquentKitRepository::class);
+        $container->singleton(WarehouseLocationRepositoryInterface::class, EloquentWarehouseLocationRepository::class);
+        $container->singleton(DemandForecastRepositoryInterface::class, EloquentDemandForecastRepository::class);
+        $container->singleton(ShipmentRepositoryInterface::class, EloquentShipmentRepository::class);
+        $container->singleton(OutboxRepositoryInterface::class, EloquentOutboxRepository::class);
+        $container->singleton(CarrierServiceInterface::class, MockCarrierService::class);
         $container->singleton(\InventoryApp\Domain\Returns\Repositories\RMARepositoryInterface::class, \InventoryApp\Infrastructure\Persistence\Repositories\EloquentRMARepository::class);
         $container->singleton(\InventoryApp\Domain\Returns\Repositories\QuarantineRepositoryInterface::class, \InventoryApp\Infrastructure\Persistence\Repositories\EloquentQuarantineRepository::class);
+        $container->singleton(\InventoryApp\Domain\Procurement\Repositories\PurchaseOrderRepositoryInterface::class, \InventoryApp\Infrastructure\Persistence\Repositories\EloquentPurchaseOrderRepository::class);
+        $container->singleton(\InventoryApp\Domain\Procurement\Repositories\ReorderPolicyRepositoryInterface::class, \InventoryApp\Infrastructure\Persistence\Repositories\EloquentReorderPolicyRepository::class);
+        $container->singleton(\InventoryApp\Domain\Procurement\Services\ReorderPolicyService::class, function ($c) {
+            return new \InventoryApp\Domain\Procurement\Services\ReorderPolicyService(
+                $c->make(\InventoryApp\Domain\Procurement\Repositories\ReorderPolicyRepositoryInterface::class),
+                $c->make(\InventoryApp\Domain\Procurement\Repositories\PurchaseOrderRepositoryInterface::class),
+                $c->make(\Psr\EventDispatcher\EventDispatcherInterface::class)
+            );
+        });
         $container->singleton(EventDispatcher::class, function () {
             return self::dispatcher();
         });
@@ -183,6 +207,46 @@ class ServiceContainer
     public static function quarantineRepo(): \InventoryApp\Domain\Returns\Repositories\QuarantineRepositoryInterface
     {
         return self::getInstance()->make(\InventoryApp\Domain\Returns\Repositories\QuarantineRepositoryInterface::class);
+    }
+
+    public static function warehouseLocationRepo(): WarehouseLocationRepositoryInterface
+    {
+        return self::getInstance()->make(WarehouseLocationRepositoryInterface::class);
+    }
+
+    public static function purchaseOrderRepo(): \InventoryApp\Domain\Procurement\Repositories\PurchaseOrderRepositoryInterface
+    {
+        return self::getInstance()->make(\InventoryApp\Domain\Procurement\Repositories\PurchaseOrderRepositoryInterface::class);
+    }
+
+    public static function reorderPolicyRepo(): \InventoryApp\Domain\Procurement\Repositories\ReorderPolicyRepositoryInterface
+    {
+        return self::getInstance()->make(\InventoryApp\Domain\Procurement\Repositories\ReorderPolicyRepositoryInterface::class);
+    }
+
+    public static function demandForecastRepo(): DemandForecastRepositoryInterface
+    {
+        return self::getInstance()->make(DemandForecastRepositoryInterface::class);
+    }
+
+    public static function reorderPolicyService(): \InventoryApp\Domain\Procurement\Services\ReorderPolicyService
+    {
+        return self::getInstance()->make(\InventoryApp\Domain\Procurement\Services\ReorderPolicyService::class);
+    }
+
+    public static function shipmentRepo(): ShipmentRepositoryInterface
+    {
+        return self::getInstance()->make(ShipmentRepositoryInterface::class);
+    }
+
+    public static function outboxRepo(): OutboxRepositoryInterface
+    {
+        return self::getInstance()->make(OutboxRepositoryInterface::class);
+    }
+
+    public static function carrierService(): CarrierServiceInterface
+    {
+        return self::getInstance()->make(CarrierServiceInterface::class);
     }
 }
 

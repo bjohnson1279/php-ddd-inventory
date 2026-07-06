@@ -15,8 +15,8 @@ class LocationId
         }
 
         $trimmed = trim($value);
-        if (!str_starts_with($trimmed, 'LOC-')) {
-            throw new InvalidArgumentException("Location ID must start with 'LOC-'");
+        if (!str_starts_with($trimmed, 'LOC-') && count(explode('-', $trimmed)) < 6) {
+            throw new InvalidArgumentException("Location ID must start with 'LOC-' or follow coordinate format.");
         }
 
         $this->value = $trimmed;

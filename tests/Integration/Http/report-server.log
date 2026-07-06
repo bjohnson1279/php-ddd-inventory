@@ -1,10 +1,10 @@
-[Fri Jun  5 15:01:49 2026] PHP 8.3.6 Development Server (http://127.0.0.1:8086) started
-[Fri Jun  5 15:01:49 2026] 127.0.0.1:60354 Accepted
-[Fri Jun  5 15:01:49 2026] 127.0.0.1:60354 Closed without sending a request; it was probably just an unused speculative preconnection
-[Fri Jun  5 15:01:49 2026] 127.0.0.1:60354 Closing
-[Fri Jun  5 15:01:49 2026] 127.0.0.1:60364 Accepted
-[Fri Jun  5 15:01:49 2026] 127.0.0.1:60364 Closing
-[Fri Jun  5 15:01:49 2026] 127.0.0.1:60372 Accepted
-[Fri Jun  5 15:01:49 2026] 127.0.0.1:60372 Closing
-[Fri Jun  5 15:01:49 2026] 127.0.0.1:60386 Accepted
-[Fri Jun  5 15:01:49 2026] 127.0.0.1:60386 Closing
+[Tue Jun 16 20:57:32 2026] PHP 8.2.31 Development Server (http://127.0.0.1:8086) started
+[Tue Jun 16 20:57:32 2026] 127.0.0.1:50222 Accepted
+[Tue Jun 16 20:57:32 2026] 127.0.0.1:50230 Accepted
+[Tue Jun 16 20:57:32 2026] 127.0.0.1:50222 Closed without sending a request; it was probably just an unused speculative preconnection
+[Tue Jun 16 20:57:32 2026] 127.0.0.1:50222 Closing
+[Tue Jun 16 20:57:36 2026] 127.0.0.1:50230 Closing
+[Tue Jun 16 20:57:36 2026] 127.0.0.1:50234 Accepted
+[Tue Jun 16 20:57:37 2026] 127.0.0.1:50234 Closing
+[Tue Jun 16 20:57:37 2026] 127.0.0.1:50240 Accepted
+[Tue Jun 16 20:57:38 2026] 127.0.0.1:50240 Closing

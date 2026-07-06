@@ -11,7 +11,7 @@ class ProductLocationModel extends Model
     protected $primaryKey = null;
     public $timestamps = false;
 
-    protected $fillable = ['product_id', 'location_id', 'stock_quantity', 'open_box_quantity', 'damaged_quantity', 'updated_at'];
+    protected $fillable = ['product_id', 'location_id', 'stock_quantity', 'open_box_quantity', 'damaged_quantity', 'allocated_quantity', 'in_transit_quantity', 'updated_at'];
 
     public function product()
     {

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/client';
+import Spinner from '../components/Spinner';
 
 type JournalLine = {
   id?: string;
@@ -200,8 +201,8 @@ export default function Journal() {
                 </div>
               </div>
 
-              <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={!isBalanced || isSubmitting} aria-busy={isSubmitting}>
-                {isSubmitting ? 'Posting...' : 'Post Journal Entry'}
+              <button type="submit" className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={!isBalanced || isSubmitting} aria-busy={isSubmitting}>
+                {isSubmitting && <Spinner />} {isSubmitting ? 'Posting...' : 'Post Journal Entry'}
               </button>
             </form>
             {submitMsg && (

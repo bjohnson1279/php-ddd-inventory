@@ -6,6 +6,8 @@ class InventoryCostLayer
 {
     private int $remainingQuantity;
     public ?string $serialNumber = null;
+    public ?string $lotNumber = null;
+    public ?\DateTimeImmutable $expirationDate = null;
 
     public function __construct(
         public readonly string $id,

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/client';
+import Spinner from '../components/Spinner';
 
 type LocationValuation = {
   location_id: string;
@@ -85,8 +86,14 @@ export default function ValuationDashboard() {
         <div style={{ fontSize: '2.5rem', color: '#f87171', marginBottom: '1.5rem' }}>⚠️</div>
         <h3 style={{ color: '#fff', marginBottom: '0.75rem' }}>Valuation Calculation Error</h3>
         <p style={{ color: '#f87171', marginBottom: '1.5rem' }}>{error || 'No valuation data available.'}</p>
-        <button onClick={fetchReport} className="btn-primary">
-          Try Again
+        <button
+          onClick={fetchReport}
+          className="btn-primary"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', margin: '0 auto' }}
+          disabled={refreshing}
+          aria-busy={refreshing}
+        >
+          {refreshing && <Spinner />} {refreshing ? 'Retrying...' : 'Try Again'}
         </button>
       </div>
     );
@@ -125,10 +132,11 @@ export default function ValuationDashboard() {
           )}
           <button
             onClick={fetchReport}
-            className={`btn-refresh ${refreshing ? 'disabled' : ''}`}
+            className="btn-refresh"
             disabled={refreshing}
+            aria-busy={refreshing}
           >
-            <span className={refreshing ? 'spin' : ''}>🔄</span>
+            {refreshing ? <Spinner /> : <span aria-hidden="true">🔄</span>}
             {refreshing ? 'Re-valuing...' : 'Recalculate'}
           </button>
         </div>

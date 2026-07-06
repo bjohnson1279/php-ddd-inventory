@@ -35,3 +35,6 @@
 ## 2024-06-28 - Optimizing Multiple Aggregate Queries
 **Learning:** Performing multiple `sum()` calls on the same Eloquent query builder results in multiple database round-trips for the same dataset, creating a performance bottleneck when checking stock levels.
 **Action:** Use `selectRaw` with `COALESCE(SUM(...), 0)` to combine multiple aggregations into a single query and reduce database overhead.
+## 2024-05-18 - Fix N+1 query in AuditProcessorService
+**Learning:** Found an N+1 query nested in double loops (SKUs and locations mappings) fetching `LedgerEntryModel::sum('quantity')` sequentially. A single query across products/locations grouping by metadata json attribute (using `metadata->>'locationId'`) can fetch all needed totals upfront.
+**Action:** Extract database querying out of double loops using `whereIn` and `groupBy` into a multi-dimensional array mapping.

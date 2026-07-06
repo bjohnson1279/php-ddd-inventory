@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Integration\Http;
 
 use PHPUnit\Framework\TestCase;
+use Illuminate\Database\Capsule\Manager as DB;
 
 require_once __DIR__ . '/../bootstrap.php';
 

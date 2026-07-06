@@ -81,9 +81,6 @@ final class ReturnsE2ETest extends TestCase
 
     public function testReturnsRbacPermissions(): void
     {
-        Capsule::table('users')->delete();
-        Capsule::table('user_roles')->delete();
-        Capsule::table('tenants')->delete();
         $suffix = bin2hex(random_bytes(4));
         // 1. Invite new user
         $inviteRes = $this->request('POST', '/api/users', [
@@ -138,9 +135,6 @@ final class ReturnsE2ETest extends TestCase
 
     public function testCompleteReturnsAndQuarantineLifecycle(): void
     {
-        Capsule::table('users')->delete();
-        Capsule::table('user_roles')->delete();
-        Capsule::table('tenants')->delete();
         $suffix = bin2hex(random_bytes(4));
         $varX = uuidv4();
         $varY = uuidv4();

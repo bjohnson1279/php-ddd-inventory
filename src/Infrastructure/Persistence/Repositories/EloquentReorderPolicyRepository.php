@@ -32,6 +32,16 @@ class EloquentReorderPolicyRepository implements ReorderPolicyRepositoryInterfac
         return $this->mapToDomain($model);
     }
 
+    public function findAllByLocation(string $locationId): array
+    {
+        $models = ReorderPolicyModel::where('location_id', $locationId)->get();
+        $results = [];
+        foreach ($models as $model) {
+            $results[] = $this->mapToDomain($model);
+        }
+        return $results;
+    }
+
     public function save(ReorderPolicy $policy): void
     {
         ReorderPolicyModel::updateOrCreate(

@@ -62,6 +62,26 @@ class EloquentProductRepository implements ProductRepositoryInterface
         return $products;
     }
 
+    public function findByIds(array $ids): array
+    {
+        if (empty($ids)) {
+            return [];
+        }
+
+        $models = ProductModel::with('locations')
+            ->where('tenant_id', $this->tenantId)
+            ->whereIn('id', $ids)
+            ->get();
+
+        $products = [];
+        foreach ($models as $model) {
+            $product = $this->hydrate($model);
+            $products[$product->getId()] = $product;
+        }
+
+        return $products;
+    }
+
     public function save(Product $product): void
     {
         $existing = ProductModel::where('id', $product->getId())->first();

@@ -31,3 +31,6 @@
 ## 2024-07-03 - CSS :has() for Required Fields
 **Learning:** Using the `:has(:required)` CSS pseudo-class to automatically style labels for required form fields is a highly scalable and robust way to improve form accessibility and usability across an entire application, avoiding the fragility of manually updating individual components.
 **Action:** Always prefer CSS-level styling for global UX patterns like required indicators when possible to ensure consistency and maintainability.
+## 2024-07-07 - Dynamic form feedback using role=alert
+**Learning:** Dynamic form feedback requires role="alert" attribute on its container element to notify screen readers of any changes.
+**Action:** Add role="alert" attribute on field error element containers and toast error notification element.

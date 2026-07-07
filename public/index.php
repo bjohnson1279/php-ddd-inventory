@@ -153,6 +153,8 @@ $dispatcher->subscribe(\InventoryApp\Domain\Inventory\Events\OpeningBalancePoste
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $uri    = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 
+\InventoryApp\Infrastructure\Http\Middleware\TraceMiddleware::handle();
+
 header('Content-Type: application/json');
 
 // ── Request adapter ───────────────────────────────────────────────────────────

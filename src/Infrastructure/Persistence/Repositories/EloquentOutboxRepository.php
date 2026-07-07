@@ -32,6 +32,7 @@ class EloquentOutboxRepository implements OutboxRepositoryInterface
                 }
             }
             
+            $payloadData['traceId'] = $event['traceId'] ?? \InventoryApp\Infrastructure\Telemetry\TraceContext::getTraceId();
             $payload = json_encode($payloadData);
         } else {
             $eventName = (new ReflectionClass($event))->getShortName();
@@ -40,6 +41,7 @@ class EloquentOutboxRepository implements OutboxRepositoryInterface
             $payloadData = $this->serializeEvent($event);
             unset($payloadData['occurredOn']);
             
+            $payloadData['traceId'] = $payloadData['traceId'] ?? \InventoryApp\Infrastructure\Telemetry\TraceContext::getTraceId();
             $payload = json_encode($payloadData);
         }
 

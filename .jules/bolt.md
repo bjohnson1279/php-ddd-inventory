@@ -38,3 +38,6 @@
 ## 2024-05-18 - Fix N+1 query in AuditProcessorService
 **Learning:** Found an N+1 query nested in double loops (SKUs and locations mappings) fetching `LedgerEntryModel::sum('quantity')` sequentially. A single query across products/locations grouping by metadata json attribute (using `metadata->>'locationId'`) can fetch all needed totals upfront.
 **Action:** Extract database querying out of double loops using `whereIn` and `groupBy` into a multi-dimensional array mapping.
+## 2024-07-07 - Pre-fetch Mapped Journal Entries to Avoid N+1 DB Queries
+**Learning:** Checking for mapping existence in the `AuditProcessorService` inside a `foreach` loop results in $4N$ database queries, severely impacting audit performance for large datasets.
+**Action:** Optimize by plucking journal IDs before the loop and batch fetching existing mappings and discrepancies using `whereIn` queries. In-memory checks via `in_array` avoid looping over DB interactions, returning the operations to $O(1)$ complexity.

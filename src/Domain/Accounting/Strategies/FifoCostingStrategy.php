@@ -23,8 +23,7 @@ class FifoCostingStrategy implements CostingStrategyInterface
         }
 
         if ($remaining > 0) {
-            $totalAvailable = array_sum(array_map(fn($l) => $l->remainingQuantity(), $layers));
-            throw new DomainException("Insufficient inventory cost layers for variant {$variantId}. Required: {$quantity}, Available: {$totalAvailable}");
+            throw new DomainException("Insufficient cost layers to cover quantity {$quantity}");
         }
 
         return new CostBreakdown($quantity, $totalCost);
@@ -48,8 +47,7 @@ class FifoCostingStrategy implements CostingStrategyInterface
         }
 
         if ($remaining > 0) {
-            $totalAvailable = array_sum(array_map(fn($l) => $l->remainingQuantity(), $layers));
-            throw new DomainException("Insufficient inventory cost layers for variant {$variantId}. Required: {$quantity}, Available: {$totalAvailable}");
+            throw new DomainException("Insufficient cost layers to cover quantity {$quantity}");
         }
 
         return [new CostBreakdown($quantity, $totalCost), $affectedLayers];

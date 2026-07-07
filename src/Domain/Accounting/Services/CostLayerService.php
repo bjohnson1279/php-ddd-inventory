@@ -21,17 +21,17 @@ class CostLayerService
             throw new DomainException("SpecificIdentification requires serial numbers. Use a dedicated path.");
         }
         $activeLayers = $this->layers->getActiveLayers($variantId);
-        $strategy = CostingStrategyRegistry.get($method);
+        $strategy = CostingStrategyRegistry::get($method);
         return $strategy->calculateCost($activeLayers, $quantity, $variantId);
     }
 
     public function consumeLayers(string $variantId, int $quantity, CostingMethod $method = CostingMethod::FIFO): CostBreakdown
     {
-        if ($method === CostingMethod.SpecificIdentification) {
+        if ($method === CostingMethod::SpecificIdentification) {
             throw new DomainException("SpecificIdentification requires serial numbers. Use a dedicated path.");
         }
         $activeLayers = $this->layers->getActiveLayers($variantId);
-        $strategy = CostingStrategyRegistry.get($method);
+        $strategy = CostingStrategyRegistry::get($method);
         [$breakdown, $affectedLayers] = $strategy->consumeLayers($activeLayers, $quantity, $variantId);
 
         if (!empty($affectedLayers)) {

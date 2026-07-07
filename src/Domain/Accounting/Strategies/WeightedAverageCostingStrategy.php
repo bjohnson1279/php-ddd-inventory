@@ -13,7 +13,7 @@ class WeightedAverageCostingStrategy implements CostingStrategyInterface
         $totalValue = array_sum(array_map(fn($l) => $l->remainingCostCents(), $layers));
 
         if ($totalUnits === 0 || $totalUnits < $quantity) {
-            throw new DomainException("Insufficient inventory cost layers for variant {$variantId}");
+            throw new DomainException("Insufficient cost layers to cover quantity {$quantity}");
         }
 
         $avgCostCents = $totalValue / $totalUnits;

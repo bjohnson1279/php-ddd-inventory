@@ -5,6 +5,8 @@ namespace InventoryApp\Domain\Accounting\Services;
 use InventoryApp\Domain\Accounting\Repositories\CostLayerRepositoryInterface;
 use InventoryApp\Domain\Accounting\ValueObjects\CostBreakdown;
 use InventoryApp\Domain\Accounting\Entities\InventoryCostLayer;
+use InventoryApp\Domain\Accounting\Enums\CostingMethod;
+use InventoryApp\Domain\Accounting\Strategies\CostingStrategyRegistry;
 use DomainException;
 
 class CostLayerService
@@ -13,24 +15,41 @@ class CostLayerService
         private readonly CostLayerRepositoryInterface $layers,
     ) {}
 
-    public function consumeFifoLayers(string $variantId, int $quantity): CostBreakdown
+    public function calculateCost(string $variantId, int $quantity, CostingMethod $method = CostingMethod::FIFO): CostBreakdown
     {
-        $activeLayers = $this->layers->getActiveLayers($variantId, 'received_at ASC');
-        [$breakdown, $affectedLayers] = $this->consumeLayers($activeLayers, $quantity);
+        if ($method === CostingMethod::SpecificIdentification) {
+            throw new DomainException("SpecificIdentification requires serial numbers. Use a dedicated path.");
+        }
+        $activeLayers = $this->layers->getActiveLayers($variantId);
+        $strategy = CostingStrategyRegistry.get($method);
+        return $strategy->calculateCost($activeLayers, $quantity, $variantId);
+    }
 
-        $this->layers->saveBatch($affectedLayers);
+    public function consumeLayers(string $variantId, int $quantity, CostingMethod $method = CostingMethod::FIFO): CostBreakdown
+    {
+        if ($method === CostingMethod.SpecificIdentification) {
+            throw new DomainException("SpecificIdentification requires serial numbers. Use a dedicated path.");
+        }
+        $activeLayers = $this->layers->getActiveLayers($variantId);
+        $strategy = CostingStrategyRegistry.get($method);
+        [$breakdown, $affectedLayers] = $strategy->consumeLayers($activeLayers, $quantity, $variantId);
+
+        if (!empty($affectedLayers)) {
+            $this->layers->saveBatch($affectedLayers);
+        }
 
         return $breakdown;
     }
 
+    // Backwards compatibility helpers
+    public function consumeFifoLayers(string $variantId, int $quantity): CostBreakdown
+    {
+        return $this->consumeLayers($variantId, $quantity, CostingMethod::FIFO);
+    }
+
     public function consumeLifoLayers(string $variantId, int $quantity): CostBreakdown
     {
-        $activeLayers = $this->layers->getActiveLayers($variantId, 'received_at DESC');
-        [$breakdown, $affectedLayers] = $this->consumeLayers($activeLayers, $quantity);
-
-        $this->layers->saveBatch($affectedLayers);
-
-        return $breakdown;
+        return $this->consumeLayers($variantId, $quantity, CostingMethod::LIFO);
     }
 
     public function consumeSpecificLayers(string $variantId, array $serialNumbers): CostBreakdown
@@ -63,49 +82,8 @@ class CostLayerService
         return new CostBreakdown(count($serialNumbers), $totalCost);
     }
 
-
     public function calculateWeightedAverageCost(string $variantId, int $quantity): CostBreakdown
     {
-        $activeLayers = $this->layers->getActiveLayers($variantId);
-
-        $totalUnits = array_sum(
-            array_map(fn(InventoryCostLayer $l) => $l->remainingQuantity(), $activeLayers)
-        );
-        $totalValue = array_sum(
-            array_map(fn(InventoryCostLayer $l) => $l->remainingCostCents(), $activeLayers)
-        );
-
-        if ($totalUnits === 0) {
-            throw new DomainException("Insufficient inventory cost layers for variant {$variantId}");
-        }
-
-        $avgCostCents = $totalValue / $totalUnits;
-        return new CostBreakdown($quantity, (int) round($quantity * $avgCostCents));
-    }
-
-    /**
-     * @param InventoryCostLayer[] $layers
-     * @return array{0: CostBreakdown, 1: InventoryCostLayer[]}
-     */
-    private function consumeLayers(array $layers, int $quantity): array
-    {
-        $remaining = $quantity;
-        $totalCost = 0;
-        $affectedLayers = [];
-
-        foreach ($layers as $layer) {
-            if ($remaining <= 0) break;
-
-            $consumed = $layer->consume($remaining);
-            $totalCost += $consumed * $layer->unitCostCents;
-            $remaining -= $consumed;
-            $affectedLayers[] = $layer;
-        }
-
-        if ($remaining > 0) {
-            throw new DomainException("Insufficient cost layers to cover quantity {$quantity}");
-        }
-
-        return [new CostBreakdown($quantity, $totalCost), $affectedLayers];
+        return $this->calculateCost($variantId, $quantity, CostingMethod::WeightedAverageCost);
     }
 }

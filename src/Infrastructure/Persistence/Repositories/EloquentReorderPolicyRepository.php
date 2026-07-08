@@ -32,6 +32,27 @@ class EloquentReorderPolicyRepository implements ReorderPolicyRepositoryInterfac
         return $this->mapToDomain($model);
     }
 
+    public function findBySkusAndLocation(array $skus, string $locationId): array
+    {
+        if (empty($skus)) {
+            return [];
+        }
+
+        $skuValues = array_map(fn(SKU $sku) => $sku->getValue(), $skus);
+
+        $models = ReorderPolicyModel::whereIn('sku', $skuValues)
+            ->where('location_id', $locationId)
+            ->get();
+
+        $policies = [];
+        foreach ($models as $model) {
+            $policy = $this->mapToDomain($model);
+            $policies[$policy->sku->getValue()] = $policy;
+        }
+
+        return $policies;
+    }
+
     public function save(ReorderPolicy $policy): void
     {
         ReorderPolicyModel::updateOrCreate(

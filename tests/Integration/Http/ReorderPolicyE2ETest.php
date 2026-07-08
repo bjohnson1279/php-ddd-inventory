@@ -243,7 +243,7 @@ final class ReorderPolicyE2ETest extends TestCase
                 'tenant_id'    => $this->tenantId,
                 'variant_id'   => $product->id,
                 'quantity'     => -2,
-                'reason'       => 'SALE',
+                'reason'       => 'sale',
                 'actor_id'     => 'test-actor',
                 'occurred_at'  => $occurredAt->format('Y-m-d H:i:s'),
                 'metadata'     => json_encode(['locationId' => 'LOC-INT']),

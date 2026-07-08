@@ -218,6 +218,106 @@ final class ReorderPolicyE2ETest extends TestCase
         $this->assertEquals(10, $getRes['body']['reorderPoint']);
     }
 
+    public function testReorderPolicyDynamicEvaluation(): void
+    {
+        // 1. Create a dynamic policy (dynamicRopEnabled => true)
+        $createRes = $this->request('POST', '/api/reorder-policies', [
+            'sku'                 => 'CAT-SKU-1',
+            'locationId'          => 'LOC-INT',
+            'reorderPoint'        => 10,
+            'reorderQuantity'     => 50,
+            'safetyStock'         => 5,
+            'dynamicRopEnabled'   => true
+        ], $this->token);
+
+        $this->assertEquals(200, $createRes['status'], json_encode($createRes));
+        $this->assertTrue($createRes['body']['dynamicRopEnabled']);
+
+        // 2. Add sales data for CAT-SKU-1 via ledger entries (e.g. 60 units over 30 days -> average 2 units/day)
+        $product = Capsule::table('products')->where('sku', 'CAT-SKU-1')->first();
+        $occurredAt = new \DateTimeImmutable();
+        
+        for ($i = 0; $i < 30; $i++) {
+            Capsule::table('ledger_entries')->insert([
+                'id'           => uuidv4(),
+                'tenant_id'    => $this->tenantId,
+                'variant_id'   => $product->id,
+                'quantity'     => -2,
+                'reason'       => 'SALE',
+                'actor_id'     => 'test-actor',
+                'occurred_at'  => $occurredAt->format('Y-m-d H:i:s'),
+                'metadata'     => json_encode(['locationId' => 'LOC-INT']),
+                'created_at'   => $occurredAt->format('Y-m-d H:i:s')
+            ]);
+        }
+
+        // 3. Add historical POs to calculate lead-time variance
+        // PO 1: took 4 days
+        $po1Id = uuidv4();
+        Capsule::table('purchase_orders')->insert([
+            'id'                     => $po1Id,
+            'purchase_order_number'  => 'PO-100',
+            'vendor_id'              => 'supplier-1',
+            'tenant_id'              => $this->tenantId,
+            'status'                 => 'RECEIVED',
+            'location_id'            => 'LOC-INT',
+            'created_at'             => $occurredAt->modify('-6 days')->format('Y-m-d H:i:s'),
+            'updated_at'             => $occurredAt->modify('-2 days')->format('Y-m-d H:i:s'),
+        ]);
+        Capsule::table('purchase_order_items')->insert([
+            'id'                => uuidv4(),
+            'purchase_order_id' => $po1Id,
+            'variant_id'        => $product->id,
+            'quantity'          => 100,
+            'received_quantity' => 100,
+            'unit_cost_cents'   => 1000
+        ]);
+
+        // PO 2: took 6 days
+        $po2Id = uuidv4();
+        Capsule::table('purchase_orders')->insert([
+            'id'                     => $po2Id,
+            'purchase_order_number'  => 'PO-200',
+            'vendor_id'              => 'supplier-1',
+            'tenant_id'              => $this->tenantId,
+            'status'                 => 'RECEIVED',
+            'location_id'            => 'LOC-INT',
+            'created_at'             => $occurredAt->modify('-12 days')->format('Y-m-d H:i:s'),
+            'updated_at'             => $occurredAt->modify('-6 days')->format('Y-m-d H:i:s'),
+        ]);
+        Capsule::table('purchase_order_items')->insert([
+            'id'                => uuidv4(),
+            'purchase_order_id' => $po2Id,
+            'variant_id'        => $product->id,
+            'quantity'          => 100,
+            'received_quantity' => 100,
+            'unit_cost_cents'   => 1000
+        ]);
+
+        // 4. Run evaluate endpoint
+        $evalRes = $this->request('POST', '/api/reorder-policies/evaluate', [], $this->token);
+        $this->assertEquals(200, $evalRes['status'], json_encode($evalRes));
+        
+        $catResult = null;
+        foreach ($evalRes['body']['results'] as $res) {
+            if ($res['sku'] === 'CAT-SKU-1') {
+                $catResult = $res;
+                break;
+            }
+        }
+        $this->assertNotNull($catResult);
+        $this->assertEquals(50, $catResult['reorderPoint']);
+        $this->assertTrue($catResult['triggered']);
+
+        // Verify draft PO was created in database
+        $draftPo = Capsule::table('purchase_orders')
+            ->where('tenant_id', $this->tenantId)
+            ->where('status', 'DRAFT')
+            ->first();
+        $this->assertNotNull($draftPo);
+        $this->assertStringStartsWith('AUTO-REORDER-CAT-SKU-1-', $draftPo->purchase_order_number);
+    }
+
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
     {
         $url = 'http://127.0.0.1:8088' . $path;

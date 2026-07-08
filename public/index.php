@@ -2137,6 +2137,23 @@ if ($method === 'POST' && $uri === '/api/reorder-policies') {
     exit;
 }
 
+// ── Route: POST /api/reorder-policies/evaluate ───────────────────────────────
+if ($method === 'POST' && $uri === '/api/reorder-policies/evaluate') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReorderPolicyController())
+        ->evaluate($request, ServiceContainer::reorderPolicyRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
 // ── Route: GET /api/reorder-policies/{sku}/{locationId} ──────────────────────
 if ($method === 'GET' && preg_match('#^/api/reorder-policies/([^/]+)/([^/]+)$#', $uri, $m)) {
     requireAuth();

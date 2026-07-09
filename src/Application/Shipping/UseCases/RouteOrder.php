@@ -52,6 +52,10 @@ class RouteOrder
             ];
         }
 
+        usort($candidates, function ($a, $b) use ($destinationGeo) {
+            return $a['geoLocation']->distanceTo($destinationGeo) <=> $b['geoLocation']->distanceTo($destinationGeo);
+        });
+
         $bestPlan = OrderRoutingEngine::routeOrder(
             $sku,
             $quantity,

@@ -267,9 +267,9 @@ final class ShippingCarrierE2ETest extends TestCase
         }
 
         $this->assertNotNull($eastAlloc);
-        $this->assertEquals(2, $eastAlloc['quantity']);
+        $this->assertEquals(5, $eastAlloc['quantity']);
         $this->assertNotNull($centralAlloc);
-        $this->assertEquals(10, $centralAlloc['quantity']);
+        $this->assertEquals(7, $centralAlloc['quantity']);
     }
 
     private function request(string $method, string $path, array $body = [], ?string $token = null): array

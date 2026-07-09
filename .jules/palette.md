@@ -31,6 +31,11 @@
 ## 2024-07-03 - CSS :has() for Required Fields
 **Learning:** Using the `:has(:required)` CSS pseudo-class to automatically style labels for required form fields is a highly scalable and robust way to improve form accessibility and usability across an entire application, avoiding the fragility of manually updating individual components.
 **Action:** Always prefer CSS-level styling for global UX patterns like required indicators when possible to ensure consistency and maintainability.
+## 2026-05-30 - Standardizing Loading Spinners
+**Learning:** Using inline text emojis (like 🔄) and attaching a spin CSS class to indicate a loading state is inaccessible for screen readers. Using the standard `<Spinner />` component with `aria-busy` and visually hiding purely decorative elements provides a much more accessible and consistent user experience.
+**Action:** Replace ad-hoc emoji spinners with the standard `<Spinner />` component across the application and ensure appropriate `aria-busy` attributes are set on parent interactive elements.
+
 ## 2024-07-07 - Dynamic form feedback using role=alert
 **Learning:** Dynamic form feedback requires role="alert" attribute on its container element to notify screen readers of any changes.
 **Action:** Add role="alert" attribute on field error element containers and toast error notification element.
+

@@ -1,8 +1,7 @@
-<<<<<<< HEAD
 ## 2024-06-17 - ARIA Live Regions for Inline Validation
 **Learning:** Simple React state-driven feedback messages (like conditionally rendered `<p>` tags for success/error text) are entirely missed by screen readers unless they are wrapped in semantic ARIA live regions or status roles.
 **Action:** When adding or maintaining dynamic inline validation or success/error messages, always ensure the container uses `role="status"` or `role="alert"` alongside the appropriate `aria-live` attribute (`polite` vs `assertive`) to guarantee the feedback is perceivable to assistive technologies.
-=======
+
 ## 2025-02-28 - Missing label-to-input association in React app
 **Learning:** Multiple forms across this React app wrap text in `<label>` tags but fail to explicitly link them to inputs using `htmlFor` and `id` attributes. This breaks screen reader accessibility and reduces click target sizes, making the UI harder to use for users with impaired motor skills.
 **Action:** When creating or auditing new forms in this app, ensure every `<label>` has an `htmlFor` attribute that exactly matches the `id` of its corresponding `<input>` or `<select>`.
@@ -32,8 +31,11 @@
 ## 2024-07-03 - CSS :has() for Required Fields
 **Learning:** Using the `:has(:required)` CSS pseudo-class to automatically style labels for required form fields is a highly scalable and robust way to improve form accessibility and usability across an entire application, avoiding the fragility of manually updating individual components.
 **Action:** Always prefer CSS-level styling for global UX patterns like required indicators when possible to ensure consistency and maintainability.
->>>>>>> master
-
 ## 2024-05-24 - Async Loading States for Multi-Trigger Operations
 **Learning:** When adding loading states to API functions that can be triggered manually (e.g., a "Search" button) or automatically in the background (e.g., refreshing data after an update), applying the loading state at the button handler level misses the background operations, leaving users with a disappearing UI and no feedback.
 **Action:** Always wrap the core data-fetching function (e.g., `fetchConfig`) with the loading state, rather than just the specific button click handlers, to ensure consistent loading feedback across all interaction paths.
+
+## 2024-07-07 - Dynamic form feedback using role=alert
+**Learning:** Dynamic form feedback requires role="alert" attribute on its container element to notify screen readers of any changes.
+**Action:** Add role="alert" attribute on field error element containers and toast error notification element.
+

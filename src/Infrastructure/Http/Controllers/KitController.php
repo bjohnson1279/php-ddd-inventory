@@ -10,6 +10,7 @@ use InventoryApp\Domain\Inventory\Services\InventoryService;
 use Illuminate\Database\Capsule\Manager as Capsule;
 use Ramsey\Uuid\Uuid;
 use Exception;
+use InventoryApp\Application\Shared\Decorators\AutoRetryUseCaseDecorator;
 
 class KitController
 {
@@ -159,7 +160,8 @@ class KitController
             $actorId  = $_SERVER['auth.user_id'] ?? 'system';
 
             Capsule::transaction(function () use ($useCase, $validated, $tenantId, $actorId) {
-                $useCase->execute([
+                $decoratedUseCase = new AutoRetryUseCaseDecorator($useCase);
+                $decoratedUseCase->execute([
                     'tenantId'    => $tenantId,
                     'locationId'  => $validated['locationId'],
                     'kitSku'      => $validated['kitSku'],
@@ -197,7 +199,8 @@ class KitController
             $actorId  = $_SERVER['auth.user_id'] ?? 'system';
 
             Capsule::transaction(function () use ($useCase, $validated, $tenantId, $actorId) {
-                $useCase->execute([
+                $decoratedUseCase = new AutoRetryUseCaseDecorator($useCase);
+                $decoratedUseCase->execute([
                     'tenantId'    => $tenantId,
                     'locationId'  => $validated['locationId'],
                     'kitSku'      => $validated['kitSku'],

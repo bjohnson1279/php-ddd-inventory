@@ -38,6 +38,13 @@ final class DatabaseQueueTest extends TestCase
         DB::table('netsuite_journal_mappings')->delete();
         DB::table('journal_entries')->delete();
 
+        DB::table('tenants')->insertOrIgnore([
+            ['id' => 'test-tenant', 'name' => 'Test Tenant']
+        ]);
+        DB::table('locations')->insertOrIgnore([
+            ['id' => 'LOC-INT', 'name' => 'Integration Location', 'type' => 'TEST']
+        ]);
+
         ServiceContainer::resetDispatcher();
     }
 

@@ -23,7 +23,7 @@ final class AllocationsE2ETest extends TestCase
     {
         // Start built-in PHP development server in the background on port 8087
         $output = [];
-        $command = "DB_CONNECTION=sqlite DB_DATABASE=storage/data/test.sqlite php -S 127.0.0.1:8087 public/index.php > tests/Integration/Http/server_allocations.log 2>&1 & echo $!";
+        $command = "php -S 127.0.0.1:8087 public/index.php > tests/Integration/Http/server_allocations.log 2>&1 & echo $!";
         
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
@@ -52,7 +52,8 @@ final class AllocationsE2ETest extends TestCase
         Capsule::table('products')->delete();
         Capsule::table('user_roles')->delete();
         Capsule::table('users')->delete();
-        Capsule::table('tenants')->delete();
+        Capsule::table('tenants')->where('id', '!=', 'test-tenant')->delete();
+        \Illuminate\Database\Capsule\Manager::table('tenants')->insertOrIgnore([['id' => 'test-tenant', 'name' => 'Test Tenant']]);
 
         $suffix = bin2hex(random_bytes(4));
         $this->tenantId = 'tenant-' . $suffix;

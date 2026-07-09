@@ -21,7 +21,7 @@ final class ReportControllerTest extends TestCase
     public static function setUpBeforeClass(): void
     {
         $output = [];
-        $command = "DB_CONNECTION=sqlite DB_DATABASE=storage/data/test.sqlite php -S 127.0.0.1:8089 public/index.php > tests/Integration/Http/server_report.log 2>&1 & echo $!";
+        $command = "php -S 127.0.0.1:8089 public/index.php > tests/Integration/Http/server_report.log 2>&1 & echo $!";
         
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
@@ -48,8 +48,9 @@ final class ReportControllerTest extends TestCase
     {
         DB::table('users')->delete();
         DB::table('user_roles')->delete();
-        DB::table('tenants')->delete();
-        $suffix = bin2hex(random_bytes(4));
+        DB::table('tenants')->where('id', '!=', 'test-tenant')->delete();
+        \Illuminate\Database\Capsule\Manager::table('tenants')->insertOrIgnore([['id' => 'test-tenant', 'name' => 'Test Tenant']]);
+                $suffix = bin2hex(random_bytes(4));
         $this->tenantId = 'tenant-' . $suffix;
         $this->email = 'admin-' . $suffix . '@example.com';
         $this->password = 'SecurePassword123';

@@ -17,7 +17,8 @@ class EloquentReorderPolicyRepository implements ReorderPolicyRepositoryInterfac
             $model->location_id,
             $model->reorder_point,
             $model->reorder_quantity,
-            $model->safety_stock
+            $model->safety_stock,
+            (bool) $model->dynamic_rop_enabled
         );
     }
 
@@ -32,6 +33,16 @@ class EloquentReorderPolicyRepository implements ReorderPolicyRepositoryInterfac
         return $this->mapToDomain($model);
     }
 
+    public function findAllByLocation(string $locationId): array
+    {
+        $models = ReorderPolicyModel::where('location_id', $locationId)->get();
+        $results = [];
+        foreach ($models as $model) {
+            $results[] = $this->mapToDomain($model);
+        }
+        return $results;
+    }
+
     public function save(ReorderPolicy $policy): void
     {
         ReorderPolicyModel::updateOrCreate(
@@ -40,10 +51,11 @@ class EloquentReorderPolicyRepository implements ReorderPolicyRepositoryInterfac
                 'location_id' => $policy->locationId
             ],
             [
-                'id'               => $policy->id,
-                'reorder_point'    => $policy->reorderPoint,
-                'reorder_quantity' => $policy->reorderQuantity,
-                'safety_stock'     => $policy->safetyStock
+                'id'                  => $policy->id,
+                'reorder_point'       => $policy->reorderPoint,
+                'reorder_quantity'    => $policy->reorderQuantity,
+                'safety_stock'        => $policy->safetyStock,
+                'dynamic_rop_enabled' => $policy->dynamicRopEnabled ? 1 : 0
             ]
         );
     }

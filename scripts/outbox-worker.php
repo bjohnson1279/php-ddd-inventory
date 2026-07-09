@@ -29,7 +29,11 @@ do {
         $name = $event->eventName;
         $payloadStr = $event->payload;
 
-        echo "Processing Outbox Event ID: {$id} ({$name})...\n";
+        $payloadData = json_decode($payloadStr, true) ?: [];
+        $traceId = $payloadData['traceId'] ?? \InventoryApp\Infrastructure\Telemetry\TraceContext::generateTraceId();
+        \InventoryApp\Infrastructure\Telemetry\TraceContext::setTraceId($traceId);
+
+        echo "[Trace: {$traceId}] Processing Outbox Event ID: {$id} ({$name})...\n";
 
         try {
             // Reconcile and publish event to Kafka if configured
@@ -39,30 +43,29 @@ do {
                 $conf->set('metadata.broker.list', $kafkaUrl);
                 $producer = new \RdKafka\Producer($conf);
                 $topic = $producer->newTopic('inventory-events');
-
-                // Reconstruct payload structure
-                $payloadData = json_decode($payloadStr, true) ?: [];
+                
                 $tenantId = function_exists('tenantId') ? tenantId() : 'system';
                 
                 $kafkaPayload = [
                     'type' => $name,
                     'payload' => array_merge($payloadData, [
                         'occurredAt' => $event->occurredOn->format(\DateTimeInterface::ATOM),
-                        'tenantId' => $tenantId
+                        'tenantId' => $tenantId,
+                        'traceId' => $traceId
                     ])
                 ];
 
                 $topic->produce(RD_KAFKA_PARTITION_UA, 0, json_encode($kafkaPayload), $tenantId);
                 $producer->flush(500);
             } else {
-                echo "[Outbox Worker] Kafka not enabled or extension missing. Mocking external publish.\n";
+                echo "[Trace: {$traceId}] [Outbox Worker] Kafka not enabled or extension missing. Mocking external publish.\n";
             }
 
             // Mark processed
             $repo->markProcessed($id);
-            echo "Outbox Event {$id} processed successfully.\n";
+            echo "[Trace: {$traceId}] Outbox Event {$id} processed successfully.\n";
         } catch (\Throwable $e) {
-            echo "Outbox Event {$id} failed: " . $e->getMessage() . "\n";
+            echo "[Trace: {$traceId}] Outbox Event {$id} failed: " . $e->getMessage() . "\n";
             $repo->markFailed($id, $e->getMessage());
         }
     }

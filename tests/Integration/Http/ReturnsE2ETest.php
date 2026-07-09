@@ -50,8 +50,9 @@ final class ReturnsE2ETest extends TestCase
         // Generate unique tenant details for each test run to ensure isolation
         Capsule::table('users')->delete();
         Capsule::table('user_roles')->delete();
-        Capsule::table('tenants')->delete();
-        $suffix = bin2hex(random_bytes(4));
+        Capsule::table('tenants')->where('id', '!=', 'test-tenant')->delete();
+        \Illuminate\Database\Capsule\Manager::table('tenants')->insertOrIgnore([['id' => 'test-tenant', 'name' => 'Test Tenant']]);
+                $suffix = bin2hex(random_bytes(4));
         $this->tenantId = 'tenant-' . $suffix;
         $this->email = 'admin-' . $suffix . '@example.com';
         $this->password = 'SecurePassword123';
@@ -81,9 +82,6 @@ final class ReturnsE2ETest extends TestCase
 
     public function testReturnsRbacPermissions(): void
     {
-        // // Capsule::table('users')->delete();
-        // // Capsule::table('user_roles')->delete();
-        // // Capsule::table('tenants')->delete();
         $suffix = bin2hex(random_bytes(4));
         // 1. Invite new user
         $inviteRes = $this->request('POST', '/api/users', [
@@ -138,9 +136,6 @@ final class ReturnsE2ETest extends TestCase
 
     public function testCompleteReturnsAndQuarantineLifecycle(): void
     {
-        // // Capsule::table('users')->delete();
-        // // Capsule::table('user_roles')->delete();
-        // // Capsule::table('tenants')->delete();
         $suffix = bin2hex(random_bytes(4));
         $varX = uuidv4();
         $varY = uuidv4();
@@ -154,7 +149,6 @@ final class ReturnsE2ETest extends TestCase
         ]);
 
         // Seed products and product locations
-        Capsule::table('tenants')->insertOrIgnore(['id' => $this->tenantId, 'name' => 'Test Tenant']);
         Capsule::table('products')->insert([
             [
                 'id' => $varX,

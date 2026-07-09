@@ -38,11 +38,12 @@ class ReportController
             $reportData['recent_activity'] = $this->getRecentActivity($tenantId);
 
             return new Response($reportData, 200);
-        } catch (\InvalidArgumentException | \ValidationException $e) {
-            return new Response(['error' => $e->getMessage()], 400);
         } catch (Exception $e) {
-            error_log('[ReportController] ' . $e->getMessage());
-            return new Response(['error' => 'An internal server error occurred.'], 500);
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[ReportController] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
+            return new Response(['error' => $e->getMessage()], 400);
         }
     }
 

@@ -113,14 +113,14 @@
           <form id="orgForm" class="form-stack" novalidate>
             <div class="field-group">
               <label for="orgName">Store / Business Name <span class="required">*</span></label>
-              <input id="orgName" type="text" placeholder="e.g. Riverside Apparel Co." autocomplete="organization" />
-              <div class="field-error" id="orgName-err"></div>
+              <input id="orgName" type="text" placeholder="e.g. Riverside Apparel Co." autocomplete="organization" required aria-required="true" aria-describedby="orgName-err" />
+              <div class="field-error" role="alert" id="orgName-err"></div>
             </div>
             <div class="field-group">
               <label for="orgId">Tenant ID <span class="required">*</span></label>
-              <input id="orgId" type="text" placeholder="e.g. riverside-apparel" autocomplete="off" />
-              <div class="field-hint">Lowercase letters, numbers, and hyphens only. Used internally.</div>
-              <div class="field-error" id="orgId-err"></div>
+              <input id="orgId" type="text" placeholder="e.g. riverside-apparel" autocomplete="off" required aria-required="true" aria-describedby="orgId-hint orgId-err" />
+              <div class="field-hint" id="orgId-hint">Lowercase letters, numbers, and hyphens only. Used internally.</div>
+              <div class="field-error" role="alert" id="orgId-err"></div>
             </div>
             <div class="field-group">
               <label for="industry">Industry</label>
@@ -154,32 +154,32 @@
             <div class="field-row">
               <div class="field-group">
                 <label for="adminName">Full Name <span class="required">*</span></label>
-                <input id="adminName" type="text" placeholder="Jane Smith" autocomplete="name" />
-                <div class="field-error" id="adminName-err"></div>
+                <input id="adminName" type="text" placeholder="Jane Smith" autocomplete="name" required aria-required="true" aria-describedby="adminName-err" />
+                <div class="field-error" role="alert" id="adminName-err"></div>
               </div>
               <div class="field-group">
                 <label for="adminEmail">Email Address <span class="required">*</span></label>
-                <input id="adminEmail" type="email" placeholder="jane@yourstore.com" autocomplete="email" />
-                <div class="field-error" id="adminEmail-err"></div>
+                <input id="adminEmail" type="email" placeholder="jane@yourstore.com" autocomplete="email" required aria-required="true" aria-describedby="adminEmail-err" />
+                <div class="field-error" role="alert" id="adminEmail-err"></div>
               </div>
             </div>
             <div class="field-row">
               <div class="field-group">
                 <label for="adminPass">Password <span class="required">*</span></label>
                 <div class="input-wrap">
-                  <input id="adminPass" type="password" placeholder="Min 8 characters" autocomplete="new-password" oninput="checkStrength(this.value)" />
+                  <input id="adminPass" type="password" placeholder="Min 8 characters" autocomplete="new-password" oninput="checkStrength(this.value)" required aria-required="true" aria-describedby="adminPass-err" />
                   <button type="button" class="toggle-pass" aria-label="Show or hide password" onclick="togglePass('adminPass')">👁</button>
                 </div>
                 <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
-                <div class="field-error" id="adminPass-err"></div>
+                <div class="field-error" role="alert" id="adminPass-err"></div>
               </div>
               <div class="field-group">
                 <label for="adminPassConf">Confirm Password <span class="required">*</span></label>
                 <div class="input-wrap">
-                  <input id="adminPassConf" type="password" placeholder="Repeat password" autocomplete="new-password" />
+                  <input id="adminPassConf" type="password" placeholder="Repeat password" autocomplete="new-password" required aria-required="true" aria-describedby="adminPassConf-err" />
                   <button type="button" class="toggle-pass" aria-label="Show or hide confirm password" onclick="togglePass('adminPassConf')">👁</button>
                 </div>
-                <div class="field-error" id="adminPassConf-err"></div>
+                <div class="field-error" role="alert" id="adminPassConf-err"></div>
               </div>
             </div>
             <div class="btn-row">
@@ -277,7 +277,7 @@
       </section>
 
       <!-- API error toast -->
-      <div class="toast" id="toast"></div>
+      <div class="toast" role="alert" id="toast"></div>
     </main>
   </div>
 

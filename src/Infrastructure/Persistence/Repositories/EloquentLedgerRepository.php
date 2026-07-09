@@ -41,6 +41,28 @@ class EloquentLedgerRepository implements LedgerRepositoryInterface
             ->sum('quantity');
     }
 
+    public function currentQuantities(array $variantIds): array
+    {
+        if (empty($variantIds)) {
+            return [];
+        }
+
+        $results = LedgerEntryModel::where('tenant_id', $this->tenantId)
+            ->whereIn('variant_id', $variantIds)
+            ->groupBy('variant_id')
+            ->selectRaw('variant_id, SUM(quantity) as total')
+            ->get();
+
+        $map = [];
+        foreach ($variantIds as $vId) {
+            $map[$vId] = 0;
+        }
+        foreach ($results as $row) {
+            $map[$row->variant_id] = (int) $row->total;
+        }
+        return $map;
+    }
+
     /** @return LedgerEntry[] */
     public function entriesFor(string $variantId, ?string $locationId = null): array
     {

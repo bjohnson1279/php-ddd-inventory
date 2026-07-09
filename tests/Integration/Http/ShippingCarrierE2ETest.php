@@ -178,6 +178,85 @@ final class ShippingCarrierE2ETest extends TestCase
         $this->assertEquals('ShipmentStatusUpdatedEvent', $outboxEvents[1]->event_name);
     }
 
+    public function testShouldCalculateRoutingPlan(): void
+    {
+        $sku = 'ROUTE-SKU-1';
+
+        // Seed product
+        Capsule::table('products')->insert([
+            'id' => uuidv4(),
+            'tenant_id' => $this->tenantId,
+            'sku' => $sku,
+            'name' => 'Route Test Product',
+            'department' => 'Logistics',
+            'reorder_threshold' => 10,
+            'version_id' => 1
+        ]);
+
+        // Receive stock:
+        // WH-EAST: 5 units
+        $this->request('POST', '/api/inventory/receive', [
+            'sku'         => $sku,
+            'quantity'    => 5,
+            'location_id' => 'WH-EAST'
+        ], $this->token);
+
+        // WH-WEST: 5 units
+        $this->request('POST', '/api/inventory/receive', [
+            'sku'         => $sku,
+            'quantity'    => 5,
+            'location_id' => 'WH-WEST'
+        ], $this->token);
+
+        // WH-CENTRAL: 10 units
+        $this->request('POST', '/api/inventory/receive', [
+            'sku'         => $sku,
+            'quantity'    => 10,
+            'location_id' => 'WH-CENTRAL'
+        ], $this->token);
+
+        // Route with MINIMIZE_SPLITS for quantity 8 (should select WH-CENTRAL, splitCount = 0)
+        $resSplits = $this->request('POST', '/api/shipping/route', [
+            'sku' => $sku,
+            'quantity' => 8,
+            'destinationAddress' => 'New York, NY 10001',
+            'strategyName' => 'MINIMIZE_SPLITS'
+        ], $this->token);
+
+        $this->assertEquals(200, $resSplits['status'], json_encode($resSplits));
+        $this->assertEquals(0, $resSplits['body']['splitCount']);
+        $this->assertCount(1, $resSplits['body']['allocations']);
+        $this->assertEquals('WH-CENTRAL', $resSplits['body']['allocations'][0]['locationId']);
+        $this->assertEquals(8, $resSplits['body']['allocations'][0]['quantity']);
+
+        // Route with MINIMIZE_COST for quantity 12 (should split: EAST 5, CENTRAL 7)
+        $resCost = $this->request('POST', '/api/shipping/route', [
+            'sku' => $sku,
+            'quantity' => 12,
+            'destinationAddress' => 'New York, NY 10001',
+            'strategyName' => 'MINIMIZE_COST'
+        ], $this->token);
+
+        $this->assertEquals(200, $resCost['status'], json_encode($resCost));
+        $this->assertEquals(1, $resCost['body']['splitCount']);
+        $this->assertCount(2, $resCost['body']['allocations']);
+
+        $eastAlloc = null;
+        $centralAlloc = null;
+        foreach ($resCost['body']['allocations'] as $alloc) {
+            if ($alloc['locationId'] === 'WH-EAST') {
+                $eastAlloc = $alloc;
+            } elseif ($alloc['locationId'] === 'WH-CENTRAL') {
+                $centralAlloc = $alloc;
+            }
+        }
+
+        $this->assertNotNull($eastAlloc);
+        $this->assertEquals(5, $eastAlloc['quantity']);
+        $this->assertNotNull($centralAlloc);
+        $this->assertEquals(7, $centralAlloc['quantity']);
+    }
+
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
     {
         $url = 'http://127.0.0.1:8092' . $path;

@@ -7,6 +7,7 @@ use InventoryApp\Infrastructure\Http\RequestInterface;
 use InventoryApp\Application\Shipping\UseCases\CalculateShippingRates;
 use InventoryApp\Application\Shipping\UseCases\PurchaseShippingLabel;
 use InventoryApp\Application\Shipping\UseCases\UpdateShipmentStatus;
+use InventoryApp\Application\Shipping\UseCases\RouteOrder;
 use InventoryApp\Domain\Shipping\Repositories\ShipmentRepositoryInterface;
 use InventoryApp\Domain\Shipping\Enums\ShipmentStatus;
 use Exception;
@@ -125,6 +126,45 @@ class ShippingController
             if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
                 error_log('[ShippingController.php] ' . $e->getMessage());
                 return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
+            $type = (new \ReflectionClass($e))->getShortName();
+            return new Response(['error' => $e->getMessage(), 'type' => $type], 400);
+        }
+     }
+
+    public function routeOrder(RequestInterface $request, RouteOrder $useCase)
+    {
+        try {
+            $body = json_decode(file_get_contents('php://input'), true) ?: [];
+
+            $sku = $body['sku'] ?? null;
+            $quantityVal = $body['quantity'] ?? null;
+            $quantity = $quantityVal !== null ? (int)$quantityVal : null;
+            $destinationAddress = $body['destinationAddress'] ?? null;
+            $strategyName = $body['strategyName'] ?? null;
+
+            if (empty($sku) || $quantity === null || empty($destinationAddress)) {
+                return new Response(['error' => 'Missing required body fields: sku, quantity, and destinationAddress.'], 400);
+            }
+
+            $plan = $useCase->execute($sku, $quantity, $destinationAddress, $strategyName);
+
+            $allocations = array_map(fn($a) => [
+                'locationId' => $a->locationId,
+                'quantity' => $a->quantity
+            ], $plan->allocations);
+
+            return new Response([
+                'allocations' => $allocations,
+                'estimatedShippingCostCents' => $plan->estimatedShippingCostCents,
+                'totalDistanceKm' => $plan->totalDistanceKm,
+                'splitCount' => $plan->splitCount,
+                'score' => $plan->score
+            ], 200);
+        } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[ShippingController.php] ' . $e->getMessage());
+                return new Response(['error' => 'Failed to route order: ' . $e->getMessage()], 500);
             }
             $type = (new \ReflectionClass($e))->getShortName();
             return new Response(['error' => $e->getMessage(), 'type' => $type], 400);

@@ -1626,6 +1626,26 @@ if ($method === 'POST' && preg_match('#^/api/shipping/shipments/([^/]+)/track$#'
     exit;
 }
 
+// Route: POST /api/shipping/route
+if ($method === 'POST' && $uri === '/api/shipping/route') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:read')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden: You do not have permission to route orders.']);
+        exit;
+    }
+    $useCase = new \InventoryApp\Application\Shipping\UseCases\RouteOrder(
+        ServiceContainer::productRepo(tenantId()),
+        ServiceContainer::carrierService()
+    );
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ShippingController())->routeOrder($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
 // ── Outbox ──────────────────────────────────────────────────────────────────────
 // Route: GET /api/outbox/stats
 if ($method === 'GET' && $uri === '/api/outbox/stats') {

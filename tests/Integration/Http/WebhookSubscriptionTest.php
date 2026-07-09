@@ -153,7 +153,6 @@ final class WebhookSubscriptionTest extends TestCase
 
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
     {
-        echo "REQUEST: {$method} {$path} (token prefix: " . substr((string)$token, 0, 8) . ")\n";
         $url = 'http://127.0.0.1:8093' . $path;
         $options = [
             'http' => [

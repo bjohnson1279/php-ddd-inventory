@@ -41,3 +41,6 @@
 ## 2024-07-07 - Pre-fetch Mapped Journal Entries to Avoid N+1 DB Queries
 **Learning:** Checking for mapping existence in the `AuditProcessorService` inside a `foreach` loop results in $4N$ database queries, severely impacting audit performance for large datasets.
 **Action:** Optimize by plucking journal IDs before the loop and batch fetching existing mappings and discrepancies using `whereIn` queries. In-memory checks via `in_array` avoid looping over DB interactions, returning the operations to $O(1)$ complexity.
+## 2026-07-09 - Prevent N+1 queries in webhook event handlers
+**Learning:** When a webhook processes a batch of operations, domain events might be dispatched individually. If listeners like `SyncStockToShopify` make database queries for mappings per event, it leads to N+1 queries.
+**Action:** Always wrap batched event dispatch loops with the corresponding listener's batching mechanism (like `beginBatch` and `endBatch`) to preload data and avoid N+1 queries.

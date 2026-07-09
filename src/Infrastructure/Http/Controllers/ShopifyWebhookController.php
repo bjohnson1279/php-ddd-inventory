@@ -141,14 +141,19 @@ class ShopifyWebhookController
         if (!empty($productsToSave)) {
             $productRepo->saveAll(array_values($productsToSave));
 
-            foreach ($productsToSave as $product) {
-                foreach ($product->releaseEvents() as $event) {
-                    $eventsToDispatch[] = $event;
+            \InventoryApp\Application\Inventory\Listeners\SyncStockToShopify::beginBatch(array_values($productsToSave));
+            try {
+                foreach ($productsToSave as $product) {
+                    foreach ($product->releaseEvents() as $event) {
+                        $eventsToDispatch[] = $event;
+                    }
                 }
-            }
 
-            foreach ($eventsToDispatch as $event) {
-                $dispatcher->dispatch($event);
+                foreach ($eventsToDispatch as $event) {
+                    $dispatcher->dispatch($event);
+                }
+            } finally {
+                \InventoryApp\Application\Inventory\Listeners\SyncStockToShopify::endBatch();
             }
         }
     }

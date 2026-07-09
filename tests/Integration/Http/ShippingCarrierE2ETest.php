@@ -189,9 +189,9 @@ final class ShippingCarrierE2ETest extends TestCase
 
         // Seed locations
         Capsule::table('locations')->insertOrIgnore([
-            ['id' => 'WH-EAST', 'name' => 'Eastern Warehouse', 'type' => 'WAREHOUSE'],
-            ['id' => 'WH-WEST', 'name' => 'Western Warehouse', 'type' => 'WAREHOUSE'],
-            ['id' => 'WH-CENTRAL', 'name' => 'Central Warehouse', 'type' => 'WAREHOUSE']
+            ['id' => 'LOC-EAST', 'name' => 'Eastern Warehouse', 'type' => 'WAREHOUSE'],
+            ['id' => 'LOC-WEST', 'name' => 'Western Warehouse', 'type' => 'WAREHOUSE'],
+            ['id' => 'LOC-CENTRAL', 'name' => 'Central Warehouse', 'type' => 'WAREHOUSE']
         ]);
 
         // Seed product
@@ -207,25 +207,28 @@ final class ShippingCarrierE2ETest extends TestCase
 
         // Receive stock:
         // WH-EAST: 5 units
-        $this->request('POST', '/api/inventory/receive', [
+        $resEast = $this->request('POST', '/api/inventory/receive', [
             'sku'         => $sku,
             'quantity'    => 5,
-            'location_id' => 'WH-EAST'
+            'location_id' => 'LOC-EAST'
         ], $this->token);
+        $this->assertEquals(200, $resEast['status'], json_encode($resEast));
 
         // WH-WEST: 5 units
-        $this->request('POST', '/api/inventory/receive', [
+        $resWest = $this->request('POST', '/api/inventory/receive', [
             'sku'         => $sku,
             'quantity'    => 5,
-            'location_id' => 'WH-WEST'
+            'location_id' => 'LOC-WEST'
         ], $this->token);
+        $this->assertEquals(200, $resWest['status'], json_encode($resWest));
 
         // WH-CENTRAL: 10 units
-        $this->request('POST', '/api/inventory/receive', [
+        $resCentral = $this->request('POST', '/api/inventory/receive', [
             'sku'         => $sku,
             'quantity'    => 10,
-            'location_id' => 'WH-CENTRAL'
+            'location_id' => 'LOC-CENTRAL'
         ], $this->token);
+        $this->assertEquals(200, $resCentral['status'], json_encode($resCentral));
 
         // Route with MINIMIZE_SPLITS for quantity 8 (should select WH-CENTRAL, splitCount = 0)
         $resSplits = $this->request('POST', '/api/shipping/route', [
@@ -238,7 +241,7 @@ final class ShippingCarrierE2ETest extends TestCase
         $this->assertEquals(200, $resSplits['status'], json_encode($resSplits));
         $this->assertEquals(0, $resSplits['body']['splitCount']);
         $this->assertCount(1, $resSplits['body']['allocations']);
-        $this->assertEquals('WH-CENTRAL', $resSplits['body']['allocations'][0]['locationId']);
+        $this->assertEquals('LOC-CENTRAL', $resSplits['body']['allocations'][0]['locationId']);
         $this->assertEquals(8, $resSplits['body']['allocations'][0]['quantity']);
 
         // Route with MINIMIZE_COST for quantity 12 (should split: EAST 5, CENTRAL 7)
@@ -256,9 +259,9 @@ final class ShippingCarrierE2ETest extends TestCase
         $eastAlloc = null;
         $centralAlloc = null;
         foreach ($resCost['body']['allocations'] as $alloc) {
-            if ($alloc['locationId'] === 'WH-EAST') {
+            if ($alloc['locationId'] === 'LOC-EAST') {
                 $eastAlloc = $alloc;
-            } elseif ($alloc['locationId'] === 'WH-CENTRAL') {
+            } elseif ($alloc['locationId'] === 'LOC-CENTRAL') {
                 $centralAlloc = $alloc;
             }
         }

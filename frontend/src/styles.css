@@ -976,3 +976,8 @@ button:disabled, .btn-primary:disabled, .btn-secondary:disabled {
   cursor: not-allowed;
 }
 
+
+.form-group:has(:required) > label::after {
+  content: " *";
+  color: #f87171;
+}

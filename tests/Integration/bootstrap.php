@@ -12,7 +12,7 @@ $driver = getenv('DB_CONNECTION') ?: 'pgsql';
 $capsule = new Capsule;
 
 if ($driver === 'sqlite') {
-    $dbPath = getenv('DB_DATABASE') ?: ':memory:';
+    $dbPath = getenv('DB_DATABASE') ?: 'storage/data/test.sqlite';
     if ($dbPath !== ':memory:' && !str_starts_with($dbPath, '/') && !str_contains($dbPath, ':')) {
         $dbPath = __DIR__ . '/../../' . $dbPath;
     }
@@ -131,7 +131,6 @@ if ($driver === 'sqlite') {
         'journal_entries', 
         'api_tokens', 
         'users', 
-        'tenants',
         'shopify_location_mappings',
         'shopify_sku_mappings',
         'shopify_sync_failures',
@@ -159,6 +158,8 @@ if ($driver === 'sqlite') {
     foreach ($tables as $t) {
         $connection->statement("DELETE FROM {$t}");
     }
+
+    $connection->table('tenants')->where('id', '!=', 'test-tenant')->delete();
 } else {
     $connection->statement('TRUNCATE TABLE
         inventory_transactions, 
@@ -174,7 +175,6 @@ if ($driver === 'sqlite') {
         journal_entries, 
         api_tokens, 
         users, 
-        tenants,
         shopify_location_mappings,
         shopify_sku_mappings,
         shopify_sync_failures,
@@ -198,6 +198,9 @@ if ($driver === 'sqlite') {
         shipments,
         outbox_events
     RESTART IDENTITY CASCADE');
+
+    // Wipe all tenants except test-tenant
+    $connection->table('tenants')->where('id', '!=', 'test-tenant')->delete();
 }
 
 // Ensure standard locations exist
@@ -206,9 +209,11 @@ $connection->table('locations')->insertOrIgnore([
 ]);
 
 // Ensure standard test tenant exists
-$connection->table('tenants')->insertOrIgnore([
-    ['id' => 'test-tenant', 'name' => 'Test Tenant']
-]);
+$connection->table('tenants')->upsert(
+    [['id' => 'test-tenant', 'name' => 'Test Tenant']],
+    ['id'],
+    ['name']
+);
 
 // Ensure standard roles exist
 $connection->table('roles')->insertOrIgnore([

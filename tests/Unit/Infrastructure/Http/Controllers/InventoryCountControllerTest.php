@@ -63,7 +63,7 @@ class InventoryCountControllerTest extends TestCase
     public function testControllerReturns400OnException(): void
     {
         $useCase = $this->createMock(CompleteInventoryCount::class);
-        $useCase->method('execute')->willThrowException(new Exception('Kaboom'));
+        $useCase->method('execute')->willThrowException(new \DomainException('Kaboom'));
 
         $response = $this->controller->complete('c-1', $useCase);
 

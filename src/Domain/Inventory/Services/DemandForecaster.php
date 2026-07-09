@@ -22,9 +22,9 @@ class DemandForecaster
         private readonly DemandForecastRepositoryInterface $demandForecastRepo
     ) {}
 
-    public function calculateSalesVelocity(SKU $sku, LocationId $locationId): array
+    public function calculateSalesVelocity(SKU $sku, LocationId $locationId, ?\InventoryApp\Domain\Inventory\Entities\Product $preFetchedProduct = null): array
     {
-        $product = $this->productRepo->findBySku($sku);
+        $product = $preFetchedProduct ?? $this->productRepo->findBySku($sku);
         if (!$product) {
             throw new \Exception("Product not found for SKU: " . $sku->getValue());
         }
@@ -133,6 +133,11 @@ class DemandForecaster
 
         $products = $this->productRepo->findBySkus($skuObjects);
         $forecasts = $this->demandForecastRepo->findAllForLocation($locationId);
+        $policies = $this->replenishmentRuleRepo->findAllByLocation($locationId->getValue());
+        $policyMap = [];
+        foreach ($policies as $p) {
+            $policyMap[$p->sku->getValue()] = $p;
+        }
 
         // Batched lookups to prevent N+1
         $allEntries = $this->ledgerRepo->entriesForSkusAndLocation($skuStrings, $locationId->getValue());

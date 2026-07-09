@@ -74,7 +74,7 @@ export default function ValuationDashboard() {
   if (loading) {
     return (
       <div className="empty-state-text" style={{ padding: '5rem 0' }}>
-        <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔄</div>
+        <div style={{ fontSize: '2rem', marginBottom: '1rem' }}><Spinner /></div>
         <p style={{ color: '#9ca3af' }}>Calculating inventory valuation layers...</p>
       </div>
     );
@@ -136,7 +136,7 @@ export default function ValuationDashboard() {
             disabled={refreshing}
             aria-busy={refreshing}
           >
-            {refreshing ? <Spinner /> : <span aria-hidden="true">🔄</span>}
+            {refreshing ? <Spinner /> : <span aria-hidden="true"></span>}
             {refreshing ? 'Re-valuing...' : 'Recalculate'}
           </button>
         </div>

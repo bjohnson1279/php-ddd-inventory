@@ -187,6 +187,13 @@ final class ShippingCarrierE2ETest extends TestCase
     {
         $sku = 'ROUTE-SKU-1';
 
+        // Seed locations
+        Capsule::table('locations')->insertOrIgnore([
+            ['id' => 'WH-EAST', 'name' => 'Eastern Warehouse', 'type' => 'WAREHOUSE'],
+            ['id' => 'WH-WEST', 'name' => 'Western Warehouse', 'type' => 'WAREHOUSE'],
+            ['id' => 'WH-CENTRAL', 'name' => 'Central Warehouse', 'type' => 'WAREHOUSE']
+        ]);
+
         // Seed product
         Capsule::table('products')->insert([
             'id' => uuidv4(),

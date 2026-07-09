@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/client';
+import Spinner from '../components/Spinner';
 
 type Unit = {
   name: string;
@@ -27,6 +28,10 @@ export default function Uom() {
   const [variantId, setVariantId] = useState('');
   const [config, setConfig] = useState<UomConfig | null>(null);
   const [searchMsg, setSearchMsg] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isSettingUnits, setIsSettingUnits] = useState(false);
+  const [isAddingRule, setIsAddingRule] = useState(false);
 
   // Create Config Form
   const [createVariantId, setCreateVariantId] = useState('');
@@ -49,7 +54,7 @@ export default function Uom() {
   const [unitMsg, setUnitMsg] = useState('');
 
   const fetchConfig = async (vId: string) => {
-    setSearchMsg('Searching...');
+    setSearchMsg('');
     setConfig(null);
     try {
       const res = await api.get(`/uom/configurations/variants/${vId}`);
@@ -64,15 +69,18 @@ export default function Uom() {
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!variantId) return;
-    fetchConfig(variantId);
+    setIsSearching(true);
+    await fetchConfig(variantId);
+    setIsSearching(false);
   };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    setCreateMsg('Creating configuration...');
+    setCreateMsg('');
+    setIsCreating(true);
     try {
       const res = await api.post('/uom/configurations', {
         variant_id: createVariantId,
@@ -88,13 +96,16 @@ export default function Uom() {
       setCreateVariantId('');
     } catch (err: any) {
       setCreateMsg(err.message || 'Failed to create configuration');
+    } finally {
+      setIsCreating(false);
     }
   };
 
   const handleAddRule = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!config) return;
-    setRuleMsg('Adding rule...');
+    setRuleMsg('');
+    setIsAddingRule(true);
     try {
       await api.post(`/uom/configurations/${config.id}/rules`, {
         unit: {
@@ -110,6 +121,8 @@ export default function Uom() {
       fetchConfig(config.variant_id);
     } catch (err: any) {
       setRuleMsg(err.message || 'Failed to add rule');
+    } finally {
+      setIsAddingRule(false);
     }
   };
 
@@ -159,7 +172,8 @@ export default function Uom() {
   const handleSetUnits = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!config) return;
-    setUnitMsg('Setting workflow units...');
+    setUnitMsg('');
+    setIsSettingUnits(true);
     try {
       // Find units based on indexes (-1 means base unit, otherwise index of rules)
       const pIdx = parseInt(purchaseUnitIndex);
@@ -176,6 +190,8 @@ export default function Uom() {
       fetchConfig(config.variant_id);
     } catch (err: any) {
       setUnitMsg(err.message || 'Failed to update workflow units');
+    } finally {
+      setIsSettingUnits(false);
     }
   };
 
@@ -194,7 +210,9 @@ export default function Uom() {
                 <label htmlFor="variantId">Variant ID (UUID)</label>
                 <input id="variantId" value={variantId} onChange={e => setVariantId(e.target.value)} placeholder="Variant UUID..." required />
               </div>
-              <button type="submit" className="btn-primary">Load</button>
+              <button type="submit" className="btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isSearching} aria-busy={isSearching}>
+                {isSearching && <Spinner />} {isSearching ? 'Loading...' : 'Load'}
+              </button>
             </form>
             <p style={{ color: '#f87171' }}>{searchMsg}</p>
           </div>
@@ -225,7 +243,9 @@ export default function Uom() {
                   </select>
                 </div>
               </div>
-              <button type="submit" className="btn-primary" style={{ width: '100%' }}>Create Configuration</button>
+              <button type="submit" className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isCreating} aria-busy={isCreating}>
+                {isCreating && <Spinner />} {isCreating ? 'Creating...' : 'Create Configuration'}
+              </button>
             </form>
             <p style={{ color: createMsg.includes('established') ? '#34d399' : '#f87171' }}>{createMsg}</p>
           </div>
@@ -278,7 +298,9 @@ export default function Uom() {
                       ))}
                     </select>
                   </div>
-                  <button type="submit" className="btn-primary" style={{ width: '100%' }}>Update Workflow Units</button>
+                  <button type="submit" className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isSettingUnits} aria-busy={isSettingUnits}>
+                    {isSettingUnits && <Spinner />} {isSettingUnits ? 'Updating...' : 'Update Workflow Units'}
+                  </button>
                 </form>
                 <p style={{ color: unitMsg.includes('failed') || unitMsg.includes('Error') ? '#f87171' : '#34d399' }}>{unitMsg}</p>
               </div>
@@ -315,7 +337,9 @@ export default function Uom() {
                       <input id="ruleLabel" value={ruleLabel} onChange={e => setRuleLabel(e.target.value)} placeholder="e.g. Case of 24" />
                     </div>
                   </div>
-                  <button type="submit" className="btn-primary" style={{ width: '100%' }}>Add Conversion Rule</button>
+                  <button type="submit" className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={isAddingRule} aria-busy={isAddingRule}>
+                  {isAddingRule && <Spinner />} {isAddingRule ? 'Adding...' : 'Add Conversion Rule'}
+                </button>
                 </form>
                 <p style={{ color: ruleMsg.includes('added') ? '#34d399' : '#f87171' }}>{ruleMsg}</p>
               </div>

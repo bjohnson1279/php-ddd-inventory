@@ -153,6 +153,8 @@ $dispatcher->subscribe(\InventoryApp\Domain\Inventory\Events\OpeningBalancePoste
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $uri    = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 
+\InventoryApp\Infrastructure\Http\Middleware\TraceMiddleware::handle();
+
 header('Content-Type: application/json');
 
 // ── Request adapter ───────────────────────────────────────────────────────────
@@ -2130,6 +2132,23 @@ if ($method === 'POST' && $uri === '/api/reorder-policies') {
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReorderPolicyController())
         ->createOrUpdate($request, ServiceContainer::reorderPolicyRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/reorder-policies/evaluate ───────────────────────────────
+if ($method === 'POST' && $uri === '/api/reorder-policies/evaluate') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReorderPolicyController())
+        ->evaluate($request, ServiceContainer::reorderPolicyRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;

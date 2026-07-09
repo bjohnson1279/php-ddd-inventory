@@ -32,7 +32,9 @@ class EloquentPurchaseOrderRepository implements PurchaseOrderRepositoryInterfac
             $model->tenant_id,
             $model->location_id,
             PurchaseOrderStatus::from($model->status),
-            $items
+            $items,
+            $model->created_at,
+            $model->updated_at
         );
     }
 

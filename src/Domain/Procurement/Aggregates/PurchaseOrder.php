@@ -19,7 +19,9 @@ class PurchaseOrder extends AggregateRoot
         public readonly string $tenantId,
         public readonly string $locationId,
         PurchaseOrderStatus $status = PurchaseOrderStatus::Draft,
-        array $items = []
+        array $items = [],
+        public readonly ?\DateTimeInterface $createdAt = null,
+        public readonly ?\DateTimeInterface $updatedAt = null
     ) {
         $this->status = $status;
         $this->items = $items;

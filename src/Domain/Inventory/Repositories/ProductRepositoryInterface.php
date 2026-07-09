@@ -17,6 +17,12 @@ interface ProductRepositoryInterface
      */
     public function findBySkus(array $skus): array;
 
+    /**
+     * @param string[] $ids
+     * @return array<string, Product> Array of products indexed by ID
+     */
+    public function findByIds(array $ids): array;
+
     public function save(Product $product): void;
     
     /**

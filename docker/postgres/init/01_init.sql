@@ -94,6 +94,7 @@ CREATE TABLE IF NOT EXISTS reorder_policies (
   reorder_point INTEGER NOT NULL,
   reorder_quantity INTEGER NOT NULL,
   safety_stock INTEGER NOT NULL,
+  dynamic_rop_enabled BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   UNIQUE(sku, location_id)

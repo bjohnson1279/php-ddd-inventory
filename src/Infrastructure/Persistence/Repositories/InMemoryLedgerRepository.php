@@ -54,6 +54,22 @@ class InMemoryLedgerRepository implements LedgerRepositoryInterface
         return $sum;
     }
 
+    public function currentQuantities(array $variantIds): array
+    {
+        $rows = $this->read();
+        $map = [];
+        foreach ($variantIds as $vId) {
+            $map[$vId] = 0;
+        }
+        foreach ($rows as $r) {
+            $vId = $r['variantId'];
+            if (isset($map[$vId])) {
+                $map[$vId] += (int) $r['quantity'];
+            }
+        }
+        return $map;
+    }
+
     public function entriesFor(string $variantId, ?string $locationId = null): array
     {
         $rows = $this->read();

@@ -34,3 +34,8 @@
 ## 2026-05-30 - Standardizing Loading Spinners
 **Learning:** Using inline text emojis (like 🔄) and attaching a spin CSS class to indicate a loading state is inaccessible for screen readers. Using the standard `<Spinner />` component with `aria-busy` and visually hiding purely decorative elements provides a much more accessible and consistent user experience.
 **Action:** Replace ad-hoc emoji spinners with the standard `<Spinner />` component across the application and ensure appropriate `aria-busy` attributes are set on parent interactive elements.
+
+## 2024-07-07 - Dynamic form feedback using role=alert
+**Learning:** Dynamic form feedback requires role="alert" attribute on its container element to notify screen readers of any changes.
+**Action:** Add role="alert" attribute on field error element containers and toast error notification element.
+

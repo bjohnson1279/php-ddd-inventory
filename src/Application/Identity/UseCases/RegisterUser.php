@@ -28,6 +28,10 @@ class RegisterUser
             if (!$actor || !$actor->canDo('users:manage')) {
                 throw new Exception("Unauthorized: you do not have permission to manage users.");
             }
+
+            if ($actor->getTenantId()->getValue() !== $tenantIdValue) {
+                throw new Exception("Unauthorized: you cannot manage users in a different organization.");
+            }
         }
 
         $tenantId = new TenantId($tenantIdValue);

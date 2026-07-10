@@ -119,6 +119,12 @@ class DisassembleKit
         $scaleFactor = $totalEstimatedComponentsCost > 0 ? $totalDisassembledCost / $totalEstimatedComponentsCost : 0;
 
         // 8. Restore component variants stock and costing layers
+        $componentIds = array_column($componentAvgCosts, 'variantId');
+        $compProducts = $this->productRepository->findByIds($componentIds);
+
+        $layersToSave = [];
+        $productsToSave = [];
+
         foreach ($componentAvgCosts as $item) {
             $allocatedUnitCost = $scaleFactor > 0 ? (int) round($item['avgUnitCost'] * $scaleFactor) : 0;
 
@@ -132,15 +138,15 @@ class DisassembleKit
                 receivedAt: new \DateTimeImmutable(),
                 purchaseOrderId: $referenceId
             );
-            $this->costLayerRepository->save($layer);
+            $layersToSave[] = $layer;
 
             // Increment stock level on Product aggregate root
-            $compProduct = $this->productRepository->findById($item['variantId']);
-            if (!$compProduct) {
+            if (!isset($compProducts[$item['variantId']])) {
                 throw new Exception("Product variant {$item['variantId']} not found.");
             }
+            $compProduct = $compProducts[$item['variantId']];
             $compProduct->receiveStockAt(new LocationId($locationId), new Quantity($item['quantity']), $referenceId);
-            $this->productRepository->save($compProduct);
+            $productsToSave[] = $compProduct;
 
             // Add increment ledger entry for this component
             $ledgerEntry = new LedgerEntry(
@@ -154,6 +160,13 @@ class DisassembleKit
                 metadata: ['locationId' => $locationId]
             );
             $this->ledgerRepository->append($ledgerEntry);
+        }
+
+        if (!empty($layersToSave)) {
+            $this->costLayerRepository->saveBatch($layersToSave);
+        }
+        if (!empty($productsToSave)) {
+            $this->productRepository->saveAll($productsToSave);
         }
 
         // 9. Post journal entries if Accrual

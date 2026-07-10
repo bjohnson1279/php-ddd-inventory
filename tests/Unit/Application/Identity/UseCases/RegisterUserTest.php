@@ -69,6 +69,25 @@ class RegisterUserTest extends TestCase
         (new RegisterUser($repo, $dispatcher))->execute('u2', 't1', 'new@store.com', 'password123', 'Dupe');
     }
 
+    public function testRegisterUserThrowsWhenActorIsFromDifferentTenant(): void
+    {
+        $actor = $this->makeUser('actor-1', Role::ADMIN);
+        // The actor is created with TenantId('t1') by default in makeUser
+
+        $repo = $this->createMock(UserRepositoryInterface::class);
+        $repo->method('findById')->willReturnMap([
+            ['actor-1', $actor]
+        ]);
+        $repo->expects($this->never())->method('save');
+
+        $dispatcher = $this->createMock(EventDispatcherInterface::class);
+        $dispatcher->expects($this->never())->method('dispatch');
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('Unauthorized: you cannot manage users in a different organization.');
+        (new RegisterUser($repo, $dispatcher))->execute('u3', 't2', 'new2@store.com', 'password123', 'Cross Tenant User', 'actor-1');
+    }
+
     /**
      * @dataProvider invalidInputProvider
      */

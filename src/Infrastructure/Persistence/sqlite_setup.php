@@ -198,6 +198,7 @@ class SqliteSetup
               reorder_point INTEGER NOT NULL,
               reorder_quantity INTEGER NOT NULL,
               safety_stock INTEGER NOT NULL,
+              dynamic_rop_enabled BOOLEAN NOT NULL DEFAULT 0,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               UNIQUE(sku, location_id)

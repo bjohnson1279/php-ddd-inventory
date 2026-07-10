@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Integration\Http;
 
 use PHPUnit\Framework\TestCase;
+use Illuminate\Database\Capsule\Manager as DB;
 use Illuminate\Database\Capsule\Manager as Capsule;
 
 require_once __DIR__ . '/../bootstrap.php';
@@ -51,6 +52,8 @@ final class AllocationsE2ETest extends TestCase
         Capsule::table('products')->delete();
         Capsule::table('user_roles')->delete();
         Capsule::table('users')->delete();
+        Capsule::table('tenants')->where('id', '!=', 'test-tenant')->delete();
+        \Illuminate\Database\Capsule\Manager::table('tenants')->insertOrIgnore([['id' => 'test-tenant', 'name' => 'Test Tenant']]);
 
         $suffix = bin2hex(random_bytes(4));
         $this->tenantId = 'tenant-' . $suffix;
@@ -119,6 +122,12 @@ final class AllocationsE2ETest extends TestCase
 
         // 1. Setup product catalog directly in DB
         $productId = uuidv4();
+        // make sure tenant exists for Postgres constraint
+        Capsule::table('tenants')->insertOrIgnore([
+            'id' => $this->tenantId,
+            'name' => 'Test Org'
+        ]);
+
         Capsule::table('products')->insert([
             'id'                => $productId,
             'tenant_id'         => $this->tenantId,
@@ -126,6 +135,7 @@ final class AllocationsE2ETest extends TestCase
             'name'              => 'Test Allocation Product',
             'department'        => 'electronics',
             'reorder_threshold' => 5,
+            'version_id'        => 1,
             'created_at'        => date('Y-m-d H:i:s'),
             'updated_at'        => date('Y-m-d H:i:s')
         ]);
@@ -196,6 +206,12 @@ final class AllocationsE2ETest extends TestCase
 
         // 1. Setup product catalog directly in DB
         $productId = uuidv4();
+        // make sure tenant exists for Postgres constraint
+        Capsule::table('tenants')->insertOrIgnore([
+            'id' => $this->tenantId,
+            'name' => 'Test Org'
+        ]);
+
         Capsule::table('products')->insert([
             'id'                => $productId,
             'tenant_id'         => $this->tenantId,
@@ -203,6 +219,7 @@ final class AllocationsE2ETest extends TestCase
             'name'              => 'Test Transit Product',
             'department'        => 'electronics',
             'reorder_threshold' => 5,
+            'version_id'        => 1,
             'created_at'        => date('Y-m-d H:i:s'),
             'updated_at'        => date('Y-m-d H:i:s')
         ]);

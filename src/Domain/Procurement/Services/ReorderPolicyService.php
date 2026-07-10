@@ -21,6 +21,111 @@ class ReorderPolicyService
         private readonly EventDispatcherInterface $events
     ) {}
 
+    public function evaluatePolicies(
+        string $tenantId,
+        ReorderPointForecaster $forecaster,
+        \InventoryApp\Domain\Inventory\Repositories\ProductRepositoryInterface $productRepo,
+        \InventoryApp\Domain\Inventory\Repositories\LedgerRepositoryInterface $ledgerRepo,
+        int $windowDays = 30
+    ): array {
+        $policies = $this->reorderPolicyRepository->findAll();
+        $results = [];
+
+        foreach ($policies as $policy) {
+            $rop = $policy->reorderPoint;
+            if ($policy->dynamicRopEnabled) {
+                try {
+                    $newRop = $forecaster->forecastReorderPoint(
+                        $policy->sku->getValue(),
+                        $policy->locationId,
+                        5, // default leadTimeDays
+                        $policy->safetyStock,
+                        $windowDays,
+                        $tenantId
+                    );
+                    $policy->updateReorderPoint($newRop);
+                    $this->reorderPolicyRepository->save($policy);
+                    $rop = $newRop;
+                } catch (\Exception $e) {
+                    error_log("Error forecasting ROP for SKU {$policy->sku->getValue()}: " . $e->getMessage());
+                }
+            }
+
+            $skuStr = $policy->sku->getValue();
+            $product = $productRepo->findBySku($policy->sku);
+            
+            $currentQty = 0;
+            if ($product) {
+                $locationIdObj = new \InventoryApp\Domain\Inventory\ValueObjects\LocationId($policy->locationId);
+                $currentQty = $product->getStockAt($locationIdObj)->getStockQuantity()->getValue();
+            }
+
+            $triggered = false;
+            $reason = "";
+
+            if ($policy->shouldReorder($currentQty)) {
+                $allPos = $this->poRepository->findAll();
+                $alreadyOrdered = false;
+                foreach ($allPos as $po) {
+                    if ($po->tenantId !== $tenantId || $po->locationId !== $policy->locationId) {
+                        continue;
+                    }
+                    if (
+                        $po->getStatus() === PurchaseOrderStatus::Draft ||
+                        $po->getStatus() === PurchaseOrderStatus::Approved ||
+                        $po->getStatus() === PurchaseOrderStatus::Sent
+                    ) {
+                        foreach ($po->getItems() as $item) {
+                            if ($item->variantId === $skuStr && $item->getReceivedQuantity() < $item->quantity) {
+                                $alreadyOrdered = true;
+                                break 2;
+                            }
+                        }
+                    }
+                }
+
+                if (!$alreadyOrdered) {
+                    $poNumber = 'AUTO-REORDER-' . $skuStr . '-' . strtoupper(base_convert((string)time(), 10, 36));
+                    $poId = Uuid::uuid4()->toString();
+                    $itemId = Uuid::uuid4()->toString();
+                    
+                    $item = new PurchaseOrderItem(
+                        $itemId,
+                        $skuStr,
+                        $policy->reorderQuantity,
+                        0,
+                        0
+                    );
+
+                    $po = new PurchaseOrder(
+                        $poId,
+                        $poNumber,
+                        'AUTO-SYSTEM-VENDOR',
+                        $tenantId,
+                        $policy->locationId,
+                        PurchaseOrderStatus::Draft,
+                        [$item]
+                    );
+
+                    $this->poRepository->save($po);
+                    $triggered = true;
+                } else {
+                    $reason = "Open purchase order already exists to prevent duplicate ordering";
+                }
+            }
+
+            $results[] = [
+                'sku'          => $skuStr,
+                'locationId'   => $policy->locationId,
+                'reorderPoint' => $rop,
+                'triggered'    => $triggered,
+                'reason'       => $reason
+            ];
+        }
+
+        return $results;
+    }
+
     public function checkPolicy(
         string $skuStr,
         string $locationId,

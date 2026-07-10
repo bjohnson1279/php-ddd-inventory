@@ -26,12 +26,10 @@ class UpdateShipmentStatus
         $this->shipmentRepository->save($shipment);
 
         // Write status update outbox event
-        $this->outboxRepository->save([
-            'occurredOn' => new DateTimeImmutable(),
-            'eventName' => 'ShipmentStatusUpdatedEvent',
-            'shipmentId' => $shipmentId,
-            'trackingNumber' => $shipment->trackingNumber,
-            'status' => $status->value
-        ]);
+        $this->outboxRepository->save(new \InventoryApp\Domain\Shipping\Events\ShipmentStatusUpdatedEvent(
+            shipmentId: $shipmentId,
+            trackingNumber: $shipment->trackingNumber,
+            status: $status->value
+        ));
     }
 }

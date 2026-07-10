@@ -38,6 +38,13 @@ final class DatabaseQueueTest extends TestCase
         DB::table('netsuite_journal_mappings')->delete();
         DB::table('journal_entries')->delete();
 
+        DB::table('tenants')->insertOrIgnore([
+            ['id' => 'test-tenant', 'name' => 'Test Tenant']
+        ]);
+        DB::table('locations')->insertOrIgnore([
+            ['id' => 'LOC-INT', 'name' => 'Integration Location', 'type' => 'TEST']
+        ]);
+
         ServiceContainer::resetDispatcher();
     }
 
@@ -48,6 +55,7 @@ final class DatabaseQueueTest extends TestCase
         $locationStr = 'LOC-INT';
 
         // 1. Seed Product
+        DB::table('tenants')->insertOrIgnore(['id' => 'test-tenant', 'name' => 'Test Tenant']);
         DB::table('products')->insertOrIgnore([
             'id'                => uuidv4(),
             'tenant_id'         => $tenantId,
@@ -233,6 +241,7 @@ final class DatabaseQueueTest extends TestCase
         $this->assertEquals(0, DB::table('queued_jobs')->count());
 
         // 2. Instantiate and save a journal entry using the repository to trigger the event
+        DB::table('tenants')->insertOrIgnore(['id' => 'test-tenant', 'name' => 'Test Tenant']);
         $journalRepo = ServiceContainer::journalRepo();
         $entry = new \InventoryApp\Domain\Accounting\Aggregates\JournalEntry(
             $entryId,
@@ -286,6 +295,7 @@ final class DatabaseQueueTest extends TestCase
         // Verify queue is empty
         $this->assertEquals(0, DB::table('queued_jobs')->count());
 
+        DB::table('tenants')->insertOrIgnore(['id' => 'test-tenant', 'name' => 'Test Tenant']);
         $journalRepo = ServiceContainer::journalRepo();
         $entry = new \InventoryApp\Domain\Accounting\Aggregates\JournalEntry(
             $entryId,
@@ -335,6 +345,7 @@ final class DatabaseQueueTest extends TestCase
         // Verify queue is empty
         $this->assertEquals(0, DB::table('queued_jobs')->count());
 
+        DB::table('tenants')->insertOrIgnore(['id' => 'test-tenant', 'name' => 'Test Tenant']);
         $journalRepo = ServiceContainer::journalRepo();
         $entry = new \InventoryApp\Domain\Accounting\Aggregates\JournalEntry(
             $entryId,

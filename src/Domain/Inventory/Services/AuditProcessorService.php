@@ -30,11 +30,35 @@ class AuditProcessorService
             $skuMappings = Capsule::table('shopify_sku_mappings')->get();
             $locMappings = Capsule::table('shopify_location_mappings')->get();
 
+            // Bolt optimization: Pre-fetch products to avoid N+1 queries
+            $skus = $skuMappings->pluck('sku')->toArray();
+            $productsBySku = ProductModel::where('tenant_id', $tenantId)
+                ->whereIn('sku', $skus)
+                ->get()
+                ->keyBy('sku');
+
+            // Bolt optimization: Pre-aggregate ledger entries to avoid N+1 queries
+            $productIds = $productsBySku->pluck('id')->toArray();
+
+            $ledgerSumsMap = [];
+            if (!empty($productIds)) {
+                $ledgerSums = LedgerEntryModel::where('tenant_id', $tenantId)
+                    ->whereIn('variant_id', $productIds)
+                    ->select('variant_id', 'metadata->locationId as loc_id')
+                    ->selectRaw('SUM(quantity) as total_qty')
+                    ->groupBy('variant_id', 'metadata->locationId')
+                    ->get();
+
+                foreach ($ledgerSums as $row) {
+                    $ledgerSumsMap[$row->variant_id][$row->loc_id] = (int) $row->total_qty;
+                }
+            }
+
             foreach ($skuMappings as $skuMap) {
                 $sku = $skuMap->sku;
                 $inventoryItemId = $skuMap->shopify_inventory_item_id;
 
-                $product = ProductModel::where('tenant_id', $tenantId)->where('sku', $sku)->first();
+                $product = $productsBySku->get($sku);
                 if (!$product) {
                     continue;
                 }
@@ -43,11 +67,8 @@ class AuditProcessorService
                     $ourLocationId = $locMap->our_location_id;
                     $shopifyLocationId = $locMap->shopify_location_id;
 
-                    // Aggregate local stock level from ledger entries
-                    $localQty = (int) LedgerEntryModel::where('tenant_id', $tenantId)
-                        ->where('variant_id', $product->id)
-                        ->whereRaw("metadata->>'locationId' = ?", [$ourLocationId])
-                        ->sum('quantity');
+                    // Fetch pre-aggregated local stock level
+                    $localQty = $ledgerSumsMap[$product->id][$ourLocationId] ?? 0;
 
                     $shopifyQty = $localQty;
                     if ($accessToken !== 'mock-token' && strpos($storeDomain, 'mock') === false) {
@@ -134,42 +155,65 @@ class AuditProcessorService
                 ->where('created_at', '>=', $sevenDaysAgo)
                 ->get();
 
-            foreach ($journals as $journal) {
-                $hasMapping = false;
+            if ($journals->isNotEmpty()) {
+                // Bolt optimization: Pre-fetch mapped journals to avoid N+1 queries
+                $journalIds = $journals->pluck('id')->toArray();
+
+                $qboMappings = [];
                 if ($hasQbo) {
-                    $hasMapping = Capsule::table('quickbooks_journal_mappings')
-                        ->where('journal_entry_id', $journal->id)
-                        ->exists();
-                }
-                if ($hasXero && !$hasMapping) {
-                    $hasMapping = Capsule::table('xero_journal_mappings')
-                        ->where('journal_entry_id', $journal->id)
-                        ->exists();
-                }
-                if ($hasNetsuite && !$hasMapping) {
-                    $hasMapping = Capsule::table('netsuite_journal_mappings')
-                        ->where('journal_entry_id', $journal->id)
-                        ->exists();
+                    $qboMappings = Capsule::table('quickbooks_journal_mappings')
+                        ->whereIn('journal_entry_id', $journalIds)
+                        ->pluck('journal_entry_id')->toArray();
                 }
 
-                if (!$hasMapping) {
-                    $existingOpen = AuditDiscrepancyModel::where('tenant_id', $tenantId)
-                        ->where('type', 'ACCOUNTING_JOURNAL_MISSING')
-                        ->where('reference_id', $journal->id)
-                        ->where('status', 'OPEN')
-                        ->exists();
+                $xeroMappings = [];
+                if ($hasXero) {
+                    $xeroMappings = Capsule::table('xero_journal_mappings')
+                        ->whereIn('journal_entry_id', $journalIds)
+                        ->pluck('journal_entry_id')->toArray();
+                }
 
-                    if (!$existingOpen) {
-                        $discrepancy = new AuditDiscrepancy(
-                            id: Uuid::uuid4()->toString(),
-                            tenantId: $tenantId,
-                            type: 'ACCOUNTING_JOURNAL_MISSING',
-                            referenceId: $journal->id,
-                            externalRefId: null,
-                            description: "Journal entry {$journal->id} ({$journal->description}) is not mapped to any external accounting transaction."
-                        );
-                        $this->discrepancyRepo->save($discrepancy);
-                        $accountingCount++;
+                $netsuiteMappings = [];
+                if ($hasNetsuite) {
+                    $netsuiteMappings = Capsule::table('netsuite_journal_mappings')
+                        ->whereIn('journal_entry_id', $journalIds)
+                        ->pluck('journal_entry_id')->toArray();
+                }
+
+                // Bolt optimization: Pre-fetch existing discrepancies to avoid N+1 queries
+                $existingDiscrepancies = AuditDiscrepancyModel::where('tenant_id', $tenantId)
+                    ->where('type', 'ACCOUNTING_JOURNAL_MISSING')
+                    ->whereIn('reference_id', $journalIds)
+                    ->where('status', 'OPEN')
+                    ->pluck('reference_id')->toArray();
+
+                foreach ($journals as $journal) {
+                    $hasMapping = false;
+                    if ($hasQbo && in_array($journal->id, $qboMappings)) {
+                        $hasMapping = true;
+                    }
+                    if ($hasXero && !$hasMapping && in_array($journal->id, $xeroMappings)) {
+                        $hasMapping = true;
+                    }
+                    if ($hasNetsuite && !$hasMapping && in_array($journal->id, $netsuiteMappings)) {
+                        $hasMapping = true;
+                    }
+
+                    if (!$hasMapping) {
+                        $existingOpen = in_array($journal->id, $existingDiscrepancies);
+
+                        if (!$existingOpen) {
+                            $discrepancy = new AuditDiscrepancy(
+                                id: Uuid::uuid4()->toString(),
+                                tenantId: $tenantId,
+                                type: 'ACCOUNTING_JOURNAL_MISSING',
+                                referenceId: $journal->id,
+                                externalRefId: null,
+                                description: "Journal entry {$journal->id} ({$journal->description}) is not mapped to any external accounting transaction."
+                            );
+                            $this->discrepancyRepo->save($discrepancy);
+                            $accountingCount++;
+                        }
                     }
                 }
             }
@@ -213,7 +257,7 @@ class AuditProcessorService
                     // Sum local stock levels
                     $localQty = (int) LedgerEntryModel::where('tenant_id', $tenantId)
                         ->where('variant_id', $product->id)
-                        ->whereRaw("metadata->>'locationId' = ?", [$ourLocationId])
+                        ->where('metadata->locationId', $ourLocationId)
                         ->sum('quantity');
 
                     try {

@@ -119,6 +119,9 @@ class DisassembleKit
         $scaleFactor = $totalEstimatedComponentsCost > 0 ? $totalDisassembledCost / $totalEstimatedComponentsCost : 0;
 
         // 8. Restore component variants stock and costing layers
+        $componentVariantIds = array_column($componentAvgCosts, 'variantId');
+        $prefetchedProducts = $this->productRepository->findByIds($componentVariantIds);
+
         foreach ($componentAvgCosts as $item) {
             $allocatedUnitCost = $scaleFactor > 0 ? (int) round($item['avgUnitCost'] * $scaleFactor) : 0;
 
@@ -135,7 +138,7 @@ class DisassembleKit
             $this->costLayerRepository->save($layer);
 
             // Increment stock level on Product aggregate root
-            $compProduct = $this->productRepository->findById($item['variantId']);
+            $compProduct = $prefetchedProducts[$item['variantId']] ?? null;
             if (!$compProduct) {
                 throw new Exception("Product variant {$item['variantId']} not found.");
             }

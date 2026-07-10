@@ -184,6 +184,10 @@ class DisassembleKitTest extends TestCase
             ['comp-1', $compProduct]
         ]);
 
+        $this->productRepository->method('findByIds')->willReturnMap([
+            [['comp-1'], ['comp-1' => $compProduct]]
+        ]);
+
         $this->ledgerRepository->method('currentQuantity')->willReturn(5);
 
         $kitLayer = new InventoryCostLayer('layer-1', 'prod_kit_1', 'tenant-1', 5, 2000, new \DateTimeImmutable(), 'ref-1');
@@ -263,6 +267,7 @@ class DisassembleKitTest extends TestCase
             ->willReturn($kitProduct);
 
         $this->productRepository->method('findById')->willReturn(null);
+        $this->productRepository->method('findByIds')->willReturn([]);
 
         $this->ledgerRepository->method('currentQuantity')->willReturn(5);
 
@@ -322,6 +327,10 @@ class DisassembleKitTest extends TestCase
 
         $this->productRepository->method('findById')->willReturnMap([
             ['comp-1', $compProduct]
+        ]);
+
+        $this->productRepository->method('findByIds')->willReturnMap([
+            [['comp-1'], ['comp-1' => $compProduct]]
         ]);
 
         $this->ledgerRepository->method('currentQuantity')->willReturn(5);
@@ -429,6 +438,10 @@ class DisassembleKitTest extends TestCase
 
         $this->productRepository->method('findById')->willReturnMap([
             ['comp-1', $compProduct]
+        ]);
+
+        $this->productRepository->method('findByIds')->willReturnMap([
+            [['comp-1'], ['comp-1' => $compProduct]]
         ]);
 
         $this->ledgerRepository->method('currentQuantity')->willReturn(5);

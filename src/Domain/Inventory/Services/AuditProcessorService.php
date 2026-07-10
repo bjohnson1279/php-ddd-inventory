@@ -44,8 +44,9 @@ class AuditProcessorService
             if (!empty($productIds)) {
                 $ledgerSums = LedgerEntryModel::where('tenant_id', $tenantId)
                     ->whereIn('variant_id', $productIds)
-                    ->selectRaw("variant_id, metadata->>'locationId' as loc_id, SUM(quantity) as total_qty")
-                    ->groupBy('variant_id', Capsule::raw("metadata->>'locationId'"))
+                    ->select('variant_id', 'metadata->locationId as loc_id')
+                    ->selectRaw('SUM(quantity) as total_qty')
+                    ->groupBy('variant_id', 'metadata->locationId')
                     ->get();
 
                 foreach ($ledgerSums as $row) {
@@ -256,7 +257,7 @@ class AuditProcessorService
                     // Sum local stock levels
                     $localQty = (int) LedgerEntryModel::where('tenant_id', $tenantId)
                         ->where('variant_id', $product->id)
-                        ->whereRaw("metadata->>'locationId' = ?", [$ourLocationId])
+                        ->where('metadata->locationId', $ourLocationId)
                         ->sum('quantity');
 
                     try {

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/client';
+import Spinner from '../components/Spinner';
 
 type LocationValuation = {
   location_id: string;
@@ -128,7 +129,7 @@ export default function ValuationDashboard() {
             className={`btn-refresh ${refreshing ? 'disabled' : ''}`}
             disabled={refreshing}
           >
-            <span className={refreshing ? 'spin' : ''}>🔄</span>
+            {refreshing ? <Spinner /> : <span>🔄</span>}
             {refreshing ? 'Re-valuing...' : 'Recalculate'}
           </button>
         </div>

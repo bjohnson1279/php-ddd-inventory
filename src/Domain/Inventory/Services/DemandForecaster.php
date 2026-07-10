@@ -10,6 +10,7 @@ use InventoryApp\Domain\Inventory\ValueObjects\SKU;
 use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
 use InventoryApp\Domain\Inventory\ValueObjects\DemandForecastId;
 use InventoryApp\Domain\Inventory\Entities\DemandForecast;
+use InventoryApp\Domain\Inventory\Entities\Product;
 use InventoryApp\Domain\Inventory\Enums\ReasonCode;
 use DateTimeImmutable;
 
@@ -22,9 +23,10 @@ class DemandForecaster
         private readonly DemandForecastRepositoryInterface $demandForecastRepo
     ) {}
 
-    public function calculateSalesVelocity(SKU $sku, LocationId $locationId): array
+    public function calculateSalesVelocity(SKU $sku, LocationId $locationId, ?Product $product = null): array
     {
-        $product = $this->productRepo->findBySku($sku);
+        // ⚡ Bolt: Use injected product if provided to prevent N+1 redundant queries.
+        $product = $product ?? $this->productRepo->findBySku($sku);
         if (!$product) {
             throw new \Exception("Product not found for SKU: " . $sku->getValue());
         }
@@ -85,9 +87,10 @@ class DemandForecaster
         SKU $sku,
         LocationId $locationId,
         int $forecastDays,
-        float $trendMultiplier = 1.0
+        float $trendMultiplier = 1.0,
+        ?Product $product = null
     ): DemandForecast {
-        $velocity = $this->calculateSalesVelocity($sku, $locationId);
+        $velocity = $this->calculateSalesVelocity($sku, $locationId, $product);
         $baseQuantity = $velocity['averageDailySales30d'] * $forecastDays;
         $forecastedQuantity = (int) ceil($baseQuantity * $trendMultiplier);
 
@@ -136,7 +139,8 @@ class DemandForecaster
                 continue;
             }
 
-            $velocity = $this->calculateSalesVelocity($sku, $locationId);
+            // ⚡ Bolt: Pass the pre-fetched $product to prevent N+1 query inside calculateSalesVelocity.
+            $velocity = $this->calculateSalesVelocity($sku, $locationId, $product);
             $policy = $this->replenishmentRuleRepo->findBySkuAndLocation($sku, $locationId->getValue());
 
             $reorderPoint = $policy ? $policy->reorderPoint : 10;

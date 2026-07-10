@@ -30,11 +30,31 @@ class AuditProcessorService
             $skuMappings = Capsule::table('shopify_sku_mappings')->get();
             $locMappings = Capsule::table('shopify_location_mappings')->get();
 
+            // ⚡ Bolt Optimization: Prevent N+1 queries during Shopify inventory auditing
+            // 💡 What: Pre-fetch all relevant products and pre-calculate local stock levels using a group-by query.
+            // 🎯 Why: Previously, finding the product and summing ledger entries ran queries inside nested loops, causing N+1 database calls.
+            // 📊 Impact: Significant reduction in query count and execution time when auditing tenants with many products and locations.
+            $skus = $skuMappings->pluck('sku')->toArray();
+            $productsBySku = ProductModel::where('tenant_id', $tenantId)
+                ->whereIn('sku', $skus)
+                ->get()
+                ->keyBy('sku');
+
+            $locCol = Capsule::connection()->getDriverName() === 'sqlite'
+                ? "json_extract(metadata, '$.locationId')"
+                : "metadata->>'locationId'";
+
+            $ledgerQuantities = LedgerEntryModel::where('tenant_id', $tenantId)
+                ->selectRaw("variant_id, {$locCol} as location_id, SUM(quantity) as sum_qty")
+                ->groupBy('variant_id', Capsule::raw($locCol))
+                ->get()
+                ->groupBy('variant_id');
+
             foreach ($skuMappings as $skuMap) {
                 $sku = $skuMap->sku;
                 $inventoryItemId = $skuMap->shopify_inventory_item_id;
 
-                $product = ProductModel::where('tenant_id', $tenantId)->where('sku', $sku)->first();
+                $product = $productsBySku->get($sku);
                 if (!$product) {
                     continue;
                 }
@@ -43,11 +63,14 @@ class AuditProcessorService
                     $ourLocationId = $locMap->our_location_id;
                     $shopifyLocationId = $locMap->shopify_location_id;
 
-                    // Aggregate local stock level from ledger entries
-                    $localQty = (int) LedgerEntryModel::where('tenant_id', $tenantId)
-                        ->where('variant_id', $product->id)
-                        ->whereRaw("metadata->>'locationId' = ?", [$ourLocationId])
-                        ->sum('quantity');
+                    $localQty = 0;
+                    if ($ledgerQuantities->has($product->id)) {
+                        $locRows = $ledgerQuantities->get($product->id);
+                        $row = $locRows->firstWhere('location_id', $ourLocationId);
+                        if ($row) {
+                            $localQty = (int) $row->sum_qty;
+                        }
+                    }
 
                     $shopifyQty = $localQty;
                     if ($accessToken !== 'mock-token' && strpos($storeDomain, 'mock') === false) {

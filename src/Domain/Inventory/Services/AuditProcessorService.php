@@ -256,7 +256,7 @@ class AuditProcessorService
                     // Sum local stock levels
                     $localQty = (int) LedgerEntryModel::where('tenant_id', $tenantId)
                         ->where('variant_id', $product->id)
-                        ->whereRaw("metadata->>'locationId' = ?", [$ourLocationId])
+                        ->where('metadata->locationId', $ourLocationId)
                         ->sum('quantity');
 
                     try {

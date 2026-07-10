@@ -34,3 +34,7 @@
 **Learning:** Returning $e->getMessage() unconditionally directly exposes backend system internals (stack traces, SQL errors, logic paths) to users, enabling reconnaissance. When patching this, be mindful that simply changing catch (Exception $e) to specific exception types may break existing unit tests that expect Exception to be caught by the general catch block, thus failing the test due to 500 error instead of 400 or 404, because the underlying service actually throws Exception (or unit tests mock generic Exception).
 **Prevention:** Instead of replacing the catch block completely and breaking the structure (and thus test assertions and status codes), it is safer to inject an if check inside the existing catch (Exception $e) block that validates if $e is an instance of a safe exception (InvalidArgumentException, ValidationException, DomainException). If not safe, log it and return 500. This preserves the original logic flow for safe exceptions while protecting against leaks for generic ones.
 
+## 2024-05-24 - JSON Column SQL Injection Prevention
+**Vulnerability:** SQL Injection via raw queries against JSON columns
+**Learning:** Using `whereRaw("metadata->>'key' = ?")` bypassing Eloquent's bindings can lead to SQL injection or static analysis failures.
+**Prevention:** Always use Eloquent's built-in JSON query syntax (e.g., `where('metadata->key', $value)`) to ensure automatic parameterization and cross-database compatibility.

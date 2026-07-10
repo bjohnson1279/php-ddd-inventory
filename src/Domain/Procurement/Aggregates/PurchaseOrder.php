@@ -4,7 +4,6 @@ namespace InventoryApp\Domain\Procurement\Aggregates;
 
 use InventoryApp\Domain\Shared\Entities\AggregateRoot;
 use InventoryApp\Domain\Procurement\Enums\PurchaseOrderStatus;
-use InventoryApp\Domain\Procurement\Entities\PurchaseOrderItem;
 use DomainException;
 
 class PurchaseOrder extends AggregateRoot
@@ -19,7 +18,9 @@ class PurchaseOrder extends AggregateRoot
         public readonly string $tenantId,
         public readonly string $locationId,
         PurchaseOrderStatus $status = PurchaseOrderStatus::Draft,
-        array $items = []
+        array $items = [],
+        public readonly ?\DateTimeInterface $createdAt = null,
+        public readonly ?\DateTimeInterface $updatedAt = null
     ) {
         $this->status = $status;
         $this->items = $items;

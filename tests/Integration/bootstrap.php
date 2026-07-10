@@ -39,6 +39,12 @@ $capsule->bootEloquent();
 
 $connection = $capsule->getConnection();
 
+if ($driver === 'sqlite') {
+    try {
+        $connection->statement('PRAGMA busy_timeout=10000;');
+    } catch (\Exception $e) {}
+}
+
 if ($driver !== 'sqlite') {
     try {
         $hasAllocated = false;

@@ -395,6 +395,69 @@ if ($method === 'POST' && preg_match('#^/api/notifications/([^/]+)/read$#', $uri
     exit;
 }
 
+// ── Webhook Subscription Routes ──────────────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/webhook-subscriptions') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('users:manage')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\WebhookSubscriptionController())->create($request, tenantId());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+if ($method === 'GET' && $uri === '/api/webhook-subscriptions') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('users:manage')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\WebhookSubscriptionController())->list($request, tenantId());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+if ($method === 'PUT' && preg_match('#^/api/webhook-subscriptions/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('users:manage')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\WebhookSubscriptionController())->update($request, tenantId(), $id);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+if ($method === 'DELETE' && preg_match('#^/api/webhook-subscriptions/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('users:manage')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\WebhookSubscriptionController())->delete($request, tenantId(), $id);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
 // ── Route: POST /api/audit/run ────────────────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/audit/run') {
     requireAuth();
@@ -1563,6 +1626,26 @@ if ($method === 'POST' && preg_match('#^/api/shipping/shipments/([^/]+)/track$#'
     exit;
 }
 
+// Route: POST /api/shipping/route
+if ($method === 'POST' && $uri === '/api/shipping/route') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:read')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden: You do not have permission to route orders.']);
+        exit;
+    }
+    $useCase = new \InventoryApp\Application\Shipping\UseCases\RouteOrder(
+        ServiceContainer::productRepo(tenantId()),
+        ServiceContainer::carrierService()
+    );
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ShippingController())->routeOrder($request, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
 // ── Outbox ──────────────────────────────────────────────────────────────────────
 // Route: GET /api/outbox/stats
 if ($method === 'GET' && $uri === '/api/outbox/stats') {
@@ -2132,6 +2215,23 @@ if ($method === 'POST' && $uri === '/api/reorder-policies') {
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReorderPolicyController())
         ->createOrUpdate($request, ServiceContainer::reorderPolicyRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/reorder-policies/evaluate ───────────────────────────────
+if ($method === 'POST' && $uri === '/api/reorder-policies/evaluate') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReorderPolicyController())
+        ->evaluate($request, ServiceContainer::reorderPolicyRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;

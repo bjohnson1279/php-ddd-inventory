@@ -119,6 +119,7 @@ class DisassembleKit
         $scaleFactor = $totalEstimatedComponentsCost > 0 ? $totalDisassembledCost / $totalEstimatedComponentsCost : 0;
 
         // 8. Restore component variants stock and costing layers
+        $costLayersToSave = [];
         foreach ($componentAvgCosts as $item) {
             $allocatedUnitCost = $scaleFactor > 0 ? (int) round($item['avgUnitCost'] * $scaleFactor) : 0;
 
@@ -132,7 +133,7 @@ class DisassembleKit
                 receivedAt: new \DateTimeImmutable(),
                 purchaseOrderId: $referenceId
             );
-            $this->costLayerRepository->save($layer);
+            $costLayersToSave[] = $layer;
 
             // Increment stock level on Product aggregate root
             $compProduct = $this->productRepository->findById($item['variantId']);
@@ -154,6 +155,10 @@ class DisassembleKit
                 metadata: ['locationId' => $locationId]
             );
             $this->ledgerRepository->append($ledgerEntry);
+        }
+
+        if (!empty($costLayersToSave)) {
+            $this->costLayerRepository->saveBatch($costLayersToSave);
         }
 
         // 9. Post journal entries if Accrual

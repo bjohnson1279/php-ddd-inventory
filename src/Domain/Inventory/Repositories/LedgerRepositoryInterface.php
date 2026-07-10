@@ -20,6 +20,12 @@ interface LedgerRepositoryInterface
     public function entriesFor(string $variantId, ?string $locationId = null): array;
 
     /**
+     * @param string[] $variantIds
+     * @return LedgerEntry[]
+     */
+    public function entriesForSkusAndLocation(array $variantIds, string $locationId): array;
+
+    /**
      * Returns true if any ledger entries exist for this variant at this location.
      */
     public function hasAnyEntries(string $variantId, string $locationId): bool;

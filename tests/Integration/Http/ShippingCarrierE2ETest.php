@@ -21,7 +21,12 @@ final class ShippingCarrierE2ETest extends TestCase
     public static function setUpBeforeClass(): void
     {
         $output = [];
-        $command = "php -S 127.0.0.1:8092 public/index.php > tests/Integration/Http/server_shipping.log 2>&1 & echo $!";
+        $dbConn = getenv('DB_CONNECTION') ?: 'pgsql';
+        $dbDb = getenv('DB_DATABASE') ?: '';
+        $dbHost = getenv('DB_HOST') ?: '';
+        $dbUser = getenv('DB_USERNAME') ?: '';
+        $dbPass = getenv('DB_PASSWORD') ?: '';
+        $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8092 public/index.php > tests/Integration/Http/server_shipping.log 2>&1 & echo $!";
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
         
@@ -176,6 +181,95 @@ final class ShippingCarrierE2ETest extends TestCase
         $outboxEvents = Capsule::table('outbox_events')->orderBy('occurred_on', 'asc')->get()->toArray();
         $this->assertEquals('ShipmentCreatedEvent', $outboxEvents[0]->event_name);
         $this->assertEquals('ShipmentStatusUpdatedEvent', $outboxEvents[1]->event_name);
+    }
+
+    public function testShouldCalculateRoutingPlan(): void
+    {
+        $sku = 'ROUTE-SKU-1';
+
+        // Seed locations
+        Capsule::table('locations')->insertOrIgnore([
+            ['id' => 'LOC-EAST', 'name' => 'Eastern Warehouse', 'type' => 'WAREHOUSE'],
+            ['id' => 'LOC-WEST', 'name' => 'Western Warehouse', 'type' => 'WAREHOUSE'],
+            ['id' => 'LOC-CENTRAL', 'name' => 'Central Warehouse', 'type' => 'WAREHOUSE']
+        ]);
+
+        // Seed product
+        Capsule::table('products')->insert([
+            'id' => uuidv4(),
+            'tenant_id' => $this->tenantId,
+            'sku' => $sku,
+            'name' => 'Route Test Product',
+            'department' => 'Logistics',
+            'reorder_threshold' => 10,
+            'version_id' => 1
+        ]);
+
+        // Receive stock:
+        // WH-EAST: 5 units
+        $resEast = $this->request('POST', '/api/inventory/receive', [
+            'sku'         => $sku,
+            'quantity'    => 5,
+            'location_id' => 'LOC-EAST'
+        ], $this->token);
+        $this->assertEquals(200, $resEast['status'], json_encode($resEast));
+
+        // WH-WEST: 5 units
+        $resWest = $this->request('POST', '/api/inventory/receive', [
+            'sku'         => $sku,
+            'quantity'    => 5,
+            'location_id' => 'LOC-WEST'
+        ], $this->token);
+        $this->assertEquals(200, $resWest['status'], json_encode($resWest));
+
+        // WH-CENTRAL: 10 units
+        $resCentral = $this->request('POST', '/api/inventory/receive', [
+            'sku'         => $sku,
+            'quantity'    => 10,
+            'location_id' => 'LOC-CENTRAL'
+        ], $this->token);
+        $this->assertEquals(200, $resCentral['status'], json_encode($resCentral));
+
+        // Route with MINIMIZE_SPLITS for quantity 8 (should select WH-CENTRAL, splitCount = 0)
+        $resSplits = $this->request('POST', '/api/shipping/route', [
+            'sku' => $sku,
+            'quantity' => 8,
+            'destinationAddress' => 'New York, NY 10001',
+            'strategyName' => 'MINIMIZE_SPLITS'
+        ], $this->token);
+
+        $this->assertEquals(200, $resSplits['status'], json_encode($resSplits));
+        $this->assertEquals(0, $resSplits['body']['splitCount']);
+        $this->assertCount(1, $resSplits['body']['allocations']);
+        $this->assertEquals('LOC-CENTRAL', $resSplits['body']['allocations'][0]['locationId']);
+        $this->assertEquals(8, $resSplits['body']['allocations'][0]['quantity']);
+
+        // Route with MINIMIZE_COST for quantity 12 (should split: EAST 5, CENTRAL 7)
+        $resCost = $this->request('POST', '/api/shipping/route', [
+            'sku' => $sku,
+            'quantity' => 12,
+            'destinationAddress' => 'New York, NY 10001',
+            'strategyName' => 'MINIMIZE_COST'
+        ], $this->token);
+
+        $this->assertEquals(200, $resCost['status'], json_encode($resCost));
+        $this->assertEquals(1, $resCost['body']['splitCount']);
+        $this->assertCount(2, $resCost['body']['allocations']);
+
+        $eastAlloc = null;
+        $centralAlloc = null;
+        foreach ($resCost['body']['allocations'] as $alloc) {
+            if ($alloc['locationId'] === 'LOC-EAST') {
+                $eastAlloc = $alloc;
+            } elseif ($alloc['locationId'] === 'LOC-CENTRAL') {
+                $centralAlloc = $alloc;
+            }
+        }
+
+        $this->assertNotNull($eastAlloc);
+        $this->assertEquals(5, $eastAlloc['quantity']);
+        $this->assertNotNull($centralAlloc);
+        $this->assertEquals(7, $centralAlloc['quantity']);
     }
 
     private function request(string $method, string $path, array $body = [], ?string $token = null): array

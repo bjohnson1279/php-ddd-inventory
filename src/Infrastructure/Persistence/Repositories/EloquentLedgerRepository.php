@@ -70,10 +70,34 @@ class EloquentLedgerRepository implements LedgerRepositoryInterface
             ->where('variant_id', $variantId);
 
         if ($locationId !== null) {
-            $query->whereRaw("metadata->>'locationId' = ?", [$locationId]);
+            $query->where('metadata->locationId', $locationId);
         }
 
         return $query->orderBy('occurred_at')
+            ->get()
+            ->map(fn($row) => new LedgerEntry(
+                id:          $row->id,
+                variantId:   $row->variant_id,
+                quantity:    (int) $row->quantity,
+                reason:      ReasonCode::from($row->reason),
+                actorId:     $row->actor_id,
+                referenceId: $row->reference_id,
+                occurredAt:  new \DateTimeImmutable($row->occurred_at),
+                metadata:    $row->metadata ?? [],
+            ))
+            ->all();
+    }
+
+    public function entriesForSkusAndLocation(array $variantIds, string $locationId): array
+    {
+        if (empty($variantIds)) {
+            return [];
+        }
+
+        return LedgerEntryModel::where('tenant_id', $this->tenantId)
+            ->whereIn('variant_id', $variantIds)
+            ->where('metadata->locationId', $locationId)
+            ->orderBy('occurred_at')
             ->get()
             ->map(fn($row) => new LedgerEntry(
                 id:          $row->id,
@@ -92,7 +116,7 @@ class EloquentLedgerRepository implements LedgerRepositoryInterface
     {
         return LedgerEntryModel::where('tenant_id', $this->tenantId)
             ->where('variant_id', $variantId)
-            ->whereRaw("metadata->>'locationId' = ?", [$locationId])
+            ->where('metadata->locationId', $locationId)
             ->exists();
     }
 

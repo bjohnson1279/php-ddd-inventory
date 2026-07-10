@@ -33,3 +33,7 @@
 **Learning:** Standalone scripts (like queue-worker.php) that bootstrap their database connections through helper files might execute in a different working directory or contain hardcoded parent directory paths (e.g. `../../../../`) that point outside the project directory. When this occurs, `.env` loading fails silently, triggering fallbacks like empty in-memory SQLite instances or incorrect database connections that lack tables.
 **Action:** Ensure that standalone bootstrap files resolve paths relative to the current file using `__DIR__` and traverse exactly to the project's root folder where the `.env` resides (e.g. `__DIR__ . '/../../../'`), matching the paths verified in unit/integration test bootstraps.
 
+
+## 2026-06-30 - Prevent N+1 queries during Shopify inventory auditing
+**Learning:** In audit scripts like `AuditProcessorService::runAudit()`, iterating over Shopify mappings and performing nested aggregate queries (`LedgerEntryModel::where(...)->sum()`) inside loops causes severe N+1 performance bottlenecks.
+**Action:** When performing cross-system comparisons, pre-fetch all needed products using `whereIn` and pre-calculate all local aggregates using a grouped raw select (`selectRaw("..., SUM(quantity) as sum_qty")->groupBy(...)`), then map the data in memory.

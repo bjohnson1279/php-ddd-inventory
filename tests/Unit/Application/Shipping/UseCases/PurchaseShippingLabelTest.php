@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Application\Shipping\UseCases;
+namespace Tests\Unit\Application\Shipping\UseCases;
 
 use PHPUnit\Framework\TestCase;
 use InventoryApp\Application\Shipping\UseCases\PurchaseShippingLabel;

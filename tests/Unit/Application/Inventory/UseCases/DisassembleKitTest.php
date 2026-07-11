@@ -219,12 +219,21 @@ class DisassembleKitTest extends TestCase
                 return in_array($product->getId(), ['prod_kit_1', 'comp-1']);
             }));
 
-        $this->ledgerRepository->expects($this->exactly(2))
+        $this->ledgerRepository->expects($this->once())
             ->method('append')
             ->with($this->callback(function ($entry) {
                 return $entry->actorId === 'actor-1'
                     && $entry->referenceId === 'ref-1'
                     && $entry->metadata['locationId'] === 'LOC-1';
+            }));
+
+        $this->ledgerRepository->expects($this->once())
+            ->method('appendAll')
+            ->with($this->callback(function (array $entries) {
+                return count($entries) === 1
+                    && $entries[0]->actorId === 'actor-1'
+                    && $entries[0]->referenceId === 'ref-1'
+                    && $entries[0]->metadata['locationId'] === 'LOC-1';
             }));
 
         $this->journalService->expects($this->once())

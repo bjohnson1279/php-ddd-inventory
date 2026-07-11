@@ -120,6 +120,7 @@ class DisassembleKit
 
         // 8. Restore component variants stock and costing layers
         $costLayersToSave = [];
+        $componentLedgerEntries = [];
         foreach ($componentAvgCosts as $item) {
             $allocatedUnitCost = $scaleFactor > 0 ? (int) round($item['avgUnitCost'] * $scaleFactor) : 0;
 
@@ -154,7 +155,11 @@ class DisassembleKit
                 occurredAt: new \DateTimeImmutable(),
                 metadata: ['locationId' => $locationId]
             );
-            $this->ledgerRepository->append($ledgerEntry);
+            $componentLedgerEntries[] = $ledgerEntry;
+        }
+
+        if (!empty($componentLedgerEntries)) {
+            $this->ledgerRepository->appendAll($componentLedgerEntries);
         }
 
         if (!empty($costLayersToSave)) {

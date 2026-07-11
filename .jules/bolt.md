@@ -49,3 +49,6 @@
 ## 2024-06-25 - Batch Saving Cost Layers inside DisassembleKit Loop
 **Learning:** Resolving N+1 database queries by batch saving domain entities (like `InventoryCostLayer`) outside of iterations avoids significant database roundtrips.
 **Action:** When working inside loops constructing multiple entities, initialize an array to hold the instantiated objects, append them in the iteration, and call `saveBatch()` (if provided by the repository) rather than calling `save()` independently per entity. Ensure test mocks reflect `saveBatch` invocations sequentially using `.withConsecutive` or explicit `.callback` matching logic.
+## 2024-06-12 - Batching Ledger Entries to prevent N+1 queries
+**Learning:** In the domain architecture, components in bulk operations (like opening balances or kit assembly/disassembly) shouldn't iteratively call `LedgerRepositoryInterface->append()`. This leads to severe N+1 database INSERTs in `EloquentLedgerRepository`.
+**Action:** When handling multiple components or entries in a loop, aggregate the `LedgerEntry` objects into an array and use the newly added `appendAll(array $entries)` method on the repository interface to perform a single batch INSERT.

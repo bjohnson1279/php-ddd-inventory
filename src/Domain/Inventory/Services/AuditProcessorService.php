@@ -54,6 +54,23 @@ class AuditProcessorService
                 }
             }
 
+            // Bolt optimization: Pre-fetch existing discrepancies to avoid N+1 queries
+            $possibleReferenceIds = [];
+            foreach ($skuMappings as $skuMap) {
+                foreach ($locMappings as $locMap) {
+                    $possibleReferenceIds[] = "{$skuMap->sku}:{$locMap->our_location_id}";
+                }
+            }
+
+            $existingShopifyDiscrepancies = [];
+            if (!empty($possibleReferenceIds)) {
+                $existingShopifyDiscrepancies = AuditDiscrepancyModel::where('tenant_id', $tenantId)
+                    ->where('type', 'SHOPIFY_STOCK_MISMATCH')
+                    ->whereIn('reference_id', $possibleReferenceIds)
+                    ->where('status', 'OPEN')
+                    ->pluck('reference_id')->toArray();
+            }
+
             foreach ($skuMappings as $skuMap) {
                 $sku = $skuMap->sku;
                 $inventoryItemId = $skuMap->shopify_inventory_item_id;
@@ -121,11 +138,7 @@ class AuditProcessorService
 
                     if ($localQty !== $shopifyQty) {
                         $referenceId = "{$sku}:{$ourLocationId}";
-                        $existingOpen = AuditDiscrepancyModel::where('tenant_id', $tenantId)
-                            ->where('type', 'SHOPIFY_STOCK_MISMATCH')
-                            ->where('reference_id', $referenceId)
-                            ->where('status', 'OPEN')
-                            ->exists();
+                        $existingOpen = in_array($referenceId, $existingShopifyDiscrepancies);
 
                         if (!$existingOpen) {
                             $discrepancy = new AuditDiscrepancy(

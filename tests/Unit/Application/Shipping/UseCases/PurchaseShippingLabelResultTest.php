@@ -50,4 +50,69 @@ class PurchaseShippingLabelResultTest extends TestCase
 
         $this->assertEquals($expectedArray, $result->toArray());
     }
+
+    public function test_it_throws_exception_for_empty_shipment_id(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Shipment ID cannot be empty');
+
+        new PurchaseShippingLabelResult(
+            '',
+            'track_456',
+            'http://example.com/label.pdf',
+            1500
+        );
+    }
+
+    public function test_it_throws_exception_for_whitespace_only_shipment_id(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Shipment ID cannot be empty');
+
+        new PurchaseShippingLabelResult(
+            '   ',
+            'track_456',
+            'http://example.com/label.pdf',
+            1500
+        );
+    }
+
+    public function test_it_throws_exception_for_empty_tracking_number(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Tracking number cannot be empty');
+
+        new PurchaseShippingLabelResult(
+            'ship_123',
+            '',
+            'http://example.com/label.pdf',
+            1500
+        );
+    }
+
+    public function test_it_throws_exception_for_empty_label_url(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Label URL cannot be empty');
+
+        new PurchaseShippingLabelResult(
+            'ship_123',
+            'track_456',
+            '',
+            1500
+        );
+    }
+
+    public function test_it_throws_exception_for_negative_rate_cents(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Rate cents cannot be negative');
+
+        new PurchaseShippingLabelResult(
+            'ship_123',
+            'track_456',
+            'http://example.com/label.pdf',
+            -1
+        );
+    }
 }

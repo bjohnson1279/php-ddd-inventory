@@ -10,3 +10,7 @@
 **Vulnerability:** Missing authorization check on `/api/reports/valuation`, `/api/reports/recall/{lotNumber}`, `/api/journal/entries`, `/api/returns/quarantine`, and `/api/returns/rma`. They required authentication but lacked RBAC checks via `$actor->canDo()`.
 **Learning:** Endpoints may require authentication via `requireAuth()` but fail to implement fine-grained role-based access control, allowing any authenticated user (e.g., lower-privileged staff) to access sensitive reporting and accounting data.
 **Prevention:** Always verify that not only is the user authenticated, but that they possess the specific permissions (`reports:view`, `inventory:read`) required to perform the action or view the data.
+## 2024-05-18 - Prevented Information Leakage in API Controllers
+**Vulnerability:** System exceptions and underlying internal errors were being returned directly in 500 HTTP responses via `$e->getMessage()`, potentially exposing database schema, file paths, or implementation details.
+**Learning:** Catch blocks must be carefully reviewed to ensure they don't propagate raw exception messages for unhandled system errors (500s). While 400 responses can include validation details, 500s should always fall back to a generic message to prevent reconnaissance.
+**Prevention:** Always log the full exception internally (e.g., using `error_log`) but return a sanitized, generic error response (e.g., `"An internal server error occurred."`) for 500 Internal Server Errors.

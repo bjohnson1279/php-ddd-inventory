@@ -65,3 +65,7 @@
 **Vulnerability:** SQL Injection via raw queries against JSON columns
 **Learning:** Using `whereRaw("metadata->>'key' = ?")` bypassing Eloquent's bindings can lead to SQL injection or static analysis failures.
 **Prevention:** Always use Eloquent's built-in JSON query syntax (e.g., `where('metadata->key', $value)`) to ensure automatic parameterization and cross-database compatibility.
+## 2026-07-13 - Secure Rate Limit Proxy Handling
+**Vulnerability:** Rate limit bypass via IP Spoofing (X-Forwarded-For).
+**Learning:** The rate limiter blindly trusted the `HTTP_X_FORWARDED_FOR` header or failed to properly walk the proxy chain from right to left to establish the true client IP against a list of trusted proxies.
+**Prevention:** Always validate `REMOTE_ADDR` against a trusted proxy list before parsing `HTTP_X_FORWARDED_FOR`, and traverse the list right-to-left to safely extract the untrusted client IP.

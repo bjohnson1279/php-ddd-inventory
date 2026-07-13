@@ -8,10 +8,27 @@ interface LedgerRepositoryInterface
 {
     public function append(LedgerEntry $entry): void;
 
+    /**
+     * @param LedgerEntry[] $entries
+     */
+    public function appendAll(array $entries): void;
+
     public function currentQuantity(string $variantId): int;
+
+    /**
+     * @param string[] $variantIds
+     * @return array<string, int> Array of current quantities indexed by variantId
+     */
+    public function currentQuantities(array $variantIds): array;
 
     /** @return LedgerEntry[] */
     public function entriesFor(string $variantId, ?string $locationId = null): array;
+
+    /**
+     * @param string[] $variantIds
+     * @return LedgerEntry[]
+     */
+    public function entriesForSkusAndLocation(array $variantIds, string $locationId): array;
 
     /**
      * Returns true if any ledger entries exist for this variant at this location.

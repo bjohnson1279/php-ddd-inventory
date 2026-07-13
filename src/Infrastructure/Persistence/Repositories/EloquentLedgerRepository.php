@@ -34,11 +34,59 @@ class EloquentLedgerRepository implements LedgerRepositoryInterface
         ]);
     }
 
+    public function appendAll(array $entries): void
+    {
+        if (empty($entries)) {
+            return;
+        }
+
+        $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        $data = [];
+        foreach ($entries as $entry) {
+            $data[] = [
+                'id'           => $entry->id ?: Uuid::uuid4()->toString(),
+                'tenant_id'    => $this->tenantId,
+                'variant_id'   => $entry->variantId,
+                'quantity'     => $entry->quantity,
+                'reason'       => $entry->reason->value,
+                'actor_id'     => $entry->actorId,
+                'reference_id' => $entry->referenceId,
+                'occurred_at'  => $entry->occurredAt->format('Y-m-d H:i:s'),
+                'metadata'     => json_encode($entry->metadata), // insert() requires manual JSON encoding
+                'created_at'   => $now,
+            ];
+        }
+
+        LedgerEntryModel::insert($data);
+    }
+
     public function currentQuantity(string $variantId): int
     {
         return (int) LedgerEntryModel::where('tenant_id', $this->tenantId)
             ->where('variant_id', $variantId)
             ->sum('quantity');
+    }
+
+    public function currentQuantities(array $variantIds): array
+    {
+        if (empty($variantIds)) {
+            return [];
+        }
+
+        $results = LedgerEntryModel::where('tenant_id', $this->tenantId)
+            ->whereIn('variant_id', $variantIds)
+            ->groupBy('variant_id')
+            ->selectRaw('variant_id, SUM(quantity) as total')
+            ->get();
+
+        $map = [];
+        foreach ($variantIds as $vId) {
+            $map[$vId] = 0;
+        }
+        foreach ($results as $row) {
+            $map[$row->variant_id] = (int) $row->total;
+        }
+        return $map;
     }
 
     /** @return LedgerEntry[] */
@@ -48,10 +96,34 @@ class EloquentLedgerRepository implements LedgerRepositoryInterface
             ->where('variant_id', $variantId);
 
         if ($locationId !== null) {
-            $query->whereRaw("metadata->>'locationId' = ?", [$locationId]);
+            $query->where('metadata->locationId', $locationId);
         }
 
         return $query->orderBy('occurred_at')
+            ->get()
+            ->map(fn($row) => new LedgerEntry(
+                id:          $row->id,
+                variantId:   $row->variant_id,
+                quantity:    (int) $row->quantity,
+                reason:      ReasonCode::from($row->reason),
+                actorId:     $row->actor_id,
+                referenceId: $row->reference_id,
+                occurredAt:  new \DateTimeImmutable($row->occurred_at),
+                metadata:    $row->metadata ?? [],
+            ))
+            ->all();
+    }
+
+    public function entriesForSkusAndLocation(array $variantIds, string $locationId): array
+    {
+        if (empty($variantIds)) {
+            return [];
+        }
+
+        return LedgerEntryModel::where('tenant_id', $this->tenantId)
+            ->whereIn('variant_id', $variantIds)
+            ->where('metadata->locationId', $locationId)
+            ->orderBy('occurred_at')
             ->get()
             ->map(fn($row) => new LedgerEntry(
                 id:          $row->id,
@@ -70,7 +142,7 @@ class EloquentLedgerRepository implements LedgerRepositoryInterface
     {
         return LedgerEntryModel::where('tenant_id', $this->tenantId)
             ->where('variant_id', $variantId)
-            ->whereRaw("metadata->>'locationId' = ?", [$locationId])
+            ->where('metadata->locationId', $locationId)
             ->exists();
     }
 

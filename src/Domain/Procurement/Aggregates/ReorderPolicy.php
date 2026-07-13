@@ -12,9 +12,10 @@ class ReorderPolicy extends AggregateRoot
         public readonly string $id,
         public readonly SKU $sku,
         public readonly string $locationId,
-        public readonly int $reorderPoint,
+        public int $reorderPoint,
         public readonly int $reorderQuantity,
-        public readonly int $safetyStock
+        public readonly int $safetyStock,
+        public readonly bool $dynamicRopEnabled = false
     ) {
         if ($reorderPoint < 0) {
             throw new InvalidArgumentException("Reorder point cannot be negative.");
@@ -25,6 +26,14 @@ class ReorderPolicy extends AggregateRoot
         if ($safetyStock < 0) {
             throw new InvalidArgumentException("Safety stock cannot be negative.");
         }
+    }
+
+    public function updateReorderPoint(int $newRop): void
+    {
+        if ($newRop < 0) {
+            throw new InvalidArgumentException("Reorder point cannot be negative.");
+        }
+        $this->reorderPoint = $newRop;
     }
 
     public function shouldReorder(int $currentQuantity): bool

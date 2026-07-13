@@ -55,16 +55,24 @@ class AssembleKit
             throw new Exception("Product variant for Kit SKU {$kitSkuStr} not found.");
         }
 
-        // 2. Validate component stock level and pre-fetch products
+        // 2. Validate component stock level and pre-fetch products (Optimized N+1 queries)
+        $componentVariantIds = [];
+        foreach ($kit->components() as $component) {
+            $componentVariantIds[] = $component->variantId;
+        }
+
+        $availableQuantities = $this->ledgerRepository->currentQuantities($componentVariantIds);
+        $productsMap = $this->productRepository->findByIds($componentVariantIds);
+
         $componentsToConsume = [];
         foreach ($kit->components() as $component) {
             $needed = $component->quantity * $quantity;
-            $available = $this->ledgerRepository->currentQuantity($component->variantId);
+            $available = $availableQuantities[$component->variantId] ?? 0;
             if ($available < $needed) {
                 throw new Exception("Insufficient stock for component variant ID {$component->variantId}. Needed: {$needed}, Available: {$available}");
             }
 
-            $product = $this->productRepository->findById($component->variantId);
+            $product = $productsMap[$component->variantId] ?? null;
             if (!$product) {
                 throw new Exception("Product variant {$component->variantId} not found.");
             }
@@ -78,6 +86,8 @@ class AssembleKit
 
         // 3. Consume FIFO costing layers for components and calculate total components cost
         $totalCostCents = 0;
+        $modifiedProducts = [];
+        $ledgerEntries = [];
         foreach ($componentsToConsume as $comp) {
             $breakdown = $this->costLayerService->consumeFifoLayers($comp['variantId'], $comp['needed']);
             $totalCostCents += $breakdown->totalCostCents;
@@ -85,7 +95,7 @@ class AssembleKit
             // Deduct stock on Product aggregate root
             $product = $comp['product'];
             $product->dispatchStockAt(new LocationId($locationId), new Quantity($comp['needed']), $referenceId);
-            $this->productRepository->save($product);
+            $modifiedProducts[] = $product;
 
             // Write deduction to ledger_entries
             $ledgerEntry = new LedgerEntry(
@@ -98,7 +108,16 @@ class AssembleKit
                 occurredAt: new \DateTimeImmutable(),
                 metadata: ['locationId' => $locationId]
             );
-            $this->ledgerRepository->append($ledgerEntry);
+            $ledgerEntries[] = $ledgerEntry;
+        }
+
+        if (!empty($ledgerEntries)) {
+            $this->ledgerRepository->appendAll($ledgerEntries);
+        }
+
+        // Save all modified products collectively (Optimized write)
+        if (!empty($modifiedProducts)) {
+            $this->productRepository->saveAll($modifiedProducts);
         }
 
         // 4. Calculate assembled unit cost

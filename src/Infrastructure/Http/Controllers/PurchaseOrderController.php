@@ -9,6 +9,7 @@ use InventoryApp\Domain\Inventory\Repositories\ProductRepositoryInterface;
 use InventoryApp\Domain\Accounting\Repositories\CostLayerRepositoryInterface;
 use InventoryApp\Application\Procurement\UseCases\CreatePurchaseOrder;
 use InventoryApp\Application\Procurement\UseCases\ReceivePurchaseOrder;
+use InventoryApp\Application\Shared\Decorators\AutoRetryUseCaseDecorator;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Exception;
 
@@ -25,7 +26,7 @@ class PurchaseOrderController
                 'items'               => 'required|array'
             ]);
 
-            $useCase = new CreatePurchaseOrder($poRepo);
+            $useCase = new AutoRetryUseCaseDecorator(new CreatePurchaseOrder($poRepo));
             $po = $useCase->execute($body);
 
             return new Response([
@@ -44,6 +45,10 @@ class PurchaseOrderController
                 ], $po->getItems())
             ], 201);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[PurchaseOrderController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }
@@ -72,6 +77,10 @@ class PurchaseOrderController
                 ], $po->getItems())
             ], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[PurchaseOrderController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }
@@ -89,6 +98,10 @@ class PurchaseOrderController
 
             return new Response(['message' => 'Purchase order approved successfully'], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[PurchaseOrderController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }
@@ -106,6 +119,10 @@ class PurchaseOrderController
 
             return new Response(['message' => 'Purchase order sent to vendor successfully'], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[PurchaseOrderController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }
@@ -123,7 +140,8 @@ class PurchaseOrderController
                 'items' => 'required|array'
             ]);
 
-            $useCase = new ReceivePurchaseOrder($poRepo, $productRepo, $costLayerRepo, $events);
+            $baseUseCase = new ReceivePurchaseOrder($poRepo, $productRepo, $costLayerRepo, $events);
+            $useCase = new AutoRetryUseCaseDecorator($baseUseCase);
             $useCase->execute([
                 'purchaseOrderId' => $id,
                 'items'           => $body['items']
@@ -131,6 +149,10 @@ class PurchaseOrderController
 
             return new Response(['message' => 'Items received successfully'], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[PurchaseOrderController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }

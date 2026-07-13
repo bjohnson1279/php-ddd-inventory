@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Integration\Http;
 
 use PHPUnit\Framework\TestCase;
+use Illuminate\Database\Capsule\Manager as DB;
 
 require_once __DIR__ . '/../bootstrap.php';
 
@@ -50,7 +51,11 @@ final class ApiEndpointsTest extends TestCase
     protected function setUp(): void
     {
         // Generate unique tenant details for each test run to ensure isolation
-        $suffix = bin2hex(random_bytes(4));
+        DB::table('users')->delete();
+        DB::table('user_roles')->delete();
+        DB::table('tenants')->where('id', '!=', 'test-tenant')->delete();
+        \Illuminate\Database\Capsule\Manager::table('tenants')->insertOrIgnore([['id' => 'test-tenant', 'name' => 'Test Tenant']]);
+                $suffix = bin2hex(random_bytes(4));
         $this->tenantId = 'tenant-' . $suffix;
         $this->email = 'admin-' . $suffix . '@example.com';
         $this->password = 'SecurePassword123';

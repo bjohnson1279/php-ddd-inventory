@@ -10,6 +10,7 @@ use InventoryApp\Domain\Inventory\Services\InventoryService;
 use Illuminate\Database\Capsule\Manager as Capsule;
 use Ramsey\Uuid\Uuid;
 use Exception;
+use InventoryApp\Application\Shared\Decorators\AutoRetryUseCaseDecorator;
 
 class KitController
 {
@@ -38,6 +39,10 @@ class KitController
                 'name'    => $validated['name'],
             ], 201);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[KitController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }
@@ -56,6 +61,10 @@ class KitController
 
             return new Response(['message' => 'Component added/updated successfully'], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[KitController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }
@@ -66,6 +75,10 @@ class KitController
             $kit = $repo->findOrFail($id);
             return new Response($this->serializeKit($kit), 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[KitController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 404);
         }
     }
@@ -79,6 +92,10 @@ class KitController
             }
             return new Response($this->serializeKit($kit), 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[KitController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }
@@ -102,6 +119,10 @@ class KitController
 
             return new Response(['message' => 'Kit sold successfully and component inventories decremented.'], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[KitController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }
@@ -139,7 +160,8 @@ class KitController
             $actorId  = $_SERVER['auth.user_id'] ?? 'system';
 
             Capsule::transaction(function () use ($useCase, $validated, $tenantId, $actorId) {
-                $useCase->execute([
+                $decoratedUseCase = new AutoRetryUseCaseDecorator($useCase);
+                $decoratedUseCase->execute([
                     'tenantId'    => $tenantId,
                     'locationId'  => $validated['locationId'],
                     'kitSku'      => $validated['kitSku'],
@@ -153,6 +175,10 @@ class KitController
                 'message' => "Successfully assembled {$validated['quantity']} units of Kit {$validated['kitSku']}."
             ], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[KitController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }
@@ -173,7 +199,8 @@ class KitController
             $actorId  = $_SERVER['auth.user_id'] ?? 'system';
 
             Capsule::transaction(function () use ($useCase, $validated, $tenantId, $actorId) {
-                $useCase->execute([
+                $decoratedUseCase = new AutoRetryUseCaseDecorator($useCase);
+                $decoratedUseCase->execute([
                     'tenantId'    => $tenantId,
                     'locationId'  => $validated['locationId'],
                     'kitSku'      => $validated['kitSku'],
@@ -187,6 +214,10 @@ class KitController
                 'message' => "Successfully disassembled {$validated['quantity']} units of Kit {$validated['kitSku']}."
             ], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[KitController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 400);
         }
     }

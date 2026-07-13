@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS tenants (
 
 -- Catalog Context
 CREATE TABLE IF NOT EXISTS catalog_products (
+  tenant_id TEXT NOT NULL DEFAULT 'system',
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
   description TEXT,
@@ -93,6 +94,7 @@ CREATE TABLE IF NOT EXISTS reorder_policies (
   reorder_point INTEGER NOT NULL,
   reorder_quantity INTEGER NOT NULL,
   safety_stock INTEGER NOT NULL,
+  dynamic_rop_enabled BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   UNIQUE(sku, location_id)
@@ -187,9 +189,9 @@ FROM ledger_entries
 GROUP BY bucket, tenant_id, variant_id;
 
 -- Enable Row-Level Security on the materialized view
-ALTER MATERIALIZED VIEW daily_stock_velocity ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS tenant_isolation ON daily_stock_velocity;
-CREATE POLICY tenant_isolation ON daily_stock_velocity USING (tenant_id = current_setting('app.current_tenant_id', true));
+-- ALTER MATERIALIZED VIEW daily_stock_velocity ENABLE ROW LEVEL SECURITY;
+-- DROP POLICY IF EXISTS tenant_isolation ON daily_stock_velocity;
+-- CREATE POLICY tenant_isolation ON daily_stock_velocity USING (tenant_id = current_setting('app.current_tenant_id', true));
 
 -- Add continuous aggregate policy to update the view automatically in background
 SELECT add_continuous_aggregate_policy('daily_stock_velocity',

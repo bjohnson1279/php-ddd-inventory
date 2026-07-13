@@ -60,9 +60,6 @@ class InventoryService
         }
 
         // Pass 2: append ledger entries and dispatch events
-        $entries = [];
-        $eventsToDispatch = [];
-
         foreach ($components as $component) {
             $compQty   = ($component->quantity ?? $component['quantity'] ?? 0) * $kitQuantity;
             $variantId = $component->variantId ?? $component['variantId'];
@@ -77,22 +74,15 @@ class InventoryService
                 occurredAt: new \DateTimeImmutable(),
             );
 
-            $entries[] = $entry;
-            $eventsToDispatch[] = new StockDecremented(
+            $this->ledger->append($entry);
+            $this->events->dispatch(new StockDecremented(
                 variantId:   $variantId,
                 quantity:    $compQty,
                 reason:      ReasonCode::KitSale,
                 actorId:     $actorId,
                 referenceId: $saleId,
                 occurredOn:  new \DateTimeImmutable(),
-            );
-        }
-
-        // Bolt optimization: use appendAll to avoid N+1 inserts
-        $this->ledger->appendAll($entries);
-
-        foreach ($eventsToDispatch as $event) {
-            $this->events->dispatch($event);
+            ));
         }
     }
 

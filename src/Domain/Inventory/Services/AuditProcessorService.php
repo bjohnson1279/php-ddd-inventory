@@ -44,31 +44,13 @@ class AuditProcessorService
             if (!empty($productIds)) {
                 $ledgerSums = LedgerEntryModel::where('tenant_id', $tenantId)
                     ->whereIn('variant_id', $productIds)
-                    ->select('variant_id', 'metadata->locationId as loc_id')
-                    ->selectRaw('SUM(quantity) as total_qty')
-                    ->groupBy('variant_id', 'metadata->locationId')
+                    ->selectRaw("variant_id, metadata->>'locationId' as loc_id, SUM(quantity) as total_qty")
+                    ->groupBy('variant_id', Capsule::raw("metadata->>'locationId'"))
                     ->get();
 
                 foreach ($ledgerSums as $row) {
                     $ledgerSumsMap[$row->variant_id][$row->loc_id] = (int) $row->total_qty;
                 }
-            }
-
-            // Bolt optimization: Pre-fetch existing discrepancies to avoid N+1 queries
-            $possibleReferenceIds = [];
-            foreach ($skuMappings as $skuMap) {
-                foreach ($locMappings as $locMap) {
-                    $possibleReferenceIds[] = "{$skuMap->sku}:{$locMap->our_location_id}";
-                }
-            }
-
-            $existingShopifyDiscrepancies = [];
-            if (!empty($possibleReferenceIds)) {
-                $existingShopifyDiscrepancies = AuditDiscrepancyModel::where('tenant_id', $tenantId)
-                    ->where('type', 'SHOPIFY_STOCK_MISMATCH')
-                    ->whereIn('reference_id', $possibleReferenceIds)
-                    ->where('status', 'OPEN')
-                    ->pluck('reference_id')->toArray();
             }
 
             foreach ($skuMappings as $skuMap) {
@@ -138,7 +120,11 @@ class AuditProcessorService
 
                     if ($localQty !== $shopifyQty) {
                         $referenceId = "{$sku}:{$ourLocationId}";
-                        $existingOpen = in_array($referenceId, $existingShopifyDiscrepancies);
+                        $existingOpen = AuditDiscrepancyModel::where('tenant_id', $tenantId)
+                            ->where('type', 'SHOPIFY_STOCK_MISMATCH')
+                            ->where('reference_id', $referenceId)
+                            ->where('status', 'OPEN')
+                            ->exists();
 
                         if (!$existingOpen) {
                             $discrepancy = new AuditDiscrepancy(
@@ -270,7 +256,7 @@ class AuditProcessorService
                     // Sum local stock levels
                     $localQty = (int) LedgerEntryModel::where('tenant_id', $tenantId)
                         ->where('variant_id', $product->id)
-                        ->where('metadata->locationId', $ourLocationId)
+                        ->whereRaw("metadata->>'locationId' = ?", [$ourLocationId])
                         ->sum('quantity');
 
                     try {

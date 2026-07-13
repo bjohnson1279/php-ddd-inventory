@@ -19,6 +19,29 @@ class RateLimitMiddleware
     {
         $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 
+        $trustedProxiesEnv = getenv('TRUSTED_PROXIES') ?: '';
+        $trustedProxies = $trustedProxiesEnv ? array_map('trim', explode(',', $trustedProxiesEnv)) : [];
+        $isTrustedProxy = in_array($ip, $trustedProxies, true) || in_array('*', $trustedProxies, true);
+
+        if ($isTrustedProxy && isset($_SERVER['HTTP_X_FORWARDED_FOR']) && $_SERVER['HTTP_X_FORWARDED_FOR'] !== '') {
+            $forwardedIps = array_map('trim', explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']));
+            // Traverse from right to left to find the first untrusted IP (the real client)
+            $realIp = null;
+            for ($i = count($forwardedIps) - 1; $i >= 0; $i--) {
+                $currentIp = $forwardedIps[$i];
+                if (!in_array($currentIp, $trustedProxies, true) && $currentIp !== '*' && filter_var($currentIp, FILTER_VALIDATE_IP)) {
+                    $realIp = $currentIp;
+                    break;
+                }
+            }
+            if ($realIp !== null) {
+                $ip = $realIp;
+            } elseif (count($forwardedIps) > 0 && filter_var($forwardedIps[0], FILTER_VALIDATE_IP)) {
+                // If all IPs are trusted proxies, the leftmost one is the original client
+                $ip = $forwardedIps[0];
+            }
+        }
+
         // Bypass rate limiting in testing environment to prevent integration tests from failing
         // We only enforce it for specific test IPs so the unit tests for this middleware can still pass
         if (php_sapi_name() === 'cli-server' || (php_sapi_name() === 'cli' && defined('PHPUNIT_COMPOSER_INSTALL') && !str_starts_with($ip, '10.0.'))) {

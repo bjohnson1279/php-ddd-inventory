@@ -32,6 +32,11 @@
 ## 2026-06-27 - Parent Folder Traversal for Dotenv in Standalone Scripts
 **Learning:** Standalone scripts (like queue-worker.php) that bootstrap their database connections through helper files might execute in a different working directory or contain hardcoded parent directory paths (e.g. `../../../../`) that point outside the project directory. When this occurs, `.env` loading fails silently, triggering fallbacks like empty in-memory SQLite instances or incorrect database connections that lack tables.
 **Action:** Ensure that standalone bootstrap files resolve paths relative to the current file using `__DIR__` and traverse exactly to the project's root folder where the `.env` resides (e.g. `__DIR__ . '/../../../'`), matching the paths verified in unit/integration test bootstraps.
+
+## 2026-06-30 - N+1 Query in DemandForecaster Bulk Report Generation
+**Learning:** Generating the demand planning report iterates over every SKU in a location and invokes `calculateSalesVelocity()`. This function was fetching the product entity using `findBySku()` independently for each SKU iteration, despite the fact that `getDemandPlanningReport()` had already pre-fetched all those products via a single `findBySkus()` bulk query. This resulted in a redundant N+1 lookup for product entities.
+**Action:** When a method like `calculateSalesVelocity()` is called in a loop, modify its signature to accept an optional pre-fetched aggregate/entity (e.g., `?Product $product = null`). Use this injected entity when present instead of running a redundant database query (`$product = $product ?? $this->productRepo->findBySku($sku);`), dramatically reducing query load during bulk reporting.
+
 ## 2026-07-06 - N+1 Queries in Demand Forecasting loops
 **Learning:** Looping over an array of domain entities (like SKUs) and invoking multiple database lookups per iteration (such as fetching product details, ledger entries, and replenishment rules) creates a severe N+1 performance bottleneck that degrades exponentially as the dataset grows.
 **Action:** When calculating derived insights or building reports for a collection of entities, identify iterative database lookups and replace them with bulk operations using `whereIn` queries. Pass the pre-fetched, batched data (e.g., grouped in-memory arrays) to the calculation logic instead of performing lookups inside the loop.
@@ -46,3 +51,13 @@
 **Learning:** Checking for mapping existence in the `AuditProcessorService` inside a `foreach` loop results in $4N$ database queries, severely impacting audit performance for large datasets.
 **Action:** Optimize by plucking journal IDs before the loop and batch fetching existing mappings and discrepancies using `whereIn` queries. In-memory checks via `in_array` avoid looping over DB interactions, returning the operations to $O(1)$ complexity.
 
+## 2024-06-25 - Batch Saving Cost Layers inside DisassembleKit Loop
+**Learning:** Resolving N+1 database queries by batch saving domain entities (like `InventoryCostLayer`) outside of iterations avoids significant database roundtrips.
+**Action:** When working inside loops constructing multiple entities, initialize an array to hold the instantiated objects, append them in the iteration, and call `saveBatch()` (if provided by the repository) rather than calling `save()` independently per entity. Ensure test mocks reflect `saveBatch` invocations sequentially using `.withConsecutive` or explicit `.callback` matching logic.
+
+## 2024-06-12 - Batching Ledger Entries to prevent N+1 queries
+**Learning:** In the domain architecture, components in bulk operations (like opening balances or kit assembly/disassembly) shouldn't iteratively call `LedgerRepositoryInterface->append()`. This leads to severe N+1 database INSERTs in `EloquentLedgerRepository`.
+**Action:** When handling multiple components or entries in a loop, aggregate the `LedgerEntry` objects into an array and use the newly added `appendAll(array $entries)` method on the repository interface to perform a single batch INSERT.
+## 2024-07-13 - Eliminate N+1 DB queries in bulk stock updates via SyncStockToShopify batching
+**Learning:** When processing bulk operations (like complete inventory counts, sales, or returns), dispatching domain events individually inside loops can trigger repetitive database lookups within listeners like `SyncStockToShopify`. Specifically, syncing stock to Shopify triggers queries on `shopify_sku_mappings` and `shopify_location_mappings` for every single event.
+**Action:** Always wrap event dispatch loops for bulk domain operations with `\InventoryApp\Application\Inventory\Listeners\SyncStockToShopify::beginBatch(...)` and `endBatch()` inside a `try...finally` block. This allows the listener to pre-fetch Shopify metadata mapping in a single query, eliminating the N+1 problem.

@@ -119,11 +119,8 @@ class DisassembleKit
         $scaleFactor = $totalEstimatedComponentsCost > 0 ? $totalDisassembledCost / $totalEstimatedComponentsCost : 0;
 
         // 8. Restore component variants stock and costing layers
-        $componentIds = array_column($componentAvgCosts, 'variantId');
-        $compProducts = $this->productRepository->findByIds($componentIds);
-
-        $layersToSave = [];
-        $productsToSave = [];
+        $componentVariantIds = array_column($componentAvgCosts, 'variantId');
+        $prefetchedProducts = $this->productRepository->findByIds($componentVariantIds);
 
         foreach ($componentAvgCosts as $item) {
             $allocatedUnitCost = $scaleFactor > 0 ? (int) round($item['avgUnitCost'] * $scaleFactor) : 0;
@@ -138,16 +135,15 @@ class DisassembleKit
                 receivedAt: new \DateTimeImmutable(),
                 purchaseOrderId: $referenceId
             );
-            $layersToSave[] = $layer;
+            $this->costLayerRepository->save($layer);
 
             // Increment stock level on Product aggregate root
             $compProduct = $prefetchedProducts[$item['variantId']] ?? null;
             if (!$compProduct) {
                 throw new Exception("Product variant {$item['variantId']} not found.");
             }
-            $compProduct = $compProducts[$item['variantId']];
             $compProduct->receiveStockAt(new LocationId($locationId), new Quantity($item['quantity']), $referenceId);
-            $productsToSave[] = $compProduct;
+            $this->productRepository->save($compProduct);
 
             // Add increment ledger entry for this component
             $ledgerEntry = new LedgerEntry(
@@ -160,22 +156,7 @@ class DisassembleKit
                 occurredAt: new \DateTimeImmutable(),
                 metadata: ['locationId' => $locationId]
             );
-            $componentLedgerEntries[] = $ledgerEntry;
-        }
-
-        if (!empty($componentLedgerEntries)) {
-            $this->ledgerRepository->appendAll($componentLedgerEntries);
-        }
-
-        if (!empty($costLayersToSave)) {
-            $this->costLayerRepository->saveBatch($costLayersToSave);
-        }
-
-        if (!empty($layersToSave)) {
-            $this->costLayerRepository->saveBatch($layersToSave);
-        }
-        if (!empty($productsToSave)) {
-            $this->productRepository->saveAll($productsToSave);
+            $this->ledgerRepository->append($ledgerEntry);
         }
 
         // 9. Post journal entries if Accrual

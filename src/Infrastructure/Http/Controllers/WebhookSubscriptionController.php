@@ -60,8 +60,7 @@ class WebhookSubscriptionController
             }
             return new Response($data, 200);
         } catch (\Throwable $e) {
-            error_log('[WebhookSubscriptionController] ' . $e->getMessage());
-            return new Response(['error' => 'An internal server error occurred.'], 500);
+            return new Response(['error' => $e->getMessage()], 500);
         }
     }
 
@@ -122,8 +121,7 @@ class WebhookSubscriptionController
             $sub->delete();
             return new Response(null, 204);
         } catch (\Throwable $e) {
-            error_log('[WebhookSubscriptionController] ' . $e->getMessage());
-            return new Response(['error' => 'An internal server error occurred.'], 500);
+            return new Response(['error' => $e->getMessage()], 500);
         }
     }
 }

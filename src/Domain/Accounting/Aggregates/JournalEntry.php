@@ -26,7 +26,7 @@ class JournalEntry
     {
         $totalDebits = array_sum(array_map(fn(JournalLine $l) => $l->type === DebitCredit::Debit ? $l->amountCents : 0, $this->lines));
         $totalCredits = array_sum(array_map(fn(JournalLine $l) => $l->type === DebitCredit::Credit ? $l->amountCents : 0, $this->lines));
-        if ($totalDebits !== $totalCredits) throw new \LogicException('Unbalanced journal entry');
+        if ($totalDebits !== $totalCredits) throw new \DomainException('Unbalanced journal entry');
     }
 
     public function lines(): array { return $this->lines; }

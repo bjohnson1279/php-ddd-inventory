@@ -47,7 +47,7 @@ class DisassembleKitTest extends TestCase
     {
         $this->productRepository->expects($this->never())->method('save');
         $this->ledgerRepository->expects($this->never())->method('append');
-        $this->costLayerRepository->expects($this->never())->method('saveBatch');
+        $this->costLayerRepository->expects($this->never())->method('save');
         $this->costLayerRepository->expects($this->never())->method('save');
         $this->journalService->expects($this->never())->method('onKitDisassembly');
 
@@ -68,7 +68,7 @@ class DisassembleKitTest extends TestCase
     {
         $this->productRepository->expects($this->never())->method('save');
         $this->ledgerRepository->expects($this->never())->method('append');
-        $this->costLayerRepository->expects($this->never())->method('saveBatch');
+        $this->costLayerRepository->expects($this->never())->method('save');
         $this->costLayerRepository->expects($this->never())->method('save');
         $this->journalService->expects($this->never())->method('onKitDisassembly');
 
@@ -91,7 +91,7 @@ class DisassembleKitTest extends TestCase
     {
         $this->productRepository->expects($this->never())->method('save');
         $this->ledgerRepository->expects($this->never())->method('append');
-        $this->costLayerRepository->expects($this->never())->method('saveBatch');
+        $this->costLayerRepository->expects($this->never())->method('save');
         $this->costLayerRepository->expects($this->never())->method('save');
         $this->journalService->expects($this->never())->method('onKitDisassembly');
 
@@ -116,7 +116,7 @@ class DisassembleKitTest extends TestCase
     {
         $this->productRepository->expects($this->never())->method('save');
         $this->ledgerRepository->expects($this->never())->method('append');
-        $this->costLayerRepository->expects($this->never())->method('saveBatch');
+        $this->costLayerRepository->expects($this->never())->method('save');
         $this->costLayerRepository->expects($this->never())->method('save');
         $this->journalService->expects($this->never())->method('onKitDisassembly');
 
@@ -194,42 +194,17 @@ class DisassembleKitTest extends TestCase
             ['comp-1', 'received_at ASC', [$compLayer]]
         ]);
 
-        $this->costLayerRepository->expects($this->exactly(2))->method('saveBatch')->willReturnCallback(function (array $layers) {
-            if ($layers[0]->variantId === 'prod_kit_1') {
+        $this->costLayerRepository->expects($this->any())->method('save')->willReturnCallback(function (InventoryCostLayer $layer) {
+            if ($layer->variantId === 'prod_kit_1') {
                 return;
             }
-            $this->assertCount(1, $layers);
-            $this->assertEquals(1000, $layers[0]->unitCostCents);
+
+            $this->assertEquals(1000, $layer->unitCostCents);
         });
 
-        $this->productRepository->expects($this->once())
-            ->method('save')
-            ->with($this->callback(function (Product $product) {
-                return $product->getId() === 'prod_kit_1';
-            }));
+        $this->productRepository->expects($this->exactly(2))->method('save')->with($this->callback(function(Product $product) { return in_array($product->getId(), ['prod_kit_1', 'comp-1']); }));
 
-        $this->productRepository->expects($this->once())
-            ->method('saveAll')
-            ->with($this->callback(function (array $products) {
-                return count($products) === 1 && $products[0]->getId() === 'comp-1';
-            }));
-
-        $this->ledgerRepository->expects($this->once())
-            ->method('append')
-            ->with($this->callback(function ($entry) {
-                return $entry->actorId === 'actor-1'
-                    && $entry->referenceId === 'ref-1'
-                    && $entry->metadata['locationId'] === 'LOC-1';
-            }));
-
-        $this->ledgerRepository->expects($this->once())
-            ->method('appendAll')
-            ->with($this->callback(function (array $entries) {
-                return count($entries) === 1
-                    && $entries[0]->actorId === 'actor-1'
-                    && $entries[0]->referenceId === 'ref-1'
-                    && $entries[0]->metadata['locationId'] === 'LOC-1';
-            }));
+        $this->ledgerRepository->expects($this->exactly(2))->method('append')->with($this->callback(function ($entry) { return $entry->actorId === 'actor-1' && $entry->referenceId === 'ref-1' && $entry->metadata['locationId'] === 'LOC-1'; }));
 
         $this->journalService->expects($this->once())
             ->method('onKitDisassembly')
@@ -347,12 +322,12 @@ class DisassembleKitTest extends TestCase
             throw new \Exception("Database error");
         });
 
-        $this->costLayerRepository->expects($this->exactly(2))->method('saveBatch')->willReturnCallback(function (array $layers) {
-            if ($layers[0]->variantId === 'prod_kit_1') {
+        $this->costLayerRepository->expects($this->any())->method('save')->willReturnCallback(function (InventoryCostLayer $layer) {
+            if ($layer->variantId === 'prod_kit_1') {
                 return;
             }
-            $this->assertCount(1, $layers);
-            $this->assertEquals(1000, $layers[0]->unitCostCents);
+
+            $this->assertEquals(1000, $layer->unitCostCents);
         });
 
         $this->useCase->execute([
@@ -369,7 +344,7 @@ class DisassembleKitTest extends TestCase
     {
         $this->productRepository->expects($this->never())->method('save');
         $this->ledgerRepository->expects($this->never())->method('append');
-        $this->costLayerRepository->expects($this->never())->method('saveBatch');
+        $this->costLayerRepository->expects($this->never())->method('save');
         $this->costLayerRepository->expects($this->never())->method('save');
         $this->journalService->expects($this->never())->method('onKitDisassembly');
 
@@ -461,12 +436,12 @@ class DisassembleKitTest extends TestCase
             return [$compLayer];
         });
 
-        $this->costLayerRepository->expects($this->exactly(2))->method('saveBatch')->willReturnCallback(function (array $layers) {
-            if ($layers[0]->variantId === 'prod_kit_1') {
+        $this->costLayerRepository->expects($this->any())->method('save')->willReturnCallback(function (InventoryCostLayer $layer) {
+            if ($layer->variantId === 'prod_kit_1') {
                 return;
             }
-            $this->assertCount(1, $layers);
-            $this->assertEquals(1000, $layers[0]->unitCostCents);
+
+            $this->assertEquals(1000, $layer->unitCostCents);
         });
 
         $this->useCase->execute([

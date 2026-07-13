@@ -1,3 +1,7 @@
+## 2024-07-10 - Fix N+1 query saving disassembled kit components
+**Learning:** Performing database queries and saves within a loop leads to significant N+1 performance bottlenecks.
+**Action:** Extract entity IDs and pre-fetch them in bulk before the loop using `findByIds`. Accumulate modified entities in memory and persist them after the loop using batch methods like `saveBatch` and `saveAll`.
+
 ## 2026-06-21 - N+1 Queries During Bulk Domain Event Emittance
 **Learning:** In PHP, event listeners inherently process one event at a time. If a batch operation emits multiple domain events (e.g., `SaleProcessed`), listeners attached to that event (like `SyncStockToShopify`) will trigger sequentially, potentially executing database lookup queries for each iteration, causing an N+1 performance bottleneck.
 **Action:** When a UseCase (like `ProcessSaleBatch` or `ShopifyOrderMapper`) triggers multiple domain events that will cause a downstream listener to perform lookups, inject the repository into the UseCase or Mapper and proactively bulk-preload the required data into the repository's in-memory static/instance cache before executing the batch.
@@ -36,6 +40,10 @@
 ## 2026-06-30 - Prevent N+1 queries during Shopify inventory auditing
 **Learning:** In audit scripts like `AuditProcessorService::runAudit()`, iterating over Shopify mappings and performing nested aggregate queries (`LedgerEntryModel::where(...)->sum()`) inside loops causes severe N+1 performance bottlenecks.
 **Action:** When performing cross-system comparisons, pre-fetch all needed products using `whereIn` and pre-calculate all local aggregates using a grouped raw select (`selectRaw("..., SUM(quantity) as sum_qty")->groupBy(...)`), then map the data in memory.
+
+## 2026-06-30 - N+1 Query in DemandForecaster Bulk Report Generation
+**Learning:** Generating the demand planning report iterates over every SKU in a location and invokes `calculateSalesVelocity()`. This function was fetching the product entity using `findBySku()` independently for each SKU iteration, despite the fact that `getDemandPlanningReport()` had already pre-fetched all those products via a single `findBySkus()` bulk query. This resulted in a redundant N+1 lookup for product entities.
+**Action:** When a method like `calculateSalesVelocity()` is called in a loop, modify its signature to accept an optional pre-fetched aggregate/entity (e.g., `?Product $product = null`). Use this injected entity when present instead of running a redundant database query (`$product = $product ?? $this->productRepo->findBySku($sku);`), dramatically reducing query load during bulk reporting.
 
 ## 2026-07-06 - N+1 Queries in Demand Forecasting loops
 **Learning:** Looping over an array of domain entities (like SKUs) and invoking multiple database lookups per iteration (such as fetching product details, ledger entries, and replenishment rules) creates a severe N+1 performance bottleneck that degrades exponentially as the dataset grows.

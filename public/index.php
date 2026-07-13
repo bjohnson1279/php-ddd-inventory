@@ -49,7 +49,7 @@ if ($driver === 'sqlite') {
         'host'      => getenv('DB_HOST')       ?: 'db',
         'database'  => getenv('DB_DATABASE')   ?: 'ddd_inventory',
         'username'  => getenv('DB_USERNAME')   ?: 'ddd_user',
-        'password'  => getenv('DB_PASSWORD')   ?: 'secret',
+        'password'  => getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '',
         'port'      => getenv('DB_PORT')       ?: 5432,
         'charset'   => 'utf8',
         'collation' => 'utf8_unicode_ci',
@@ -818,6 +818,13 @@ if ($method === 'POST' && preg_match('#^/api/returns/rma/([^/]+)/receive$#', $ur
 if ($method === 'GET' && preg_match('#^/api/returns/rma/([^/]+)$#', $uri, $m)) {
     requireAuth();
     try {
+        $actingUserId = $_SERVER['auth.user_id'] ?? '';
+        $actor = ServiceContainer::userRepo()->findById($actingUserId);
+        if (!$actor || !$actor->canDo('inventory:read')) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Forbidden: You do not have permission to read inventory.']);
+            return;
+        }
         $rmaId = $m[1];
         $rma = ServiceContainer::rmaRepo()->findById($rmaId);
         if (!$rma || $rma->getTenantId()->getValue() !== tenantId()) {
@@ -868,6 +875,13 @@ if ($method === 'GET' && preg_match('#^/api/returns/rma/([^/]+)$#', $uri, $m)) {
 if ($method === 'GET' && $uri === '/api/returns/quarantine') {
     requireAuth();
     try {
+        $actingUserId = $_SERVER['auth.user_id'] ?? '';
+        $actor = ServiceContainer::userRepo()->findById($actingUserId);
+        if (!$actor || !$actor->canDo('inventory:read')) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Forbidden: You do not have permission to read inventory.']);
+            return;
+        }
         $items = ServiceContainer::quarantineRepo()->findAllByTenant(tenantId());
         $results = [];
         foreach ($items as $item) {
@@ -903,6 +917,13 @@ if ($method === 'GET' && $uri === '/api/returns/quarantine') {
 if ($method === 'GET' && preg_match('#^/api/returns/quarantine/([^/]+)$#', $uri, $m)) {
     requireAuth();
     try {
+        $actingUserId = $_SERVER['auth.user_id'] ?? '';
+        $actor = ServiceContainer::userRepo()->findById($actingUserId);
+        if (!$actor || !$actor->canDo('inventory:read')) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Forbidden: You do not have permission to read inventory.']);
+            return;
+        }
         $qId = $m[1];
         $item = ServiceContainer::quarantineRepo()->findById($qId);
         if (!$item || $item->getTenantId()->getValue() !== tenantId()) {
@@ -1032,6 +1053,13 @@ if ($method === 'GET' && $uri === '/api/inventory/fefo-pick') {
 // ── Route: GET /api/reports/recall/{lotNumber} ──────────────────────────────
 if ($method === 'GET' && preg_match('#^/api/reports/recall/([^/]+)$#', $uri, $m)) {
     requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('reports:view')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden: You do not have permission to view reports.']);
+        return;
+    }
     $lotNumber = urldecode($m[1]);
     $recallService = new \InventoryApp\Domain\Inventory\Services\ProductRecallService(
         ServiceContainer::ledgerRepo(tenantId())
@@ -1522,6 +1550,13 @@ if ($method === 'GET' && preg_match('#^/api/onboardings/([^/]+)$#', $uri, $m)) {
 // Route: POST /api/journal/entries
 if ($method === 'POST' && $uri === '/api/journal/entries') {
     requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('integrations:manage')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden: You do not have permission to manage integrations.']);
+        return;
+    }
     $response = (new JournalController())->record($request, ServiceContainer::journalRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
@@ -1531,6 +1566,13 @@ if ($method === 'POST' && $uri === '/api/journal/entries') {
 // Route: GET /api/journal/entries
 if ($method === 'GET' && $uri === '/api/journal/entries') {
     requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('reports:view')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden: You do not have permission to view reports.']);
+        return;
+    }
     $response = (new JournalController())->list($request, ServiceContainer::journalRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
@@ -1540,6 +1582,13 @@ if ($method === 'GET' && $uri === '/api/journal/entries') {
 // Route: GET /api/reports/valuation
 if ($method === 'GET' && $uri === '/api/reports/valuation') {
     requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('reports:view')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden: You do not have permission to view reports.']);
+        return;
+    }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReportController())->valuation($request, tenantId());
     http_response_code($response->getStatusCode());
     echo $response->getContent();

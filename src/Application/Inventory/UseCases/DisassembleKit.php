@@ -135,7 +135,7 @@ class DisassembleKit
                 receivedAt: new \DateTimeImmutable(),
                 purchaseOrderId: $referenceId
             );
-            $this->costLayerRepository->save($layer);
+            $costLayersToSave[] = $layer;
 
             // Increment stock level on Product aggregate root
             $compProduct = $prefetchedProducts[$item['variantId']] ?? null;
@@ -156,7 +156,15 @@ class DisassembleKit
                 occurredAt: new \DateTimeImmutable(),
                 metadata: ['locationId' => $locationId]
             );
-            $this->ledgerRepository->append($ledgerEntry);
+            $componentLedgerEntries[] = $ledgerEntry;
+        }
+
+        if (!empty($componentLedgerEntries)) {
+            $this->ledgerRepository->appendAll($componentLedgerEntries);
+        }
+
+        if (!empty($costLayersToSave)) {
+            $this->costLayerRepository->saveBatch($costLayersToSave);
         }
 
         // 9. Post journal entries if Accrual

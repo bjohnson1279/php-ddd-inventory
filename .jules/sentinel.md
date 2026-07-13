@@ -60,3 +60,8 @@
 **Vulnerability:** System exceptions and underlying internal errors were being returned directly in 500 HTTP responses via `$e->getMessage()`, potentially exposing database schema, file paths, or implementation details.
 **Learning:** Catch blocks must be carefully reviewed to ensure they don't propagate raw exception messages for unhandled system errors (500s). While 400 responses can include validation details, 500s should always fall back to a generic message to prevent reconnaissance.
 **Prevention:** Always log the full exception internally (e.g., using `error_log`) but return a sanitized, generic error response (e.g., `"An internal server error occurred."`) for 500 Internal Server Errors.
+
+## 2024-05-24 - JSON Column SQL Injection Prevention
+**Vulnerability:** SQL Injection via raw queries against JSON columns
+**Learning:** Using `whereRaw("metadata->>'key' = ?")` bypassing Eloquent's bindings can lead to SQL injection or static analysis failures.
+**Prevention:** Always use Eloquent's built-in JSON query syntax (e.g., `where('metadata->key', $value)`) to ensure automatic parameterization and cross-database compatibility.

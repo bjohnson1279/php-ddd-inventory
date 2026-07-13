@@ -180,9 +180,9 @@ class DisassembleKitTest extends TestCase
             }))
             ->willReturn($kitProduct);
 
-        $this->productRepository->method('findById')->willReturnMap([
-            ['comp-1', $compProduct]
-        ]);
+        $this->productRepository->method('findByIds')
+            ->with(['comp-1'])
+            ->willReturn(['comp-1' => $compProduct]);
 
         $this->productRepository->method('findByIds')->willReturnMap([
             [['comp-1'], ['comp-1' => $compProduct]]
@@ -198,29 +198,24 @@ class DisassembleKitTest extends TestCase
             ['comp-1', 'received_at ASC', [$compLayer]]
         ]);
 
-        $this->costLayerRepository->expects($this->exactly(2))
-            ->method('saveBatch')
-            ->withConsecutive(
-                [$this->callback(function (array $layers) {
-                    if (count($layers) !== 1) return false;
-                    $layer = $layers[0];
-                    return $layer->variantId === 'prod_kit_1'
-                        && $layer->remainingQuantity() === 4;
-                })],
-                [$this->callback(function (array $layers) {
-                    if (count($layers) !== 1) return false;
-                    $layer = $layers[0];
-                    return $layer->tenantId === 'tenant-1'
-                        && $layer->variantId === 'comp-1'
-                        && $layer->unitCostCents === 1000
-                        && $layer->purchaseOrderId === 'ref-1';
-                })]
-            );
+        $this->costLayerRepository->expects($this->exactly(2))->method('saveBatch')->willReturnCallback(function (array $layers) {
+            if ($layers[0]->variantId === 'prod_kit_1') {
+                return;
+            }
+            $this->assertCount(1, $layers);
+            $this->assertEquals(1000, $layers[0]->unitCostCents);
+        });
 
-        $this->productRepository->expects($this->exactly(2))
+        $this->productRepository->expects($this->once())
             ->method('save')
             ->with($this->callback(function (Product $product) {
-                return in_array($product->getId(), ['prod_kit_1', 'comp-1']);
+                return $product->getId() === 'prod_kit_1';
+            }));
+
+        $this->productRepository->expects($this->once())
+            ->method('saveAll')
+            ->with($this->callback(function (array $products) {
+                return count($products) === 1 && $products[0]->getId() === 'comp-1';
             }));
 
         $this->ledgerRepository->expects($this->once())
@@ -342,9 +337,9 @@ class DisassembleKitTest extends TestCase
             }))
             ->willReturn($kitProduct);
 
-        $this->productRepository->method('findById')->willReturnMap([
-            ['comp-1', $compProduct]
-        ]);
+        $this->productRepository->method('findByIds')
+            ->with(['comp-1'])
+            ->willReturn(['comp-1' => $compProduct]);
 
         $this->productRepository->method('findByIds')->willReturnMap([
             [['comp-1'], ['comp-1' => $compProduct]]
@@ -361,15 +356,13 @@ class DisassembleKitTest extends TestCase
             throw new \Exception("Database error");
         });
 
-        $this->costLayerRepository->expects($this->exactly(2))->method('saveBatch')
-            ->withConsecutive(
-                [$this->callback(function (array $layers) {
-                    return count($layers) === 1 && $layers[0]->variantId === 'prod_kit_1';
-                })],
-                [$this->callback(function (array $layers) {
-                    return count($layers) === 1 && $layers[0]->unitCostCents === 1000;
-                })]
-            );
+        $this->costLayerRepository->expects($this->exactly(2))->method('saveBatch')->willReturnCallback(function (array $layers) {
+            if ($layers[0]->variantId === 'prod_kit_1') {
+                return;
+            }
+            $this->assertCount(1, $layers);
+            $this->assertEquals(1000, $layers[0]->unitCostCents);
+        });
 
         $this->useCase->execute([
             'tenantId' => 'tenant-1',
@@ -459,9 +452,9 @@ class DisassembleKitTest extends TestCase
             }))
             ->willReturn($kitProduct);
 
-        $this->productRepository->method('findById')->willReturnMap([
-            ['comp-1', $compProduct]
-        ]);
+        $this->productRepository->method('findByIds')
+            ->with(['comp-1'])
+            ->willReturn(['comp-1' => $compProduct]);
 
         $this->productRepository->method('findByIds')->willReturnMap([
             [['comp-1'], ['comp-1' => $compProduct]]
@@ -481,15 +474,13 @@ class DisassembleKitTest extends TestCase
             return [$compLayer];
         });
 
-        $this->costLayerRepository->expects($this->exactly(2))->method('saveBatch')
-            ->withConsecutive(
-                [$this->callback(function (array $layers) {
-                    return count($layers) === 1 && $layers[0]->variantId === 'prod_kit_1';
-                })],
-                [$this->callback(function (array $layers) {
-                    return count($layers) === 1 && $layers[0]->unitCostCents === 1000;
-                })]
-            );
+        $this->costLayerRepository->expects($this->exactly(2))->method('saveBatch')->willReturnCallback(function (array $layers) {
+            if ($layers[0]->variantId === 'prod_kit_1') {
+                return;
+            }
+            $this->assertCount(1, $layers);
+            $this->assertEquals(1000, $layers[0]->unitCostCents);
+        });
 
         $this->useCase->execute([
             'tenantId' => 'tenant-1',

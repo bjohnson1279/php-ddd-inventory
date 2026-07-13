@@ -25,11 +25,15 @@ do {
     }
 
     foreach ($pending as $event) {
-        $id = $event->getId();
-        $name = $event->getEventName();
-        $payloadStr = $event->getPayload();
+        $id = $event->id;
+        $name = $event->eventName;
+        $payloadStr = $event->payload;
 
-        echo "Processing Outbox Event ID: {$id} ({$name})...\n";
+        $payloadData = json_decode($payloadStr, true) ?: [];
+        $traceId = $payloadData['traceId'] ?? \InventoryApp\Infrastructure\Telemetry\TraceContext::generateTraceId();
+        \InventoryApp\Infrastructure\Telemetry\TraceContext::setTraceId($traceId);
+
+        echo "[Trace: {$traceId}] Processing Outbox Event ID: {$id} ({$name})...\n";
 
         try {
             // Reconcile and publish event to Kafka if configured
@@ -39,30 +43,51 @@ do {
                 $conf->set('metadata.broker.list', $kafkaUrl);
                 $producer = new \RdKafka\Producer($conf);
                 $topic = $producer->newTopic('inventory-events');
-
-                // Reconstruct payload structure
-                $payloadData = json_decode($payloadStr, true) ?: [];
+                
                 $tenantId = function_exists('tenantId') ? tenantId() : 'system';
                 
                 $kafkaPayload = [
                     'type' => $name,
                     'payload' => array_merge($payloadData, [
-                        'occurredAt' => $event->getOccurredOn()->format(\DateTimeInterface::ATOM),
-                        'tenantId' => $tenantId
+                        'occurredAt' => $event->occurredOn->format(\DateTimeInterface::ATOM),
+                        'tenantId' => $tenantId,
+                        'traceId' => $traceId
                     ])
                 ];
 
                 $topic->produce(RD_KAFKA_PARTITION_UA, 0, json_encode($kafkaPayload), $tenantId);
                 $producer->flush(500);
             } else {
-                echo "[Outbox Worker] Kafka not enabled or extension missing. Mocking external publish.\n";
+                echo "[Trace: {$traceId}] [Outbox Worker] Kafka not enabled or extension missing. Mocking external publish.\n";
+            }
+
+            // Enqueue webhooks for active subscriptions matching tenant and event name
+            $eventTenantId = $payloadData['tenantId'] ?? ($payloadData['tenantId']['value'] ?? 'tenant-1');
+            $subscriptions = \InventoryApp\Infrastructure\Models\WebhookSubscriptionModel::where('tenant_id', $eventTenantId)
+                ->where('is_active', true)
+                ->get();
+
+            foreach ($subscriptions as $sub) {
+                $subEventTypes = json_decode($sub->event_types, true) ?: [];
+                if (in_array($name, $subEventTypes)) {
+                    \InventoryApp\Infrastructure\Models\WebhookDeliveryModel::create([
+                        'id' => \Ramsey\Uuid\Uuid::uuid4()->toString(),
+                        'tenant_id' => $eventTenantId,
+                        'subscription_id' => $sub->id,
+                        'event_type' => $name,
+                        'payload' => $payloadStr,
+                        'status' => 'Pending',
+                        'attempts' => 0,
+                        'next_attempt_at' => new \DateTime()
+                    ]);
+                }
             }
 
             // Mark processed
             $repo->markProcessed($id);
-            echo "Outbox Event {$id} processed successfully.\n";
+            echo "[Trace: {$traceId}] Outbox Event {$id} processed successfully.\n";
         } catch (\Throwable $e) {
-            echo "Outbox Event {$id} failed: " . $e->getMessage() . "\n";
+            echo "[Trace: {$traceId}] Outbox Event {$id} failed: " . $e->getMessage() . "\n";
             $repo->markFailed($id, $e->getMessage());
         }
     }

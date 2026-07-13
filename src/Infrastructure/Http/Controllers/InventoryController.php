@@ -16,6 +16,7 @@ use InventoryApp\Application\Inventory\Queries\StockQueryServiceInterface;
 use InventoryApp\Domain\Inventory\ValueObjects\SKU;
 use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
 use InventoryApp\Domain\Inventory\ValueObjects\Quantity;
+use InventoryApp\Application\Shared\Decorators\AutoRetryUseCaseDecorator;
 use Exception;
 
 class InventoryController
@@ -23,6 +24,7 @@ class InventoryController
     public function receive(RequestInterface $request, ReceiveStock $useCase)
     {
         try {
+            $useCase = new AutoRetryUseCaseDecorator($useCase);
             $validated = $request->validate([
                 'sku' => 'required|string',
                 'quantity' => 'required|integer|min:1',
@@ -51,6 +53,10 @@ class InventoryController
 
             return new Response(['message' => 'Stock received successfully'], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[InventoryController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             $type = (new \ReflectionClass($e))->getShortName();
             return new Response(['error' => $e->getMessage(), 'type' => $type], 400);
         }
@@ -59,6 +65,7 @@ class InventoryController
     public function dispatch(RequestInterface $request, DispatchStock $useCase)
     {
         try {
+            $useCase = new AutoRetryUseCaseDecorator($useCase);
             $validated = $request->validate([
                 'sku'         => 'required|string',
                 'quantity'    => 'required|integer|min:1',
@@ -82,6 +89,10 @@ class InventoryController
 
             return new Response(['message' => 'Stock dispatched successfully'], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[InventoryController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             $type = (new \ReflectionClass($e))->getShortName();
             return new Response(['error' => $e->getMessage(), 'type' => $type], 400);
         }
@@ -90,6 +101,7 @@ class InventoryController
     public function transfer(RequestInterface $request, TransferStock $useCase)
     {
         try {
+            $useCase = new AutoRetryUseCaseDecorator($useCase);
             $validated = $request->validate([
                 'sku'             => 'required|string',
                 'from_location'   => 'required|string',
@@ -111,6 +123,10 @@ class InventoryController
 
             return new Response(['message' => 'Stock transferred successfully'], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[InventoryController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             $type = (new \ReflectionClass($e))->getShortName();
             return new Response(['error' => $e->getMessage(), 'type' => $type], 400);
         }
@@ -132,6 +148,10 @@ class InventoryController
                 'available' => $stockLevelDto->availableQuantity,
             ], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[InventoryController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             return new Response(['error' => $e->getMessage()], 404);
         }
     }
@@ -139,6 +159,7 @@ class InventoryController
     public function allocate(RequestInterface $request, AllocateStock $useCase)
     {
         try {
+            $useCase = new AutoRetryUseCaseDecorator($useCase);
             $validated = $request->validate([
                 'sku'         => 'required|string',
                 'amount'      => 'required|integer',
@@ -153,6 +174,10 @@ class InventoryController
 
             return new Response(['message' => 'Stock allocated successfully'], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[InventoryController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             $type = (new \ReflectionClass($e))->getShortName();
             return new Response(['error' => $e->getMessage(), 'type' => $type], 400);
         }
@@ -161,6 +186,7 @@ class InventoryController
     public function releaseAllocation(RequestInterface $request, ReleaseAllocation $useCase)
     {
         try {
+            $useCase = new AutoRetryUseCaseDecorator($useCase);
             $validated = $request->validate([
                 'sku'         => 'required|string',
                 'amount'      => 'required|integer',
@@ -175,6 +201,10 @@ class InventoryController
 
             return new Response(['message' => 'Allocation released successfully'], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[InventoryController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             $type = (new \ReflectionClass($e))->getShortName();
             return new Response(['error' => $e->getMessage(), 'type' => $type], 400);
         }
@@ -183,6 +213,7 @@ class InventoryController
     public function fulfillAllocation(RequestInterface $request, FulfillAllocation $useCase)
     {
         try {
+            $useCase = new AutoRetryUseCaseDecorator($useCase);
             $validated = $request->validate([
                 'sku'         => 'required|string',
                 'amount'      => 'required|integer',
@@ -197,6 +228,10 @@ class InventoryController
 
             return new Response(['message' => 'Allocation fulfilled successfully'], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[InventoryController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             $type = (new \ReflectionClass($e))->getShortName();
             return new Response(['error' => $e->getMessage(), 'type' => $type], 400);
         }
@@ -205,6 +240,7 @@ class InventoryController
     public function createInTransit(RequestInterface $request, CreateInTransit $useCase)
     {
         try {
+            $useCase = new AutoRetryUseCaseDecorator($useCase);
             $validated = $request->validate([
                 'sku'         => 'required|string',
                 'amount'      => 'required|integer',
@@ -219,6 +255,10 @@ class InventoryController
 
             return new Response(['message' => 'In-transit stock created successfully'], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[InventoryController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             $type = (new \ReflectionClass($e))->getShortName();
             return new Response(['error' => $e->getMessage(), 'type' => $type], 400);
         }
@@ -227,6 +267,7 @@ class InventoryController
     public function receiveInTransit(RequestInterface $request, ReceiveInTransit $useCase)
     {
         try {
+            $useCase = new AutoRetryUseCaseDecorator($useCase);
             $validated = $request->validate([
                 'sku'         => 'required|string',
                 'amount'      => 'required|integer',
@@ -241,6 +282,10 @@ class InventoryController
 
             return new Response(['message' => 'In-transit stock received successfully'], 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[InventoryController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             $type = (new \ReflectionClass($e))->getShortName();
             return new Response(['error' => $e->getMessage(), 'type' => $type], 400);
         }
@@ -263,6 +308,10 @@ class InventoryController
 
             return new Response($suggestions, 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[InventoryController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             $type = (new \ReflectionClass($e))->getShortName();
             return new Response(['error' => $e->getMessage(), 'type' => $type], 400);
         }
@@ -275,6 +324,10 @@ class InventoryController
 
             return new Response($dispatches, 200);
         } catch (Exception $e) {
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[InventoryController.php] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
             $type = (new \ReflectionClass($e))->getShortName();
             return new Response(['error' => $e->getMessage(), 'type' => $type], 400);
         }

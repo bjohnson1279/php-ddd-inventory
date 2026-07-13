@@ -31,12 +31,18 @@ class DemandForecaster
             throw new \Exception("Product not found for SKU: " . $sku->getValue());
         }
 
+        $entries = $this->ledgerRepo->entriesFor($sku->getValue(), $locationId->getValue());
+
+        return $this->calculateSalesVelocityFromData($product, $locationId, $entries);
+    }
+
+    private function calculateSalesVelocityFromData($product, LocationId $locationId, array $entries): array
+    {
+        $skuStr = $product->getSku()->getValue();
         $now = new DateTimeImmutable();
         $ninetyDaysAgo = $now->modify('-90 days');
         $thirtyDaysAgo = $now->modify('-30 days');
         $sevenDaysAgo = $now->modify('-7 days');
-
-        $entries = $this->ledgerRepo->entriesFor($sku->getValue(), $locationId->getValue());
 
         $history90d = array_filter($entries, function ($e) use ($ninetyDaysAgo) {
             return $e->occurredAt >= $ninetyDaysAgo &&
@@ -72,7 +78,7 @@ class DemandForecaster
         }
 
         return [
-            'sku' => $sku->getValue(),
+            'sku' => $skuStr,
             'locationId' => $locationId->getValue(),
             'currentStock' => $currentStock,
             'averageDailySales7d' => $ads7d,
@@ -130,6 +136,20 @@ class DemandForecaster
 
         $products = $this->productRepo->findBySkus($skuObjects);
         $forecasts = $this->demandForecastRepo->findAllForLocation($locationId);
+        $policies = $this->replenishmentRuleRepo->findAllByLocation($locationId->getValue());
+        $policyMap = [];
+        foreach ($policies as $p) {
+            $policyMap[$p->sku->getValue()] = $p;
+        }
+
+        // Batched lookups to prevent N+1
+        $allEntries = $this->ledgerRepo->entriesForSkusAndLocation($skuStrings, $locationId->getValue());
+        $entriesBySku = [];
+        foreach ($allEntries as $entry) {
+            $entriesBySku[$entry->variantId][] = $entry;
+        }
+
+        $policies = $this->replenishmentRuleRepo->findBySkusAndLocation($skuObjects, $locationId->getValue());
 
         $reportItems = [];
         foreach ($skuStrings as $skuStr) {

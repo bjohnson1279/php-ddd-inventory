@@ -101,7 +101,7 @@ class SerializedItemControllerTest extends TestCase
 
         $this->requestMock->expects($this->once())
             ->method('validate')
-            ->willThrowException(new Exception('Validation failed'));
+            ->willThrowException(new \DomainException('Validation failed'));
 
         $response = $this->controller->receive($this->requestMock, $id, $this->serviceMock, $this->repoMock);
 
@@ -129,7 +129,7 @@ class SerializedItemControllerTest extends TestCase
 
         $this->serviceMock->expects($this->once())
             ->method('receive')
-            ->willThrowException(new Exception('Domain logic error'));
+            ->willThrowException(new \DomainException('Domain logic error'));
 
         $response = $this->controller->receive($this->requestMock, $id, $this->serviceMock, $this->repoMock);
 
@@ -146,7 +146,7 @@ class SerializedItemControllerTest extends TestCase
         ]);
 
         $service = $this->createMock(SerializedInventoryService::class);
-        $service->method('receive')->willThrowException(new Exception('Simulated Service Error'));
+        $service->method('receive')->willThrowException(new \DomainException('Simulated Service Error'));
 
         $repo = $this->createMock(SerializedItemRepositoryInterface::class);
 

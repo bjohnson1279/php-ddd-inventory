@@ -24,11 +24,12 @@ class CatalogController
             $useCase->execute($id, $validated['name'], $validated['description'], $validated['department']);
 
             return new Response(['message' => 'Catalog product created successfully', 'id' => $id], 201);
-        } catch (\InvalidArgumentException | \ValidationException $e) {
-            return new Response(['error' => $e->getMessage()], 400);
         } catch (Exception $e) {
-            error_log('[CatalogController] ' . $e->getMessage());
-            return new Response(['error' => 'An internal server error occurred.'], 500);
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[CatalogController] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
+            return new Response(['error' => $e->getMessage()], 400);
         }
     }
 
@@ -45,11 +46,12 @@ class CatalogController
             $useCase->execute($productId, $variantId, $validated['sku'], $validated['attributes'], $validated['price']);
 
             return new Response(['message' => 'Variant added successfully', 'id' => $variantId], 201);
-        } catch (\InvalidArgumentException | \ValidationException $e) {
-            return new Response(['error' => $e->getMessage()], 400);
         } catch (Exception $e) {
-            error_log('[CatalogController] ' . $e->getMessage());
-            return new Response(['error' => 'An internal server error occurred.'], 500);
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[CatalogController] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
+            return new Response(['error' => $e->getMessage()], 400);
         }
     }
 }

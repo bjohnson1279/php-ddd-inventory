@@ -49,7 +49,7 @@ if ($driver === 'sqlite') {
         'host'      => getenv('DB_HOST')       ?: 'db',
         'database'  => getenv('DB_DATABASE')   ?: 'ddd_inventory',
         'username'  => getenv('DB_USERNAME')   ?: 'ddd_user',
-        'password'  => getenv('DB_PASSWORD')   ?: 'secret',
+        'password'  => getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '',
         'port'      => getenv('DB_PORT')       ?: 5432,
         'charset'   => 'utf8',
         'collation' => 'utf8_unicode_ci',
@@ -61,7 +61,19 @@ $capsule->bootEloquent();
 
 if ($driver === 'sqlite') {
     require_once __DIR__ . '/../src/Infrastructure/Persistence/sqlite_setup.php';
-    \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
+    $conn = $capsule->getConnection();
+    \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($conn);
+    $conn->table('locations')->insertOrIgnore([
+        ['id' => 'LOC-INT', 'name' => 'Integration Location', 'type' => 'TEST']
+    ]);
+    $conn->table('tenants')->insertOrIgnore([
+        ['id' => 'test-tenant', 'name' => 'Test Tenant']
+    ]);
+    $conn->table('roles')->insertOrIgnore([
+        ['id' => 'admin',   'name' => 'Administrator'],
+        ['id' => 'manager', 'name' => 'Manager'],
+        ['id' => 'staff',   'name' => 'Staff']
+    ]);
 }
 
 // ── Event listeners ──────────────────────────────────────────────────────────
@@ -140,6 +152,8 @@ $dispatcher->subscribe(\InventoryApp\Domain\Inventory\Events\OpeningBalancePoste
 // ── Request parsing ───────────────────────────────────────────────────────────
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $uri    = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+
+\InventoryApp\Infrastructure\Http\Middleware\TraceMiddleware::handle();
 
 header('Content-Type: application/json');
 
@@ -381,6 +395,69 @@ if ($method === 'POST' && preg_match('#^/api/notifications/([^/]+)/read$#', $uri
     exit;
 }
 
+// ── Webhook Subscription Routes ──────────────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/webhook-subscriptions') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('users:manage')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\WebhookSubscriptionController())->create($request, tenantId());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+if ($method === 'GET' && $uri === '/api/webhook-subscriptions') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('users:manage')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\WebhookSubscriptionController())->list($request, tenantId());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+if ($method === 'PUT' && preg_match('#^/api/webhook-subscriptions/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('users:manage')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\WebhookSubscriptionController())->update($request, tenantId(), $id);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+if ($method === 'DELETE' && preg_match('#^/api/webhook-subscriptions/([^/]+)$#', $uri, $m)) {
+    requireAuth();
+    $id = urldecode($m[1]);
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('users:manage')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\WebhookSubscriptionController())->delete($request, tenantId(), $id);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
 // ── Route: POST /api/audit/run ────────────────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/audit/run') {
     requireAuth();
@@ -432,8 +509,12 @@ if ($method === 'POST' && preg_match('#^/api/audit/discrepancies/([^/]+)/resolve
 
 // ── Route: POST /auth/register ────────────────────────────────────────────────
 if ($method === 'POST' && $uri === '/auth/register') {
-    $useCase  = new RegisterUser(ServiceContainer::userRepo(), $dispatcher);
-    $response = (new AuthController())->register($request, $useCase);
+    $middleware = new \InventoryApp\Infrastructure\Http\Middleware\RateLimitMiddleware(5, 60);
+    $response = $middleware->handle($request, function ($req) use ($dispatcher) {
+        $useCase  = new RegisterUser(ServiceContainer::userRepo(), $dispatcher);
+        return (new AuthController())->register($req, $useCase);
+    });
+
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
@@ -441,64 +522,63 @@ if ($method === 'POST' && $uri === '/auth/register') {
 
 // ── Route: POST /api/setup ───────────────────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/setup') {
-    $body = json_decode(file_get_contents('php://input'), true) ?: [];
-    
-    $orgName = $body['orgName'] ?? '';
-    $tenantId = $body['tenantId'] ?? '';
-    $adminName = $body['adminName'] ?? '';
-    $adminEmail = $body['adminEmail'] ?? '';
-    $adminPassword = $body['adminPassword'] ?? '';
-    
-    if (empty($orgName) || empty($tenantId) || empty($adminName) || empty($adminEmail) || empty($adminPassword)) {
-        http_response_code(400);
-        echo json_encode(['error' => 'All fields (orgName, tenantId, adminName, adminEmail, adminPassword) are required.']);
-        exit;
-    }
-    
-    try {
-        $existingTenant = Capsule::table('tenants')->where('id', $tenantId)->first();
-        if ($existingTenant) {
-            http_response_code(403);
-            echo json_encode(['error' => 'Forbidden: Tenant already exists.']);
-            exit;
+    $middleware = new \InventoryApp\Infrastructure\Http\Middleware\RateLimitMiddleware(5, 60);
+    $response = $middleware->handle($request, function ($req) {
+        $body = json_decode(file_get_contents('php://input'), true) ?: [];
+        
+        $orgName = $body['orgName'] ?? '';
+        $tenantId = $body['tenantId'] ?? '';
+        $adminName = $body['adminName'] ?? '';
+        $adminEmail = $body['adminEmail'] ?? '';
+        $adminPassword = $body['adminPassword'] ?? '';
+        
+        if (empty($orgName) || empty($tenantId) || empty($adminName) || empty($adminEmail) || empty($adminPassword)) {
+            return new \InventoryApp\Infrastructure\Http\Response(['error' => 'All fields (orgName, tenantId, adminName, adminEmail, adminPassword) are required.'], 400);
         }
+        
+        try {
+            $existingTenant = Capsule::table('tenants')->where('id', $tenantId)->first();
+            if ($existingTenant) {
+                return new \InventoryApp\Infrastructure\Http\Response(['error' => 'Forbidden: Tenant already exists.'], 403);
+            }
 
-        // 1. Insert tenant
-        Capsule::table('tenants')->insert([
-            'id' => $tenantId,
-            'name' => $orgName,
-            'created_at' => date('Y-m-d H:i:s')
-        ]);
-        
-        // 2. Register admin user
-        $userRepo = ServiceContainer::userRepo();
-        $adminId = \Ramsey\Uuid\Uuid::uuid4()->toString();
-        
-        $existing = $userRepo->findByEmail($adminEmail, new \InventoryApp\Domain\Identity\ValueObjects\TenantId($tenantId));
-        if (!$existing) {
-            $user = \InventoryApp\Domain\Identity\Entities\User::register(
-                $adminId,
-                new \InventoryApp\Domain\Identity\ValueObjects\TenantId($tenantId),
-                $adminEmail,
-                $adminPassword,
-                $adminName
-            );
-            $user->assignRole(\InventoryApp\Domain\Identity\Entities\Role::createDefault('admin'));
-            $userRepo->save($user);
+            // 1. Insert tenant
+            Capsule::table('tenants')->insert([
+                'id' => $tenantId,
+                'name' => $orgName,
+                'created_at' => date('Y-m-d H:i:s')
+            ]);
+
+            // 2. Register admin user
+            $userRepo = ServiceContainer::userRepo();
+            $adminId = \Ramsey\Uuid\Uuid::uuid4()->toString();
+
+            $existing = $userRepo->findByEmail($adminEmail, new \InventoryApp\Domain\Identity\ValueObjects\TenantId($tenantId));
+            if (!$existing) {
+                $user = \InventoryApp\Domain\Identity\Entities\User::register(
+                    $adminId,
+                    new \InventoryApp\Domain\Identity\ValueObjects\TenantId($tenantId),
+                    $adminEmail,
+                    $adminPassword,
+                    $adminName
+                );
+                $user->assignRole(\InventoryApp\Domain\Identity\Entities\Role::createDefault('admin'));
+                $userRepo->save($user);
+            }
+
+            return new \InventoryApp\Infrastructure\Http\Response(['message' => 'Organization and admin account set up successfully.'], 200);
+        } catch (\Exception $e) {
+            if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+                return new \InventoryApp\Infrastructure\Http\Response(['error' => $e->getMessage()], 400);
+            } else {
+                error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+                return new \InventoryApp\Infrastructure\Http\Response(['error' => 'An internal server error occurred.'], 500);
+            }
         }
-        
-        http_response_code(200);
-        echo json_encode(['message' => 'Organization and admin account set up successfully.']);
-    } catch (\Exception $e) {
-        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
-            http_response_code(400);
-            echo json_encode(['error' => $e->getMessage()]);
-        } else {
-            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
-            http_response_code(500);
-            echo json_encode(['error' => 'An internal server error occurred.']);
-        }
-    }
+    });
+
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
     exit;
 }
 
@@ -544,43 +624,44 @@ if ($method === 'GET' && $uri === '/api/users') {
 // ── Route: POST /api/users ────────────────────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/users') {
     requireAuth();
-    $body = json_decode(file_get_contents('php://input'), true) ?: [];
+    $middleware = new \InventoryApp\Infrastructure\Http\Middleware\RateLimitMiddleware(5, 60);
+    $response = $middleware->handle($request, function ($req) use ($dispatcher) {
+        $body = json_decode(file_get_contents('php://input'), true) ?: [];
 
-    $email = $body['email'] ?? '';
-    if (empty($email)) {
-        http_response_code(400);
-        echo json_encode(['error' => 'Email is required.']);
-        exit;
-    }
-
-    try {
-        $tenantId        = tenantId();
-        $userId          = \Ramsey\Uuid\Uuid::uuid4()->toString();
-        // Generate a secure random temporary password (returned once to the caller).
-        // The invited user must change it on first login.
-        $temporaryPassword = bin2hex(random_bytes(12)); // 24 hex chars
-        $name            = explode('@', $email)[0];
-        $actingUserId    = $_SERVER['auth.user_id'] ?? '';
-
-        $useCase = new RegisterUser(ServiceContainer::userRepo(), $dispatcher);
-        $useCase->execute($userId, $tenantId, $email, $temporaryPassword, $name, $actingUserId);
-
-        http_response_code(201);
-        echo json_encode([
-            'message'            => 'User invited successfully.',
-            'user_id'            => $userId,
-            'temporary_password' => $temporaryPassword,
-        ]);
-    } catch (\Exception $e) {
-        if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
-            http_response_code(400);
-            echo json_encode(['error' => $e->getMessage()]);
-        } else {
-            error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
-            http_response_code(500);
-            echo json_encode(['error' => 'An internal server error occurred.']);
+        $email = $body['email'] ?? '';
+        if (empty($email)) {
+            return new \InventoryApp\Infrastructure\Http\Response(['error' => 'Email is required.'], 400);
         }
-    }
+
+        try {
+            $tenantId        = tenantId();
+            $userId          = \Ramsey\Uuid\Uuid::uuid4()->toString();
+            // Generate a secure random temporary password (returned once to the caller).
+            // The invited user must change it on first login.
+            $temporaryPassword = bin2hex(random_bytes(12)); // 24 hex chars
+            $name            = explode('@', $email)[0];
+            $actingUserId    = $_SERVER['auth.user_id'] ?? '';
+
+            $useCase = new RegisterUser(ServiceContainer::userRepo(), $dispatcher);
+            $useCase->execute($userId, $tenantId, $email, $temporaryPassword, $name, $actingUserId);
+
+            return new \InventoryApp\Infrastructure\Http\Response([
+                'message'            => 'User invited successfully.',
+                'user_id'            => $userId,
+                'temporary_password' => $temporaryPassword,
+            ], 201);
+        } catch (\Exception $e) {
+            if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
+                return new \InventoryApp\Infrastructure\Http\Response(['error' => $e->getMessage()], 400);
+            } else {
+                error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
+                return new \InventoryApp\Infrastructure\Http\Response(['error' => 'An internal server error occurred.'], 500);
+            }
+        }
+    });
+
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
     exit;
 }
 
@@ -737,6 +818,13 @@ if ($method === 'POST' && preg_match('#^/api/returns/rma/([^/]+)/receive$#', $ur
 if ($method === 'GET' && preg_match('#^/api/returns/rma/([^/]+)$#', $uri, $m)) {
     requireAuth();
     try {
+        $actingUserId = $_SERVER['auth.user_id'] ?? '';
+        $actor = ServiceContainer::userRepo()->findById($actingUserId);
+        if (!$actor || !$actor->canDo('inventory:read')) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Forbidden: You do not have permission to read inventory.']);
+            return;
+        }
         $rmaId = $m[1];
         $rma = ServiceContainer::rmaRepo()->findById($rmaId);
         if (!$rma || $rma->getTenantId()->getValue() !== tenantId()) {
@@ -787,6 +875,13 @@ if ($method === 'GET' && preg_match('#^/api/returns/rma/([^/]+)$#', $uri, $m)) {
 if ($method === 'GET' && $uri === '/api/returns/quarantine') {
     requireAuth();
     try {
+        $actingUserId = $_SERVER['auth.user_id'] ?? '';
+        $actor = ServiceContainer::userRepo()->findById($actingUserId);
+        if (!$actor || !$actor->canDo('inventory:read')) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Forbidden: You do not have permission to read inventory.']);
+            return;
+        }
         $items = ServiceContainer::quarantineRepo()->findAllByTenant(tenantId());
         $results = [];
         foreach ($items as $item) {
@@ -822,6 +917,13 @@ if ($method === 'GET' && $uri === '/api/returns/quarantine') {
 if ($method === 'GET' && preg_match('#^/api/returns/quarantine/([^/]+)$#', $uri, $m)) {
     requireAuth();
     try {
+        $actingUserId = $_SERVER['auth.user_id'] ?? '';
+        $actor = ServiceContainer::userRepo()->findById($actingUserId);
+        if (!$actor || !$actor->canDo('inventory:read')) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Forbidden: You do not have permission to read inventory.']);
+            return;
+        }
         $qId = $m[1];
         $item = ServiceContainer::quarantineRepo()->findById($qId);
         if (!$item || $item->getTenantId()->getValue() !== tenantId()) {
@@ -951,6 +1053,13 @@ if ($method === 'GET' && $uri === '/api/inventory/fefo-pick') {
 // ── Route: GET /api/reports/recall/{lotNumber} ──────────────────────────────
 if ($method === 'GET' && preg_match('#^/api/reports/recall/([^/]+)$#', $uri, $m)) {
     requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('reports:view')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden: You do not have permission to view reports.']);
+        return;
+    }
     $lotNumber = urldecode($m[1]);
     $recallService = new \InventoryApp\Domain\Inventory\Services\ProductRecallService(
         ServiceContainer::ledgerRepo(tenantId())
@@ -1441,6 +1550,13 @@ if ($method === 'GET' && preg_match('#^/api/onboardings/([^/]+)$#', $uri, $m)) {
 // Route: POST /api/journal/entries
 if ($method === 'POST' && $uri === '/api/journal/entries') {
     requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('integrations:manage')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden: You do not have permission to manage integrations.']);
+        return;
+    }
     $response = (new JournalController())->record($request, ServiceContainer::journalRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
@@ -1450,6 +1566,13 @@ if ($method === 'POST' && $uri === '/api/journal/entries') {
 // Route: GET /api/journal/entries
 if ($method === 'GET' && $uri === '/api/journal/entries') {
     requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('reports:view')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden: You do not have permission to view reports.']);
+        return;
+    }
     $response = (new JournalController())->list($request, ServiceContainer::journalRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
@@ -1459,6 +1582,13 @@ if ($method === 'GET' && $uri === '/api/journal/entries') {
 // Route: GET /api/reports/valuation
 if ($method === 'GET' && $uri === '/api/reports/valuation') {
     requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('reports:view')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden: You do not have permission to view reports.']);
+        return;
+    }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReportController())->valuation($request, tenantId());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
@@ -1540,6 +1670,26 @@ if ($method === 'POST' && preg_match('#^/api/shipping/shipments/([^/]+)/track$#'
         ServiceContainer::outboxRepo()
     );
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\ShippingController())->trackShipment($request, $shipmentId, $useCase);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: POST /api/shipping/route
+if ($method === 'POST' && $uri === '/api/shipping/route') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:read')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden: You do not have permission to route orders.']);
+        exit;
+    }
+    $useCase = new \InventoryApp\Application\Shipping\UseCases\RouteOrder(
+        ServiceContainer::productRepo(tenantId()),
+        ServiceContainer::carrierService()
+    );
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ShippingController())->routeOrder($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
@@ -2114,6 +2264,23 @@ if ($method === 'POST' && $uri === '/api/reorder-policies') {
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReorderPolicyController())
         ->createOrUpdate($request, ServiceContainer::reorderPolicyRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/reorder-policies/evaluate ───────────────────────────────
+if ($method === 'POST' && $uri === '/api/reorder-policies/evaluate') {
+    requireAuth();
+    $actingUserId = $_SERVER['auth.user_id'] ?? '';
+    $actor = ServiceContainer::userRepo()->findById($actingUserId);
+    if (!$actor || !$actor->canDo('inventory:receive')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReorderPolicyController())
+        ->evaluate($request, ServiceContainer::reorderPolicyRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;

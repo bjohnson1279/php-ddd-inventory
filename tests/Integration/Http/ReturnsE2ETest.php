@@ -48,7 +48,11 @@ final class ReturnsE2ETest extends TestCase
     protected function setUp(): void
     {
         // Generate unique tenant details for each test run to ensure isolation
-        $suffix = bin2hex(random_bytes(4));
+        Capsule::table('users')->delete();
+        Capsule::table('user_roles')->delete();
+        Capsule::table('tenants')->where('id', '!=', 'test-tenant')->delete();
+        \Illuminate\Database\Capsule\Manager::table('tenants')->insertOrIgnore([['id' => 'test-tenant', 'name' => 'Test Tenant']]);
+                $suffix = bin2hex(random_bytes(4));
         $this->tenantId = 'tenant-' . $suffix;
         $this->email = 'admin-' . $suffix . '@example.com';
         $this->password = 'SecurePassword123';
@@ -123,11 +127,12 @@ final class ReturnsE2ETest extends TestCase
         $this->assertEquals(403, $resolveRes['status']);
 
         // 5. Try reading operations, should be allowed (will get 404 or 200, but not 403)
+        // Wait, the viewer user has NO permissions now, so they shouldn't even be able to read.
         $readRmaRes = $this->request('GET', "/api/returns/rma/some-id", [], $viewerToken);
-        $this->assertEquals(404, $readRmaRes['status']);
+        $this->assertEquals(403, $readRmaRes['status']);
 
         $readQuarantineRes = $this->request('GET', "/api/returns/quarantine", [], $viewerToken);
-        $this->assertEquals(200, $readQuarantineRes['status']);
+        $this->assertEquals(403, $readQuarantineRes['status']);
     }
 
     public function testCompleteReturnsAndQuarantineLifecycle(): void

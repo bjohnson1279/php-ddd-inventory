@@ -60,7 +60,7 @@ class NotificationControllerTest extends TestCase
         $this->serviceMock->expects($this->once())
             ->method('markAsRead')
             ->with($tenantId, $notificationId)
-            ->willThrowException(new Exception('Notification not found'));
+            ->willThrowException(new \DomainException('Notification not found'));
 
         $requestMock = $this->createMock(RequestInterface::class);
 
@@ -118,7 +118,7 @@ class NotificationControllerTest extends TestCase
         $this->serviceMock->expects($this->once())
             ->method('getNotifications')
             ->with($tenantId)
-            ->willThrowException(new Exception('Error fetching notifications'));
+            ->willThrowException(new \DomainException('Error fetching notifications'));
 
         $requestMock = $this->createMock(RequestInterface::class);
 
@@ -171,7 +171,7 @@ class NotificationControllerTest extends TestCase
         $this->serviceMock->expects($this->once())
             ->method('markAllAsRead')
             ->with($tenantId)
-            ->willThrowException(new Exception('Error marking all as read'));
+            ->willThrowException(new \DomainException('Error marking all as read'));
 
         $requestMock = $this->createMock(RequestInterface::class);
 

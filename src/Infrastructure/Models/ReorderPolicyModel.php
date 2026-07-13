@@ -16,6 +16,7 @@ class ReorderPolicyModel extends Model
         'location_id',
         'reorder_point',
         'reorder_quantity',
-        'safety_stock'
+        'safety_stock',
+        'dynamic_rop_enabled'
     ];
 }

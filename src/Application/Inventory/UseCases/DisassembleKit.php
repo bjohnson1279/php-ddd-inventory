@@ -159,7 +159,15 @@ class DisassembleKit
                 occurredAt: new \DateTimeImmutable(),
                 metadata: ['locationId' => $locationId]
             );
-            $this->ledgerRepository->append($ledgerEntry);
+            $componentLedgerEntries[] = $ledgerEntry;
+        }
+
+        if (!empty($componentLedgerEntries)) {
+            $this->ledgerRepository->appendAll($componentLedgerEntries);
+        }
+
+        if (!empty($costLayersToSave)) {
+            $this->costLayerRepository->saveBatch($costLayersToSave);
         }
 
         if (!empty($layersToSave)) {

@@ -43,22 +43,22 @@ class ShopifyOrderMapper
         $orderId = (string) ($payload['id'] ?? 'SHOPIFY-UNKNOWN');
         $batchItems = [];
 
-        // Preload location IDs and SKUs to avoid N+1 queries
-        $locationIds = [];
+        // Preload location mappings to avoid N+1 queries
+        $locationIdsToPreload = [];
         $skusToPreload = [];
         foreach ($payload['line_items'] ?? [] as $item) {
             if (!empty($item['location_id'])) {
-                $locationIds[] = (string) $item['location_id'];
+                $locationIdsToPreload[] = (string) $item['location_id'];
             }
             if (!empty($item['sku'])) {
                 $skusToPreload[] = (string) $item['sku'];
             }
         }
-        if (!empty($locationIds)) {
-            $this->mappings->preloadLocationIds(array_unique($locationIds));
+        if (!empty($locationIdsToPreload)) {
+            $this->mappings->preloadShopifyLocationIds(array_unique($locationIdsToPreload));
         }
         if (!empty($skusToPreload)) {
-            $this->mappings->preloadSkuIds(array_unique($skusToPreload));
+            $this->mappings->preloadShopifyInventoryItemIds(array_unique($skusToPreload));
         }
 
         foreach ($payload['line_items'] ?? [] as $item) {
@@ -88,7 +88,7 @@ class ShopifyOrderMapper
                 $locationsToPreload[] = $batchItem['location'];
             }
 
-            $this->mappings->preloadSkuIds(array_unique($skusToPreload));
+            $this->mappings->preloadShopifyInventoryItemIds(array_unique($skusToPreload));
             $this->mappings->preloadReverseLocationIds(array_unique($locationsToPreload));
 
             $this->processSaleBatch->execute($batchItems, $orderId);
@@ -106,23 +106,23 @@ class ShopifyOrderMapper
         $orderId = 'SHOPIFY-REFUND-' . ($payload['id'] ?? 'UNKNOWN');
         $batchItems = [];
 
-        // Preload location IDs and SKUs to avoid N+1 queries
-        $locationIds = [];
+        // Preload location mappings to avoid N+1 queries
+        $locationIdsToPreload = [];
         $skusToPreload = [];
         foreach ($payload['refund_line_items'] ?? [] as $refundItem) {
             $lineItem = $refundItem['line_item'] ?? [];
-            if (!empty($lineItem['location_id'])) {
-                $locationIds[] = (string) $lineItem['location_id'];
+            if (!empty($refundItem['location_id'])) {
+                $locationIdsToPreload[] = (string) $refundItem['location_id'];
             }
             if (!empty($lineItem['sku'])) {
                 $skusToPreload[] = (string) $lineItem['sku'];
             }
         }
-        if (!empty($locationIds)) {
-            $this->mappings->preloadLocationIds(array_unique($locationIds));
+        if (!empty($locationIdsToPreload)) {
+            $this->mappings->preloadShopifyLocationIds(array_unique($locationIdsToPreload));
         }
         if (!empty($skusToPreload)) {
-            $this->mappings->preloadSkuIds(array_unique($skusToPreload));
+            $this->mappings->preloadShopifyInventoryItemIds(array_unique($skusToPreload));
         }
 
         foreach ($payload['refund_line_items'] ?? [] as $refundItem) {
@@ -153,7 +153,7 @@ class ShopifyOrderMapper
                 $locationsToPreload[] = $batchItem['location'];
             }
 
-            $this->mappings->preloadSkuIds(array_unique($skusToPreload));
+            $this->mappings->preloadShopifyInventoryItemIds(array_unique($skusToPreload));
             $this->mappings->preloadReverseLocationIds(array_unique($locationsToPreload));
 
             $this->processReturnBatch->execute($batchItems, $orderId);

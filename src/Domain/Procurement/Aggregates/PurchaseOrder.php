@@ -4,6 +4,7 @@ namespace InventoryApp\Domain\Procurement\Aggregates;
 
 use InventoryApp\Domain\Shared\Entities\AggregateRoot;
 use InventoryApp\Domain\Procurement\Enums\PurchaseOrderStatus;
+use InventoryApp\Domain\Procurement\Entities\PurchaseOrderItem;
 use DomainException;
 
 class PurchaseOrder extends AggregateRoot

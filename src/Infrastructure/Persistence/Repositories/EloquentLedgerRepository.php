@@ -34,32 +34,6 @@ class EloquentLedgerRepository implements LedgerRepositoryInterface
         ]);
     }
 
-    public function appendAll(array $entries): void
-    {
-        if (empty($entries)) {
-            return;
-        }
-
-        $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
-        $data = [];
-        foreach ($entries as $entry) {
-            $data[] = [
-                'id'           => $entry->id ?: Uuid::uuid4()->toString(),
-                'tenant_id'    => $this->tenantId,
-                'variant_id'   => $entry->variantId,
-                'quantity'     => $entry->quantity,
-                'reason'       => $entry->reason->value,
-                'actor_id'     => $entry->actorId,
-                'reference_id' => $entry->referenceId,
-                'occurred_at'  => $entry->occurredAt->format('Y-m-d H:i:s'),
-                'metadata'     => json_encode($entry->metadata), // insert() requires manual JSON encoding
-                'created_at'   => $now,
-            ];
-        }
-
-        LedgerEntryModel::insert($data);
-    }
-
     public function currentQuantity(string $variantId): int
     {
         return (int) LedgerEntryModel::where('tenant_id', $this->tenantId)
@@ -96,7 +70,7 @@ class EloquentLedgerRepository implements LedgerRepositoryInterface
             ->where('variant_id', $variantId);
 
         if ($locationId !== null) {
-            $query->where('metadata->locationId', $locationId);
+            $query->whereRaw("metadata->>'locationId' = ?", [$locationId]);
         }
 
         return $query->orderBy('occurred_at')
@@ -122,7 +96,7 @@ class EloquentLedgerRepository implements LedgerRepositoryInterface
 
         return LedgerEntryModel::where('tenant_id', $this->tenantId)
             ->whereIn('variant_id', $variantIds)
-            ->where('metadata->locationId', $locationId)
+            ->whereRaw("metadata->>'locationId' = ?", [$locationId])
             ->orderBy('occurred_at')
             ->get()
             ->map(fn($row) => new LedgerEntry(
@@ -142,7 +116,7 @@ class EloquentLedgerRepository implements LedgerRepositoryInterface
     {
         return LedgerEntryModel::where('tenant_id', $this->tenantId)
             ->where('variant_id', $variantId)
-            ->where('metadata->locationId', $locationId)
+            ->whereRaw("metadata->>'locationId' = ?", [$locationId])
             ->exists();
     }
 

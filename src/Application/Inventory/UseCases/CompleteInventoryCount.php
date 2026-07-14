@@ -4,6 +4,7 @@ namespace InventoryApp\Application\Inventory\UseCases;
 
 use InventoryApp\Domain\Inventory\Repositories\InventoryCountRepositoryInterface;
 use InventoryApp\Domain\Inventory\Repositories\ProductRepositoryInterface;
+use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Exception;
 
@@ -63,8 +64,13 @@ class CompleteInventoryCount
             $this->productRepository->saveAll(array_values($productsToSave));
         }
 
-        foreach ($eventsToDispatch as $event) {
-            $this->events->dispatch($event);
+        \InventoryApp\Application\Inventory\Listeners\SyncStockToShopify::beginBatch(array_values($productsToSave));
+        try {
+            foreach ($eventsToDispatch as $event) {
+                $this->events->dispatch($event);
+            }
+        } finally {
+            \InventoryApp\Application\Inventory\Listeners\SyncStockToShopify::endBatch();
         }
     }
 }

@@ -1,7 +1,3 @@
-## 2024-07-10 - Fix N+1 query saving disassembled kit components
-**Learning:** Performing database queries and saves within a loop leads to significant N+1 performance bottlenecks.
-**Action:** Extract entity IDs and pre-fetch them in bulk before the loop using `findByIds`. Accumulate modified entities in memory and persist them after the loop using batch methods like `saveBatch` and `saveAll`.
-
 ## 2026-06-21 - N+1 Queries During Bulk Domain Event Emittance
 **Learning:** In PHP, event listeners inherently process one event at a time. If a batch operation emits multiple domain events (e.g., `SaleProcessed`), listeners attached to that event (like `SyncStockToShopify`) will trigger sequentially, potentially executing database lookup queries for each iteration, causing an N+1 performance bottleneck.
 **Action:** When a UseCase (like `ProcessSaleBatch` or `ShopifyOrderMapper`) triggers multiple domain events that will cause a downstream listener to perform lookups, inject the repository into the UseCase or Mapper and proactively bulk-preload the required data into the repository's in-memory static/instance cache before executing the batch.
@@ -52,11 +48,9 @@
 ## 2024-06-28 - Optimizing Multiple Aggregate Queries
 **Learning:** Performing multiple `sum()` calls on the same Eloquent query builder results in multiple database round-trips for the same dataset, creating a performance bottleneck when checking stock levels.
 **Action:** Use `selectRaw` with `COALESCE(SUM(...), 0)` to combine multiple aggregations into a single query and reduce database overhead.
-
 ## 2024-05-18 - Fix N+1 query in AuditProcessorService
 **Learning:** Found an N+1 query nested in double loops (SKUs and locations mappings) fetching `LedgerEntryModel::sum('quantity')` sequentially. A single query across products/locations grouping by metadata json attribute (using `metadata->>'locationId'`) can fetch all needed totals upfront.
 **Action:** Extract database querying out of double loops using `whereIn` and `groupBy` into a multi-dimensional array mapping.
-
 ## 2024-07-07 - Pre-fetch Mapped Journal Entries to Avoid N+1 DB Queries
 **Learning:** Checking for mapping existence in the `AuditProcessorService` inside a `foreach` loop results in $4N$ database queries, severely impacting audit performance for large datasets.
 **Action:** Optimize by plucking journal IDs before the loop and batch fetching existing mappings and discrepancies using `whereIn` queries. In-memory checks via `in_array` avoid looping over DB interactions, returning the operations to $O(1)$ complexity.
@@ -68,3 +62,6 @@
 ## 2024-06-12 - Batching Ledger Entries to prevent N+1 queries
 **Learning:** In the domain architecture, components in bulk operations (like opening balances or kit assembly/disassembly) shouldn't iteratively call `LedgerRepositoryInterface->append()`. This leads to severe N+1 database INSERTs in `EloquentLedgerRepository`.
 **Action:** When handling multiple components or entries in a loop, aggregate the `LedgerEntry` objects into an array and use the newly added `appendAll(array $entries)` method on the repository interface to perform a single batch INSERT.
+## 2024-07-13 - Eliminate N+1 DB queries in bulk stock updates via SyncStockToShopify batching
+**Learning:** When processing bulk operations (like complete inventory counts, sales, or returns), dispatching domain events individually inside loops can trigger repetitive database lookups within listeners like `SyncStockToShopify`. Specifically, syncing stock to Shopify triggers queries on `shopify_sku_mappings` and `shopify_location_mappings` for every single event.
+**Action:** Always wrap event dispatch loops for bulk domain operations with `\InventoryApp\Application\Inventory\Listeners\SyncStockToShopify::beginBatch(...)` and `endBatch()` inside a `try...finally` block. This allows the listener to pre-fetch Shopify metadata mapping in a single query, eliminating the N+1 problem.

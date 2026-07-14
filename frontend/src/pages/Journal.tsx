@@ -196,15 +196,12 @@ export default function Journal() {
                   {isBalanced ? (
                     <span className="text-success" style={{ fontWeight: 600 }}>✓ Balanced</span>
                   ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                      <span className="text-danger" style={{ fontWeight: 600 }}>✗ Unbalanced</span>
-                      <span className="text-danger" style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>Diff: ${(Math.abs(totalDebits - totalCredits) / 100).toFixed(2)}</span>
-                    </div>
+                    <span className="text-danger" style={{ fontWeight: 600 }}>✗ Unbalanced</span>
                   )}
                 </div>
               </div>
 
-              <button type="submit" className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={!isBalanced || isSubmitting} aria-busy={isSubmitting} title={!isBalanced ? 'Debits and credits must balance before posting' : ''}>
+              <button type="submit" className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} disabled={!isBalanced || isSubmitting} aria-busy={isSubmitting}>
                 {isSubmitting && <Spinner />} {isSubmitting ? 'Posting...' : 'Post Journal Entry'}
               </button>
             </form>

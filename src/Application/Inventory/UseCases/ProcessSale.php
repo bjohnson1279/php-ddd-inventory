@@ -61,10 +61,15 @@ class ProcessSale
 
         $this->productRepository->saveAll(array_values($products));
 
-        foreach ($products as $product) {
-            foreach ($product->releaseEvents() as $event) {
-                $this->events->dispatch($event);
+        \InventoryApp\Application\Inventory\Listeners\SyncStockToShopify::beginBatch(array_values($products));
+        try {
+            foreach ($products as $product) {
+                foreach ($product->releaseEvents() as $event) {
+                    $this->events->dispatch($event);
+                }
             }
+        } finally {
+            \InventoryApp\Application\Inventory\Listeners\SyncStockToShopify::endBatch();
         }
     }
 }

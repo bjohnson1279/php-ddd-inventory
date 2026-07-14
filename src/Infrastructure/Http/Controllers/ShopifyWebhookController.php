@@ -147,8 +147,16 @@ class ShopifyWebhookController
                 }
             }
 
-            foreach ($eventsToDispatch as $event) {
-                $dispatcher->dispatch($event);
+            // Bolt optimization: Prevent N+1 queries during Shopify webhook batch processing.
+            // We wrap the event dispatch loop with beginBatch/endBatch to leverage the static caching
+            // in the SyncStockToShopify listener, which pre-loads mapping data in a single query.
+            \InventoryApp\Application\Inventory\Listeners\SyncStockToShopify::beginBatch(array_values($productsToSave));
+            try {
+                foreach ($eventsToDispatch as $event) {
+                    $dispatcher->dispatch($event);
+                }
+            } finally {
+                \InventoryApp\Application\Inventory\Listeners\SyncStockToShopify::endBatch();
             }
         }
     }

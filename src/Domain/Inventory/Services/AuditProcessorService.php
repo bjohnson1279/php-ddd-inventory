@@ -44,11 +44,33 @@ class AuditProcessorService
                 ? "json_extract(metadata, '$.locationId')"
                 : "metadata->>'locationId'";
 
-            $ledgerQuantities = LedgerEntryModel::where('tenant_id', $tenantId)
-                ->selectRaw("variant_id, {$locCol} as location_id, SUM(quantity) as sum_qty")
-                ->groupBy('variant_id', Capsule::raw($locCol))
-                ->get()
-                ->groupBy('variant_id');
+            $productIds = $productsBySku->pluck('id')->toArray();
+            $ledgerQuantities = collect();
+            if (!empty($productIds)) {
+                $ledgerQuantities = LedgerEntryModel::where('tenant_id', $tenantId)
+                    ->whereIn('variant_id', $productIds)
+                    ->selectRaw("variant_id, {$locCol} as location_id, SUM(quantity) as sum_qty")
+                    ->groupBy('variant_id', Capsule::raw($locCol))
+                    ->get()
+                    ->groupBy('variant_id');
+            }
+
+            // Bolt optimization: Pre-fetch existing discrepancies to avoid N+1 queries
+            $possibleReferenceIds = [];
+            foreach ($skuMappings as $skuMap) {
+                foreach ($locMappings as $locMap) {
+                    $possibleReferenceIds[] = "{$skuMap->sku}:{$locMap->our_location_id}";
+                }
+            }
+
+            $existingShopifyDiscrepancies = [];
+            if (!empty($possibleReferenceIds)) {
+                $existingShopifyDiscrepancies = AuditDiscrepancyModel::where('tenant_id', $tenantId)
+                    ->where('type', 'SHOPIFY_STOCK_MISMATCH')
+                    ->whereIn('reference_id', $possibleReferenceIds)
+                    ->where('status', 'OPEN')
+                    ->pluck('reference_id')->toArray();
+            }
 
             foreach ($skuMappings as $skuMap) {
                 $sku = $skuMap->sku;
@@ -255,7 +277,7 @@ class AuditProcessorService
                     // Sum local stock levels
                     $localQty = (int) LedgerEntryModel::where('tenant_id', $tenantId)
                         ->where('variant_id', $product->id)
-                        ->where('metadata->locationId', $ourLocationId)
+                        ->whereRaw("metadata->>'locationId' = ?", [$ourLocationId])
                         ->sum('quantity');
 
                     try {

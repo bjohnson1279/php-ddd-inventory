@@ -30,27 +30,46 @@ class AuditProcessorService
             $skuMappings = Capsule::table('shopify_sku_mappings')->get();
             $locMappings = Capsule::table('shopify_location_mappings')->get();
 
-            // Bolt optimization: Pre-fetch products to avoid N+1 queries
+            // ⚡ Bolt Optimization: Prevent N+1 queries during Shopify inventory auditing
+            // 💡 What: Pre-fetch all relevant products and pre-calculate local stock levels using a group-by query.
+            // 🎯 Why: Previously, finding the product and summing ledger entries ran queries inside nested loops, causing N+1 database calls.
+            // 📊 Impact: Significant reduction in query count and execution time when auditing tenants with many products and locations.
             $skus = $skuMappings->pluck('sku')->toArray();
             $productsBySku = ProductModel::where('tenant_id', $tenantId)
                 ->whereIn('sku', $skus)
                 ->get()
                 ->keyBy('sku');
 
-            // Bolt optimization: Pre-aggregate ledger entries to avoid N+1 queries
+            $locCol = Capsule::connection()->getDriverName() === 'sqlite'
+                ? "json_extract(metadata, '$.locationId')"
+                : "metadata->>'locationId'";
+
             $productIds = $productsBySku->pluck('id')->toArray();
-
-            $ledgerSumsMap = [];
+            $ledgerQuantities = collect();
             if (!empty($productIds)) {
-                $ledgerSums = LedgerEntryModel::where('tenant_id', $tenantId)
+                $ledgerQuantities = LedgerEntryModel::where('tenant_id', $tenantId)
                     ->whereIn('variant_id', $productIds)
-                    ->selectRaw("variant_id, metadata->>'locationId' as loc_id, SUM(quantity) as total_qty")
-                    ->groupBy('variant_id', Capsule::raw("metadata->>'locationId'"))
-                    ->get();
+                    ->selectRaw("variant_id, {$locCol} as location_id, SUM(quantity) as sum_qty")
+                    ->groupBy('variant_id', Capsule::raw($locCol))
+                    ->get()
+                    ->groupBy('variant_id');
+            }
 
-                foreach ($ledgerSums as $row) {
-                    $ledgerSumsMap[$row->variant_id][$row->loc_id] = (int) $row->total_qty;
+            // Bolt optimization: Pre-fetch existing discrepancies to avoid N+1 queries
+            $possibleReferenceIds = [];
+            foreach ($skuMappings as $skuMap) {
+                foreach ($locMappings as $locMap) {
+                    $possibleReferenceIds[] = "{$skuMap->sku}:{$locMap->our_location_id}";
                 }
+            }
+
+            $existingShopifyDiscrepancies = [];
+            if (!empty($possibleReferenceIds)) {
+                $existingShopifyDiscrepancies = AuditDiscrepancyModel::where('tenant_id', $tenantId)
+                    ->where('type', 'SHOPIFY_STOCK_MISMATCH')
+                    ->whereIn('reference_id', $possibleReferenceIds)
+                    ->where('status', 'OPEN')
+                    ->pluck('reference_id')->toArray();
             }
 
             foreach ($skuMappings as $skuMap) {
@@ -66,8 +85,14 @@ class AuditProcessorService
                     $ourLocationId = $locMap->our_location_id;
                     $shopifyLocationId = $locMap->shopify_location_id;
 
-                    // Fetch pre-aggregated local stock level
-                    $localQty = $ledgerSumsMap[$product->id][$ourLocationId] ?? 0;
+                    $localQty = 0;
+                    if ($ledgerQuantities->has($product->id)) {
+                        $locRows = $ledgerQuantities->get($product->id);
+                        $row = $locRows->firstWhere('location_id', $ourLocationId);
+                        if ($row) {
+                            $localQty = (int) $row->sum_qty;
+                        }
+                    }
 
                     $shopifyQty = $localQty;
                     if ($accessToken !== 'mock-token' && strpos($storeDomain, 'mock') === false) {
@@ -120,11 +145,7 @@ class AuditProcessorService
 
                     if ($localQty !== $shopifyQty) {
                         $referenceId = "{$sku}:{$ourLocationId}";
-                        $existingOpen = AuditDiscrepancyModel::where('tenant_id', $tenantId)
-                            ->where('type', 'SHOPIFY_STOCK_MISMATCH')
-                            ->where('reference_id', $referenceId)
-                            ->where('status', 'OPEN')
-                            ->exists();
+                        $existingOpen = in_array($referenceId, $existingShopifyDiscrepancies ?? []);
 
                         if (!$existingOpen) {
                             $discrepancy = new AuditDiscrepancy(

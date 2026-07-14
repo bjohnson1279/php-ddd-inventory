@@ -7,7 +7,7 @@ use InventoryApp\Domain\Accounting\Aggregates\JournalEntry;
 use InventoryApp\Domain\Accounting\ValueObjects\AccountCode;
 use InventoryApp\Domain\Accounting\Enums\DebitCredit;
 use InventoryApp\Domain\Accounting\Enums\AccountingMethod;
-use LogicException;
+use DomainException;
 use InvalidArgumentException;
 
 class JournalEntryTest extends TestCase
@@ -27,7 +27,7 @@ class JournalEntryTest extends TestCase
 
     public function testUnbalancedEntryThrowsException(): void
     {
-        $this->expectException(LogicException::class);
+        $this->expectException(DomainException::class);
         $this->expectExceptionMessage('Unbalanced journal entry');
 
         $entry = new JournalEntry('e2', 't1', new \DateTimeImmutable(), 'Bad Entry', null, AccountingMethod::Accrual);

@@ -123,7 +123,7 @@ class AuditProcessorService
 
                     if ($localQty !== $shopifyQty) {
                         $referenceId = "{$sku}:{$ourLocationId}";
-                        $existingOpen = in_array($referenceId, $existingShopifyDiscrepancies);
+                        $existingOpen = in_array($referenceId, $existingShopifyDiscrepancies ?? []);
 
                         if (!$existingOpen) {
                             $discrepancy = new AuditDiscrepancy(

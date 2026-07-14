@@ -4,6 +4,7 @@ namespace InventoryApp\Application\Inventory\UseCases;
 
 use InventoryApp\Domain\Inventory\Repositories\InventoryCountRepositoryInterface;
 use InventoryApp\Domain\Inventory\Repositories\ProductRepositoryInterface;
+use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Exception;
 

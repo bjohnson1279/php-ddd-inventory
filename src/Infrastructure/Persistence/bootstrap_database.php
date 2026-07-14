@@ -35,7 +35,7 @@ if ($driver === 'sqlite') {
         'port'     => getenv('DB_PORT') ?: '5432',
         'database' => getenv('DB_DATABASE') ?: 'ddd_inventory',
         'username' => getenv('DB_USERNAME') ?: 'ddd_user',
-        'password' => getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '',
+        'password' => getenv('DB_PASSWORD') ?: 'secret',
         'charset'  => 'utf8',
         'prefix'   => '',
         'schema'   => 'public',

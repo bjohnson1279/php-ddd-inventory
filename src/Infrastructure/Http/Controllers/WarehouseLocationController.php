@@ -11,6 +11,7 @@ use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
 use InventoryApp\Domain\Inventory\ValueObjects\SKU;
 use InventoryApp\Domain\Inventory\Services\PutawaySuggester;
 use InventoryApp\Domain\Inventory\Services\PickingRouteOptimizer;
+use InventoryApp\Infrastructure\ServiceContainer;
 use Exception;
 
 class WarehouseLocationController

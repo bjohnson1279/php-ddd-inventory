@@ -8,11 +8,6 @@ interface LedgerRepositoryInterface
 {
     public function append(LedgerEntry $entry): void;
 
-    /**
-     * @param LedgerEntry[] $entries
-     */
-    public function appendAll(array $entries): void;
-
     public function currentQuantity(string $variantId): int;
 
     /**

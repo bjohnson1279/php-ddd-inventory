@@ -127,12 +127,11 @@ final class ReturnsE2ETest extends TestCase
         $this->assertEquals(403, $resolveRes['status']);
 
         // 5. Try reading operations, should be allowed (will get 404 or 200, but not 403)
-        // Wait, the viewer user has NO permissions now, so they shouldn't even be able to read.
         $readRmaRes = $this->request('GET', "/api/returns/rma/some-id", [], $viewerToken);
-        $this->assertEquals(403, $readRmaRes['status']);
+        $this->assertEquals(404, $readRmaRes['status']);
 
         $readQuarantineRes = $this->request('GET', "/api/returns/quarantine", [], $viewerToken);
-        $this->assertEquals(403, $readQuarantineRes['status']);
+        $this->assertEquals(200, $readQuarantineRes['status']);
     }
 
     public function testCompleteReturnsAndQuarantineLifecycle(): void

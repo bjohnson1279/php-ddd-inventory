@@ -139,7 +139,7 @@ class ForecastingController
                 error_log('[ForecastingController.php] ' . $e->getMessage());
                 return new Response(['error' => 'An internal server error occurred.'], 500);
             }
-            return new Response(['error' => $e->getMessage()], 400);
+            return new Response(['error' => 'Failed to fetch stock velocity: ' . $e->getMessage()], 500);
         }
     }
 }

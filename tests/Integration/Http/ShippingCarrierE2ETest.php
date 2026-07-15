@@ -22,7 +22,7 @@ final class ShippingCarrierE2ETest extends TestCase
     {
         $output = [];
         $dbConn = getenv('DB_CONNECTION') ?: 'pgsql';
-        $dbDb = getenv('DB_DATABASE') ?: '';
+        $dbDb = getenv('DB_DATABASE') ?: 'storage/data/test.sqlite';
         $dbHost = getenv('DB_HOST') ?: '';
         $dbUser = getenv('DB_USERNAME') ?: '';
         $dbPass = getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '';

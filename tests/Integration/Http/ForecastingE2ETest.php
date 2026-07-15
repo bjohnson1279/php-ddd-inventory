@@ -185,6 +185,82 @@ final class ForecastingE2ETest extends TestCase
         $this->assertEquals(0.85, $reportItem2['confidenceLevel']);
     }
 
+    public function testSeasonalForecasting(): void
+    {
+        $sku = 'IPHONE-15';
+        $locationId = 'LOC-INT';
+
+        $receiveRes = $this->request('POST', '/api/inventory/receive', [
+            'sku'         => $sku,
+            'quantity'    => 50,
+            'location_id' => $locationId
+        ], $this->token);
+        $this->assertEquals(200, $receiveRes['status']);
+
+        $now = new \DateTime();
+        $nowStr = $now->format('Y-m-d H:i:s');
+        
+        $sameMonthLastYear = (new \DateTime())->modify('-365 days');
+        $sameMonthLastYearStr = $sameMonthLastYear->format('Y-m-d H:i:s');
+
+        $diffMonthLastYear = (new \DateTime())->modify('-300 days');
+        $diffMonthLastYearStr = $diffMonthLastYear->format('Y-m-d H:i:s');
+
+        $recentSaleStr = (new \DateTime())->modify('-5 days')->format('Y-m-d H:i:s');
+
+        Capsule::table('ledger_entries')->insert([
+            [
+                'id' => uuidv4(),
+                'tenant_id' => $this->tenantId,
+                'variant_id' => $sku,
+                'quantity' => -10,
+                'reason' => 'sale',
+                'actor_id' => 'system',
+                'reference_id' => 'rec-1',
+                'occurred_at' => $recentSaleStr,
+                'metadata' => json_encode(['locationId' => $locationId]),
+                'created_at' => $nowStr,
+            ],
+            [
+                'id' => uuidv4(),
+                'tenant_id' => $this->tenantId,
+                'variant_id' => $sku,
+                'quantity' => -30,
+                'reason' => 'sale',
+                'actor_id' => 'system',
+                'reference_id' => 'rec-2',
+                'occurred_at' => $sameMonthLastYearStr,
+                'metadata' => json_encode(['locationId' => $locationId]),
+                'created_at' => $nowStr,
+            ],
+            [
+                'id' => uuidv4(),
+                'tenant_id' => $this->tenantId,
+                'variant_id' => $sku,
+                'quantity' => -10,
+                'reason' => 'sale',
+                'actor_id' => 'system',
+                'reference_id' => 'rec-3',
+                'occurred_at' => $diffMonthLastYearStr,
+                'metadata' => json_encode(['locationId' => $locationId]),
+                'created_at' => $nowStr,
+            ]
+        ]);
+
+        $forecastRes = $this->request('POST', '/api/forecasting/forecast', [
+            'sku' => $sku,
+            'locationId' => $locationId,
+            'forecastDays' => 30,
+            'trendMultiplier' => 1.0
+        ], $this->token);
+
+        $this->assertEquals(200, $forecastRes['status'], json_encode($forecastRes));
+        
+        $forecast = $forecastRes['body']['forecast'];
+        $this->assertGreaterThan(10, $forecast['forecastedQuantity']);
+        $this->assertEquals(0.90, $forecast['confidenceLevel']);
+    }
+
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
     {
         $url = 'http://127.0.0.1:8089' . $path;

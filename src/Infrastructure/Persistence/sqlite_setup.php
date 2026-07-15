@@ -16,7 +16,8 @@ class SqliteSetup
             self::getSystemQueries(),
             self::getReturnsQueries(),
             self::getForecastingQueries(),
-            self::getShippingQueries()
+            self::getShippingQueries(),
+            self::getComplianceQueries()
         );
 
         foreach ($queries as $q) {
@@ -169,6 +170,10 @@ class SqliteSetup
               bin VARCHAR(50) NOT NULL,
               max_weight_grams INTEGER NOT NULL,
               max_volume_cubic_meters NUMERIC NOT NULL,
+              grid_x INTEGER NOT NULL DEFAULT 0,
+              grid_y INTEGER NOT NULL DEFAULT 0,
+              width INTEGER NOT NULL DEFAULT 1,
+              height INTEGER NOT NULL DEFAULT 1,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               UNIQUE(warehouse_id, zone, aisle, rack, shelf, bin)
             )",
@@ -476,6 +481,24 @@ class SqliteSetup
               occurred_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
               resolved_at DATETIME,
               resolution_notes TEXT
+            )"
+        ];
+    }
+
+    private static function getComplianceQueries(): array
+    {
+        return [
+            "CREATE TABLE IF NOT EXISTS compliance_ledgers (
+              id VARCHAR(50) PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              actor_id VARCHAR(50) NOT NULL,
+              event_type VARCHAR(100) NOT NULL,
+              sequence_number INTEGER NOT NULL,
+              previous_hash VARCHAR(64) NOT NULL,
+              current_hash VARCHAR(64) NOT NULL,
+              signature VARCHAR(64) NOT NULL,
+              payload TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )"
         ];
     }

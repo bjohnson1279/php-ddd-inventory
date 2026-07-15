@@ -295,6 +295,44 @@ final class WarehouseLocationE2ETest extends TestCase
         $this->assertEquals('SKU1', $optimized[3]['sku']); // A02-R01
     }
 
+    public function testWarehouseLocationCoordinates(): void
+    {
+        $saveRes = $this->request('POST', '/api/warehouse-locations', [
+            'warehouseId' => 'WH1',
+            'zone'        => 'ZONEC',
+            'aisle'       => 'A03',
+            'rack'        => 'R04',
+            'shelf'       => 'S05',
+            'bin'         => 'B06',
+            'maxWeightGrams' => 20000,
+            'maxVolumeCubicMeters' => 2.5,
+            'gridX'  => 10,
+            'gridY'  => 15,
+            'width'  => 2,
+            'height' => 3
+        ], $this->token);
+        $this->assertEquals(200, $saveRes['status'], json_encode($saveRes));
+        $this->assertEquals(10, $saveRes['body']['location']['gridX']);
+        $this->assertEquals(15, $saveRes['body']['location']['gridY']);
+        $this->assertEquals(2, $saveRes['body']['location']['width']);
+        $this->assertEquals(3, $saveRes['body']['location']['height']);
+
+        $listRes = $this->request('GET', '/api/warehouse-locations', [], $this->token);
+        $this->assertEquals(200, $listRes['status']);
+        $found = false;
+        foreach ($listRes['body'] as $loc) {
+            if ($loc['id'] === 'WH1-ZONEC-A03-R04-S05-B06') {
+                $this->assertEquals(10, $loc['gridX']);
+                $this->assertEquals(15, $loc['gridY']);
+                $this->assertEquals(2, $loc['width']);
+                $this->assertEquals(3, $loc['height']);
+                $found = true;
+                break;
+            }
+        }
+        $this->assertTrue($found);
+    }
+
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
     {
         $url = 'http://127.0.0.1:8091' . $path;

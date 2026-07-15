@@ -32,6 +32,41 @@ class EloquentLedgerRepository implements LedgerRepositoryInterface
             'metadata'     => $entry->metadata,
             'created_at'   => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
         ]);
+
+        try {
+            \InventoryApp\Domain\Compliance\Services\ComplianceLedgerService::logEvent(
+                $this->tenantId,
+                $entry->actorId ?: 'system',
+                'STOCK_ADJUSTED',
+                [
+                    'variant_id'   => $entry->variantId,
+                    'quantity'     => $entry->quantity,
+                    'reason'       => $entry->reason->value,
+                    'reference_id' => $entry->referenceId,
+                    'occurred_at'  => $entry->occurredAt->format('Y-m-d H:i:s')
+                ]
+            );
+        } catch (\Throwable $e) {
+            error_log('Failed to log event to compliance ledger: ' . $e->getMessage());
+        }
+
+        try {
+            $metadata = is_string($entry->metadata) ? json_decode($entry->metadata, true) : $entry->metadata;
+            $locId = $metadata['locationId'] ?? 'unknown';
+
+            (new \InventoryApp\Application\Notification\Services\NotificationService())->createNotification(
+                $this->tenantId,
+                "Stock Level Updated",
+                json_encode([
+                    'sku'        => $entry->variantId,
+                    'locationId' => $locId,
+                    'quantity'   => (int) $entry->quantity
+                ]),
+                'stock_changed'
+            );
+        } catch (\Throwable $e) {
+            error_log('Failed to create stock_changed notification: ' . $e->getMessage());
+        }
     }
 
     public function currentQuantity(string $variantId): int

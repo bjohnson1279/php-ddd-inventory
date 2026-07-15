@@ -63,6 +63,10 @@ CREATE TABLE IF NOT EXISTS warehouse_locations (
   bin VARCHAR(50) NOT NULL,
   max_weight_grams INTEGER NOT NULL,
   max_volume_cubic_meters NUMERIC NOT NULL,
+  grid_x INTEGER NOT NULL DEFAULT 0,
+  grid_y INTEGER NOT NULL DEFAULT 0,
+  width INTEGER NOT NULL DEFAULT 1,
+  height INTEGER NOT NULL DEFAULT 1,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   UNIQUE(warehouse_id, zone, aisle, rack, shelf, bin)
 );

@@ -19,7 +19,11 @@ class WarehouseLocationModel extends Model
         'shelf',
         'bin',
         'max_weight_grams',
-        'max_volume_cubic_meters'
+        'max_volume_cubic_meters',
+        'grid_x',
+        'grid_y',
+        'width',
+        'height'
     ];
 
     public $timestamps = false;

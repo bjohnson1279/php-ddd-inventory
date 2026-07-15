@@ -21,7 +21,11 @@ class EloquentWarehouseLocationRepository implements WarehouseLocationRepository
                 'shelf'                   => $location->getShelf(),
                 'bin'                     => $location->getBin(),
                 'max_weight_grams'        => $location->getMaxWeightGrams(),
-                'max_volume_cubic_meters' => $location->getMaxVolumeCubicMeters()
+                'max_volume_cubic_meters' => $location->getMaxVolumeCubicMeters(),
+                'grid_x'                  => $location->getGridX(),
+                'grid_y'                  => $location->getGridY(),
+                'width'                   => $location->getWidth(),
+                'height'                  => $location->getHeight()
             ]
         );
     }
@@ -42,7 +46,11 @@ class EloquentWarehouseLocationRepository implements WarehouseLocationRepository
             $model->shelf,
             $model->bin,
             $model->max_weight_grams,
-            $model->max_volume_cubic_meters
+            $model->max_volume_cubic_meters,
+            (int) ($model->grid_x ?? 0),
+            (int) ($model->grid_y ?? 0),
+            (int) ($model->width ?? 1),
+            (int) ($model->height ?? 1)
         );
     }
 
@@ -68,7 +76,11 @@ class EloquentWarehouseLocationRepository implements WarehouseLocationRepository
                 $model->shelf,
                 $model->bin,
                 $model->max_weight_grams,
-                $model->max_volume_cubic_meters
+                $model->max_volume_cubic_meters,
+                (int) ($model->grid_x ?? 0),
+                (int) ($model->grid_y ?? 0),
+                (int) ($model->width ?? 1),
+                (int) ($model->height ?? 1)
             );
         }
         return $results;

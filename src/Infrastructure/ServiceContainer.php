@@ -31,6 +31,8 @@ use InventoryApp\Domain\Inventory\Repositories\WarehouseLocationRepositoryInterf
 use InventoryApp\Infrastructure\Persistence\Repositories\EloquentWarehouseLocationRepository;
 use InventoryApp\Domain\Inventory\Repositories\DemandForecastRepositoryInterface;
 use InventoryApp\Infrastructure\Persistence\Repositories\EloquentDemandForecastRepository;
+use InventoryApp\Domain\Compliance\Repositories\ComplianceLedgerRepositoryInterface;
+use InventoryApp\Infrastructure\Persistence\Repositories\EloquentComplianceLedgerRepository;
 use InventoryApp\Domain\Shared\Repositories\OutboxRepositoryInterface;
 use InventoryApp\Domain\Shipping\Repositories\ShipmentRepositoryInterface;
 use InventoryApp\Infrastructure\Persistence\Repositories\EloquentOutboxRepository;
@@ -67,6 +69,7 @@ class ServiceContainer
         $container->singleton(KitRepositoryInterface::class, EloquentKitRepository::class);
         $container->singleton(WarehouseLocationRepositoryInterface::class, EloquentWarehouseLocationRepository::class);
         $container->singleton(DemandForecastRepositoryInterface::class, EloquentDemandForecastRepository::class);
+        $container->singleton(ComplianceLedgerRepositoryInterface::class, EloquentComplianceLedgerRepository::class);
         $container->singleton(ShipmentRepositoryInterface::class, EloquentShipmentRepository::class);
         $container->singleton(OutboxRepositoryInterface::class, EloquentOutboxRepository::class);
         $container->singleton(CarrierServiceInterface::class, MockCarrierService::class);
@@ -227,6 +230,11 @@ class ServiceContainer
     public static function demandForecastRepo(): DemandForecastRepositoryInterface
     {
         return self::getInstance()->make(DemandForecastRepositoryInterface::class);
+    }
+
+    public static function complianceLedgerRepo(): ComplianceLedgerRepositoryInterface
+    {
+        return self::getInstance()->make(ComplianceLedgerRepositoryInterface::class);
     }
 
     public static function reorderPolicyService(): \InventoryApp\Domain\Procurement\Services\ReorderPolicyService

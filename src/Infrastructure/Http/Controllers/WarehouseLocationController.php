@@ -21,7 +21,11 @@ class WarehouseLocationController
         try {
             $body = $request->validate([
                 'maxWeightGrams'        => 'required|integer|min:1',
-                'maxVolumeCubicMeters'  => 'required'
+                'maxVolumeCubicMeters'  => 'required',
+                'gridX'                 => 'integer',
+                'gridY'                 => 'integer',
+                'width'                 => 'integer',
+                'height'                => 'integer'
             ]);
 
             $path = $request->query('path') ?? ($request->validate([])['path'] ?? null);
@@ -29,8 +33,27 @@ class WarehouseLocationController
             $maxWeight = (int) $body['maxWeightGrams'];
             $maxVolume = (float) $body['maxVolumeCubicMeters'];
 
+            $gridX  = isset($body['gridX']) ? (int) $body['gridX'] : 0;
+            $gridY  = isset($body['gridY']) ? (int) $body['gridY'] : 0;
+            $width  = isset($body['width']) ? (int) $body['width'] : 1;
+            $height = isset($body['height']) ? (int) $body['height'] : 1;
+
             if ($path) {
-                $location = WarehouseLocation::parsePath($path, $maxWeight, $maxVolume);
+                $location = new WarehouseLocation(
+                    new LocationId($path),
+                    explode('-', $path)[0],
+                    explode('-', $path)[1],
+                    explode('-', $path)[2],
+                    explode('-', $path)[3],
+                    explode('-', $path)[4],
+                    explode('-', $path)[5],
+                    $maxWeight,
+                    $maxVolume,
+                    $gridX,
+                    $gridY,
+                    $width,
+                    $height
+                );
             } else {
                 $bodyExtra = $request->validate([
                     'warehouseId' => 'required',
@@ -51,7 +74,11 @@ class WarehouseLocationController
                     $bodyExtra['shelf'],
                     $bodyExtra['bin'],
                     $maxWeight,
-                    $maxVolume
+                    $maxVolume,
+                    $gridX,
+                    $gridY,
+                    $width,
+                    $height
                 );
             }
 
@@ -68,7 +95,11 @@ class WarehouseLocationController
                     'shelf'                => $location->getShelf(),
                     'bin'                  => $location->getBin(),
                     'maxWeightGrams'       => $location->getMaxWeightGrams(),
-                    'maxVolumeCubicMeters' => $location->getMaxVolumeCubicMeters()
+                    'maxVolumeCubicMeters' => $location->getMaxVolumeCubicMeters(),
+                    'gridX'                => $location->getGridX(),
+                    'gridY'                => $location->getGridY(),
+                    'width'                 => $location->getWidth(),
+                    'height'                => $location->getHeight()
                 ]
             ], 200);
         } catch (Exception $e) {
@@ -94,7 +125,11 @@ class WarehouseLocationController
                     'shelf'                => $loc->getShelf(),
                     'bin'                  => $loc->getBin(),
                     'maxWeightGrams'       => $loc->getMaxWeightGrams(),
-                    'maxVolumeCubicMeters' => $loc->getMaxVolumeCubicMeters()
+                    'maxVolumeCubicMeters' => $loc->getMaxVolumeCubicMeters(),
+                    'gridX'                => $loc->getGridX(),
+                    'gridY'                => $loc->getGridY(),
+                    'width'                 => $loc->getWidth(),
+                    'height'                => $loc->getHeight()
                 ];
             }, $locations);
 

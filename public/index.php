@@ -1943,6 +1943,26 @@ if ($method === 'GET' && $uri === '/api/warehouse-locations') {
     exit;
 }
 
+// ── Route: GET /api/compliance/ledger ───────────────────────────────────────────
+if ($method === 'GET' && $uri === '/api/compliance/ledger') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ComplianceController())
+        ->list($request);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/compliance/verify ──────────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/compliance/verify') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ComplianceController())
+        ->verify($request);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
 // ── Route: POST /api/warehouse-locations/putaway-suggestions ────────────────────
 if ($method === 'POST' && $uri === '/api/warehouse-locations/putaway-suggestions') {
     requireAuth();

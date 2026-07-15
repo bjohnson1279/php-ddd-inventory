@@ -90,6 +90,25 @@ do {
 
             echo "Webhook delivery {$delivery->id} failed: " . $e->getMessage() . "\n";
 
+            try {
+                $tenantId = $subscription ? $subscription->tenant_id : 'default-tenant';
+                (new \InventoryApp\Application\Notification\Services\NotificationService())->createNotification(
+                    $tenantId,
+                    "Webhook Delivery Failed",
+                    json_encode([
+                        'id'           => $delivery->id,
+                        'targetUrl'    => $subscription ? $subscription->target_url : 'unknown',
+                        'eventType'    => $delivery->event_type,
+                        'payload'      => $delivery->payload,
+                        'errorMessage' => $e->getMessage(),
+                        'attemptCount' => $nextAttempts
+                    ]),
+                    'webhook_failed'
+                );
+            } catch (\Throwable $notiEx) {
+                error_log('Failed to create webhook_failed notification: ' . $notiEx->getMessage());
+            }
+
             $delivery->status = $nextStatus;
             $delivery->attempts = $nextAttempts;
             $delivery->last_error = $e->getMessage();

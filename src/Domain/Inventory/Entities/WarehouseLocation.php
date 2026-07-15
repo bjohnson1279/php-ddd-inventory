@@ -16,6 +16,10 @@ class WarehouseLocation
     private string $bin;
     private int $maxWeightGrams;
     private float $maxVolumeCubicMeters;
+    private int $gridX;
+    private int $gridY;
+    private int $width;
+    private int $height;
 
     public function __construct(
         LocationId $id,
@@ -26,7 +30,11 @@ class WarehouseLocation
         string $shelf,
         string $bin,
         int $maxWeightGrams,
-        float $maxVolumeCubicMeters
+        float $maxVolumeCubicMeters,
+        int $gridX = 0,
+        int $gridY = 0,
+        int $width = 1,
+        int $height = 1
     ) {
         if (empty(trim($warehouseId))) {
             throw new InvalidArgumentException("Warehouse ID cannot be empty.");
@@ -62,6 +70,10 @@ class WarehouseLocation
         $this->bin = trim($bin);
         $this->maxWeightGrams = $maxWeightGrams;
         $this->maxVolumeCubicMeters = $maxVolumeCubicMeters;
+        $this->gridX = $gridX;
+        $this->gridY = $gridY;
+        $this->width = $width;
+        $this->height = $height;
     }
 
     public static function parsePath(string $path, int $maxWeight = 1000000, float $maxVolume = 10.0): self
@@ -93,4 +105,8 @@ class WarehouseLocation
     public function getMaxWeightGrams(): int { return $this->maxWeightGrams; }
     public function getMaxVolumeCubicMeters(): float { return $this->maxVolumeCubicMeters; }
     public function getPath(): string { return $this->id->getValue(); }
+    public function getGridX(): int { return $this->gridX; }
+    public function getGridY(): int { return $this->gridY; }
+    public function getWidth(): int { return $this->width; }
+    public function getHeight(): int { return $this->height; }
 }

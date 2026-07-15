@@ -68,6 +68,29 @@ if ($driver !== 'sqlite') {
             ");
         }
 
+        $hasGrid = false;
+        $gridColumns = $connection->select("
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'warehouse_locations' 
+              AND column_name = 'grid_x'
+              AND table_schema = 'public'
+              AND table_catalog = current_database()
+        ");
+        if (!empty($gridColumns)) {
+            $hasGrid = true;
+        }
+
+        if (!$hasGrid) {
+            $connection->statement("
+                ALTER TABLE warehouse_locations 
+                ADD COLUMN grid_x INTEGER NOT NULL DEFAULT 0,
+                ADD COLUMN grid_y INTEGER NOT NULL DEFAULT 0,
+                ADD COLUMN width INTEGER NOT NULL DEFAULT 1,
+                ADD COLUMN height INTEGER NOT NULL DEFAULT 1
+            ");
+        }
+
         $connection->statement("
             CREATE TABLE IF NOT EXISTS demand_forecasts (
                 id VARCHAR(50) PRIMARY KEY,

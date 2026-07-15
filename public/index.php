@@ -1963,6 +1963,16 @@ if ($method === 'POST' && $uri === '/api/compliance/verify') {
     exit;
 }
 
+// ── Route: GET /api/warehouse-locations/slotting-suggestions ────────────────────
+if ($method === 'GET' && $uri === '/api/warehouse-locations/slotting-suggestions') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\WarehouseLocationController())
+        ->suggestSlotting($request);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
 // ── Route: POST /api/warehouse-locations/putaway-suggestions ────────────────────
 if ($method === 'POST' && $uri === '/api/warehouse-locations/putaway-suggestions') {
     requireAuth();

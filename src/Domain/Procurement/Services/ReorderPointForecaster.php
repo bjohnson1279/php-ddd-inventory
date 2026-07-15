@@ -21,7 +21,9 @@ class ReorderPointForecaster
         int $leadTimeDays,
         int $safetyStock,
         int $windowDays,
-        ?string $tenantId = null
+        ?string $tenantId = null,
+        ?array $allPos = null,
+        ?\InventoryApp\Domain\Inventory\Entities\Product $product = null
     ): int {
         $stats = $this->velocityCalculator->calculateDailySalesStats($skuStr, $locationId, $windowDays);
         $meanSales = $stats['average'];
@@ -32,9 +34,9 @@ class ReorderPointForecaster
 
         if ($tenantId !== null) {
             $sku = new SKU($skuStr);
-            $product = $this->productRepo->findBySku($sku);
+            $product = $product ?? $this->productRepo->findBySku($sku);
             if ($product) {
-                $allPos = $this->poRepo->findAll();
+                $allPos = $allPos ?? $this->poRepo->findAll();
                 $receivedPos = [];
 
                 foreach ($allPos as $po) {

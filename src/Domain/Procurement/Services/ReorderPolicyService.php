@@ -31,28 +31,37 @@ class ReorderPolicyService
         $policies = $this->reorderPolicyRepository->findAll();
         $results = [];
 
+        // Bolt optimization: Extract database queries out of the loop
+        $allPos = $this->poRepository->findAll();
+
+        $skus = array_unique(array_map(fn($p) => $p->sku->getValue(), $policies));
+        $skuObjects = array_map(fn($s) => new \InventoryApp\Domain\Inventory\ValueObjects\SKU($s), $skus);
+        $products = $productRepo->findBySkus($skuObjects); // Returns array keyed by SKU
+
         foreach ($policies as $policy) {
+            $skuStr = $policy->sku->getValue();
+            $product = $products[$skuStr] ?? null;
+
             $rop = $policy->reorderPoint;
             if ($policy->dynamicRopEnabled) {
                 try {
                     $newRop = $forecaster->forecastReorderPoint(
-                        $policy->sku->getValue(),
+                        $skuStr,
                         $policy->locationId,
                         5, // default leadTimeDays
                         $policy->safetyStock,
                         $windowDays,
-                        $tenantId
+                        $tenantId,
+                        $allPos,
+                        $product
                     );
                     $policy->updateReorderPoint($newRop);
                     $this->reorderPolicyRepository->save($policy);
                     $rop = $newRop;
                 } catch (\Exception $e) {
-                    error_log("Error forecasting ROP for SKU {$policy->sku->getValue()}: " . $e->getMessage());
+                    error_log("Error forecasting ROP for SKU {$skuStr}: " . $e->getMessage());
                 }
             }
-
-            $skuStr = $policy->sku->getValue();
-            $product = $productRepo->findBySku($policy->sku);
             
             $currentQty = 0;
             if ($product) {
@@ -64,7 +73,6 @@ class ReorderPolicyService
             $reason = "";
 
             if ($policy->shouldReorder($currentQty)) {
-                $allPos = $this->poRepository->findAll();
                 $alreadyOrdered = false;
                 foreach ($allPos as $po) {
                     if ($po->tenantId !== $tenantId || $po->locationId !== $policy->locationId) {
@@ -108,6 +116,7 @@ class ReorderPolicyService
                     );
 
                     $this->poRepository->save($po);
+                    $allPos[] = $po; // Bolt optimization: Append new PO to avoid duplicate generation in subsequent iterations
                     $triggered = true;
                 } else {
                     $reason = "Open purchase order already exists to prevent duplicate ordering";

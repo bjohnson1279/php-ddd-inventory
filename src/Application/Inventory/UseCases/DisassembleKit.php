@@ -119,10 +119,11 @@ class DisassembleKit
         $scaleFactor = $totalEstimatedComponentsCost > 0 ? $totalDisassembledCost / $totalEstimatedComponentsCost : 0;
 
         // 8. Restore component variants stock and costing layers
-        $componentIds = array_column($componentAvgCosts, 'variantId');
-        $compProducts = $this->productRepository->findByIds($componentIds);
+        $componentVariantIds = array_column($componentAvgCosts, 'variantId');
+        $prefetchedProducts = $this->productRepository->findByIds($componentVariantIds);
 
         $layersToSave = [];
+        $ledgerEntriesToSave = [];
         $productsToSave = [];
 
         foreach ($componentAvgCosts as $item) {
@@ -141,10 +142,10 @@ class DisassembleKit
             $layersToSave[] = $layer;
 
             // Increment stock level on Product aggregate root
-            if (!isset($compProducts[$item['variantId']])) {
+            $compProduct = $prefetchedProducts[$item['variantId']] ?? null;
+            if (!$compProduct) {
                 throw new Exception("Product variant {$item['variantId']} not found.");
             }
-            $compProduct = $compProducts[$item['variantId']];
             $compProduct->receiveStockAt(new LocationId($locationId), new Quantity($item['quantity']), $referenceId);
             $productsToSave[] = $compProduct;
 
@@ -159,15 +160,7 @@ class DisassembleKit
                 occurredAt: new \DateTimeImmutable(),
                 metadata: ['locationId' => $locationId]
             );
-            $componentLedgerEntries[] = $ledgerEntry;
-        }
-
-        if (!empty($componentLedgerEntries)) {
-            $this->ledgerRepository->appendAll($componentLedgerEntries);
-        }
-
-        if (!empty($costLayersToSave)) {
-            $this->costLayerRepository->saveBatch($costLayersToSave);
+            $ledgerEntriesToSave[] = $ledgerEntry;
         }
 
         if (!empty($layersToSave)) {
@@ -175,6 +168,9 @@ class DisassembleKit
         }
         if (!empty($productsToSave)) {
             $this->productRepository->saveAll($productsToSave);
+        }
+        if (!empty($ledgerEntriesToSave)) {
+            $this->ledgerRepository->appendAll($ledgerEntriesToSave);
         }
 
         // 9. Post journal entries if Accrual

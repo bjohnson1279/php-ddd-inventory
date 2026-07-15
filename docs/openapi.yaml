@@ -128,6 +128,43 @@ paths:
       responses:
         '201':
           description: Variant added
+  /api/compliance/ledger:
+    get:
+      summary: Fetch compliance audit logs
+      parameters:
+        - name: tenantId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of cryptographically signed block entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+  /api/compliance/verify:
+    post:
+      summary: Verify compliance ledger integrity
+      parameters:
+        - name: tenantId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cryptographic integrity validation outcome
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  isValid:
+                    type: boolean
 components:
   schemas:
     ReceiveRequest:

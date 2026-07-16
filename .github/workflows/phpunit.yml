@@ -48,7 +48,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U ddd_user"
+          --health-cmd "pg_isready -U ddd_user -d ddd_inventory"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -79,7 +79,7 @@ jobs:
         env:
           PGPASSWORD: secret
         run: |
-          until pg_isready -h localhost -p 5432 -U ddd_user; do
+          until pg_isready -h localhost -p 5432 -U ddd_user -d ddd_inventory; do
             echo "Waiting for Postgres...";
             sleep 1;
           done

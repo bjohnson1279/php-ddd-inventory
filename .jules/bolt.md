@@ -65,3 +65,11 @@
 ## 2024-07-13 - Eliminate N+1 DB queries in bulk stock updates via SyncStockToShopify batching
 **Learning:** When processing bulk operations (like complete inventory counts, sales, or returns), dispatching domain events individually inside loops can trigger repetitive database lookups within listeners like `SyncStockToShopify`. Specifically, syncing stock to Shopify triggers queries on `shopify_sku_mappings` and `shopify_location_mappings` for every single event.
 **Action:** Always wrap event dispatch loops for bulk domain operations with `\InventoryApp\Application\Inventory\Listeners\SyncStockToShopify::beginBatch(...)` and `endBatch()` inside a `try...finally` block. This allows the listener to pre-fetch Shopify metadata mapping in a single query, eliminating the N+1 problem.
+
+## 2026-07-16 - N+1 Query in DemandForecaster bulk evaluation
+**Learning:** In bulk reporting operations (like ), helper methods inside loops (like ) can trigger N+1 queries if they internally perform database lookups, even if the parent method pre-fetches the data into maps.
+**Action:** When a method is called in a loop and performs database lookups, modify its signature to accept optional pre-fetched arrays (e.g. ). In the loop, pass the pre-fetched mapped data downward instead of relying on the method's internal fallback lookups.
+
+## 2024-07-16 - N+1 Query in DemandForecaster bulk evaluation
+**Learning:** In bulk reporting operations (like DemandForecaster::getDemandPlanningReport), helper methods inside loops (like calculateSalesVelocity) can trigger N+1 queries if they internally perform database lookups, even if the parent method pre-fetches the data into maps. Also, looping over arrays that have already been queried (e.g. findAll) to look up specific entities (e.g. findBySkuAndLocation) triggers N+1.
+**Action:** When a method is called in a loop and performs database lookups, modify its signature to accept optional pre-fetched arrays (e.g. ?array $entries = null). In the loop, pass the pre-fetched mapped data downward instead of relying on the method's internal fallback lookups. For repositories returning maps, directly access array keys.

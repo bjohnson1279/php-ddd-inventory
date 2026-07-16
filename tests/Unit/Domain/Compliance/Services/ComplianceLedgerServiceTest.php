@@ -18,6 +18,7 @@ class ComplianceLedgerServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        putenv('COMPLIANCE_PRIVATE_KEY=test-secret-key');
         $this->savedEntries = [];
 
         $this->mockRepo = $this->createMock(ComplianceLedgerRepositoryInterface::class);
@@ -43,6 +44,12 @@ class ComplianceLedgerServiceTest extends TestCase
         // Override binding in ServiceContainer
         $container = ServiceContainer::getInstance();
         $container->instance(ComplianceLedgerRepositoryInterface::class, $this->mockRepo);
+    }
+
+    protected function tearDown(): void
+    {
+        putenv('COMPLIANCE_PRIVATE_KEY');
+        parent::tearDown();
     }
 
     public function testLogEventGeneratesValidBlockChain()

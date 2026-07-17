@@ -655,7 +655,14 @@ final class ApiEndpointsTest extends TestCase
 
         // Check is_read is true
         $listRes3 = $this->request('GET', '/api/notifications', [], $this->token);
-        $this->assertTrue((bool)$listRes3['body']['notifications'][0]['is_read']);
+        $found = false;
+        foreach ($listRes3['body']['notifications'] as $n) {
+            if ($n['id'] === $notif['id']) {
+                $this->assertTrue((bool)$n['is_read']);
+                $found = true;
+            }
+        }
+        $this->assertTrue($found);
 
         // 6. Mark all as read
         $readAllRes = $this->request('POST', '/api/notifications/read-all', [], $this->token);

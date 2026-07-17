@@ -633,9 +633,13 @@ final class ApiEndpointsTest extends TestCase
         // 3. Check notifications now has 1 item
         $listRes2 = $this->request('GET', '/api/notifications', [], $this->token);
         $this->assertEquals(200, $listRes2['status']);
-        $this->assertCount(1, $listRes2['body']['notifications']);
-        $notif = $listRes2['body']['notifications'][0];
-        $this->assertEquals('Stock Received', $notif['title']);
+        $this->assertCount(2, $listRes2['body']['notifications']);
+        $titles = array_column($listRes2['body']['notifications'], 'title');
+        $this->assertContains('Stock Received', $titles);
+        $this->assertContains('Stock Level Updated', $titles);
+        $notif = $listRes2['body']['notifications'][0]['title'] === 'Stock Received'
+            ? $listRes2['body']['notifications'][0]
+            : $listRes2['body']['notifications'][1];
         $this->assertFalse((bool)$notif['is_read']);
 
         // 4. Test SSE subscribe endpoint

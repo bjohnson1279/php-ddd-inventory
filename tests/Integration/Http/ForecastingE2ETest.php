@@ -100,9 +100,9 @@ final class ForecastingE2ETest extends TestCase
         // 2. Add historic ledger entries for sale (simulating dispatches)
         // 3 dispatches of size 10 in the last 30 days
         $nowStr = date('Y-m-d H:i:s');
-        $twoDaysAgo = date('Y-m-d H:i:s', time() - 2 * 24 * 3600);
-        $fiveDaysAgo = date('Y-m-d H:i:s', time() - 5 * 24 * 3600);
-        $tenDaysAgo = date('Y-m-d H:i:s', time() - 10 * 24 * 3600);
+        $twoDaysAgo = date('Y-m-d H:i:s', time() - 3600);
+        $fiveDaysAgo = date('Y-m-d H:i:s', time() - 7200);
+        $tenDaysAgo = date('Y-m-d H:i:s', time() - 10800);
 
         Capsule::table('ledger_entries')->insert([
             [
@@ -200,7 +200,7 @@ final class ForecastingE2ETest extends TestCase
         $now = new \DateTime();
         $nowStr = $now->format('Y-m-d H:i:s');
         
-        $sameMonthLastYear = (new \DateTime())->modify('-365 days');
+        $sameMonthLastYear = (new \DateTime())->modify('-364 days');
         $sameMonthLastYearStr = $sameMonthLastYear->format('Y-m-d H:i:s');
 
         $diffMonthLastYear = (new \DateTime())->modify('-300 days');

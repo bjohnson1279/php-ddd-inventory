@@ -229,7 +229,7 @@ if ($driver === 'sqlite') {
     RESTART IDENTITY CASCADE');
 
     // Wipe all tenants except test-tenant
-    $connection->table('tenants')->where('id', '!=', 'test-tenant')->delete();
+    $connection->table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
 }
 
 // Ensure standard locations exist
@@ -239,7 +239,10 @@ $connection->table('locations')->insertOrIgnore([
 
 // Ensure standard test tenant exists
 $connection->table('tenants')->upsert(
-    [['id' => 'test-tenant', 'name' => 'Test Tenant']],
+    [
+        ['id' => 'test-tenant', 'name' => 'Test Tenant'],
+        ['id' => 'system', 'name' => 'System Tenant']
+    ],
     ['id'],
     ['name']
 );

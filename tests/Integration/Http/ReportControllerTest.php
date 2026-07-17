@@ -48,7 +48,7 @@ final class ReportControllerTest extends TestCase
     {
         DB::table('users')->delete();
         DB::table('user_roles')->delete();
-        DB::table('tenants')->where('id', '!=', 'test-tenant')->delete();
+        DB::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
         \Illuminate\Database\Capsule\Manager::table('tenants')->insertOrIgnore([['id' => 'test-tenant', 'name' => 'Test Tenant']]);
                 $suffix = bin2hex(random_bytes(4));
         $this->tenantId = 'tenant-' . $suffix;

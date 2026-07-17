@@ -65,3 +65,7 @@
 ## 2024-07-13 - Eliminate N+1 DB queries in bulk stock updates via SyncStockToShopify batching
 **Learning:** When processing bulk operations (like complete inventory counts, sales, or returns), dispatching domain events individually inside loops can trigger repetitive database lookups within listeners like `SyncStockToShopify`. Specifically, syncing stock to Shopify triggers queries on `shopify_sku_mappings` and `shopify_location_mappings` for every single event.
 **Action:** Always wrap event dispatch loops for bulk domain operations with `\InventoryApp\Application\Inventory\Listeners\SyncStockToShopify::beginBatch(...)` and `endBatch()` inside a `try...finally` block. This allows the listener to pre-fetch Shopify metadata mapping in a single query, eliminating the N+1 problem.
+
+## 2024-07-26 - Updating PHPUnit mock closures for batch migrations
+**Learning:** When refactoring a single-entity insertion method (like `append(LedgerEntry)`) into a batch method (`appendAll(array)`), failing to update the closure signature in PHPUnit mock expectations (`$this->callback(function (LedgerEntry $entry) { ... })`) to accept an array (`function (array $entries)`) will cause `TypeError` test failures because the framework attempts to pass an array into a parameter expecting an object.
+**Action:** When updating PHPUnit mock expectations from a single entity to a batch array, ensure the `$this->callback()` closure signature is explicitly updated to accept an `array` parameter and iterate over the entries appropriately.

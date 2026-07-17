@@ -87,6 +87,7 @@ class AssembleKit
         // 3. Consume FIFO costing layers for components and calculate total components cost
         $totalCostCents = 0;
         $modifiedProducts = [];
+        $ledgerEntriesToAppend = [];
         foreach ($componentsToConsume as $comp) {
             $breakdown = $this->costLayerService->consumeFifoLayers($comp['variantId'], $comp['needed']);
             $totalCostCents += $breakdown->totalCostCents;
@@ -97,7 +98,7 @@ class AssembleKit
             $modifiedProducts[] = $product;
 
             // Write deduction to ledger_entries
-            $ledgerEntry = new LedgerEntry(
+            $ledgerEntriesToAppend[] = new LedgerEntry(
                 id: Uuid::uuid4()->toString(),
                 variantId: $comp['variantId'],
                 quantity: -$comp['needed'],
@@ -107,7 +108,6 @@ class AssembleKit
                 occurredAt: new \DateTimeImmutable(),
                 metadata: ['locationId' => $locationId]
             );
-            $this->ledgerRepository->append($ledgerEntry);
         }
 
         // Save all modified products collectively (Optimized write)
@@ -136,7 +136,7 @@ class AssembleKit
         $this->productRepository->save($kitProduct);
 
         // 7. Write increment ledger entry for Kit variant
-        $kitLedgerEntry = new LedgerEntry(
+        $ledgerEntriesToAppend[] = new LedgerEntry(
             id: Uuid::uuid4()->toString(),
             variantId: $kitProduct->getId(),
             quantity: $quantity,
@@ -146,7 +146,7 @@ class AssembleKit
             occurredAt: new \DateTimeImmutable(),
             metadata: ['locationId' => $locationId]
         );
-        $this->ledgerRepository->append($kitLedgerEntry);
+        $this->ledgerRepository->appendAll($ledgerEntriesToAppend);
 
         // 8. Write balanced double-entry Journal Entry
         $this->journalService->onKitAssembly(

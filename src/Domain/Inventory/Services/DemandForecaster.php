@@ -137,7 +137,7 @@ class DemandForecaster
         $periodStart = new DateTimeImmutable();
         $periodEnd = $periodStart->modify('+' . $forecastDays . ' days');
 
-        $confidenceLevel = $velocity['averageDailySales30d'] > 0 ? ($seasonalMultiplier !== 1.0 ? 0.90 : 0.85) : 0.5;
+        $confidenceLevel = $velocity['averageDailySales30d'] > 0 ? ($seasonalMultiplier != 1.0 ? 0.90 : 0.85) : 0.5;
 
         $id = new DemandForecastId(\Ramsey\Uuid\Uuid::uuid4()->toString());
 

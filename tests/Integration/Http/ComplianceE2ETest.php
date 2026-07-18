@@ -22,13 +22,18 @@ final class ComplianceE2ETest extends TestCase
     {
         $output = [];
         // Ensure environment variables pass through to the PHP dev server
+        $dbConnection = getenv('DB_CONNECTION') ?: 'pgsql';
         $dbHost = getenv('DB_HOST') ?: 'localhost';
         $dbPort = getenv('DB_PORT') ?: '5432';
         $dbDatabase = getenv('DB_DATABASE') ?: 'ddd_inventory';
         $dbUsername = getenv('DB_USERNAME') ?: 'ddd_user';
         $dbPassword = getenv('DB_PASSWORD') ?: 'secret';
 
-        $envVars = "DB_HOST={$dbHost} DB_PORT={$dbPort} DB_DATABASE={$dbDatabase} DB_USERNAME={$dbUsername} DB_PASSWORD={$dbPassword}";
+        if ($dbConnection === 'sqlite') {
+            $dbDatabase = getenv('DB_DATABASE') ?: 'storage/data/test.sqlite';
+        }
+
+        $envVars = "DB_CONNECTION={$dbConnection} DB_HOST={$dbHost} DB_PORT={$dbPort} DB_DATABASE={$dbDatabase} DB_USERNAME={$dbUsername} DB_PASSWORD={$dbPassword}";
 
         $command = "{$envVars} php -S 127.0.0.1:8092 public/index.php > tests/Integration/Http/server_compliance.log 2>&1 & echo $!";
         
@@ -59,7 +64,7 @@ final class ComplianceE2ETest extends TestCase
         Capsule::table('ledger_entries')->delete();
         Capsule::table('users')->delete();
         Capsule::table('user_roles')->delete();
-        Capsule::table('tenants')->where('id', '!=', 'test-tenant')->delete();
+        Capsule::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
         Capsule::table('catalog_variants')->delete();
         Capsule::table('catalog_products')->delete();
         Capsule::table('locations')->where('id', '!=', 'LOC-INT')->delete();
@@ -102,7 +107,7 @@ final class ComplianceE2ETest extends TestCase
             'description' => 'Test Desc',
             'department'  => 'Test Dept'
         ], $this->token);
-        $this->assertEquals(200, $prodRes['status']);
+        $this->assertEquals(201, $prodRes['status']);
         $productId = $prodRes['body']['id'];
 
         $varRes = $this->request('POST', "/api/catalog/products/{$productId}/variants", [
@@ -110,14 +115,13 @@ final class ComplianceE2ETest extends TestCase
             'price' => 1000,
             'attributes' => []
         ], $this->token);
-        $this->assertEquals(200, $varRes['status']);
+        $this->assertEquals(201, $varRes['status']);
 
         // Setup location
         Capsule::table('locations')->insertOrIgnore([
             'id'   => 'LOC-COMP-1',
             'name' => 'LOC-COMP-1',
             'type' => 'WAREHOUSE',
-            'tenant_id' => $this->tenantId
         ]);
 
         // Receive stock

@@ -53,7 +53,7 @@ final class ReorderPolicyE2ETest extends TestCase
         Capsule::table('products')->delete();
         Capsule::table('users')->delete();
         Capsule::table('user_roles')->delete();
-        Capsule::table('tenants')->where('id', '!=', 'test-tenant')->delete();
+        Capsule::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
         \Illuminate\Database\Capsule\Manager::table('tenants')->insertOrIgnore([['id' => 'test-tenant', 'name' => 'Test Tenant']]);
                 Capsule::table('product_locations')->delete();
         Capsule::table('inventory_transactions')->delete();

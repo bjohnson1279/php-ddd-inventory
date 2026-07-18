@@ -36,7 +36,12 @@ class ReorderPolicyService
 
         $skus = array_unique(array_map(fn($p) => $p->sku->getValue(), $policies));
         $skuObjects = array_map(fn($s) => new \InventoryApp\Domain\Inventory\ValueObjects\SKU($s), $skus);
-        $products = $productRepo->findBySkus($skuObjects); // Returns array keyed by SKU
+        $products = [];
+
+        // This leverages the existing findBySkus method in ProductRepositoryInterface and EloquentProductRepository
+        foreach ($productRepo->findBySkus($skuObjects) as $p) {
+            $products[$p->getSku()->getValue()] = $p;
+        }
 
         foreach ($policies as $policy) {
             $skuStr = $policy->sku->getValue();

@@ -45,7 +45,7 @@ class PurchaseShippingLabel
         string $locationId,
         string $tenantId
     ): PurchaseShippingLabelResult {
-        if (empty($sku) || $quantity <= 0 || empty($destinationAddress) || empty($carrier) || empty($locationId) || empty($tenantId)) {
+        if (trim($sku) === '' || $quantity <= 0 || trim($destinationAddress) === '' || trim($carrier) === '' || trim($locationId) === '' || trim($tenantId) === '') {
             throw new Exception("Missing required parameters for shipping label purchase.");
         }
 

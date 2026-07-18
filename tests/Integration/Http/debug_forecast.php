@@ -4,8 +4,8 @@ require_once __DIR__ . '/../bootstrap.php';
 
 use Illuminate\Database\Capsule\Manager as Capsule;
 use InventoryApp\Domain\Inventory\Services\DemandForecaster;
-use InventoryApp\Domain\Shared\ValueObjects\SKU;
-use InventoryApp\Domain\Shared\ValueObjects\LocationId;
+use InventoryApp\Domain\Inventory\ValueObjects\SKU;
+use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
 use InventoryApp\Infrastructure\Persistence\Repositories\EloquentLedgerRepository;
 use InventoryApp\Infrastructure\Persistence\Repositories\EloquentProductRepository;
 use InventoryApp\Infrastructure\Identity\NullEventDispatcher;
@@ -123,5 +123,8 @@ if (!empty($dispatches)) {
 }
 
 echo "Final seasonalMultiplier: $seasonalMultiplier\n";
+var_dump($seasonalMultiplier);
+var_dump($seasonalMultiplier !== 1.0);
+var_dump($seasonalMultiplier != 1.0);
 $forecast = $forecaster->generateDemandForecast(new SKU($sku), new LocationId($locationId), 15, 1.2);
 echo "Forecasted confidenceLevel: " . $forecast->confidenceLevel . "\n";

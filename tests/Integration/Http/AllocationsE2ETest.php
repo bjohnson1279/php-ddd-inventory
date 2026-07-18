@@ -264,7 +264,7 @@ final class AllocationsE2ETest extends TestCase
         $url = 'http://127.0.0.1:8087' . $path;
         $options = [
             'http' => [
-                'header'        => "Content-Type: application/json\r\n",
+                'header'        => "Content-Type: application/json\r\nConnection: close\r\n",
                 'method'        => $method,
                 'content'       => json_encode($body),
                 'ignore_errors' => true,

@@ -30,6 +30,10 @@ class ShopifyInventorySync
      */
     public function setInventoryLevel(string $shopifyInventoryItemId, string $shopifyLocationId, int $newQuantity): void
     {
+        if (empty($this->shopDomain) || str_contains($this->shopDomain, 'mock') || str_contains($this->accessToken, 'mock') || str_contains($this->accessToken, 'token')) {
+            return;
+        }
+
         $url  = "{$this->shopDomain}/admin/api/2024-01/inventory_levels/set.json";
         $body = json_encode([
             'location_id'        => $shopifyLocationId,

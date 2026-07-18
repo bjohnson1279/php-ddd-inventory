@@ -69,7 +69,11 @@ class User extends AggregateRoot
             $id,
             $tenantId,
             strtolower(trim($email)),
-            password_hash($plainPassword, PASSWORD_ARGON2ID),
+            password_hash(
+                $plainPassword,
+                (($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?? '') === 'testing' || ($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?? '') === 'local') ? PASSWORD_BCRYPT : PASSWORD_ARGON2ID,
+                (($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?? '') === 'testing' || ($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?? '') === 'local') ? ['cost' => 4] : []
+            ),
             trim($name),
             [Role::createDefault(Role::STAFF)] // default role
         );

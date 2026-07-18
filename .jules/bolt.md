@@ -65,3 +65,7 @@
 ## 2024-07-13 - Eliminate N+1 DB queries in bulk stock updates via SyncStockToShopify batching
 **Learning:** When processing bulk operations (like complete inventory counts, sales, or returns), dispatching domain events individually inside loops can trigger repetitive database lookups within listeners like `SyncStockToShopify`. Specifically, syncing stock to Shopify triggers queries on `shopify_sku_mappings` and `shopify_location_mappings` for every single event.
 **Action:** Always wrap event dispatch loops for bulk domain operations with `\InventoryApp\Application\Inventory\Listeners\SyncStockToShopify::beginBatch(...)` and `endBatch()` inside a `try...finally` block. This allows the listener to pre-fetch Shopify metadata mapping in a single query, eliminating the N+1 problem.
+
+## 2026-07-18 - Fix N+1 queries in DemandForecaster
+**Learning:** Found multiple N+1 queries in `DemandForecaster`. `generateDemandForecast` fetched ledger entries and then passed them to `calculateSalesVelocity` which fetched them again. `getDemandPlanningReport` looped over SKUs and inside the loop, fetched policies and entries sequentially despite having batched queries available earlier.
+**Action:** Always verify that batched queries (like `findBySkusAndLocation`) are actually mapped and used inside subsequent loops rather than performing redundant individual queries. Ensure helper functions accept optional batched data to prevent duplicate database roundtrips.

@@ -181,11 +181,16 @@ if ($driver === 'sqlite') {
         'reorder_policies',
         'demand_forecasts',
         'shipments',
-        'outbox_events'
+        'outbox_events',
+        'compliance_ledgers'
     ];
     
     foreach ($tables as $t) {
-        $connection->statement("DELETE FROM {$t}");
+        try {
+            $connection->statement("DELETE FROM {$t}");
+        } catch (\Exception $e) {
+            // Ignore if table doesn't exist
+        }
     }
 
     $connection->table('tenants')->where('id', '!=', 'test-tenant')->delete();

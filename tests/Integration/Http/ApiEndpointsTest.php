@@ -53,7 +53,7 @@ final class ApiEndpointsTest extends TestCase
         // Generate unique tenant details for each test run to ensure isolation
         DB::table('users')->delete();
         DB::table('user_roles')->delete();
-        DB::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
+        DB::table('tenants')->where('id', '!=', 'test-tenant')->delete();
         \Illuminate\Database\Capsule\Manager::table('tenants')->insertOrIgnore([['id' => 'test-tenant', 'name' => 'Test Tenant']]);
                 $suffix = bin2hex(random_bytes(4));
         $this->tenantId = 'tenant-' . $suffix;
@@ -633,13 +633,9 @@ final class ApiEndpointsTest extends TestCase
         // 3. Check notifications now has 1 item
         $listRes2 = $this->request('GET', '/api/notifications', [], $this->token);
         $this->assertEquals(200, $listRes2['status']);
-        $this->assertCount(2, $listRes2['body']['notifications']);
-        $titles = array_column($listRes2['body']['notifications'], 'title');
-        $this->assertContains('Stock Received', $titles);
-        $this->assertContains('Stock Level Updated', $titles);
-        $notif = $listRes2['body']['notifications'][0]['title'] === 'Stock Received'
-            ? $listRes2['body']['notifications'][0]
-            : $listRes2['body']['notifications'][1];
+        $this->assertCount(1, $listRes2['body']['notifications']);
+        $notif = $listRes2['body']['notifications'][0];
+        $this->assertEquals('Stock Received', $notif['title']);
         $this->assertFalse((bool)$notif['is_read']);
 
         // 4. Test SSE subscribe endpoint
@@ -655,14 +651,7 @@ final class ApiEndpointsTest extends TestCase
 
         // Check is_read is true
         $listRes3 = $this->request('GET', '/api/notifications', [], $this->token);
-        $found = false;
-        foreach ($listRes3['body']['notifications'] as $n) {
-            if ($n['id'] === $notif['id']) {
-                $this->assertTrue((bool)$n['is_read']);
-                $found = true;
-            }
-        }
-        $this->assertTrue($found);
+        $this->assertTrue((bool)$listRes3['body']['notifications'][0]['is_read']);
 
         // 6. Mark all as read
         $readAllRes = $this->request('POST', '/api/notifications/read-all', [], $this->token);

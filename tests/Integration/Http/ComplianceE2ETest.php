@@ -50,7 +50,7 @@ final class ComplianceE2ETest extends TestCase
         Capsule::table('ledger_entries')->delete();
         Capsule::table('users')->delete();
         Capsule::table('user_roles')->delete();
-        Capsule::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
+        Capsule::table('tenants')->where('id', '!=', 'test-tenant')->delete();
         Capsule::table('catalog_variants')->delete();
         Capsule::table('catalog_products')->delete();
         Capsule::table('locations')->where('id', '!=', 'LOC-INT')->delete();
@@ -108,6 +108,7 @@ final class ComplianceE2ETest extends TestCase
             'id'   => 'LOC-COMP-1',
             'name' => 'LOC-COMP-1',
             'type' => 'WAREHOUSE',
+            'tenant_id' => $this->tenantId
         ]);
 
         // Receive stock

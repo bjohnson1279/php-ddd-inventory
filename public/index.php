@@ -132,7 +132,7 @@ $registerProductUseCase = new \InventoryApp\Application\Inventory\UseCases\Regis
     ServiceContainer::productRepo('system'),
     $dispatcher
 );
-$createInventoryListener = new CreateInventoryItemOnVariantAdded();
+$createInventoryListener = new CreateInventoryItemOnVariantAdded($registerProductUseCase);
 $dispatcher->subscribe(VariantAddedToCatalog::class, [$createInventoryListener, 'handle']);
 
 // Register Realtime Notification Listener

@@ -200,7 +200,7 @@ final class ForecastingE2ETest extends TestCase
         $now = new \DateTime();
         $nowStr = $now->format('Y-m-d H:i:s');
         
-        $sameMonthLastYear = (new \DateTime())->modify('-364 days');
+        $sameMonthLastYear = (new \DateTime())->modify('-365 days');
         $sameMonthLastYearStr = $sameMonthLastYear->format('Y-m-d H:i:s');
 
         $diffMonthLastYear = (new \DateTime())->modify('-300 days');

@@ -52,7 +52,7 @@ final class AllocationsE2ETest extends TestCase
         Capsule::table('products')->delete();
         Capsule::table('user_roles')->delete();
         Capsule::table('users')->delete();
-        Capsule::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
+        Capsule::table('tenants')->where('id', '!=', 'test-tenant')->delete();
         \Illuminate\Database\Capsule\Manager::table('tenants')->insertOrIgnore([['id' => 'test-tenant', 'name' => 'Test Tenant']]);
 
         $suffix = bin2hex(random_bytes(4));

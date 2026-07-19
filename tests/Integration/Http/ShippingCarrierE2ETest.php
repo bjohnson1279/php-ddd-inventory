@@ -156,8 +156,7 @@ final class ShippingCarrierE2ETest extends TestCase
         // 7. Verify Outbox event generated
         $outboxStatsRes = $this->request('GET', '/api/outbox/stats', [], $this->token);
         $this->assertEquals(200, $outboxStatsRes['status'], json_encode($outboxStatsRes));
-        $this->assertContains($outboxStatsRes['body']['totalPending'], [0, 1]);
-        $this->assertEquals(1, $outboxStatsRes['body']['totalPending'] + $outboxStatsRes['body']['totalProcessed']);
+        $this->assertEquals(1, $outboxStatsRes['body']['totalPending']);
         $this->assertEquals('ShipmentCreatedEvent', $outboxStatsRes['body']['recentFailures'][0]['eventName'] ?? $outboxStatsRes['body']['recentFailures'] === [] ? 'ShipmentCreatedEvent' : '');
         
         // Let's directly check database outbox count to be sure

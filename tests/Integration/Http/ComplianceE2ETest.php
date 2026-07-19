@@ -21,12 +21,7 @@ final class ComplianceE2ETest extends TestCase
     public static function setUpBeforeClass(): void
     {
         $output = [];
-        $dbConn = getenv('DB_CONNECTION') ?: 'pgsql';
-        $dbDb = getenv('DB_DATABASE') ?: '';
-        $dbHost = getenv('DB_HOST') ?: '';
-        $dbUser = getenv('DB_USERNAME') ?: '';
-        $dbPass = getenv('DB_PASSWORD') ?: '';
-        $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8092 public/index.php > tests/Integration/Http/server_compliance.log 2>&1 & echo $!";
+        $command = "php -S 127.0.0.1:8092 public/index.php > tests/Integration/Http/server_compliance.log 2>&1 & echo $!";
         
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
@@ -56,8 +51,8 @@ final class ComplianceE2ETest extends TestCase
         Capsule::table('users')->delete();
         Capsule::table('user_roles')->delete();
         Capsule::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
-        Capsule::table('catalog_variants')->delete();
-        Capsule::table('catalog_products')->delete();
+        Capsule::table('catalog_variants')->truncate();
+        Capsule::table('catalog_products')->truncate();
         Capsule::table('locations')->where('id', '!=', 'LOC-INT')->delete();
 
         $suffix = bin2hex(random_bytes(4));

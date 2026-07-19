@@ -181,7 +181,8 @@ if ($driver === 'sqlite') {
         'reorder_policies',
         'demand_forecasts',
         'shipments',
-        'outbox_events'
+        'outbox_events',
+        'compliance_ledgers'
     ];
     
     foreach ($tables as $t) {
@@ -191,8 +192,11 @@ if ($driver === 'sqlite') {
     $connection->table('tenants')->where('id', '!=', 'test-tenant')->delete();
 } else {
     $connection->statement('TRUNCATE TABLE
+        catalog_products,
+        catalog_variants,
         inventory_transactions, 
         product_locations, 
+        compliance_ledgers,
         products, 
         inventory_count_items, 
         inventory_counts, 
@@ -225,7 +229,8 @@ if ($driver === 'sqlite') {
         reorder_policies,
         demand_forecasts,
         shipments,
-        outbox_events
+        outbox_events,
+        compliance_ledgers
     RESTART IDENTITY CASCADE');
 
     // Wipe all tenants except test-tenant

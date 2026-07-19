@@ -195,6 +195,7 @@ if ($driver === 'sqlite') {
         catalog_variants,
         inventory_transactions, 
         product_locations, 
+        compliance_ledgers,
         products, 
         inventory_count_items, 
         inventory_counts, 

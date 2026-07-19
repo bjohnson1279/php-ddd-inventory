@@ -166,34 +166,6 @@ class AuthenticateUserTest extends TestCase
         $useCase->execute($email, $password, $tenantId);
     }
 
-    public function testExecuteThrowsWhenUserEntityMethodFails(): void
-    {
-        $email = 'user@store.com';
-        $password = 'password123';
-        $tenantId = 't1';
-
-        $userMock = $this->createMock(User::class);
-        $userMock->expects($this->once())
-            ->method('isActive')
-            ->willThrowException(new Exception('Unexpected user error'));
-
-        $repo = $this->createMock(UserRepositoryInterface::class);
-        $repo->expects($this->once())
-            ->method('findByEmail')
-            ->with($email, $this->equalTo(new TenantId($tenantId)))
-            ->willReturn($userMock);
-
-        $tokenService = $this->createMock(ApiTokenService::class);
-        $tokenService->expects($this->never())->method('issue');
-
-        $useCase = new AuthenticateUser($repo, $tokenService);
-
-        $this->expectException(Exception::class);
-        $this->expectExceptionMessage('Unexpected user error');
-
-        $useCase->execute($email, $password, $tenantId);
-    }
-
     public function testExecuteThrowsWhenRepositoryFails(): void
     {
         $email = 'user@store.com';

@@ -190,7 +190,7 @@ if ($driver === 'sqlite') {
 
     $connection->table('tenants')->where('id', '!=', 'test-tenant')->delete();
 } else {
-    $connection->statement('TRUNCATE TABLE
+        $connection->statement('TRUNCATE TABLE
         inventory_transactions, 
         product_locations, 
         products, 

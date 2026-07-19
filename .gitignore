@@ -9,3 +9,7 @@
 /db_data/
 /.jules/
 /tests/**/*.log
+.antigravitycli/
+/build/
+merge-master-to-prs.sh
+.antigravitycli/56b43216-f91f-42f3-bd64-2ba1ff7210a2.json

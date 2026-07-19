@@ -21,7 +21,7 @@ final class ReportControllerTest extends TestCase
     public static function setUpBeforeClass(): void
     {
         $output = [];
-        $command = "php -S 127.0.0.1:8089 public/index.php > tests/Integration/Http/server_report.log 2>&1 & echo $!";
+        $command = "php -S 127.0.0.1:8097 public/index.php > tests/Integration/Http/server_report.log 2>&1 & echo $!";
         
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
@@ -157,7 +157,7 @@ final class ReportControllerTest extends TestCase
 
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
     {
-        $url = 'http://127.0.0.1:8089' . $path;
+        $url = 'http://127.0.0.1:8097' . $path;
         $options = [
             'http' => [
                 'header'        => "Content-Type: application/json\r\n",

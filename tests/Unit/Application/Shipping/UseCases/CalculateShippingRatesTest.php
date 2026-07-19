@@ -24,7 +24,7 @@ class CalculateShippingRatesTest extends TestCase
         $sku = 'TEST-SKU';
         $quantity = 5;
         $destinationAddress = '123 Test St, Test City, TS 12345';
-        $expectedRates = []; // In a real scenario, this would be an array of CarrierRate objects, but [] is fine for testing the return value flow
+        $expectedRates = [];
 
         $this->carrierServiceMock->expects($this->once())
             ->method('fetchRates')

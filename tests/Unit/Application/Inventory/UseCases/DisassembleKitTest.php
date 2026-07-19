@@ -194,8 +194,11 @@ class DisassembleKitTest extends TestCase
         $compLayer = new InventoryCostLayer('layer-2', 'comp-1', 'tenant-1', 10, 500, new \DateTimeImmutable(), 'ref-1');
 
         $this->costLayerRepository->method('getActiveLayers')->willReturnMap([
-            ['prod_kit_1', 'received_at ASC', [$kitLayer]],
-            ['comp-1', 'received_at ASC', [$compLayer]]
+            ['prod_kit_1', 'received_at ASC', [$kitLayer]]
+        ]);
+
+        $this->costLayerRepository->method('getActiveLayersByVariantIds')->willReturnMap([
+            [['comp-1'], 'received_at ASC', ['comp-1' => [$compLayer]]]
         ]);
 
         $this->costLayerRepository->expects($this->atLeastOnce())->method('saveBatch');
@@ -280,6 +283,8 @@ class DisassembleKitTest extends TestCase
             return [];
         });
 
+        $this->costLayerRepository->method('getActiveLayersByVariantIds')->willReturn([]);
+
         $this->expectException(\Exception::class);
         $this->expectExceptionMessage("Product variant comp-1 not found.");
 
@@ -341,6 +346,10 @@ class DisassembleKitTest extends TestCase
             if ($variantId === 'prod_kit_1') {
                 return [$kitLayer];
             }
+            return [];
+        });
+
+        $this->costLayerRepository->method('getActiveLayersByVariantIds')->willReturnCallback(function($variantIds) {
             throw new \Exception("Database error");
         });
 
@@ -390,6 +399,7 @@ class DisassembleKitTest extends TestCase
 
         // Simulation: Get active layers returns insufficient or empty array causing DomainException in CostLayerService
         $this->costLayerRepository->method('getActiveLayers')->willReturn([]);
+        $this->costLayerRepository->method('getActiveLayersByVariantIds')->willReturn([]);
 
         $this->expectException(\DomainException::class);
         $this->expectExceptionMessage("Insufficient cost layers to cover quantity 1");
@@ -451,12 +461,16 @@ class DisassembleKitTest extends TestCase
         $compLayer = new InventoryCostLayer('layer-2', 'comp-1', 'tenant-1', 10, 500, new \DateTimeImmutable(), 'ref-1');
         $compLayer->setRemainingQuantity(0);
 
-        $this->costLayerRepository->method('getActiveLayers')->willReturnCallback(function($variantId) use ($kitLayer, $compLayer) {
+        $this->costLayerRepository->method('getActiveLayers')->willReturnCallback(function($variantId) use ($kitLayer) {
             if ($variantId === 'prod_kit_1') {
                 return [$kitLayer];
             }
-            return [$compLayer];
+            return [];
         });
+
+        $this->costLayerRepository->method('getActiveLayersByVariantIds')->willReturnMap([
+            [['comp-1'], 'received_at ASC', ['comp-1' => [$compLayer]]]
+        ]);
 
         $this->costLayerRepository->expects($this->once())->method('save')->with($this->callback(function (InventoryCostLayer $layer) {
             return $layer->unitCostCents === 1000;

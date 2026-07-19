@@ -49,9 +49,9 @@ if ($driver !== 'sqlite') {
     try {
         $hasAllocated = false;
         $columns = $connection->select("
-            SELECT column_name 
-            FROM information_schema.columns 
-            WHERE table_name = 'product_locations' 
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name = 'product_locations'
               AND column_name = 'allocated_quantity'
               AND table_schema = 'public'
               AND table_catalog = current_database()
@@ -62,7 +62,7 @@ if ($driver !== 'sqlite') {
 
         if (!$hasAllocated) {
             $connection->statement("
-                ALTER TABLE product_locations 
+                ALTER TABLE product_locations
                 ADD COLUMN allocated_quantity INTEGER NOT NULL DEFAULT 0,
                 ADD COLUMN in_transit_quantity INTEGER NOT NULL DEFAULT 0
             ");
@@ -70,9 +70,9 @@ if ($driver !== 'sqlite') {
 
         $hasGrid = false;
         $gridColumns = $connection->select("
-            SELECT column_name 
-            FROM information_schema.columns 
-            WHERE table_name = 'warehouse_locations' 
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name = 'warehouse_locations'
               AND column_name = 'grid_x'
               AND table_schema = 'public'
               AND table_catalog = current_database()
@@ -83,7 +83,7 @@ if ($driver !== 'sqlite') {
 
         if (!$hasGrid) {
             $connection->statement("
-                ALTER TABLE warehouse_locations 
+                ALTER TABLE warehouse_locations
                 ADD COLUMN grid_x INTEGER NOT NULL DEFAULT 0,
                 ADD COLUMN grid_y INTEGER NOT NULL DEFAULT 0,
                 ADD COLUMN width INTEGER NOT NULL DEFAULT 1,
@@ -145,21 +145,21 @@ if ($driver !== 'sqlite') {
 if ($driver === 'sqlite') {
     require_once __DIR__ . '/../../src/Infrastructure/Persistence/sqlite_setup.php';
     \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($connection);
-    
+
     $tables = [
-        'inventory_transactions', 
-        'product_locations', 
-        'products', 
-        'inventory_count_items', 
-        'inventory_counts', 
-        'ledger_entries', 
-        'serialized_items', 
-        'barcodes', 
-        'stock_onboarding_items', 
-        'stock_onboardings', 
-        'journal_entries', 
-        'api_tokens', 
-        'users', 
+        'inventory_transactions',
+        'product_locations',
+        'products',
+        'inventory_count_items',
+        'inventory_counts',
+        'ledger_entries',
+        'serialized_items',
+        'barcodes',
+        'stock_onboarding_items',
+        'stock_onboardings',
+        'journal_entries',
+        'api_tokens',
+        'users',
         'shopify_location_mappings',
         'shopify_sku_mappings',
         'shopify_sync_failures',
@@ -183,7 +183,7 @@ if ($driver === 'sqlite') {
         'shipments',
         'outbox_events'
     ];
-    
+
     foreach ($tables as $t) {
         $connection->statement("DELETE FROM {$t}");
     }
@@ -191,21 +191,19 @@ if ($driver === 'sqlite') {
     $connection->table('tenants')->where('id', '!=', 'test-tenant')->delete();
 } else {
     $connection->statement('TRUNCATE TABLE
-        catalog_products,
-        catalog_variants,
-        inventory_transactions, 
-        product_locations, 
-        products, 
-        inventory_count_items, 
-        inventory_counts, 
-        ledger_entries, 
-        serialized_items, 
-        barcodes, 
-        stock_onboarding_items, 
-        stock_onboardings, 
-        journal_entries, 
-        api_tokens, 
-        users, 
+        inventory_transactions,
+        product_locations,
+        products,
+        inventory_count_items,
+        inventory_counts,
+        ledger_entries,
+        serialized_items,
+        barcodes,
+        stock_onboarding_items,
+        stock_onboardings,
+        journal_entries,
+        api_tokens,
+        users,
         shopify_location_mappings,
         shopify_sku_mappings,
         shopify_sync_failures,

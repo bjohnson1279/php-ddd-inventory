@@ -51,8 +51,8 @@ final class ComplianceE2ETest extends TestCase
         Capsule::table('users')->delete();
         Capsule::table('user_roles')->delete();
         Capsule::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
-        Capsule::table('catalog_variants')->delete();
-        Capsule::table('catalog_products')->delete();
+        Capsule::table('catalog_variants')->truncate();
+        Capsule::table('catalog_products')->truncate();
         Capsule::table('locations')->where('id', '!=', 'LOC-INT')->delete();
 
         $suffix = bin2hex(random_bytes(4));

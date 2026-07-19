@@ -67,3 +67,7 @@
 **Vulnerability:** Rate limit bypass via IP Spoofing (X-Forwarded-For).
 **Learning:** The rate limiter blindly trusted the `HTTP_X_FORWARDED_FOR` header or failed to properly walk the proxy chain from right to left to establish the true client IP against a list of trusted proxies.
 **Prevention:** Always validate `REMOTE_ADDR` against a trusted proxy list before parsing `HTTP_X_FORWARDED_FOR`, and traverse the list right-to-left to safely extract the untrusted client IP.
+## 2024-11-20 - Unbounded cURL Execution in Integration Clients
+**Vulnerability:** The Xero API integration client (`XeroJournalSync`) lacked explicit `CURLOPT_TIMEOUT` and `CURLOPT_CONNECTTIMEOUT` options, defaulting to infinite timeouts.
+**Learning:** Network clients without timeouts leave the application vulnerable to resource exhaustion (Denial of Service) if remote endpoints hang or become unresponsive.
+**Prevention:** Always explicitly configure execution and connection timeouts on external HTTP/API requests (cURL, Guzzle, etc.), ideally making them configurable via environment variables. Ensure the client handles connection failures safely without throwing generic type errors downstream.

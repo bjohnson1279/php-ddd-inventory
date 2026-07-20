@@ -65,3 +65,6 @@
 ## 2024-07-13 - Eliminate N+1 DB queries in bulk stock updates via SyncStockToShopify batching
 **Learning:** When processing bulk operations (like complete inventory counts, sales, or returns), dispatching domain events individually inside loops can trigger repetitive database lookups within listeners like `SyncStockToShopify`. Specifically, syncing stock to Shopify triggers queries on `shopify_sku_mappings` and `shopify_location_mappings` for every single event.
 **Action:** Always wrap event dispatch loops for bulk domain operations with `\InventoryApp\Application\Inventory\Listeners\SyncStockToShopify::beginBatch(...)` and `endBatch()` inside a `try...finally` block. This allows the listener to pre-fetch Shopify metadata mapping in a single query, eliminating the N+1 problem.
+## 2024-07-28 - Bulk Ledger Inserts
+**Learning:** In the domain architecture, when Use Cases like `AssembleKit`, `DisassembleKit`, or services like `OpeningBalanceService` process multiple components or items, appending ledger entries sequentially causes N+1 queries.
+**Action:** Use an `appendAll(array $entries)` method on `LedgerRepositoryInterface` to collect the `$ledgerEntries` in a batch within the Use Case and persist them once outside the loop.

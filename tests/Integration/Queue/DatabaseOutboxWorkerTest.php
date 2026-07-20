@@ -48,7 +48,7 @@ final class DatabaseOutboxWorkerTest extends TestCase
         // 3. Run outbox-worker.php CLI script with --once flag
         $output = [];
         $resultCode = -1;
-        $cmd = "DB_CONNECTION=sqlite DB_DATABASE=" . realpath(__DIR__ . "/../../../storage/data/test.sqlite") . " php scripts/outbox-worker.php --once";
+        $cmd = "DB_CONNECTION=sqlite DB_DATABASE=" . __DIR__ . "/../../../storage/data/test.sqlite php " . __DIR__ . "/../../../scripts/outbox-worker.php --once";
         exec($cmd, $output, $resultCode);
 
         // 4. Verify script finished successfully

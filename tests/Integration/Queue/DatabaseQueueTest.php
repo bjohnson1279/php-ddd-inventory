@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 namespace Tests\Integration\Queue;
+
+use Illuminate\Database\Capsule\Manager as Capsule;
 use PHPUnit\Framework\TestCase;
 use Illuminate\Database\Capsule\Manager as DB;
 use InventoryApp\Domain\Inventory\Events\StockReceived;
@@ -14,6 +16,8 @@ final class DatabaseQueueTest extends TestCase
 {
     protected function setUp(): void
     {
+        Capsule::table('queued_jobs')->delete();
+        Capsule::table('outbox_messages')->delete();
         // Clean up queued jobs and mapping/catalog tables to ensure run-to-run isolation
         if (getenv('DB_CONNECTION') === 'sqlite' || DB::connection()->getDriverName() === 'sqlite') {
             require_once __DIR__ . '/../../../src/Infrastructure/Persistence/sqlite_setup.php';

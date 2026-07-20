@@ -13,12 +13,27 @@ if (class_exists(\Dotenv\Dotenv::class)) {
     $dotenv->safeLoad();
 }
 
-if (!getenv('DB_CONNECTION') || (getenv('DB_CONNECTION') === 'pgsql' && !extension_loaded('pdo_pgsql'))) {
+$driver = getenv('DB_CONNECTION') ?: 'pgsql';
+if ($driver === 'pgsql') {
+    if (!extension_loaded('pdo_pgsql')) {
+        $driver = 'sqlite';
+    } else {
+        $pgHost = getenv('DB_HOST') ?: 'db';
+        $pgPort = (int)(getenv('DB_PORT') ?: 5432);
+        $fp = @fsockopen($pgHost, $pgPort, $errno, $errstr, 0.1);
+        if (!$fp) {
+            $driver = 'sqlite';
+        } else {
+            fclose($fp);
+        }
+    }
+}
+
+if ($driver === 'sqlite') {
     putenv('DB_CONNECTION=sqlite');
     $_ENV['DB_CONNECTION'] = 'sqlite';
     $_SERVER['DB_CONNECTION'] = 'sqlite';
 }
-$driver = getenv('DB_CONNECTION') ?: 'sqlite';
 
 $capsule = new Capsule();
 
@@ -27,6 +42,15 @@ if ($driver === 'sqlite') {
     // If it's a relative path, resolve it relative to the project root (4 levels up from this directory)
     if ($dbPath !== ':memory:' && !str_starts_with($dbPath, '/') && !str_contains($dbPath, ':')) {
         $dbPath = __DIR__ . '/../../../' . $dbPath;
+    }
+    if ($dbPath !== ':memory:') {
+        $dir = dirname($dbPath);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0777, true);
+        }
+        if (!file_exists($dbPath)) {
+            @touch($dbPath);
+        }
     }
     $capsule->addConnection([
         'driver'   => 'sqlite',

@@ -10,9 +10,8 @@ set_exception_handler(function (Throwable $e): void {
         http_response_code(500);
         header('Content-Type: application/json');
     }
-    error_log('[UNHANDLED] ' . get_class($e) . ': ' . $e->getMessage()
-        . ' in ' . $e->getFile() . ':' . $e->getLine());
-    echo json_encode(['error' => 'Internal server error']);
+    @file_put_contents(__DIR__ . '/../storage/logs/server_error.log', '[UNHANDLED] ' . get_class($e) . ': ' . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine() . "\n" . $e->getTraceAsString() . "\n", FILE_APPEND);
+    echo json_encode(['error' => 'Internal server error', 'exception' => get_class($e), 'message' => $e->getMessage()]);
     return;
 });
 
@@ -26,12 +25,33 @@ set_error_handler(function (int $errno, string $errstr, string $errfile, int $er
 use Illuminate\Database\Capsule\Manager as Capsule;
 
 // ── Environment ──────────────────────────────────────────────────────────────
+$envDriver = getenv('DB_CONNECTION');
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../');
 $dotenv->safeLoad();
 
-// ── Eloquent (Capsule) ────────────────────────────────────────────────────────
-$capsule = new Capsule;
 $driver = getenv('DB_CONNECTION') ?: 'pgsql';
+if ($driver === 'pgsql') {
+    if (!extension_loaded('pdo_pgsql')) {
+        $driver = 'sqlite';
+    } else {
+        $pgHost = getenv('DB_HOST') ?: 'db';
+        $pgPort = (int)(getenv('DB_PORT') ?: 5432);
+        $fp = @fsockopen($pgHost, $pgPort, $errno, $errstr, 0.1);
+        if (!$fp) {
+            $driver = 'sqlite';
+        } else {
+            fclose($fp);
+        }
+    }
+}
+
+if ($driver === 'sqlite') {
+    putenv('DB_CONNECTION=sqlite');
+    $_ENV['DB_CONNECTION'] = 'sqlite';
+    $_SERVER['DB_CONNECTION'] = 'sqlite';
+}
+
+$capsule = new Capsule;
 
 if ($driver === 'sqlite') {
     $dbPath = getenv('DB_DATABASE') ?: 'storage/data/test.sqlite';

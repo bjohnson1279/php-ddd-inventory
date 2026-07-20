@@ -1,5 +1,6 @@
 .phpunit.result.cache
 /vendor/
+vendor/
 /.env
 /storage/
 /.idea/
@@ -9,4 +10,6 @@
 /db_data/
 /.jules/
 /tests/**/*.log
+.antigravitycli/
+/build/
 merge-master-to-prs.sh

@@ -152,6 +152,34 @@ if ($driver !== 'sqlite') {
                 next_attempt_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
         ");
+
+        $connection->statement("
+            CREATE TABLE IF NOT EXISTS webhook_subscriptions (
+                id VARCHAR(50) PRIMARY KEY,
+                tenant_id VARCHAR(50) NOT NULL,
+                target_url TEXT NOT NULL,
+                secret TEXT NOT NULL,
+                event_types TEXT NOT NULL,
+                is_active BOOLEAN NOT NULL DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ");
+
+        $connection->statement("
+            CREATE TABLE IF NOT EXISTS webhook_deliveries (
+                id VARCHAR(50) PRIMARY KEY,
+                tenant_id VARCHAR(50) NOT NULL,
+                subscription_id VARCHAR(50) NOT NULL REFERENCES webhook_subscriptions(id) ON DELETE CASCADE,
+                event_type VARCHAR(255) NOT NULL,
+                payload TEXT NOT NULL,
+                status VARCHAR(50) NOT NULL,
+                attempts INTEGER NOT NULL DEFAULT 0,
+                last_error TEXT,
+                next_attempt_at TIMESTAMP,
+                processed_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ");
     } catch (\Exception $e) {
         // Ignore or log error
     }
@@ -197,7 +225,9 @@ if ($driver === 'sqlite') {
         'demand_forecasts',
         'shipments',
         'outbox_events',
-        'compliance_ledgers'
+        'compliance_ledgers',
+        'webhook_deliveries',
+        'webhook_subscriptions'
     ];
     
     foreach ($tables as $t) {
@@ -245,7 +275,9 @@ if ($driver === 'sqlite') {
         demand_forecasts,
         shipments,
         outbox_events,
-        compliance_ledgers
+        compliance_ledgers,
+        webhook_deliveries,
+        webhook_subscriptions
     RESTART IDENTITY CASCADE');
 
     // Wipe all tenants except test-tenant

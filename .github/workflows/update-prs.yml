@@ -7,24 +7,29 @@ on:
 
 jobs:
   merge-master:
-    runs-code: ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Fetches all history for all branches
+          fetch-depth: 0 # Fetches full history for all branches so we can track and merge them
 
       - name: Merge Master into Open PRs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Query the GitHub API for open PR branches targeting master
+          # Query the GitHub API via the built-in gh CLI for open PR branches targeting master
           PR_BRANCHES=$(gh pr list --base master --state open --json headRefName --jq '.[].headRefName')
+          
+          if [ -z "$PR_BRANCHES" ]; then
+            echo "No open pull requests targeting master found."
+            exit 0
+          fi
 
           for branch in $PR_BRANCHES; do
             echo "Targeting branch: $branch"
             
-            # Fetch the specific branch, switch to it, and merge master
+            # Fetch the specific feature branch from remote, switch to it, and merge master
             git fetch origin $branch
             git checkout $branch
             git merge origin/master --no-edit

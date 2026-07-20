@@ -148,7 +148,7 @@ final class DatabaseQueueTest extends TestCase
         $resultCode = -1;
         
         // Run CLI command using the local php installation
-        $cmd = "DB_CONNECTION=sqlite DB_DATABASE=storage/data/test.sqlite php scripts/queue-worker.php --once";
+        $cmd = "DB_CONNECTION=sqlite DB_DATABASE=" . realpath(__DIR__ . "/../../../storage/data/test.sqlite") . " php scripts/queue-worker.php --once";
         exec($cmd, $output, $resultCode);
 
         // 6. Verify worker exited with status code 0 and processed the job
@@ -210,7 +210,7 @@ final class DatabaseQueueTest extends TestCase
         // Run the queue worker to process the job
         $output = [];
         $resultCode = -1;
-        $cmd = "DB_CONNECTION=sqlite DB_DATABASE=storage/data/test.sqlite php scripts/queue-worker.php --once";
+        $cmd = "DB_CONNECTION=sqlite DB_DATABASE=" . realpath(__DIR__ . "/../../../storage/data/test.sqlite") . " php scripts/queue-worker.php --once";
         exec($cmd, $output, $resultCode);
 
         // Verify worker completed successfully and job is deleted from queue
@@ -265,7 +265,7 @@ final class DatabaseQueueTest extends TestCase
         // 4. Run the queue worker to process the job
         $output = [];
         $resultCode = -1;
-        $cmd = "DB_CONNECTION=sqlite DB_DATABASE=storage/data/test.sqlite php scripts/queue-worker.php --once";
+        $cmd = "DB_CONNECTION=sqlite DB_DATABASE=" . realpath(__DIR__ . "/../../../storage/data/test.sqlite") . " php scripts/queue-worker.php --once";
         exec($cmd, $output, $resultCode);
 
         // Verify worker completed successfully and job is deleted from queue
@@ -317,7 +317,7 @@ final class DatabaseQueueTest extends TestCase
 
         $output = [];
         $resultCode = -1;
-        $cmd = "DB_CONNECTION=sqlite DB_DATABASE=storage/data/test.sqlite php scripts/queue-worker.php --once";
+        $cmd = "DB_CONNECTION=sqlite DB_DATABASE=" . realpath(__DIR__ . "/../../../storage/data/test.sqlite") . " php scripts/queue-worker.php --once";
         exec($cmd, $output, $resultCode);
 
         $this->assertEquals(0, $resultCode, implode("\n", $output));
@@ -367,7 +367,7 @@ final class DatabaseQueueTest extends TestCase
 
         $output = [];
         $resultCode = -1;
-        $cmd = "DB_CONNECTION=sqlite DB_DATABASE=storage/data/test.sqlite php scripts/queue-worker.php --once";
+        $cmd = "DB_CONNECTION=sqlite DB_DATABASE=" . realpath(__DIR__ . "/../../../storage/data/test.sqlite") . " php scripts/queue-worker.php --once";
         exec($cmd, $output, $resultCode);
 
         $this->assertEquals(0, $resultCode, implode("\n", $output));
@@ -398,7 +398,7 @@ final class DatabaseQueueTest extends TestCase
         // 2. Run queue worker
         $output = [];
         $resultCode = -1;
-        $cmd = "DB_CONNECTION=sqlite DB_DATABASE=storage/data/test.sqlite php scripts/queue-worker.php --once";
+        $cmd = "DB_CONNECTION=sqlite DB_DATABASE=" . realpath(__DIR__ . "/../../../storage/data/test.sqlite") . " php scripts/queue-worker.php --once";
         exec($cmd, $output, $resultCode);
 
         // Verify exit code is 0 (failures are caught and job is released/deleted)

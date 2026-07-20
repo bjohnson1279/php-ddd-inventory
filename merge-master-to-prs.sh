@@ -4,8 +4,7 @@
 echo "Fetching latest changes from remote..."
 git fetch origin master
 
-# 1. Get a list of all head branches for open PRs targeting master
-# The jq filter ensures we only grab the branch names clean and raw
+# 1. Get a list of all open PR branches targeting master
 branches=$(gh pr list --base master --state open --json headRefName --jq '.[].headRefName')
 
 if [ -z "$branches" ]; then
@@ -24,14 +23,16 @@ for branch in $branches; do
     # Checkout the feature branch
     git checkout "$branch"
     
-    # Pull any existing remote updates for this feature branch
-    git pull origin "$branch" --ff-only
+    # FIX: Fetch the specific branch and rebase to handle divergence smoothly
+    git fetch origin "$branch"
+    if ! git rebase origin/"$branch"; then
+        echo "Conflict detected during branch synchronization. Skipping rebase..."
+        git rebase --abort
+    fi
     
     # 3. Merge master into the feature branch
     if git merge origin/master -m "Merge remote-tracking branch 'origin/master' into $branch"; then
         echo "Successfully merged master into $branch"
-        # Optional: Uncomment the next line if you want to push the update immediately
-        # git push origin "$branch"
     else
         echo "CRITICAL: Merge conflict detected on branch '$branch'."
         echo "Please resolve the conflict, commit the changes, and then re-run the script."

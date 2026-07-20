@@ -7,7 +7,12 @@ require __DIR__ . '/../../vendor/autoload.php';
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../../');
 $dotenv->safeLoad();
 
-$driver = getenv('DB_CONNECTION') ?: 'pgsql';
+if (!getenv('DB_CONNECTION') || (getenv('DB_CONNECTION') === 'pgsql' && !extension_loaded('pdo_pgsql'))) {
+    putenv('DB_CONNECTION=sqlite');
+    $_ENV['DB_CONNECTION'] = 'sqlite';
+    $_SERVER['DB_CONNECTION'] = 'sqlite';
+}
+$driver = getenv('DB_CONNECTION') ?: 'sqlite';
 
 $capsule = new Capsule;
 
@@ -41,6 +46,7 @@ $connection = $capsule->getConnection();
 
 if ($driver === 'sqlite') {
     try {
+        $connection->statement('PRAGMA journal_mode=WAL;');
         $connection->statement('PRAGMA busy_timeout=10000;');
     } catch (\Exception $e) {}
 }

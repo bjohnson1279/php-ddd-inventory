@@ -127,8 +127,14 @@ final class DatabaseQueueTest extends TestCase
         $resultCode = -1;
         // Run CLI command using the local php installation
         $baseDir = __DIR__ . "/../../..";
-        $cmd = "DB_CONNECTION=sqlite DB_DATABASE=" . $baseDir . "/storage/data/test.sqlite php " . $baseDir . "/scripts/queue-worker.php --once";
+                $extDir = ini_get('extension_dir') ?: 'C:\\Users\\johns\\AppData\\Local\\Microsoft\\WinGet\\Packages\\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\\ext';
+        $phpExec = PHP_BINARY . ' -d extension_dir=' . escapeshellarg($extDir) . ' -d extension=mbstring -d extension=pdo_sqlite';
+        $cmd = (PHP_OS_FAMILY === 'Windows')
+            ? "set DB_CONNECTION=sqlite&& set DB_DATABASE=" . $baseDir . "/storage/data/test.sqlite&& " . $phpExec . " " . $baseDir . "/scripts/queue-worker.php --once"
+            : "DB_CONNECTION=sqlite DB_DATABASE=" . $baseDir . "/storage/data/test.sqlite " . $phpExec . " " . $baseDir . "/scripts/queue-worker.php --once";
+        DB::disconnect();
         exec($cmd, $output, $resultCode);
+        DB::reconnect();
         // 6. Verify worker exited with status code 0 and processed the job
         $this->assertEquals(0, $resultCode, implode("\n", $output));
         // Verify job was removed from queue on completion/failure processing
@@ -178,8 +184,14 @@ final class DatabaseQueueTest extends TestCase
         $output = [];
         $resultCode = -1;
         $baseDir = __DIR__ . "/../../..";
-        $cmd = "DB_CONNECTION=sqlite DB_DATABASE=" . $baseDir . "/storage/data/test.sqlite php " . $baseDir . "/scripts/queue-worker.php --once";
+                $extDir = ini_get('extension_dir') ?: 'C:\\Users\\johns\\AppData\\Local\\Microsoft\\WinGet\\Packages\\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\\ext';
+        $phpExec = PHP_BINARY . ' -d extension_dir=' . escapeshellarg($extDir) . ' -d extension=mbstring -d extension=pdo_sqlite';
+        $cmd = (PHP_OS_FAMILY === 'Windows')
+            ? "set DB_CONNECTION=sqlite&& set DB_DATABASE=" . $baseDir . "/storage/data/test.sqlite&& " . $phpExec . " " . $baseDir . "/scripts/queue-worker.php --once"
+            : "DB_CONNECTION=sqlite DB_DATABASE=" . $baseDir . "/storage/data/test.sqlite " . $phpExec . " " . $baseDir . "/scripts/queue-worker.php --once";
+        DB::disconnect();
         exec($cmd, $output, $resultCode);
+        DB::reconnect();
         // Verify worker completed successfully and job is deleted from queue
         $this->assertEquals(0, $resultCode, implode("\n", $output));
         $this->assertEquals(0, DB::table('queued_jobs')->count());
@@ -224,8 +236,14 @@ final class DatabaseQueueTest extends TestCase
         $output = [];
         $resultCode = -1;
         $baseDir = __DIR__ . "/../../..";
-        $cmd = "DB_CONNECTION=sqlite DB_DATABASE=" . $baseDir . "/storage/data/test.sqlite php " . $baseDir . "/scripts/queue-worker.php --once";
+                $extDir = ini_get('extension_dir') ?: 'C:\\Users\\johns\\AppData\\Local\\Microsoft\\WinGet\\Packages\\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\\ext';
+        $phpExec = PHP_BINARY . ' -d extension_dir=' . escapeshellarg($extDir) . ' -d extension=mbstring -d extension=pdo_sqlite';
+        $cmd = (PHP_OS_FAMILY === 'Windows')
+            ? "set DB_CONNECTION=sqlite&& set DB_DATABASE=" . $baseDir . "/storage/data/test.sqlite&& " . $phpExec . " " . $baseDir . "/scripts/queue-worker.php --once"
+            : "DB_CONNECTION=sqlite DB_DATABASE=" . $baseDir . "/storage/data/test.sqlite " . $phpExec . " " . $baseDir . "/scripts/queue-worker.php --once";
+        DB::disconnect();
         exec($cmd, $output, $resultCode);
+        DB::reconnect();
         // Verify worker completed successfully and job is deleted from queue
         $this->assertEquals(0, $resultCode, implode("\n", $output));
         $this->assertEquals(0, DB::table('queued_jobs')->count());
@@ -267,8 +285,14 @@ final class DatabaseQueueTest extends TestCase
         $output = [];
         $resultCode = -1;
         $baseDir = __DIR__ . "/../../..";
-        $cmd = "DB_CONNECTION=sqlite DB_DATABASE=" . $baseDir . "/storage/data/test.sqlite php " . $baseDir . "/scripts/queue-worker.php --once";
+                $extDir = ini_get('extension_dir') ?: 'C:\\Users\\johns\\AppData\\Local\\Microsoft\\WinGet\\Packages\\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\\ext';
+        $phpExec = PHP_BINARY . ' -d extension_dir=' . escapeshellarg($extDir) . ' -d extension=mbstring -d extension=pdo_sqlite';
+        $cmd = (PHP_OS_FAMILY === 'Windows')
+            ? "set DB_CONNECTION=sqlite&& set DB_DATABASE=" . $baseDir . "/storage/data/test.sqlite&& " . $phpExec . " " . $baseDir . "/scripts/queue-worker.php --once"
+            : "DB_CONNECTION=sqlite DB_DATABASE=" . $baseDir . "/storage/data/test.sqlite " . $phpExec . " " . $baseDir . "/scripts/queue-worker.php --once";
+        DB::disconnect();
         exec($cmd, $output, $resultCode);
+        DB::reconnect();
         $this->assertEquals(0, $resultCode, implode("\n", $output));
         $this->assertEquals(0, DB::table('queued_jobs')->count());
         $this->assertNotNull($mappingRepo->findXeroJournalId($entryId));
@@ -308,8 +332,14 @@ final class DatabaseQueueTest extends TestCase
         $output = [];
         $resultCode = -1;
         $baseDir = __DIR__ . "/../../..";
-        $cmd = "DB_CONNECTION=sqlite DB_DATABASE=" . $baseDir . "/storage/data/test.sqlite php " . $baseDir . "/scripts/queue-worker.php --once";
+                $extDir = ini_get('extension_dir') ?: 'C:\\Users\\johns\\AppData\\Local\\Microsoft\\WinGet\\Packages\\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\\ext';
+        $phpExec = PHP_BINARY . ' -d extension_dir=' . escapeshellarg($extDir) . ' -d extension=mbstring -d extension=pdo_sqlite';
+        $cmd = (PHP_OS_FAMILY === 'Windows')
+            ? "set DB_CONNECTION=sqlite&& set DB_DATABASE=" . $baseDir . "/storage/data/test.sqlite&& " . $phpExec . " " . $baseDir . "/scripts/queue-worker.php --once"
+            : "DB_CONNECTION=sqlite DB_DATABASE=" . $baseDir . "/storage/data/test.sqlite " . $phpExec . " " . $baseDir . "/scripts/queue-worker.php --once";
+        DB::disconnect();
         exec($cmd, $output, $resultCode);
+        DB::reconnect();
         $this->assertEquals(0, $resultCode, implode("\n", $output));
         $this->assertEquals(0, DB::table('queued_jobs')->count());
         $this->assertNotNull($mappingRepo->findNetSuiteJournalId($entryId));
@@ -334,8 +364,14 @@ final class DatabaseQueueTest extends TestCase
         $output = [];
         $resultCode = -1;
         $baseDir = __DIR__ . "/../../..";
-        $cmd = "DB_CONNECTION=sqlite DB_DATABASE=" . $baseDir . "/storage/data/test.sqlite php " . $baseDir . "/scripts/queue-worker.php --once";
+                $extDir = ini_get('extension_dir') ?: 'C:\\Users\\johns\\AppData\\Local\\Microsoft\\WinGet\\Packages\\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\\ext';
+        $phpExec = PHP_BINARY . ' -d extension_dir=' . escapeshellarg($extDir) . ' -d extension=mbstring -d extension=pdo_sqlite';
+        $cmd = (PHP_OS_FAMILY === 'Windows')
+            ? "set DB_CONNECTION=sqlite&& set DB_DATABASE=" . $baseDir . "/storage/data/test.sqlite&& " . $phpExec . " " . $baseDir . "/scripts/queue-worker.php --once"
+            : "DB_CONNECTION=sqlite DB_DATABASE=" . $baseDir . "/storage/data/test.sqlite " . $phpExec . " " . $baseDir . "/scripts/queue-worker.php --once";
+        DB::disconnect();
         exec($cmd, $output, $resultCode);
+        DB::reconnect();
         // Verify exit code is 0 (failures are caught and job is released/deleted)
         $this->assertEquals(0, $resultCode, implode("\n", $output));
         // The job should still exist in the queue but with attempts incremented and reserved_at nullified
@@ -355,7 +391,9 @@ final class DatabaseQueueTest extends TestCase
         ]);
         $output = [];
         $resultCode = -1;
+        DB::disconnect();
         exec($cmd, $output, $resultCode);
+        DB::reconnect();
         $this->assertEquals(0, $resultCode, implode("\n", $output));
         // Job should now be deleted because attempts reached 5
         $this->assertEquals(0, DB::table('queued_jobs')->where('id', $jobId)->count());

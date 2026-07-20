@@ -49,8 +49,14 @@ final class DatabaseOutboxWorkerTest extends TestCase
         $output = [];
         $resultCode = -1;
         $baseDir = realpath(__DIR__ . "/../../..");
-        $cmd = "DB_CONNECTION=sqlite DB_DATABASE=" . ($baseDir === "/" ? "" : $baseDir) . "/storage/data/test.sqlite php " . ($baseDir === "/" ? "" : $baseDir) . "/scripts/outbox-worker.php --once";
+                $extDir = ini_get('extension_dir') ?: 'C:\\Users\\johns\\AppData\\Local\\Microsoft\\WinGet\\Packages\\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\\ext';
+        $phpExec = PHP_BINARY . ' -d extension_dir=' . escapeshellarg($extDir) . ' -d extension=mbstring -d extension=pdo_sqlite';
+        $cmd = (PHP_OS_FAMILY === 'Windows')
+            ? "set DB_CONNECTION=sqlite&& set DB_DATABASE=" . ($baseDir === "/" ? "" : $baseDir) . "/storage/data/test.sqlite&& " . $phpExec . " " . ($baseDir === "/" ? "" : $baseDir) . "/scripts/outbox-worker.php --once"
+            : "DB_CONNECTION=sqlite DB_DATABASE=" . ($baseDir === "/" ? "" : $baseDir) . "/storage/data/test.sqlite " . $phpExec . " " . ($baseDir === "/" ? "" : $baseDir) . "/scripts/outbox-worker.php --once";
+        DB::disconnect();
         exec($cmd, $output, $resultCode);
+        DB::reconnect();
 
         // 4. Verify script finished successfully
         $this->assertEquals(0, $resultCode, "outbox-worker.php exited with code {$resultCode}");

@@ -13,7 +13,12 @@ if (class_exists(\Dotenv\Dotenv::class)) {
     $dotenv->safeLoad();
 }
 
-$driver = getenv('DB_CONNECTION') ?: 'pgsql';
+if (!getenv('DB_CONNECTION') || (getenv('DB_CONNECTION') === 'pgsql' && !extension_loaded('pdo_pgsql'))) {
+    putenv('DB_CONNECTION=sqlite');
+    $_ENV['DB_CONNECTION'] = 'sqlite';
+    $_SERVER['DB_CONNECTION'] = 'sqlite';
+}
+$driver = getenv('DB_CONNECTION') ?: 'sqlite';
 
 $capsule = new Capsule();
 
@@ -46,6 +51,10 @@ $capsule->setAsGlobal();
 $capsule->bootEloquent();
 
 if ($driver === 'sqlite') {
+    try {
+        $capsule->getConnection()->statement('PRAGMA journal_mode=WAL;');
+        $capsule->getConnection()->statement('PRAGMA busy_timeout=10000;');
+    } catch (\Exception $e) {}
     require_once __DIR__ . '/sqlite_setup.php';
     \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
 }

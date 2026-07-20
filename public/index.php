@@ -525,17 +525,17 @@ if ($method === 'POST' && $uri === '/api/setup') {
     $middleware = new \InventoryApp\Infrastructure\Http\Middleware\RateLimitMiddleware(5, 60);
     $response = $middleware->handle($request, function ($req) {
         $body = json_decode(file_get_contents('php://input'), true) ?: [];
-        
+
         $orgName = $body['orgName'] ?? '';
         $tenantId = $body['tenantId'] ?? '';
         $adminName = $body['adminName'] ?? '';
         $adminEmail = $body['adminEmail'] ?? '';
         $adminPassword = $body['adminPassword'] ?? '';
-        
+
         if (empty($orgName) || empty($tenantId) || empty($adminName) || empty($adminEmail) || empty($adminPassword)) {
             return new \InventoryApp\Infrastructure\Http\Response(['error' => 'All fields (orgName, tenantId, adminName, adminEmail, adminPassword) are required.'], 400);
         }
-        
+
         try {
             $existingTenant = Capsule::table('tenants')->where('id', $tenantId)->first();
             if ($existingTenant) {
@@ -595,7 +595,7 @@ if ($method === 'GET' && $uri === '/api/users') {
         $userModels = \InventoryApp\Infrastructure\Models\UserModel::with('userRoles')
             ->where('tenant_id', tenantId())
             ->get();
-            
+
         $users = $userModels->map(function($model) {
             $roles = $model->userRoles->pluck('id')->all();
             $role = !empty($roles) ? $roles[0] : 'staff';
@@ -605,7 +605,7 @@ if ($method === 'GET' && $uri === '/api/users') {
                 'role' => $role
             ];
         })->all();
-        
+
         http_response_code(200);
         echo json_encode(['users' => $users]);
     } catch (\Exception $e) {
@@ -1211,14 +1211,14 @@ if ($method === 'GET' && $uri === '/api/catalog/products') {
     try {
         $products = Capsule::table('catalog_products')->get()->toArray();
         $variants = Capsule::table('catalog_variants')->get()->toArray();
-        
+
         $productsMap = [];
         foreach ($products as $p) {
             $pData = (array)$p;
             $pData['variants'] = [];
             $productsMap[$p->id] = $pData;
         }
-        
+
         foreach ($variants as $v) {
             $vData = (array)$v;
             $vData['attributes'] = json_decode($v->attributes, true) ?: [];
@@ -1227,7 +1227,7 @@ if ($method === 'GET' && $uri === '/api/catalog/products') {
                 $productsMap[$v->product_id]['variants'][] = $vData;
             }
         }
-        
+
         http_response_code(200);
         echo json_encode(['products' => array_values($productsMap)]);
     } catch (\Exception $e) {
@@ -1772,21 +1772,21 @@ if ($method === 'GET' && $uri === '/api/kits') {
     try {
         $kits = Capsule::table('kits')->get()->toArray();
         $components = Capsule::table('kit_components')->get()->toArray();
-        
+
         $kitsMap = [];
         foreach ($kits as $k) {
             $kData = (array)$k;
             $kData['components'] = [];
             $kitsMap[$k->id] = $kData;
         }
-        
+
         foreach ($components as $c) {
             $cData = (array)$c;
             if (isset($kitsMap[$c->kit_id])) {
                 $kitsMap[$c->kit_id]['components'][] = $cData;
             }
         }
-        
+
         http_response_code(200);
         echo json_encode(['kits' => array_values($kitsMap)]);
     } catch (\Exception $e) {

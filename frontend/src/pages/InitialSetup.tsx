@@ -16,12 +16,12 @@ export default function InitialSetup() {
     setMessage('');
     setIsLoading(true);
     try {
-      const res = await api.post('/setup', { 
-        orgName, 
-        tenantId, 
-        adminName, 
-        adminEmail, 
-        adminPassword 
+      const res = await api.post('/setup', {
+        orgName,
+        tenantId,
+        adminName,
+        adminEmail,
+        adminPassword
       });
       setMessage(res.message || 'Setup complete. You can now log in.');
     } catch (err: any) {

@@ -103,7 +103,7 @@ class AccountingJournalService
 
         // Accrual Method
         $receivableAccount = $paymentReceivedNow ? AccountCode::cash() : AccountCode::accountsReceivable();
-        
+
         switch ($costingMethod) {
             case \InventoryApp\Domain\Accounting\Enums\CostingMethod::FIFO:
                 $cogsBreakdown = $this->costLayerService->consumeFifoLayers($variantId, $quantity);

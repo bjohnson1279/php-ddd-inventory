@@ -146,14 +146,14 @@ final class DatabaseQueueTest extends TestCase
         // 5. Run the queue worker CLI script with --once flag via PHP exec to verify it works as a process
         $output = [];
         $resultCode = -1;
-        
+
         // Run CLI command using the local php installation
         $cmd = "php scripts/queue-worker.php --once";
         exec($cmd, $output, $resultCode);
 
         // 6. Verify worker exited with status code 0 and processed the job
         $this->assertEquals(0, $resultCode, implode("\n", $output));
-        
+
         // Verify job was removed from queue on completion/failure processing
         $this->assertEquals(0, DB::table('queued_jobs')->count());
 
@@ -380,7 +380,7 @@ final class DatabaseQueueTest extends TestCase
     public function testQueueWorkerHandlesFailureAndBackoff(): void
     {
         $jobId = uuidv4();
-        
+
         // 1. Insert a job that will fail to resolve
         DB::table('queued_jobs')->insert([
             'id'             => $jobId,
@@ -403,13 +403,13 @@ final class DatabaseQueueTest extends TestCase
 
         // Verify exit code is 0 (failures are caught and job is released/deleted)
         $this->assertEquals(0, $resultCode, implode("\n", $output));
-        
+
         // The job should still exist in the queue but with attempts incremented and reserved_at nullified
         $this->assertEquals(1, DB::table('queued_jobs')->count());
         $job = DB::table('queued_jobs')->where('id', $jobId)->first();
         $this->assertEquals(1, $job->attempts);
         $this->assertNull($job->reserved_at);
-        
+
         // Check that available_at is set in the future (retry delay is 30 * attempts = 30 seconds)
         $availableAt = new \DateTime($job->available_at);
         $now = new \DateTime();
@@ -427,9 +427,8 @@ final class DatabaseQueueTest extends TestCase
         exec($cmd, $output, $resultCode);
 
         $this->assertEquals(0, $resultCode, implode("\n", $output));
-        
+
         // Job should now be deleted because attempts reached 5
         $this->assertEquals(0, DB::table('queued_jobs')->where('id', $jobId)->count());
     }
 }
-

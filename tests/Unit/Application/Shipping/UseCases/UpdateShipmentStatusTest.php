@@ -6,86 +6,103 @@ use PHPUnit\Framework\TestCase;
 use InventoryApp\Application\Shipping\UseCases\UpdateShipmentStatus;
 use InventoryApp\Domain\Shipping\Repositories\ShipmentRepositoryInterface;
 use InventoryApp\Domain\Shared\Repositories\OutboxRepositoryInterface;
-use InventoryApp\Domain\Shipping\Aggregates\Shipment;
 use InventoryApp\Domain\Shipping\Enums\ShipmentStatus;
+use InventoryApp\Domain\Shipping\Aggregates\Shipment;
 use InventoryApp\Domain\Shipping\Events\ShipmentStatusUpdatedEvent;
 use DateTimeImmutable;
 use Exception;
+use DomainException;
 
 class UpdateShipmentStatusTest extends TestCase
 {
-    private $shipmentRepository;
-    private $outboxRepository;
+    private $shipmentRepositoryMock;
+    private $outboxRepositoryMock;
     private $useCase;
 
     protected function setUp(): void
     {
-        $this->shipmentRepository = $this->createMock(ShipmentRepositoryInterface::class);
-        $this->outboxRepository = $this->createMock(OutboxRepositoryInterface::class);
-        $this->useCase = new UpdateShipmentStatus($this->shipmentRepository, $this->outboxRepository);
-    }
+        $this->shipmentRepositoryMock = $this->createMock(ShipmentRepositoryInterface::class);
+        $this->outboxRepositoryMock = $this->createMock(OutboxRepositoryInterface::class);
 
-    public function testExecuteSuccessfullyUpdatesStatusAndSavesEvent(): void
-    {
-        $shipmentId = 'SHIP-123';
-        $trackingNumber = 'TRACK-ABC';
-        $shipment = new Shipment(
-            id: $shipmentId,
-            sku: 'SKU-XYZ',
-            quantity: 10,
-            destinationAddress: '123 Main St',
-            carrier: 'UPS',
-            trackingNumber: $trackingNumber,
-            labelUrl: null,
-            shippingRateCents: 1500,
-            status: ShipmentStatus::LabelGenerated,
-            createdAt: new DateTimeImmutable()
+        $this->useCase = new UpdateShipmentStatus(
+            $this->shipmentRepositoryMock,
+            $this->outboxRepositoryMock
         );
-
-        $newStatus = ShipmentStatus::InTransit;
-
-        $this->shipmentRepository->expects($this->once())
-            ->method('findById')
-            ->with($shipmentId)
-            ->willReturn($shipment);
-
-        $this->shipmentRepository->expects($this->once())
-            ->method('save')
-            ->with($shipment);
-
-        $this->outboxRepository->expects($this->once())
-            ->method('save')
-            ->with($this->callback(function ($event) use ($shipmentId, $trackingNumber, $newStatus) {
-                return $event instanceof ShipmentStatusUpdatedEvent
-                    && $event->shipmentId === $shipmentId
-                    && $event->trackingNumber === $trackingNumber
-                    && $event->status === $newStatus->value;
-            }));
-
-        $this->useCase->execute($shipmentId, $newStatus);
-
-        $this->assertEquals($newStatus, $shipment->getStatus());
     }
 
-    public function testExecuteThrowsExceptionWhenShipmentNotFound(): void
+    public function testExecuteThrowsExceptionIfShipmentNotFound()
     {
-        $shipmentId = 'NON-EXISTENT-SHIPMENT';
-        $newStatus = ShipmentStatus::InTransit;
-
-        $this->shipmentRepository->expects($this->once())
-            ->method('findById')
-            ->with($shipmentId)
-            ->willReturn(null);
-
-        $this->shipmentRepository->expects($this->never())
-            ->method('save');
-
-        $this->outboxRepository->expects($this->never())
-            ->method('save');
+        $this->shipmentRepositoryMock->method('findById')->willReturn(null);
 
         $this->expectException(Exception::class);
-        $this->expectExceptionMessage("Shipment with ID {$shipmentId} not found.");
+        $this->expectExceptionMessage("Shipment with ID ship-1 not found.");
 
-        $this->useCase->execute($shipmentId, $newStatus);
+        $this->shipmentRepositoryMock->expects($this->never())->method('save');
+        $this->outboxRepositoryMock->expects($this->never())->method('save');
+
+        $this->useCase->execute('ship-1', ShipmentStatus::InTransit);
+    }
+
+    public function testExecuteThrowsExceptionIfShipmentInTerminalState()
+    {
+        $shipment = new Shipment(
+            'ship-1',
+            'SKU-1',
+            1,
+            '123 Main St',
+            'FedEx',
+            'TRK123',
+            'url',
+            1000,
+            ShipmentStatus::Delivered,
+            new DateTimeImmutable()
+        );
+
+        $this->shipmentRepositoryMock->method('findById')->willReturn($shipment);
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage("Cannot transition status from terminal state: delivered");
+
+        $this->shipmentRepositoryMock->expects($this->never())->method('save');
+        $this->outboxRepositoryMock->expects($this->never())->method('save');
+
+        $this->useCase->execute('ship-1', ShipmentStatus::Failed);
+    }
+
+    public function testExecuteSuccessfullyUpdatesShipmentStatus()
+    {
+        $shipment = new Shipment(
+            'ship-1',
+            'SKU-1',
+            1,
+            '123 Main St',
+            'FedEx',
+            'TRK123',
+            'url',
+            1000,
+            ShipmentStatus::LabelGenerated,
+            new DateTimeImmutable()
+        );
+
+        $this->shipmentRepositoryMock->expects($this->once())
+             ->method('findById')
+             ->with('ship-1')
+             ->willReturn($shipment);
+
+        $this->shipmentRepositoryMock->expects($this->once())
+             ->method('save')
+             ->with($this->callback(function (Shipment $s) {
+                 return $s->getStatus() === ShipmentStatus::InTransit;
+             }));
+
+        $this->outboxRepositoryMock->expects($this->once())
+             ->method('save')
+             ->with($this->callback(function (ShipmentStatusUpdatedEvent $event) {
+                 return $event->shipmentId === 'ship-1' &&
+                        $event->trackingNumber === 'TRK123' &&
+                        $event->status === ShipmentStatus::InTransit->value;
+             }));
+
+        $this->useCase->execute('ship-1', ShipmentStatus::InTransit);
     }
 }

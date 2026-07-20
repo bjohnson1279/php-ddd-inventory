@@ -126,6 +126,21 @@ if ($driver !== 'sqlite') {
         ");
 
         $connection->statement("
+            CREATE TABLE IF NOT EXISTS compliance_ledgers (
+                id VARCHAR(50) PRIMARY KEY,
+                tenant_id VARCHAR(50) NOT NULL,
+                actor_id VARCHAR(50) NOT NULL,
+                event_type VARCHAR(100) NOT NULL,
+                sequence_number INTEGER NOT NULL,
+                previous_hash VARCHAR(64) NOT NULL,
+                current_hash VARCHAR(64) NOT NULL,
+                signature VARCHAR(64) NOT NULL,
+                payload TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ");
+
+        $connection->statement("
             CREATE TABLE IF NOT EXISTS outbox_events (
                 id VARCHAR(50) PRIMARY KEY,
                 event_name VARCHAR(255) NOT NULL,
@@ -181,7 +196,8 @@ if ($driver === 'sqlite') {
         'reorder_policies',
         'demand_forecasts',
         'shipments',
-        'outbox_events'
+        'outbox_events',
+        'compliance_ledgers'
     ];
     
     foreach ($tables as $t) {
@@ -190,9 +206,12 @@ if ($driver === 'sqlite') {
 
     $connection->table('tenants')->where('id', '!=', 'test-tenant')->delete();
 } else {
-        $connection->statement('TRUNCATE TABLE
+    $connection->statement('TRUNCATE TABLE
+        catalog_products,
+        catalog_variants,
         inventory_transactions, 
         product_locations, 
+        compliance_ledgers,
         products, 
         inventory_count_items, 
         inventory_counts, 

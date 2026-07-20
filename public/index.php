@@ -49,7 +49,7 @@ if ($driver === 'sqlite') {
         'host'      => getenv('DB_HOST')       ?: 'db',
         'database'  => getenv('DB_DATABASE')   ?: 'ddd_inventory',
         'username'  => getenv('DB_USERNAME')   ?: 'ddd_user',
-        'password'  => getenv('DB_PASSWORD')   ?: 'secret',
+        'password'  => getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '',
         'port'      => getenv('DB_PORT')       ?: 5432,
         'charset'   => 'utf8',
         'collation' => 'utf8_unicode_ci',
@@ -132,7 +132,7 @@ $registerProductUseCase = new \InventoryApp\Application\Inventory\UseCases\Regis
     ServiceContainer::productRepo('system'),
     $dispatcher
 );
-$createInventoryListener = new CreateInventoryItemOnVariantAdded($registerProductUseCase);
+$createInventoryListener = new CreateInventoryItemOnVariantAdded();
 $dispatcher->subscribe(VariantAddedToCatalog::class, [$createInventoryListener, 'handle']);
 
 // Register Realtime Notification Listener

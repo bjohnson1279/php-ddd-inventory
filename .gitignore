@@ -9,3 +9,4 @@
 /db_data/
 /.jules/
 /tests/**/*.log
+merge-master-to-prs.sh

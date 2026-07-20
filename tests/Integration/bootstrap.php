@@ -27,7 +27,7 @@ if ($driver === 'sqlite') {
         'host'     => getenv('DB_HOST')       ?: 'localhost',
         'database' => getenv('DB_DATABASE')   ?: 'ddd_inventory',
         'username' => getenv('DB_USERNAME')   ?: 'ddd_user',
-        'password' => getenv('DB_PASSWORD')   ?: 'secret',
+        'password' => getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '',
         'port'     => getenv('DB_PORT')       ?: 5432,
         'charset'  => 'utf8',
         'prefix'   => '',
@@ -126,6 +126,21 @@ if ($driver !== 'sqlite') {
         ");
 
         $connection->statement("
+            CREATE TABLE IF NOT EXISTS compliance_ledgers (
+                id VARCHAR(50) PRIMARY KEY,
+                tenant_id VARCHAR(50) NOT NULL,
+                actor_id VARCHAR(50) NOT NULL,
+                event_type VARCHAR(100) NOT NULL,
+                sequence_number INTEGER NOT NULL,
+                previous_hash VARCHAR(64) NOT NULL,
+                current_hash VARCHAR(64) NOT NULL,
+                signature VARCHAR(64) NOT NULL,
+                payload TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ");
+
+        $connection->statement("
             CREATE TABLE IF NOT EXISTS outbox_events (
                 id VARCHAR(50) PRIMARY KEY,
                 event_name VARCHAR(255) NOT NULL,
@@ -181,7 +196,8 @@ if ($driver === 'sqlite') {
         'reorder_policies',
         'demand_forecasts',
         'shipments',
-        'outbox_events'
+        'outbox_events',
+        'compliance_ledgers'
     ];
     
     foreach ($tables as $t) {
@@ -191,8 +207,11 @@ if ($driver === 'sqlite') {
     $connection->table('tenants')->where('id', '!=', 'test-tenant')->delete();
 } else {
     $connection->statement('TRUNCATE TABLE
+        catalog_products,
+        catalog_variants,
         inventory_transactions, 
         product_locations, 
+        compliance_ledgers,
         products, 
         inventory_count_items, 
         inventory_counts, 
@@ -225,11 +244,12 @@ if ($driver === 'sqlite') {
         reorder_policies,
         demand_forecasts,
         shipments,
-        outbox_events
+        outbox_events,
+        compliance_ledgers
     RESTART IDENTITY CASCADE');
 
     // Wipe all tenants except test-tenant
-    $connection->table('tenants')->where('id', '!=', 'test-tenant')->delete();
+    $connection->table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
 }
 
 // Ensure standard locations exist
@@ -239,7 +259,10 @@ $connection->table('locations')->insertOrIgnore([
 
 // Ensure standard test tenant exists
 $connection->table('tenants')->upsert(
-    [['id' => 'test-tenant', 'name' => 'Test Tenant']],
+    [
+        ['id' => 'test-tenant', 'name' => 'Test Tenant'],
+        ['id' => 'system', 'name' => 'System Tenant']
+    ],
     ['id'],
     ['name']
 );

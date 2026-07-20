@@ -1,4 +1,0 @@
-[Sun Jul 19 20:05:29 2026] PHP 8.3.6 Development Server (http://127.0.0.1:8092) started
-[Sun Jul 19 20:05:50 2026] 127.0.0.1:55318 Accepted
-[Sun Jul 19 20:05:50 2026] [API Error] Illuminate\Database\QueryException: could not find driver (Connection: default, SQL: select * from "tenants" where "id" = tenant-1 limit 1)
-[Sun Jul 19 20:05:50 2026] 127.0.0.1:55318 Closing

@@ -182,7 +182,13 @@ if ($driver === 'sqlite') {
         'demand_forecasts',
         'shipments',
         'outbox_events',
-        'compliance_ledgers'
+        'compliance_ledgers',
+        'webhook_subscriptions',
+        'webhook_deliveries',
+        'audit_discrepancies',
+        'rmas',
+        'rma_items',
+        'quarantine_items'
     ];
     
     foreach ($tables as $t) {
@@ -227,7 +233,13 @@ if ($driver === 'sqlite') {
         demand_forecasts,
         shipments,
         outbox_events,
-        compliance_ledgers
+        compliance_ledgers,
+        webhook_subscriptions,
+        webhook_deliveries,
+        audit_discrepancies,
+        rmas,
+        rma_items,
+        quarantine_items
     RESTART IDENTITY CASCADE');
 
     // Wipe all tenants except test-tenant

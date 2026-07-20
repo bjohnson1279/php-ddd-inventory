@@ -18,7 +18,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Query the GitHub API via the built-in gh CLI for open PR branches targeting master
+          # 1. Configure the Git committer identity for the automated runner
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+          # 2. Query the GitHub API for open PR branches targeting master
           PR_BRANCHES=$(gh pr list --base master --state open --json headRefName --jq '.[].headRefName')
           
           if [ -z "$PR_BRANCHES" ]; then
@@ -26,6 +30,7 @@ jobs:
             exit 0
           fi
 
+          # 3. Loop through and merge master into each open branch
           for branch in $PR_BRANCHES; do
             echo "Targeting branch: $branch"
             

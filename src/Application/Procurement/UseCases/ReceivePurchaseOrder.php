@@ -3,12 +3,14 @@
 namespace InventoryApp\Application\Procurement\UseCases;
 
 use InventoryApp\Domain\Procurement\Repositories\PurchaseOrderRepositoryInterface;
+use InventoryApp\Domain\Inventory\Repositories\ProductRepositoryInterface;
 use InventoryApp\Domain\Accounting\Repositories\CostLayerRepositoryInterface;
-use InventoryApp\Application\Inventory\Factories\ReceiveStockFactoryInterface;
+use InventoryApp\Application\Inventory\UseCases\ReceiveStock;
 use InventoryApp\Domain\Accounting\Entities\InventoryCostLayer;
 use InventoryApp\Domain\Inventory\ValueObjects\SKU;
 use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
 use InventoryApp\Domain\Inventory\ValueObjects\Quantity;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Ramsey\Uuid\Uuid;
 use DateTimeImmutable;
 use Exception;
@@ -17,8 +19,9 @@ class ReceivePurchaseOrder
 {
     public function __construct(
         private readonly PurchaseOrderRepositoryInterface $poRepository,
+        private readonly ProductRepositoryInterface       $productRepository,
         private readonly CostLayerRepositoryInterface     $costLayerRepository,
-        private readonly ReceiveStockFactoryInterface     $receiveStockFactory
+        private readonly EventDispatcherInterface         $events
     ) {}
 
     public function execute(array $data): void
@@ -28,7 +31,7 @@ class ReceivePurchaseOrder
             throw new Exception("Purchase order with ID {$data['purchaseOrderId']} not found.");
         }
 
-        $receiveStock = $this->receiveStockFactory->create();
+        $receiveStock = new ReceiveStock($this->productRepository, $this->events);
         $costLayers = [];
 
         foreach ($data['items'] as $item) {

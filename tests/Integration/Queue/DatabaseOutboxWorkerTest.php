@@ -50,7 +50,7 @@ final class DatabaseOutboxWorkerTest extends TestCase
         $resultCode = -1;
         $baseDir = realpath(__DIR__ . "/../../..");
         $cmd = "DB_CONNECTION=sqlite DB_DATABASE=" . ($baseDir === "/" ? "" : $baseDir) . "/storage/data/test.sqlite php " . ($baseDir === "/" ? "" : $baseDir) . "/scripts/outbox-worker.php --once";
-        exec($cmd, $output, $resultCode);
+        putenv("DB_CONNECTION=sqlite"); putenv("DB_DATABASE=" . $baseDir . "/storage/data/test.sqlite"); exec($cmd, $output, $resultCode); putenv("DB_CONNECTION"); putenv("DB_DATABASE");
 
         // 4. Verify script finished successfully
         $this->assertEquals(0, $resultCode, "outbox-worker.php exited with code {$resultCode}");

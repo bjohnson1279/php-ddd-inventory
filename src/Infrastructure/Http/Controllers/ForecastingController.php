@@ -109,7 +109,6 @@ class ForecastingController
                     'createdAt'          => $forecast->createdAt->format('Y-m-d\TH:i:s\Z'),
                 ]
             ], 200);
-            }
         } catch (Exception $e) {
             if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
                 error_log('[ForecastingController.php] ' . $e->getMessage());
@@ -135,40 +134,12 @@ class ForecastingController
             ", ['variant_id' => $variantId]);
 
             return new Response($results, 200);
-            }
-        }
-    }
-}
-
-
-
-{
-
-
-
-            }
-
-            }
-        }
-    }
-
-
-
-
-
-            }
-        }
-    }
-
-    {
-            }
-
-
         } catch (Exception $e) {
             if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
                 error_log('[ForecastingController.php] ' . $e->getMessage());
                 return new Response(['error' => 'An internal server error occurred.'], 500);
             }
+            return new Response(['error' => $e->getMessage()], 400);
             return new Response(['error' => 'Failed to fetch stock velocity: ' . $e->getMessage()], 500);
         }
     }

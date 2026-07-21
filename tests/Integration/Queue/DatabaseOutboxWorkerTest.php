@@ -48,6 +48,7 @@ final class DatabaseOutboxWorkerTest extends TestCase
         // 3. Run outbox-worker.php CLI script with --once flag
         $output = [];
         $resultCode = -1;
+        $cmd = "php scripts/outbox-worker.php --once";
 
         $env = sprintf(
             'DB_CONNECTION=%s DB_HOST=%s DB_PORT=%s DB_DATABASE=%s DB_USERNAME=%s DB_PASSWORD=%s',

@@ -22,11 +22,13 @@ final class ShippingCarrierE2ETest extends TestCase
     {
         $output = [];
         $dbConn = getenv('DB_CONNECTION') ?: 'pgsql';
-        $dbDb = getenv('DB_DATABASE') ?: '';
+        $dbDb = getenv('DB_DATABASE') ?: 'storage/data/test.sqlite';
         $dbHost = getenv('DB_HOST') ?: '';
         $dbUser = getenv('DB_USERNAME') ?: '';
-        $dbPass = getenv('DB_PASSWORD') ?: '';
+        $dbPass = getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '';
         $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8092 public/index.php > tests/Integration/Http/server_shipping.log 2>&1 & echo $!";
+        $dbDb = getenv('DB_DATABASE') ?: '';
+        $dbPass = getenv('DB_PASSWORD') ?: '';
         $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8095 public/index.php > tests/Integration/Http/server_shipping.log 2>&1 & echo $!";
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);

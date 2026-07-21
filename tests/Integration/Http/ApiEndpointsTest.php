@@ -25,11 +25,18 @@ final class ApiEndpointsTest extends TestCase
 
         // Start built-in PHP development server in the background on port 8085
         $output = [];
+        $dbConn = getenv('DB_CONNECTION') ?: 'pgsql';
+        $dbDb = getenv('DB_DATABASE') ?: '';
+        $dbHost = getenv('DB_HOST') ?: '';
+        $dbUser = getenv('DB_USERNAME') ?: '';
+        $dbPass = getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '';
+        $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8085 public/index.php > tests/Integration/Http/server_api.log 2>&1 & echo $!";
         $command = "php -S 127.0.0.1:8085 public/index.php > tests/Integration/Http/server_api.log 2>&1 & echo $!";
         
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
         
+        $command = "php -S 127.0.0.1:8085 public/index.php > tests/Integration/Http/server_api.log 2>&1 & echo $!";
 
 
         // Wait for server to bind
@@ -971,6 +978,7 @@ final class ApiEndpointsTest extends TestCase
 
     {
 
+        $command = "php -S 127.0.0.1:8085 public/index.php > tests/Integration/Http/server_api.log 2>&1 & echo $!";
 
         
             }

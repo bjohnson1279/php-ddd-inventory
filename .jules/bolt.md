@@ -70,6 +70,14 @@
 **Learning:** Replacing an N+1 query inside a kit component loop with a batch fetch method using `whereIn` grouped by `variant_id` drastically reduces database queries without breaking fallback functionality for active layers when handling expected domain exceptions.
 **Action:** Always inspect loops containing repository fetches for batch-fetching opportunities in application use cases. Ensure fallback states are preserved when utilizing the new batch queries.
 
+## 2026-07-16 - N+1 Query in DemandForecaster bulk evaluation
+**Learning:** In bulk reporting operations (like ), helper methods inside loops (like ) can trigger N+1 queries if they internally perform database lookups, even if the parent method pre-fetches the data into maps.
+**Action:** When a method is called in a loop and performs database lookups, modify its signature to accept optional pre-fetched arrays (e.g. ). In the loop, pass the pre-fetched mapped data downward instead of relying on the method's internal fallback lookups.
+
+## 2024-07-16 - N+1 Query in DemandForecaster bulk evaluation
+**Learning:** In bulk reporting operations (like DemandForecaster::getDemandPlanningReport), helper methods inside loops (like calculateSalesVelocity) can trigger N+1 queries if they internally perform database lookups, even if the parent method pre-fetches the data into maps. Also, looping over arrays that have already been queried (e.g. findAll) to look up specific entities (e.g. findBySkuAndLocation) triggers N+1.
+**Action:** When a method is called in a loop and performs database lookups, modify its signature to accept optional pre-fetched arrays (e.g. ?array $entries = null). In the loop, pass the pre-fetched mapped data downward instead of relying on the method's internal fallback lookups. For repositories returning maps, directly access array keys.
+
 
 
 

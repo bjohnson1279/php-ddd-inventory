@@ -28,12 +28,14 @@ class UpdateShipmentStatusTest extends TestCase
             $this->shipmentRepository,
             $this->outboxRepository
         );
+        $this->useCase = new UpdateShipmentStatus($this->shipmentRepository, $this->outboxRepository);
     }
 
     private function createShipment(ShipmentStatus $status = ShipmentStatus::LabelGenerated): Shipment
     {
         return new Shipment(
             id: 'ship-123',
+            id: 'SHIP-123',
             sku: 'SKU-TEST',
             quantity: 1,
             destinationAddress: '123 Test St',
@@ -73,6 +75,37 @@ class UpdateShipmentStatusTest extends TestCase
     public function testExecuteThrowsExceptionWhenShipmentNotFound(): void
     {
             ->with('invalid-id')
+            trackingNumber: 'TRK-123456',
+            labelUrl: 'http://example.com/label.pdf',
+            shippingRateCents: 500,
+            createdAt: new DateTimeImmutable('2023-01-01 10:00:00')
+        );
+    }
+
+    public function test_it_successfully_updates_shipment_status(): void
+    {
+        $shipment = $this->createShipment(ShipmentStatus::LabelGenerated);
+
+            ->with('SHIP-123')
+
+            ->willReturnCallback(function (Shipment $savedShipment) {
+                $this->assertEquals(ShipmentStatus::InTransit, $savedShipment->getStatus());
+                return $savedShipment; // just return it if needed by the mock, though return type is void
+            });
+
+            ->willReturnCallback(function ($event) {
+                $this->assertInstanceOf(ShipmentStatusUpdatedEvent::class, $event);
+                /** @var ShipmentStatusUpdatedEvent $event */
+                $this->assertEquals('SHIP-123', $event->shipmentId);
+                $this->assertEquals('TRK-123456', $event->trackingNumber);
+                $this->assertEquals(ShipmentStatus::InTransit->value, $event->status);
+
+        $this->useCase->execute('SHIP-123', ShipmentStatus::InTransit);
+    }
+
+    public function test_it_throws_exception_if_shipment_not_found(): void
+    {
+            ->with('SHIP-404')
             ->willReturn(null);
 
         $this->shipmentRepository->expects($this->never())
@@ -89,6 +122,13 @@ class UpdateShipmentStatusTest extends TestCase
     public function testExecuteThrowsDomainExceptionWhenUpdatingFromTerminalState(): void
     {
         // Setup shipment in a terminal state
+        $this->expectExceptionMessage("Shipment with ID SHIP-404 not found.");
+
+        $this->useCase->execute('SHIP-404', ShipmentStatus::InTransit);
+    }
+
+    public function test_it_throws_domain_exception_if_updating_from_terminal_state(): void
+    {
         $shipment = $this->createShipment(ShipmentStatus::Delivered);
 
 
@@ -175,6 +215,7 @@ class UpdateShipmentStatusTest extends TestCase
 
         $this->expectExceptionMessage("Outbox write failed");
 
+        $this->useCase->execute('SHIP-123', ShipmentStatus::Failed);
         $this->shipmentRepositoryMock->expects($this->never())->method('save');
         $this->outboxRepositoryMock->expects($this->never())->method('save');
 

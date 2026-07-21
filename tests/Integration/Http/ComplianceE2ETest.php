@@ -26,6 +26,14 @@ final class ComplianceE2ETest extends TestCase
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
 
+        $dbConn = getenv('DB_CONNECTION') ?: 'pgsql';
+        $dbDb = getenv('DB_DATABASE') ?: '';
+        $dbHost = getenv('DB_HOST') ?: '';
+        $dbUser = getenv('DB_USERNAME') ?: '';
+        $dbPass = getenv('DB_PASSWORD') ?: '';
+        $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8092 public/index.php > tests/Integration/Http/server_compliance.log 2>&1 & echo $!";
+        
+        
         // Wait for server to bind
         for ($i = 0; $i < 50; $i++) {
             $fp = @fsockopen('127.0.0.1', 8092, $errno, $errstr, 0.1);
@@ -151,6 +159,7 @@ final class ComplianceE2ETest extends TestCase
         $context = stream_context_create($options);
         $result = @file_get_contents($url, false, $context);
 
+        
         $statusCode = 500;
         if (isset($http_response_header) && isset($http_response_header[0])) {
             preg_match('{HTTP\/\S*\s(\d{3})}', $http_response_header[0], $match);

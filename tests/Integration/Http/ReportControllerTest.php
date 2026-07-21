@@ -26,6 +26,9 @@ final class ReportControllerTest extends TestCase
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
 
+        $command = "php -S 127.0.0.1:8097 public/index.php > tests/Integration/Http/server_report.log 2>&1 & echo $!";
+        
+        
         // Wait for server to bind
         for ($i = 0; $i < 50; $i++) {
             $fp = @fsockopen('127.0.0.1', 8089, $errno, $errstr, 0.1);
@@ -128,6 +131,7 @@ final class ReportControllerTest extends TestCase
         // Asserts
         $this->assertEquals(15, $body['total_items_count']);
 
+        
         // FIFO Valuation for remaining inventory:
         // Newest layers: Layer 2 has 10 units ($120). Layer 1 has 5 units remaining ($50).
         // Total FIFO valuation = 10 * 1200 + 5 * 1000 = 17000 cents ($170.00)
@@ -147,6 +151,7 @@ final class ReportControllerTest extends TestCase
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
     {
         $url = 'http://127.0.0.1:8089' . $path;
+        $url = 'http://127.0.0.1:8097' . $path;
         $options = [
             'http' => [
                 'header'        => "Content-Type: application/json\r\n",
@@ -162,6 +167,7 @@ final class ReportControllerTest extends TestCase
         $context = stream_context_create($options);
         $result = @file_get_contents($url, false, $context);
 
+        
         $statusCode = 500;
         if (isset($http_response_header) && isset($http_response_header[0])) {
             preg_match('{HTTP\/\S*\s(\d{3})}', $http_response_header[0], $match);
@@ -255,6 +261,7 @@ final class ReportControllerTest extends TestCase
     }
 
     {
+        $url = 'http://127.0.0.1:8089' . $path;
 
         }
 

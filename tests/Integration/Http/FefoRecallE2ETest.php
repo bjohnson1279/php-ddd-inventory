@@ -26,6 +26,9 @@ final class FefoRecallE2ETest extends TestCase
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
 
+        $command = "php -S 127.0.0.1:8096 public/index.php > tests/Integration/Http/server_fefo.log 2>&1 & echo $!";
+        
+        
         // Wait for server to bind
         for ($i = 0; $i < 50; $i++) {
             $fp = @fsockopen('127.0.0.1', 8091, $errno, $errstr, 0.1);
@@ -161,6 +164,7 @@ final class FefoRecallE2ETest extends TestCase
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
     {
         $url = 'http://127.0.0.1:8091' . $path;
+        $url = 'http://127.0.0.1:8096' . $path;
         $options = [
             'http' => [
                 'header'        => "Content-Type: application/json\r\n",
@@ -177,6 +181,7 @@ final class FefoRecallE2ETest extends TestCase
         $context = stream_context_create($options);
         $result = @file_get_contents($url, false, $context);
 
+        
         $statusCode = 500;
         if (isset($http_response_header) && isset($http_response_header[0])) {
             preg_match('{HTTP\/\S*\s(\d{3})}', $http_response_header[0], $match);

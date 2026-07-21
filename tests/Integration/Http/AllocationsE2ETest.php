@@ -24,9 +24,11 @@ final class AllocationsE2ETest extends TestCase
         // Start built-in PHP development server in the background on port 8087
         $output = [];
         $command = "php -S 127.0.0.1:8087 public/index.php > tests/Integration/Http/server_allocations.log 2>&1 & echo $!";
-
+        
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
+        
+
 
         // Wait for server to bind
         for ($i = 0; $i < 50; $i++) {
@@ -52,6 +54,7 @@ final class AllocationsE2ETest extends TestCase
         Capsule::table('products')->delete();
         Capsule::table('user_roles')->delete();
         Capsule::table('users')->delete();
+        Capsule::table('tenants')->where('id', '!=', 'test-tenant')->delete();
         Capsule::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
         \Illuminate\Database\Capsule\Manager::table('tenants')->insertOrIgnore([['id' => 'test-tenant', 'name' => 'Test Tenant']]);
 
@@ -87,6 +90,7 @@ final class AllocationsE2ETest extends TestCase
         $inviteRes = $this->request('POST', '/api/users', [
             'email' => "viewer-{$suffix}@example.com",
         ], $this->token);
+        
 
         $this->assertEquals(201, $inviteRes['status'], json_encode($inviteRes));
         $viewerUserId = $inviteRes['body']['user_id'];
@@ -223,6 +227,7 @@ final class AllocationsE2ETest extends TestCase
 
         $context = stream_context_create($options);
         $result = @file_get_contents($url, false, $context);
+        
 
         $statusCode = 500;
         if (isset($http_response_header) && isset($http_response_header[0])) {
@@ -297,6 +302,7 @@ final class AllocationsE2ETest extends TestCase
     }
 
     {
+        Capsule::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
 
 
 

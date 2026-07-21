@@ -133,6 +133,8 @@ final class WebhookSubscriptionTest extends TestCase
             'created_at' => (new \DateTime())->format('Y-m-d H:i:s')
 
         // Run the CLI worker script with --once flag
+        $worker = new \InventoryApp\Application\Webhooks\Workers\WebhookDeliveryWorker();
+        $worker->run(true);
         $resultCode = -1;
         exec("php scripts/webhook-worker.php --once", $output, $resultCode);
 
@@ -312,6 +314,8 @@ final class WebhookSubscriptionTest extends TestCase
     {
 
 
+        $resultCode = -1;
+        exec("php scripts/webhook-worker.php --once", $output, $resultCode);
 
     }
 

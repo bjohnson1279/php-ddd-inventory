@@ -41,6 +41,7 @@ class XeroJournalSync
         $xeroLines = array_map(function ($line) {
             $isCredit = strtolower($line['type']) === 'credit';
             $amount = (float)($line['amountCents'] / 100.0);
+            
 
             // Xero Manual Journals use positive for debits, negative for credits in general ledger lines
             $lineAmount = $isCredit ? -$amount : $amount;
@@ -60,11 +61,16 @@ class XeroJournalSync
             ]]
         ]);
 
+        $connectTimeout = (int)(getenv('XERO_CONNECT_TIMEOUT') ?: 10);
+        $timeout = (int)(getenv('XERO_TIMEOUT') ?: 30);
+
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST           => true,
             CURLOPT_POSTFIELDS     => $body,
+            CURLOPT_CONNECTTIMEOUT => $connectTimeout,
+            CURLOPT_TIMEOUT        => $timeout,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
             CURLOPT_HTTPHEADER     => [
@@ -73,6 +79,14 @@ class XeroJournalSync
                 'Xero-tenant-id: ' . $this->tenantId,
                 'Authorization: Bearer ' . $this->accessToken,
             ],
+
+        $response = curl_exec($ch);
+
+        if ($response === false) {
+            $error = curl_error($ch);
+            curl_close($ch);
+            throw new \RuntimeException("Xero manual journal creation failed (cURL error): {$error}");
+        }
 
         $response   = curl_exec($ch);
         $httpStatus = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -111,6 +125,7 @@ class XeroJournalSync
             CURLOPT_TIMEOUT        => 30,
             CURLOPT_CONNECTTIMEOUT => 10,
 
+        $response   = curl_exec($ch);
 
         }
 

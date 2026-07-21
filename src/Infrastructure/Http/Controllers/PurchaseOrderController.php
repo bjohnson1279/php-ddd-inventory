@@ -141,6 +141,8 @@ class PurchaseOrderController
             ]);
 
             $baseUseCase = new ReceivePurchaseOrder($poRepo, $productRepo, $costLayerRepo, $events);
+            $receiveStockFactory = new ReceiveStockFactory($productRepo, $events, null, $costLayerRepo);
+            $baseUseCase = new ReceivePurchaseOrder($poRepo, $costLayerRepo, $receiveStockFactory);
             $useCase = new AutoRetryUseCaseDecorator($baseUseCase);
             $useCase->execute([
                 'purchaseOrderId' => $id,

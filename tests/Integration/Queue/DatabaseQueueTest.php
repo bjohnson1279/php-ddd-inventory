@@ -137,6 +137,7 @@ final class DatabaseQueueTest extends TestCase
         $resultCode = -1;
 
         // Run CLI command using the local php installation
+        $cmd = "php scripts/queue-worker.php --once";
         $env = sprintf("DB_CONNECTION=%s DB_HOST=%s DB_PORT=%s DB_DATABASE=%s DB_USERNAME=%s DB_PASSWORD=%s", escapeshellarg(DB::connection()->getDriverName()), escapeshellarg((string)getenv("DB_HOST")), escapeshellarg((string)getenv("DB_PORT")), escapeshellarg((string)getenv("DB_DATABASE")), escapeshellarg((string)getenv("DB_USERNAME")), escapeshellarg((string)getenv("DB_PASSWORD")));
         $cmd = "$env php scripts/queue-worker.php --once";
         exec($cmd, $output, $resultCode);

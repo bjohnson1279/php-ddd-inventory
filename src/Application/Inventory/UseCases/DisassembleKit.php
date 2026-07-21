@@ -87,25 +87,29 @@ class DisassembleKit
         $totalEstimatedComponentsCost = 0;
         $componentAvgCosts = [];
 
+        $componentVariantIds = array_map(fn($c) => $c->variantId, $kit->components());
+
+        try {
+            $allActiveLayers = $this->costLayerRepository->getActiveLayersByVariantIds($componentVariantIds, 'received_at ASC');
+        } catch (\Exception $e) {
+            $allActiveLayers = [];
+        }
+
         foreach ($kit->components() as $component) {
             $needed = $component->quantity * $quantity;
             $avgUnitCost = 0;
 
-            try {
-                $activeLayers = $this->costLayerRepository->getActiveLayers($component->variantId, 'received_at ASC');
-                $totalUnits = 0;
-                $totalValue = 0;
-                foreach ($activeLayers as $layer) {
-                    $totalUnits += $layer->remainingQuantity();
-                    $totalValue += $layer->remainingQuantity() * $layer->unitCostCents;
-                }
-                if ($totalUnits > 0) {
-                    $avgUnitCost = (int) round($totalValue / $totalUnits);
-                } else {
-                    $avgUnitCost = !empty($activeLayers) ? $activeLayers[0]->unitCostCents : 1000;
-                }
-            } catch (\Exception $e) {
-                $avgUnitCost = 1000; // fallback default
+            $activeLayers = $allActiveLayers[$component->variantId] ?? [];
+            $totalUnits = 0;
+            $totalValue = 0;
+            foreach ($activeLayers as $layer) {
+                $totalUnits += $layer->remainingQuantity();
+                $totalValue += $layer->remainingQuantity() * $layer->unitCostCents;
+            }
+            if ($totalUnits > 0) {
+                $avgUnitCost = (int) round($totalValue / $totalUnits);
+            } else {
+                $avgUnitCost = !empty($activeLayers) ? $activeLayers[0]->unitCostCents : 1000;
             }
 
             $componentAvgCosts[] = [
@@ -147,15 +151,12 @@ class DisassembleKit
 
             // Add increment ledger entry for this component
             $ledgerEntry = new LedgerEntry(
-                id: Uuid::uuid4()->toString(),
-                variantId: $item['variantId'],
                 quantity: $item['quantity'],
                 reason: ReasonCode::KitDisassembly,
                 actorId: $actorId,
                 referenceId: $referenceId,
                 occurredAt: new \DateTimeImmutable(),
                 metadata: ['locationId' => $locationId]
-            );
             $this->ledgerRepository->append($ledgerEntry);
         }
 
@@ -166,6 +167,56 @@ class DisassembleKit
             $kitSkuStr,
             $totalDisassembledCost,
             $referenceId
-        );
+    }
+}
+
+
+
+{
+
+    }
+
+    {
+
+        }
+
+        }
+
+        }
+
+        }
+
+
+
+
+
+
+            try {
+                $activeLayers = $this->costLayerRepository->getActiveLayers($component->variantId, 'received_at ASC');
+                $totalUnits = 0;
+                $totalValue = 0;
+                foreach ($activeLayers as $layer) {
+                    $totalUnits += $layer->remainingQuantity();
+                    $totalValue += $layer->remainingQuantity() * $layer->unitCostCents;
+                }
+                if ($totalUnits > 0) {
+                    $avgUnitCost = (int) round($totalValue / $totalUnits);
+                } else {
+                    $avgUnitCost = !empty($activeLayers) ? $activeLayers[0]->unitCostCents : 1000;
+                }
+            } catch (\Exception $e) {
+                $avgUnitCost = 1000; // fallback default
+            }
+
+        }
+
+
+
+
+
+            }
+
+        }
+
     }
 }

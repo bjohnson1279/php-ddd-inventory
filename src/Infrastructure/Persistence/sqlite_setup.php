@@ -398,3 +398,44 @@ class SqliteSetup
                 FOREIGN KEY (subscription_id) REFERENCES webhook_subscriptions (id) ON DELETE CASCADE
     }
 }
+
+
+{
+    {
+
+        }
+    }
+
+    {
+    }
+
+    {
+    }
+
+    {
+    }
+
+    {
+    }
+
+    {
+    }
+
+    {
+    }
+
+    {
+    }
+
+    {
+    }
+
+    {
+    }
+
+    {
+    }
+
+    {
+    }
+}

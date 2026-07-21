@@ -4,31 +4,10 @@ use Illuminate\Database\Capsule\Manager as Capsule;
 
 require __DIR__ . '/../../vendor/autoload.php';
 
-$envDriver = getenv('DB_CONNECTION');
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../../');
 $dotenv->safeLoad();
 
 $driver = getenv('DB_CONNECTION') ?: 'pgsql';
-if ($driver === 'pgsql') {
-    if (!extension_loaded('pdo_pgsql')) {
-        $driver = 'sqlite';
-    } else {
-        $pgHost = getenv('DB_HOST') ?: 'db';
-        $pgPort = (int)(getenv('DB_PORT') ?: 5432);
-        $fp = @fsockopen($pgHost, $pgPort, $errno, $errstr, 0.1);
-        if (!$fp) {
-            $driver = 'sqlite';
-        } else {
-            fclose($fp);
-        }
-    }
-}
-
-if ($driver === 'sqlite') {
-    putenv('DB_CONNECTION=sqlite');
-    $_ENV['DB_CONNECTION'] = 'sqlite';
-    $_SERVER['DB_CONNECTION'] = 'sqlite';
-}
 
 $capsule = new Capsule;
 
@@ -36,15 +15,6 @@ if ($driver === 'sqlite') {
     $dbPath = getenv('DB_DATABASE') ?: 'storage/data/test.sqlite';
     if ($dbPath !== ':memory:' && !str_starts_with($dbPath, '/') && !str_contains($dbPath, ':')) {
         $dbPath = __DIR__ . '/../../' . $dbPath;
-    }
-    if ($dbPath !== ':memory:') {
-        $dir = dirname($dbPath);
-        if (!is_dir($dir)) {
-            @mkdir($dir, 0777, true);
-        }
-        if (!file_exists($dbPath)) {
-            @touch($dbPath);
-        }
     }
     $capsule->addConnection([
         'driver'   => 'sqlite',
@@ -72,7 +42,6 @@ $connection = $capsule->getConnection();
 
 if ($driver === 'sqlite') {
     try {
-        $connection->statement('PRAGMA journal_mode=WAL;');
         $connection->statement('PRAGMA busy_timeout=10000;');
     } catch (\Exception $e) {}
 }
@@ -223,7 +192,8 @@ if ($driver === 'sqlite') {
         'inventory_counts', 
         'ledger_entries', 
         'serialized_items', 
-        'barcodes', 
+        'barcodes',
+        'compliance_ledgers',
         'stock_onboarding_items', 
         'stock_onboardings', 
         'journal_entries', 
@@ -278,7 +248,8 @@ if ($driver === 'sqlite') {
         inventory_counts, 
         ledger_entries, 
         serialized_items, 
-        barcodes, 
+        barcodes,
+        compliance_ledgers,
         stock_onboarding_items, 
         stock_onboardings, 
         journal_entries, 

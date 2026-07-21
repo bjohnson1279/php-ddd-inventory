@@ -25,6 +25,10 @@ class OpeningBalanceService
             $entry = new LedgerEntry(\Ramsey\Uuid\Uuid::uuid4()->toString(), $item->variantId, $item->quantity, ReasonCode::OpeningBalance, $actorId, $onboarding->id, $onboarding->asOfDate, ['unitCostCents' => $item->unitCostCents, 'locationId' => $onboarding->locationId]);
             $this->ledger->append($entry);
             $this->events->dispatch(new \InventoryApp\Domain\Inventory\Events\OpeningBalancePosted(
+        $entries = [];
+        $eventsToDispatch = [];
+            $entries[] = $entry;
+            $eventsToDispatch[] = new \InventoryApp\Domain\Inventory\Events\OpeningBalancePosted(
                 $onboarding->id,
                 $item->variantId,
                 $item->quantity,
@@ -33,6 +37,11 @@ class OpeningBalanceService
                 $onboarding->asOfDate,
                 new \DateTimeImmutable()
             ));
+            );
+        }
+        $this->ledger->appendAll($entries);
+        foreach ($eventsToDispatch as $event) {
+            $this->events->dispatch($event);
         }
     }
 }

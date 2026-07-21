@@ -66,6 +66,7 @@ class DisassembleKit
         $kitBreakdown = $this->costLayerService->consumeFifoLayers($kitProduct->getId(), $quantity);
         $totalDisassembledCost = $kitBreakdown->totalCostCents;
 
+        $ledgerEntries = [];
         // 5. Decrement kit stock on Product aggregate
         $kitProduct->dispatchStockAt(new LocationId($locationId), new Quantity($quantity), $referenceId);
         $this->productRepository->save($kitProduct);
@@ -81,6 +82,7 @@ class DisassembleKit
             occurredAt: new \DateTimeImmutable(),
             metadata: ['locationId' => $locationId]
         );
+        $ledgerEntries[] = $kitLedgerEntry;
         $this->ledgerRepository->append($kitLedgerEntry);
 
         // 7. Estimate components average cost and distribute cost proportionally
@@ -175,6 +177,11 @@ class DisassembleKit
                 occurredAt: new \DateTimeImmutable(),
                 metadata: ['locationId' => $locationId]
             );
+            $ledgerEntries[] = $ledgerEntry;
+        }
+
+        $this->ledgerRepository->appendAll($ledgerEntries);
+
             $this->ledgerRepository->append($ledgerEntry);
         }
 

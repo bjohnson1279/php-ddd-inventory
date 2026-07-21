@@ -195,3 +195,45 @@ class EloquentLedgerRepository implements LedgerRepositoryInterface
 
     }
 }
+
+
+
+{
+
+    {
+
+        }
+
+
+        }
+    }
+
+    {
+    }
+
+    {
+        }
+
+
+        }
+        }
+    }
+
+    {
+
+        }
+
+    }
+
+    {
+        }
+
+    }
+
+    {
+    }
+
+    {
+
+    }
+}

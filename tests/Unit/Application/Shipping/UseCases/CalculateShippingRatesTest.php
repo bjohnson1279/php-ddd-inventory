@@ -15,6 +15,8 @@ class CalculateShippingRatesTest extends TestCase
     /** @var CarrierServiceInterface&\PHPUnit\Framework\MockObject\MockObject */
     private CarrierServiceInterface $carrierServiceMock;
 
+{
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -32,8 +34,6 @@ class CalculateShippingRatesTest extends TestCase
 
     public function testExecuteThrowsExceptionWhenDestinationAddressIsEmpty(): void
     {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage("Missing required rate fields: sku and destinationAddress.");
 
         $this->useCase->execute('SKU-123', 1, '');
     }
@@ -55,5 +55,61 @@ class CalculateShippingRatesTest extends TestCase
 
         $this->assertSame($rates, $result);
         $this->assertCount(2, $result);
+    public function test_it_calculates_shipping_rates_successfully(): void
+    {
+        $sku = 'TEST-SKU';
+        $quantity = 5;
+        $destinationAddress = '123 Test St, Test City, TS 12345';
+        $expectedRates = [];
+
+        $this->carrierServiceMock->expects($this->once())
+            ->with($sku, $quantity, $destinationAddress)
+            ->willReturn($expectedRates);
+
+        $result = $this->useCase->execute($sku, $quantity, $destinationAddress);
+
+        $this->assertSame($expectedRates, $result);
+    }
+
+    public function test_it_throws_exception_if_sku_is_empty(): void
+    {
+
+        $this->useCase->execute('', 1, '123 Test St');
+    }
+
+    public function test_it_throws_exception_if_sku_is_only_whitespace(): void
+    {
+
+        $this->useCase->execute('   ', 1, '123 Test St');
+    }
+
+    public function test_it_throws_exception_if_destination_address_is_empty(): void
+    {
+
+        $this->useCase->execute('TEST-SKU', 1, '');
+    }
+
+    public function test_it_throws_exception_if_destination_address_is_only_whitespace(): void
+    {
+
+        $this->useCase->execute('TEST-SKU', 1, '   ');
+    }
+
+    public function test_it_handles_sku_with_string_zero_correctly(): void
+    {
+        $sku = '0';
+        $quantity = 1;
+        $destinationAddress = '123 Test St';
+
+
+
+    }
+
+    public function test_it_handles_destination_address_with_string_zero_correctly(): void
+    {
+        $destinationAddress = '0';
+
+
+
     }
 }

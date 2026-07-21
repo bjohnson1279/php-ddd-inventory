@@ -51,9 +51,6 @@ class User extends AggregateRoot
     }
 
     public static function register(
-        string $id,
-        TenantId $tenantId,
-        string $email,
         string $plainPassword,
         string $name
     ): self {
@@ -130,7 +127,6 @@ class User extends AggregateRoot
     {
         $this->roles = array_values(
             array_filter($this->roles, fn(Role $r) => $r->getId() !== $roleId)
-        );
     }
 
     public function deactivate(): void
@@ -139,12 +135,48 @@ class User extends AggregateRoot
         $this->recordEvent(new UserDeactivated(
             userId:    $this->id,
             tenantId:  $this->tenantId,
-            occurredOn: new DateTimeImmutable(),
-        ));
     }
 
     public function reactivate(): void
     {
         $this->active = true;
+    }
+}
+
+
+
+{
+
+    }
+
+        }
+        }
+
+            password_hash($plainPassword, PASSWORD_ARGON2ID),
+
+
+    }
+
+
+    {
+    }
+
+    {
+            }
+        }
+    }
+
+    {
+            }
+        }
+    }
+
+    {
+    }
+
+    {
+    }
+
+    {
     }
 }

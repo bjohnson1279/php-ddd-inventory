@@ -166,4 +166,22 @@ Stream notifications (e.g. LowStockDetected, OpeningBalancePosted) live to dashb
 *   **URL**: `/api/reports/valuation`
 *   **Method**: `GET`
 
+---
+
+## 🔒 Compliance Ledger (Audit Trails)
+
+### 1. Fetch Compliance Audit Logs
+Retrieve the list of cryptographically signed block entries for compliance auditing.
+*   **URL**: `/api/compliance/ledger`
+*   **Method**: `GET`
+*   **Query**: `?tenantId=tenant-1` (Optional)
+*   **Response**: `200 OK` with JSON array of blocks in reverse chronological order
+
+### 2. Verify Ledger Integrity
+Run the compliance verification pipeline to check the integrity of block hashes and signatures.
+*   **URL**: `/api/compliance/verify`
+*   **Method**: `POST`
+*   **Query**: `?tenantId=tenant-1` (Optional)
+*   **Response**: `200 OK` with `{ "isValid": true }` or a detailed error structure.
+
 

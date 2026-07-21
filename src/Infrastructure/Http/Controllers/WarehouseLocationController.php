@@ -202,4 +202,16 @@ class WarehouseLocationController
             return new Response(['error' => $e->getMessage()], 400);
         }
     }
+
+    public function suggestSlotting(RequestInterface $request)
+    {
+        try {
+            $optimizer = new \InventoryApp\Domain\Inventory\Services\SlottingOptimizer();
+            $suggestions = $optimizer->generateSuggestions();
+            return new Response($suggestions, 200);
+        } catch (Exception $e) {
+            error_log('[WarehouseLocationController] ' . $e->getMessage());
+            return new Response(['error' => 'An internal server error occurred.'], 500);
+        }
+    }
 }

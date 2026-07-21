@@ -104,21 +104,16 @@ class ReorderPolicyService
                     
                     $item = new PurchaseOrderItem(
                         $itemId,
-                        $skuStr,
                         $policy->reorderQuantity,
                         0,
                         0
-                    );
 
                     $po = new PurchaseOrder(
                         $poId,
                         $poNumber,
                         'AUTO-SYSTEM-VENDOR',
-                        $tenantId,
-                        $policy->locationId,
                         PurchaseOrderStatus::Draft,
                         [$item]
-                    );
 
                     $this->poRepository->save($po);
                     $allPos[] = $po; // Bolt optimization: Append new PO to avoid duplicate generation in subsequent iterations
@@ -207,9 +202,58 @@ class ReorderPolicyService
                     $locationId,
                     PurchaseOrderStatus::Draft,
                     [$item]
-                );
 
                 $this->poRepository->save($po);
+            }
+        }
+    }
+}
+
+
+
+{
+
+
+                        $policy->sku->getValue(),
+                        $tenantId
+                    error_log("Error forecasting ROP for SKU {$policy->sku->getValue()}: " . $e->getMessage());
+                }
+            }
+
+            $product = $productRepo->findBySku($policy->sku);
+            
+            }
+
+
+                $allPos = $this->poRepository->findAll();
+                    }
+                            }
+                        }
+                    }
+                }
+
+                    
+
+
+                }
+            }
+
+        }
+
+    }
+
+        }
+
+
+                }
+                        }
+                    }
+                }
+            }
+
+                
+
+
             }
         }
     }

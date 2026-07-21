@@ -68,3 +68,16 @@
 ## 2026-07-20 - N+1 Queries in ReorderPolicyService loop
 **Learning:** Calling `findAll()` inside a loop that iterates over policies leads to N full table scans. Similarly, calling `findBySku()` iteratively per policy causes N single queries.
 **Action:** Hoist the database queries out of the loop. Collect unique SKUs, fetch products via `findBySkus()`, and fetch all PurchaseOrders once. Pass the pre-fetched arrays as optional arguments to nested forecaster methods to eliminate the N+1 pattern.
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -114,3 +114,44 @@ class ReorderPointForecaster
         return (int) ceil($rawRop);
     }
 }
+
+
+
+{
+
+        ?string $tenantId = null
+
+
+            $product = $this->productRepo->findBySku($sku);
+                $allPos = $this->poRepo->findAll();
+
+                    }
+
+
+                        }
+                    }
+
+                    }
+                }
+
+                        }
+
+                            }
+                        }
+
+                        }
+                    }
+                }
+
+                        }
+                    }
+
+
+                }
+            }
+        }
+
+
+
+    }
+}

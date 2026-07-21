@@ -29,3 +29,27 @@ class CreateInventoryItemOnVariantAdded
         );
     }
 }
+
+
+
+{
+    private ?RegisterProduct $registerProductUseCase;
+
+    public function __construct(?RegisterProduct $registerProductUseCase = null)
+    {
+    }
+
+    {
+        $useCase = $this->registerProductUseCase;
+        if ($useCase === null) {
+            $tenantId = function_exists('tenantId') ? tenantId() : 'system';
+            $productRepo = \InventoryApp\Infrastructure\ServiceContainer::productRepo($tenantId);
+            $useCase = new RegisterProduct(
+                $productRepo,
+                \InventoryApp\Infrastructure\ServiceContainer::dispatcher()
+            );
+        }
+
+        $useCase->execute(
+    }
+}

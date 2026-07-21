@@ -68,20 +68,17 @@ final class ForecastingE2ETest extends TestCase
             'tenant_id' => $this->tenantId,
             'email'     => $this->email,
             'password'  => $this->password,
-        ]);
         $this->assertEquals(200, $loginRes['status']);
         $this->token = $loginRes['body']['token'];
 
         // Seed product
         Capsule::table('products')->insert([
             'id' => uuidv4(),
-            'tenant_id' => $this->tenantId,
             'sku' => 'IPHONE-15',
             'name' => 'iPhone 15',
             'department' => 'Electronics',
             'reorder_threshold' => 10,
             'version_id' => 1
-        ]);
     }
 
     public function testForecastingLifecycle(): void
@@ -117,31 +114,11 @@ final class ForecastingE2ETest extends TestCase
                 'metadata' => json_encode(['locationId' => $locationId]),
                 'created_at' => $nowStr,
             ],
-            [
-                'id' => uuidv4(),
-                'tenant_id' => $this->tenantId,
-                'variant_id' => $sku,
-                'quantity' => -10,
-                'reason' => 'sale',
-                'actor_id' => 'system',
                 'reference_id' => '2',
                 'occurred_at' => $fiveDaysAgo,
-                'metadata' => json_encode(['locationId' => $locationId]),
-                'created_at' => $nowStr,
-            ],
-            [
-                'id' => uuidv4(),
-                'tenant_id' => $this->tenantId,
-                'variant_id' => $sku,
-                'quantity' => -10,
-                'reason' => 'sale',
-                'actor_id' => 'system',
                 'reference_id' => '3',
                 'occurred_at' => $tenDaysAgo,
-                'metadata' => json_encode(['locationId' => $locationId]),
-                'created_at' => $nowStr,
             ]
-        ]);
 
         // 3. Request demand planning report
         $reportRes = $this->request('GET', '/api/forecasting/report?locationId=' . $locationId, [], $this->token);
@@ -165,7 +142,6 @@ final class ForecastingE2ETest extends TestCase
             'locationId' => $locationId,
             'forecastDays' => 15,
             'trendMultiplier' => 1.2
-        ], $this->token);
 
         $this->assertEquals(200, $forecastRes['status'], json_encode($forecastRes));
         $this->assertMatchesRegularExpression('/success/i', $forecastRes['body']['message']);
@@ -187,14 +163,7 @@ final class ForecastingE2ETest extends TestCase
 
     public function testSeasonalForecasting(): void
     {
-        $sku = 'IPHONE-15';
-        $locationId = 'LOC-INT';
 
-        $receiveRes = $this->request('POST', '/api/inventory/receive', [
-            'sku'         => $sku,
-            'quantity'    => 50,
-            'location_id' => $locationId
-        ], $this->token);
         $this->assertEquals(200, $receiveRes['status']);
 
         $now = new \DateTime();
@@ -208,55 +177,18 @@ final class ForecastingE2ETest extends TestCase
 
         $recentSaleStr = (new \DateTime())->modify('-5 days')->format('Y-m-d H:i:s');
 
-        Capsule::table('ledger_entries')->insert([
-            [
-                'id' => uuidv4(),
-                'tenant_id' => $this->tenantId,
-                'variant_id' => $sku,
-                'quantity' => -10,
-                'reason' => 'sale',
-                'actor_id' => 'system',
                 'reference_id' => 'rec-1',
                 'occurred_at' => $recentSaleStr,
-                'metadata' => json_encode(['locationId' => $locationId]),
-                'created_at' => $nowStr,
-            ],
-            [
-                'id' => uuidv4(),
-                'tenant_id' => $this->tenantId,
-                'variant_id' => $sku,
                 'quantity' => -30,
-                'reason' => 'sale',
-                'actor_id' => 'system',
                 'reference_id' => 'rec-2',
                 'occurred_at' => $sameMonthLastYearStr,
-                'metadata' => json_encode(['locationId' => $locationId]),
-                'created_at' => $nowStr,
-            ],
-            [
-                'id' => uuidv4(),
-                'tenant_id' => $this->tenantId,
-                'variant_id' => $sku,
-                'quantity' => -10,
-                'reason' => 'sale',
-                'actor_id' => 'system',
                 'reference_id' => 'rec-3',
                 'occurred_at' => $diffMonthLastYearStr,
-                'metadata' => json_encode(['locationId' => $locationId]),
-                'created_at' => $nowStr,
-            ]
-        ]);
 
-        $forecastRes = $this->request('POST', '/api/forecasting/forecast', [
-            'sku' => $sku,
-            'locationId' => $locationId,
             'forecastDays' => 30,
             'trendMultiplier' => 1.0
-        ], $this->token);
 
-        $this->assertEquals(200, $forecastRes['status'], json_encode($forecastRes));
         
-        $forecast = $forecastRes['body']['forecast'];
         $this->assertGreaterThan(10, $forecast['forecastedQuantity']);
         $this->assertEquals(0.90, $forecast['confidenceLevel']);
     }
@@ -270,7 +202,6 @@ final class ForecastingE2ETest extends TestCase
                 'method'        => $method,
                 'content'       => json_encode($body),
                 'ignore_errors' => true,
-            ]
         ];
 
         if ($token) {
@@ -290,6 +221,110 @@ final class ForecastingE2ETest extends TestCase
         return [
             'status' => $statusCode,
             'body'   => (json_last_error() === JSON_ERROR_NONE) ? $decoded : $result
-        ];
+    }
+}
+
+
+
+
+
+{
+    private static $serverProcess = null;
+
+        public static function setUpBeforeClass(): void
+    {
+        $baseDir = realpath(__DIR__ . '/../../..');
+        $dbPath = $baseDir . '/storage/data/test_forecastinge2etest.sqlite';
+        if (!file_exists($dbPath)) {
+            @mkdir(dirname($dbPath), 0777, true);
+            @touch($dbPath);
+        }
+        $extDir = 'C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext';
+        $phpExec = PHP_BINARY . ' -d extension_dir="C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext" -d extension=pdo -d extension=mbstring -d extension=pdo_sqlite';
+        $cmd = $phpExec . ' -S 127.0.0.1:8090 public/index.php';
+        
+        $descriptors = [
+            0 => ["pipe", "r"],
+            1 => ["file", __DIR__ . '/server_forecastinge2etest.log', "a"],
+            2 => ["file", __DIR__ . '/server_forecastinge2etest.log', "a"],
+        
+        $env = array_merge($_ENV, [
+            'DB_CONNECTION' => 'sqlite',
+            'DB_DATABASE' => $dbPath,
+            'APP_ENV' => 'testing',
+        
+                putenv("DB_DATABASE={$dbPath}");
+        $_ENV['DB_DATABASE'] = $dbPath;
+        $_SERVER['DB_DATABASE'] = $dbPath;
+        
+        $capsule = new \Illuminate\Database\Capsule\Manager();
+        $capsule->addConnection([
+            'driver'   => 'sqlite',
+            'database' => $dbPath,
+            'prefix'   => '',
+        $capsule->setAsGlobal();
+        $capsule->bootEloquent();
+        
+        require_once __DIR__ . '/../../../src/Infrastructure/Persistence/sqlite_setup.php';
+        \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
+
+        self::$serverProcess = proc_open($cmd, $descriptors, $pipes, $baseDir, $env);
+        
+        // Wait for server to bind
+            }
+            usleep(50000); // 50ms
+        }
+    }
+
+        public static function tearDownAfterClass(): void
+    {
+        if (self::$serverProcess && is_resource(self::$serverProcess)) {
+            proc_terminate(self::$serverProcess);
+            proc_close(self::$serverProcess);
+            self::$serverProcess = null;
+        }
+    }
+
+    {
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+        
+
+
+        
+
+    }
+
+    {
+
+
+        
+        $sameMonthLastYear = (new \DateTime())->modify('-364 days');
+
+
+
+
+
+        
+    }
+
+    {
+        $url = 'http://127.0.0.1:8090' . $path;
+
+        }
+
+        
+        }
+
     }
 }

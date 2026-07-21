@@ -77,7 +77,6 @@ final class WarehouseLocationE2ETest extends TestCase
             'tenant_id' => $this->tenantId,
             'email'     => $this->email,
             'password'  => $this->password,
-        ]);
 
         $this->assertEquals(200, $loginRes['status'], json_encode($loginRes));
         $this->token = $loginRes['body']['token'];
@@ -85,7 +84,6 @@ final class WarehouseLocationE2ETest extends TestCase
 
     public function testWarehouseLocationsRbacPermissions(): void
     {
-        $suffix = bin2hex(random_bytes(4));
         // 1. Invite new user
         $inviteRes = $this->request('POST', '/api/users', [
             'email' => "viewer-{$suffix}@example.com",
@@ -96,12 +94,8 @@ final class WarehouseLocationE2ETest extends TestCase
         $tempPassword = $inviteRes['body']['temporary_password'];
 
         // 2. Login as viewer
-        $loginRes = $this->request('POST', '/api/auth/login', [
-            'tenant_id' => $this->tenantId,
             'email'     => "viewer-{$suffix}@example.com",
             'password'  => $tempPassword,
-        ]);
-        $this->assertEquals(200, $loginRes['status'], json_encode($loginRes));
         $viewerToken = $loginRes['body']['token'];
 
         // 3. Strip all roles from viewer so they have no permissions
@@ -121,10 +115,6 @@ final class WarehouseLocationE2ETest extends TestCase
 
         // 6. Admin should successfully save and delete
         $adminSaveRes = $this->request('POST', '/api/warehouse-locations', [
-            'path' => 'WH1-ZONEA-A01-R01-S01-B01',
-            'maxWeightGrams' => 50000,
-            'maxVolumeCubicMeters' => 2.0
-        ], $this->token);
         $this->assertEquals(200, $adminSaveRes['status'], json_encode($adminSaveRes));
 
         $adminListRes = $this->request('GET', '/api/warehouse-locations', [], $viewerToken); // GET list is non-mutating
@@ -135,7 +125,6 @@ final class WarehouseLocationE2ETest extends TestCase
     public function testWarehouseLocationsCrud(): void
     {
         // Save
-        $saveRes = $this->request('POST', '/api/warehouse-locations', [
             'warehouseId' => 'WH1',
             'zone'        => 'ZONEB',
             'aisle'       => 'A02',
@@ -144,7 +133,6 @@ final class WarehouseLocationE2ETest extends TestCase
             'bin'         => 'B05',
             'maxWeightGrams' => 10000,
             'maxVolumeCubicMeters' => 1.5
-        ], $this->token);
         $this->assertEquals(200, $saveRes['status'], json_encode($saveRes));
         $this->assertEquals('WH1-ZONEB-A02-R03-S04-B05', $saveRes['body']['location']['id']);
 
@@ -165,23 +153,16 @@ final class WarehouseLocationE2ETest extends TestCase
     public function testWarehouseCapacityConstraints(): void
     {
         // 1. Save warehouse location
-        $saveRes = $this->request('POST', '/api/warehouse-locations', [
-            'path' => 'WH1-ZONEA-A01-R01-S01-B01',
-            'maxWeightGrams' => 10000,
-            'maxVolumeCubicMeters' => 2.0
-        ], $this->token);
         $this->assertEquals(200, $saveRes['status']);
 
         Capsule::table('locations')->insertOrIgnore([
             'id'   => 'WH1-ZONEA-A01-R01-S01-B01',
             'name' => 'WH1-ZONEA-A01-R01-S01-B01',
             'type' => 'WAREHOUSE'
-        ]);
 
         // 2. Seed product
         Capsule::table('products')->insert([
             'id' => uuidv4(),
-            'tenant_id' => $this->tenantId,
             'sku' => 'TSHIRT-SM-RED',
             'name' => 'Classic Tee',
             'department' => 'Apparel',
@@ -189,31 +170,22 @@ final class WarehouseLocationE2ETest extends TestCase
             'volume_cubic_meters' => 0.05,
             'reorder_threshold' => 10,
             'version_id' => 1
-        ]);
 
         // 3. Receive stock that fits capacity
         $receiveRes1 = $this->request('POST', '/api/inventory/receive', [
-            'sku' => 'TSHIRT-SM-RED',
             'quantity' => 30,
             'location_id' => 'WH1-ZONEA-A01-R01-S01-B01'
-        ], $this->token);
         $this->assertEquals(200, $receiveRes1['status'], json_encode($receiveRes1));
 
         // 4. Receive stock that exceeds weight limit (150 * 100g = 15000g > 10000g)
         $receiveRes2 = $this->request('POST', '/api/inventory/receive', [
-            'sku' => 'TSHIRT-SM-RED',
             'quantity' => 150,
-            'location_id' => 'WH1-ZONEA-A01-R01-S01-B01'
-        ], $this->token);
         $this->assertEquals(400, $receiveRes2['status']);
         $this->assertStringContainsString('weight limit', $receiveRes2['body']['error']);
 
         // 5. Receive stock that exceeds volume limit (60 * 0.05 = 3.0 m3 > 2.0 m3)
         $receiveRes3 = $this->request('POST', '/api/inventory/receive', [
-            'sku' => 'TSHIRT-SM-RED',
             'quantity' => 60,
-            'location_id' => 'WH1-ZONEA-A01-R01-S01-B01'
-        ], $this->token);
         $this->assertEquals(400, $receiveRes3['status']);
         $this->assertStringContainsString('volume limit', $receiveRes3['body']['error']);
     }
@@ -232,31 +204,17 @@ final class WarehouseLocationE2ETest extends TestCase
             'id' => $productId,
             'name' => 'Fast Product',
             'department' => 'Apparel'
-        ]);
         Capsule::table('catalog_variants')->insert([
             'id' => $variantId,
             'product_id' => $productId,
             'sku' => 'FAST-SKU',
             'attributes' => json_encode(['velocity' => 'fast-moving']),
             'price' => 15.00
-        ]);
-        Capsule::table('products')->insert([
-            'id' => $productId,
-            'tenant_id' => $this->tenantId,
-            'sku' => 'FAST-SKU',
-            'name' => 'Fast Product',
-            'department' => 'Apparel',
-            'weight_grams' => 100,
             'volume_cubic_meters' => 0.01,
-            'reorder_threshold' => 10,
-            'version_id' => 1
-        ]);
 
         // 3. Request suggestions
         $suggestRes = $this->request('POST', '/api/warehouse-locations/putaway-suggestions', [
-            'sku' => 'FAST-SKU',
             'quantity' => 10
-        ], $this->token);
 
         $this->assertEquals(200, $suggestRes['status'], json_encode($suggestRes));
         $this->assertNotEmpty($suggestRes['body']);
@@ -265,7 +223,6 @@ final class WarehouseLocationE2ETest extends TestCase
 
     public function testPickingRouteSerpentineSorting(): void
     {
-        // 1. Create locations
         $this->request('POST', '/api/warehouse-locations', ['path' => 'WH1-ZONEA-A01-R01-S01-B01', 'maxWeightGrams' => 100000, 'maxVolumeCubicMeters' => 10.0], $this->token);
         $this->request('POST', '/api/warehouse-locations', ['path' => 'WH1-ZONEA-A01-R02-S01-B01', 'maxWeightGrams' => 100000, 'maxVolumeCubicMeters' => 10.0], $this->token);
         $this->request('POST', '/api/warehouse-locations', ['path' => 'WH1-ZONEA-A02-R01-S01-B01', 'maxWeightGrams' => 100000, 'maxVolumeCubicMeters' => 10.0], $this->token);
@@ -281,7 +238,6 @@ final class WarehouseLocationE2ETest extends TestCase
 
         $optRes = $this->request('POST', '/api/warehouse-locations/optimize-pick-route', [
             'items' => $items
-        ], $this->token);
 
         $this->assertEquals(200, $optRes['status']);
         $optimized = $optRes['body'][0]['items'];
@@ -297,8 +253,6 @@ final class WarehouseLocationE2ETest extends TestCase
 
     public function testWarehouseLocationCoordinates(): void
     {
-        $saveRes = $this->request('POST', '/api/warehouse-locations', [
-            'warehouseId' => 'WH1',
             'zone'        => 'ZONEC',
             'aisle'       => 'A03',
             'rack'        => 'R04',
@@ -310,15 +264,11 @@ final class WarehouseLocationE2ETest extends TestCase
             'gridY'  => 15,
             'width'  => 2,
             'height' => 3
-        ], $this->token);
-        $this->assertEquals(200, $saveRes['status'], json_encode($saveRes));
         $this->assertEquals(10, $saveRes['body']['location']['gridX']);
         $this->assertEquals(15, $saveRes['body']['location']['gridY']);
         $this->assertEquals(2, $saveRes['body']['location']['width']);
         $this->assertEquals(3, $saveRes['body']['location']['height']);
 
-        $listRes = $this->request('GET', '/api/warehouse-locations', [], $this->token);
-        $this->assertEquals(200, $listRes['status']);
         $found = false;
         foreach ($listRes['body'] as $loc) {
             if ($loc['id'] === 'WH1-ZONEC-A03-R04-S05-B06') {
@@ -327,7 +277,6 @@ final class WarehouseLocationE2ETest extends TestCase
                 $this->assertEquals(2, $loc['width']);
                 $this->assertEquals(3, $loc['height']);
                 $found = true;
-                break;
             }
         }
         $this->assertTrue($found);
@@ -343,7 +292,6 @@ final class WarehouseLocationE2ETest extends TestCase
                 'content'       => json_encode($body),
                 'ignore_errors' => true,
             ]
-        ];
 
         if ($token) {
             $options['http']['header'] .= "Authorization: Bearer {$token}\r\n";
@@ -362,6 +310,130 @@ final class WarehouseLocationE2ETest extends TestCase
         return [
             'status' => $statusCode,
             'body'   => (json_last_error() === JSON_ERROR_NONE) ? $decoded : $result
-        ];
+    }
+}
+
+
+
+
+
+{
+    private static $serverProcess = null;
+
+        public static function setUpBeforeClass(): void
+    {
+        $baseDir = realpath(__DIR__ . '/../../..');
+        $dbPath = $baseDir . '/storage/data/test_warehouselocatione2etest.sqlite';
+        if (!file_exists($dbPath)) {
+            @mkdir(dirname($dbPath), 0777, true);
+            @touch($dbPath);
+        }
+        $extDir = 'C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext';
+        $phpExec = PHP_BINARY . ' -d extension_dir="C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext" -d extension=pdo -d extension=mbstring -d extension=pdo_sqlite';
+        $cmd = $phpExec . ' -S 127.0.0.1:8092 public/index.php';
+        
+        $descriptors = [
+            0 => ["pipe", "r"],
+            1 => ["file", __DIR__ . '/server_warehouselocatione2etest.log', "a"],
+            2 => ["file", __DIR__ . '/server_warehouselocatione2etest.log', "a"],
+        
+        $env = array_merge($_ENV, [
+            'DB_CONNECTION' => 'sqlite',
+            'DB_DATABASE' => $dbPath,
+            'APP_ENV' => 'testing',
+        
+                putenv("DB_DATABASE={$dbPath}");
+        $_ENV['DB_DATABASE'] = $dbPath;
+        $_SERVER['DB_DATABASE'] = $dbPath;
+        
+        $capsule = new \Illuminate\Database\Capsule\Manager();
+        $capsule->addConnection([
+            'driver'   => 'sqlite',
+            'database' => $dbPath,
+            'prefix'   => '',
+        $capsule->setAsGlobal();
+        $capsule->bootEloquent();
+        
+        require_once __DIR__ . '/../../../src/Infrastructure/Persistence/sqlite_setup.php';
+        \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
+
+        self::$serverProcess = proc_open($cmd, $descriptors, $pipes, $baseDir, $env);
+        
+            }
+        }
+    }
+
+        public static function tearDownAfterClass(): void
+    {
+        if (self::$serverProcess && is_resource(self::$serverProcess)) {
+            proc_terminate(self::$serverProcess);
+            proc_close(self::$serverProcess);
+            self::$serverProcess = null;
+        }
+    }
+
+    {
+        Capsule::table('product_locations')->delete();
+        Capsule::table('products')->delete();
+        Capsule::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
+
+
+
+
+
+    }
+
+    {
+        
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+    }
+
+    {
+
+
+
+
+
+    }
+
+    {
+
+
+
+    }
+
+    {
+
+
+
+
+
+    }
+
+    {
+
+            }
+        }
+    }
+
+    {
+        $url = 'http://127.0.0.1:8092' . $path;
+
+        }
+
+        
+        }
+
     }
 }

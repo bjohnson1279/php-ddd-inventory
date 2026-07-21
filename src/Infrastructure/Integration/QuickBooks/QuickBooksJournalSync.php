@@ -20,8 +20,8 @@ class QuickBooksJournalSync
     {
         $this->companyId   = $companyId;
         $this->accessToken = $accessToken;
-        $this->baseUrl     = $sandbox 
-            ? 'https://sandbox-quickbooks.api.intuit.com' 
+        $this->baseUrl     = $sandbox
+            ? 'https://sandbox-quickbooks.api.intuit.com'
             : 'https://quickbooks.api.intuit.com';
     }
 
@@ -71,8 +71,6 @@ class QuickBooksJournalSync
             CURLOPT_POSTFIELDS     => $body,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
-            CURLOPT_TIMEOUT        => 30,
-            CURLOPT_CONNECTTIMEOUT => 10,
             CURLOPT_HTTPHEADER     => [
                 'Content-Type: application/json',
                 'Accept: application/json',

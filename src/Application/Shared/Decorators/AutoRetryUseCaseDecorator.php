@@ -37,7 +37,7 @@ class AutoRetryUseCaseDecorator
                 if ($isConcurrency && $attempts < $this->maxRetries) {
                     $attempts++;
                     $delay = $this->baseDelayMs * (2 ** ($attempts - 1));
-                    
+
                     // Log warning (or write to error log in PHP)
                     error_log(sprintf(
                         '[AutoRetry] Concurrency exception in %s. Retrying (attempt %d/%d) in %dms...',

@@ -17,7 +17,7 @@ class ProcessSaleTest extends TestCase
     public function testExecuteProcessesSaleAndSavesProduct()
     {
         $repositoryMock = $this->createMock(ProductRepositoryInterface::class);
-        
+
         $product = Product::create(
             'prod_123',
             new SKU('TSHIRT-L-RED'),

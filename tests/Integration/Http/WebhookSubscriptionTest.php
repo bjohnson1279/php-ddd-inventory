@@ -26,7 +26,7 @@ final class WebhookSubscriptionTest extends TestCase
         $command = "php -S 127.0.0.1:8093 public/index.php > tests/Integration/Http/server_webhooks.log 2>&1 & echo $!";
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
-        
+
         for ($i = 0; $i < 50; $i++) {
             $fp = @fsockopen('127.0.0.1', 8093, $errno, $errstr, 0.1);
             if ($fp) {
@@ -70,7 +70,6 @@ final class WebhookSubscriptionTest extends TestCase
             'tenant_id' => $this->tenantId,
             'email'     => $this->email,
             'password'  => $this->password,
-        ]);
         $this->assertEquals(200, $loginRes['status']);
         $this->token = $loginRes['body']['token'];
     }
@@ -98,7 +97,6 @@ final class WebhookSubscriptionTest extends TestCase
         $updateRes = $this->request('PUT', '/api/webhook-subscriptions/' . $subId, [
             'targetUrl' => 'https://example.com/webhook-updated',
             'isActive' => false
-        ], $this->token);
         $this->assertEquals(200, $updateRes['status']);
         $this->assertEquals('https://example.com/webhook-updated', $updateRes['body']['targetUrl']);
         $this->assertFalse($updateRes['body']['isActive']);
@@ -118,17 +116,14 @@ final class WebhookSubscriptionTest extends TestCase
         $subId = \Ramsey\Uuid\Uuid::uuid4()->toString();
         Capsule::table('webhook_subscriptions')->insert([
             'id' => $subId,
-            'tenant_id' => $this->tenantId,
             'target_url' => 'https://example.com/target',
             'secret' => 'sec',
             'event_types' => json_encode(['TestEvent']),
             'is_active' => true
-        ]);
 
         $deliveryId = \Ramsey\Uuid\Uuid::uuid4()->toString();
         Capsule::table('webhook_deliveries')->insert([
             'id' => $deliveryId,
-            'tenant_id' => $this->tenantId,
             'subscription_id' => $subId,
             'event_type' => 'TestEvent',
             'payload' => json_encode(['sku' => 'SKU-1']),
@@ -136,10 +131,8 @@ final class WebhookSubscriptionTest extends TestCase
             'attempts' => 0,
             'next_attempt_at' => (new \DateTime())->format('Y-m-d H:i:s'),
             'created_at' => (new \DateTime())->format('Y-m-d H:i:s')
-        ]);
 
         // Run the CLI worker script with --once flag
-        $output = [];
         $resultCode = -1;
         exec("php scripts/webhook-worker.php --once", $output, $resultCode);
 
@@ -169,7 +162,7 @@ final class WebhookSubscriptionTest extends TestCase
 
         $context = stream_context_create($options);
         $result = @file_get_contents($url, false, $context);
-        
+
         $statusCode = 500;
         if (isset($http_response_header) && isset($http_response_header[0])) {
             preg_match('{HTTP\/\S*\s(\d{3})}', $http_response_header[0], $match);
@@ -180,6 +173,154 @@ final class WebhookSubscriptionTest extends TestCase
         return [
             'status' => $statusCode,
             'body'   => (json_last_error() === JSON_ERROR_NONE) ? $decoded : $result
-        ];
+    }
+}
+
+
+
+
+
+{
+    private static $serverProcess = null;
+
+        public static function setUpBeforeClass(): void
+    {
+        $baseDir = realpath(__DIR__ . '/../../..');
+        $dbPath = $baseDir . '/storage/data/test_webhooksubscriptiontest.sqlite';
+        if (!file_exists($dbPath)) {
+            @mkdir(dirname($dbPath), 0777, true);
+            @touch($dbPath);
+        }
+        $extDir = 'C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext';
+        $phpExec = PHP_BINARY . ' -d extension_dir="C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext" -d extension=pdo -d extension=mbstring -d extension=pdo_sqlite';
+        $cmd = $phpExec . ' -S 127.0.0.1:8097 public/index.php';
+        
+        $descriptors = [
+            0 => ["pipe", "r"],
+            1 => ["file", __DIR__ . '/server_webhooksubscriptiontest.log', "a"],
+            2 => ["file", __DIR__ . '/server_webhooksubscriptiontest.log', "a"],
+        
+        $env = array_merge($_ENV, [
+            'DB_CONNECTION' => 'sqlite',
+            'DB_DATABASE' => $dbPath,
+            'APP_ENV' => 'testing',
+        
+                putenv("DB_DATABASE={$dbPath}");
+        $_ENV['DB_DATABASE'] = $dbPath;
+        $_SERVER['DB_DATABASE'] = $dbPath;
+        
+        $capsule = new \Illuminate\Database\Capsule\Manager();
+        $capsule->addConnection([
+            'driver'   => 'sqlite',
+            'database' => $dbPath,
+            'prefix'   => '',
+        $capsule->setAsGlobal();
+        $capsule->bootEloquent();
+        
+        require_once __DIR__ . '/../../../src/Infrastructure/Persistence/sqlite_setup.php';
+        \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
+
+        self::$serverProcess = proc_open($cmd, $descriptors, $pipes, $baseDir, $env);
+        
+        // Wait for server to bind
+            }
+            usleep(50000); // 50ms
+        }
+    }
+
+        public static function tearDownAfterClass(): void
+    {
+        if (self::$serverProcess && is_resource(self::$serverProcess)) {
+            proc_terminate(self::$serverProcess);
+            proc_close(self::$serverProcess);
+            self::$serverProcess = null;
+        }
+    }
+
+    {
+
+
+
+    }
+
+    {
+
+
+
+
+
+    }
+
+    {
+
+            'next_attempt_at' => (new \DateTime('-10 minutes'))->format('Y-m-d H:i:s'),
+
+        $phpBin = PHP_BINARY;
+        $dbPath = __DIR__ . '/../../../storage/data/test_webhooksubscriptiontest.sqlite';
+
+        if (PHP_OS_FAMILY === 'Windows') {
+            $cmd = "set DB_CONNECTION=sqlite&& set DB_DATABASE={$dbPath}&& \"{$phpBin}\" -d extension_dir=\"{$extDir}\" -d extension=mbstring -d extension=pdo_sqlite scripts/webhook-worker.php --once";
+        } else {
+            $cmd = "DB_CONNECTION=sqlite DB_DATABASE=" . escapeshellarg($dbPath) . " php scripts/webhook-worker.php --once";
+        }
+
+        exec($cmd, $output, $resultCode);
+
+    }
+
+    {
+        $url = 'http://127.0.0.1:8097' . $path;
+
+        }
+
+        
+        }
+
+    }
+}
+
+
+
+
+
+{
+
+    {
+        
+            }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+
+
+
+    }
+
+    {
+
+
+
+
+
+    }
+
+    {
+
+
+
+    }
+
+    {
+
+        }
+
+        
+        }
+
     }
 }

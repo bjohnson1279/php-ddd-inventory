@@ -17,7 +17,7 @@ class DispatchStockTest extends TestCase
     public function testExecuteDispatchesStockAndSavesProduct()
     {
         $repositoryMock = $this->createMock(ProductRepositoryInterface::class);
-        
+
         $product = Product::create(
             'prod_123',
             new SKU('TSHIRT-L-RED'),

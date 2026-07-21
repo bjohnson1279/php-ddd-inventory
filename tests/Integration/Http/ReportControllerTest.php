@@ -22,11 +22,12 @@ final class ReportControllerTest extends TestCase
     {
         $output = [];
         $command = "php -S 127.0.0.1:8089 public/index.php > tests/Integration/Http/server_report.log 2>&1 & echo $!";
-
+        $command = "php -S 127.0.0.1:8097 public/index.php > tests/Integration/Http/server_report.log 2>&1 & echo $!";
+        
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
 
-        $command = "php -S 127.0.0.1:8097 public/index.php > tests/Integration/Http/server_report.log 2>&1 & echo $!";
+
         
         
         // Wait for server to bind

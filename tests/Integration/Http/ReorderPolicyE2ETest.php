@@ -23,9 +23,11 @@ final class ReorderPolicyE2ETest extends TestCase
         // Start built-in PHP development server in the background on port 8088
         $output = [];
         $command = "php -S 127.0.0.1:8088 public/index.php > tests/Integration/Http/server_reorder.log 2>&1 & echo $!";
-
+        
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
+        
+
 
         // Wait for server to bind
         for ($i = 0; $i < 50; $i++) {
@@ -157,6 +159,7 @@ final class ReorderPolicyE2ETest extends TestCase
         // 1. Invite new user
         $inviteRes = $this->request('POST', '/api/users', [
             'email' => "staff-{$suffix}@example.com",
+        
 
         $this->assertEquals(201, $inviteRes['status'], json_encode($inviteRes));
         $viewerUserId = $inviteRes['body']['user_id'];
@@ -201,6 +204,7 @@ final class ReorderPolicyE2ETest extends TestCase
         // 2. Add sales data for CAT-SKU-1 via ledger entries (e.g. 60 units over 30 days -> average 2 units/day)
         $product = Capsule::table('products')->where('sku', 'CAT-SKU-1')->first();
         $occurredAt = new \DateTimeImmutable();
+        
 
         for ($i = 0; $i < 30; $i++) {
             Capsule::table('ledger_entries')->insert([
@@ -247,6 +251,7 @@ final class ReorderPolicyE2ETest extends TestCase
         // 4. Run evaluate endpoint
         $evalRes = $this->request('POST', '/api/reorder-policies/evaluate', [], $this->token);
         $this->assertEquals(200, $evalRes['status'], json_encode($evalRes));
+        
 
         $catResult = null;
         foreach ($evalRes['body']['results'] as $res) {
@@ -280,6 +285,7 @@ final class ReorderPolicyE2ETest extends TestCase
 
         $context = stream_context_create($options);
         $result = @file_get_contents($url, false, $context);
+        
 
         $statusCode = 500;
         if (isset($http_response_header) && isset($http_response_header[0])) {
@@ -354,6 +360,7 @@ final class ReorderPolicyE2ETest extends TestCase
     }
 
     {
+        Capsule::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
 
 
 
@@ -424,7 +431,6 @@ final class ReorderPolicyE2ETest extends TestCase
     }
 
     {
-        Capsule::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
 
 
 

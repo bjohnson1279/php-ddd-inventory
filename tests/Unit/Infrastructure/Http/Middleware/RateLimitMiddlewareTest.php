@@ -63,9 +63,11 @@ class RateLimitMiddlewareTest extends TestCase
 
         putenv('TRUSTED_PROXIES='); // No proxies trusted
 
-        $middleware = new RateLimitMiddleware(2, 60);
 
         // We expect it to be rate limited based on the untrusted proxy IP (REMOTE_ADDR)
+
+        $middleware = new RateLimitMiddleware(2, 60);
+
         $middleware->handle('req1', function($req) { return new Response(['msg' => 'ok'], 200); });
         $middleware->handle('req2', function($req) { return new Response(['msg' => 'ok'], 200); });
 
@@ -94,9 +96,56 @@ class RateLimitMiddlewareTest extends TestCase
 
         putenv('TRUSTED_PROXIES=' . $trustedProxyIp . ', 192.168.1.1');
 
-        $middleware = new RateLimitMiddleware(2, 60);
 
         // We expect it to be rate limited based on the client IP
+
+
+    }
+}
+
+
+
+{
+
+    {
+        $cacheFile = $this->tempDir . '/rate_limit_' . hash('sha256', $ip) . '.json';
+        }
+    }
+
+    {
+
+
+    }
+
+    {
+
+
+
+    }
+
+    {
+
+        $cacheFile = $this->tempDir . '/rate_limit_' . hash('sha256', $untrustedProxyIp) . '.json';
+        }
+
+
+
+
+
+    }
+
+    {
+
+
+        $cacheFile = $this->tempDir . '/rate_limit_' . hash('sha256', $clientIp) . '.json';
+        }
+
+
+
+
+
+        $middleware = new RateLimitMiddleware(2, 60);
+
         $middleware->handle('req1', function($req) { return new Response(['msg' => 'ok'], 200); });
         $middleware->handle('req2', function($req) { return new Response(['msg' => 'ok'], 200); });
 

@@ -26,9 +26,11 @@ final class ApiEndpointsTest extends TestCase
         // Start built-in PHP development server in the background on port 8085
         $output = [];
         $command = "php -S 127.0.0.1:8085 public/index.php > tests/Integration/Http/server_api.log 2>&1 & echo $!";
-
+        
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
+        
+
 
         // Wait for server to bind
         for ($i = 0; $i < 50; $i++) {
@@ -172,6 +174,7 @@ final class ApiEndpointsTest extends TestCase
         // 4. Query notifications stream mock (GET /api/notifications)
         $notifRes = $this->request('GET', '/api/notifications', [], $this->token);
         $this->assertEquals(200, $notifRes['status'], json_encode($notifRes));
+        
 
         $found = false;
         foreach ($notifRes['body']['notifications'] as $n) {
@@ -455,6 +458,7 @@ final class ApiEndpointsTest extends TestCase
         $calculatedHmac = base64_encode(hash_hmac('sha256', $jsonPayload, $secret, true));
 
         $url = 'http://127.0.0.1:8085/api/webhooks/shopify?tenant_id=' . $this->tenantId;
+        
 
         $options = [
             'http' => [
@@ -472,12 +476,14 @@ final class ApiEndpointsTest extends TestCase
         $statusCode = (int)$match[1];
 
         $this->assertEquals(200, $statusCode, $result);
+        
 
         // 5. Verify stock decreased from 50 to 45
         $stockQty = (int)\Illuminate\Database\Capsule\Manager::table('product_locations')
             ->where('product_id', $productId)
             ->where('location_id', 'LOC-INT')
             ->value('stock_quantity');
+        
 
         $this->assertEquals(45, $stockQty);
 
@@ -496,6 +502,7 @@ final class ApiEndpointsTest extends TestCase
 
         // Verify stock restocked back to 50
         $newStockQty = (int)\Illuminate\Database\Capsule\Manager::table('product_locations')
+        
 
         $this->assertEquals(50, $newStockQty);
     }
@@ -715,6 +722,7 @@ final class ApiEndpointsTest extends TestCase
         }
 
         $result = @file_get_contents($url, false, $context);
+        
 
         $statusCode = 500;
         if (isset($http_response_header) && isset($http_response_header[0])) {
@@ -789,6 +797,7 @@ final class ApiEndpointsTest extends TestCase
     }
 
     {
+        DB::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
 
 
 
@@ -894,6 +903,23 @@ final class ApiEndpointsTest extends TestCase
 
 
 
+        $this->assertCount(2, $listRes2['body']['notifications']);
+        $titles = array_column($listRes2['body']['notifications'], 'title');
+        $this->assertContains('Stock Received', $titles);
+        $this->assertContains('Stock Level Updated', $titles);
+        $notif = $listRes2['body']['notifications'][0]['title'] === 'Stock Received'
+            ? $listRes2['body']['notifications'][0]
+            : $listRes2['body']['notifications'][1];
+
+
+
+        foreach ($listRes3['body']['notifications'] as $n) {
+            if ($n['id'] === $notif['id']) {
+                $this->assertTrue((bool)$n['is_read']);
+                $found = true;
+            }
+        }
+        $this->assertTrue($found);
 
 
 
@@ -956,7 +982,6 @@ final class ApiEndpointsTest extends TestCase
     }
 
     {
-        DB::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
 
 
 
@@ -1061,23 +1086,6 @@ final class ApiEndpointsTest extends TestCase
 
 
 
-        $this->assertCount(2, $listRes2['body']['notifications']);
-        $titles = array_column($listRes2['body']['notifications'], 'title');
-        $this->assertContains('Stock Received', $titles);
-        $this->assertContains('Stock Level Updated', $titles);
-        $notif = $listRes2['body']['notifications'][0]['title'] === 'Stock Received'
-            ? $listRes2['body']['notifications'][0]
-            : $listRes2['body']['notifications'][1];
-
-
-
-        foreach ($listRes3['body']['notifications'] as $n) {
-            if ($n['id'] === $notif['id']) {
-                $this->assertTrue((bool)$n['is_read']);
-                $found = true;
-            }
-        }
-        $this->assertTrue($found);
 
 
 

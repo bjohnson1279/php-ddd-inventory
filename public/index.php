@@ -427,15 +427,19 @@ if ($method === 'POST' && $uri === '/auth/register') {
 if ($method === 'POST' && $uri === '/api/setup') {
     $response = $middleware->handle($request, function ($req) {
         $body = json_decode(file_get_contents('php://input'), true) ?: [];
+        
 
         $orgName = $body['orgName'] ?? '';
         $tenantId = $body['tenantId'] ?? '';
         $adminName = $body['adminName'] ?? '';
         $adminEmail = $body['adminEmail'] ?? '';
         $adminPassword = $body['adminPassword'] ?? '';
-
+        
         if (empty($orgName) || empty($tenantId) || empty($adminName) || empty($adminEmail) || empty($adminPassword)) {
             return new \InventoryApp\Infrastructure\Http\Response(['error' => 'All fields (orgName, tenantId, adminName, adminEmail, adminPassword) are required.'], 400);
+        }
+        
+
         }
 
             $existingTenant = Capsule::table('tenants')->where('id', $tenantId)->first();
@@ -490,6 +494,7 @@ if ($method === 'GET' && $uri === '/api/users') {
 
         $userModels = \InventoryApp\Infrastructure\Models\UserModel::with('userRoles')
             ->where('tenant_id', tenantId())
+            
 
         $users = $userModels->map(function($model) {
             $roles = $model->userRoles->pluck('id')->all();
@@ -500,6 +505,7 @@ if ($method === 'GET' && $uri === '/api/users') {
                 'role' => $role
             ];
         })->all();
+        
 
         http_response_code(200);
         echo json_encode(['users' => $users]);
@@ -819,6 +825,7 @@ if ($method === 'POST' && $uri === '/api/catalog/products') {
 if ($method === 'GET' && $uri === '/api/catalog/products') {
         $products = Capsule::table('catalog_products')->get()->toArray();
         $variants = Capsule::table('catalog_variants')->get()->toArray();
+        
 
         $productsMap = [];
         foreach ($products as $p) {
@@ -826,6 +833,7 @@ if ($method === 'GET' && $uri === '/api/catalog/products') {
             $pData['variants'] = [];
             $productsMap[$p->id] = $pData;
         }
+        
 
         foreach ($variants as $v) {
             $vData = (array)$v;
@@ -835,6 +843,7 @@ if ($method === 'GET' && $uri === '/api/catalog/products') {
                 $productsMap[$v->product_id]['variants'][] = $vData;
             }
         }
+        
 
         echo json_encode(['products' => array_values($productsMap)]);
         }
@@ -1095,6 +1104,7 @@ if ($method === 'POST' && $uri === '/api/kits') {
 if ($method === 'GET' && $uri === '/api/kits') {
         $kits = Capsule::table('kits')->get()->toArray();
         $components = Capsule::table('kit_components')->get()->toArray();
+        
 
         $kitsMap = [];
         foreach ($kits as $k) {
@@ -1102,6 +1112,7 @@ if ($method === 'GET' && $uri === '/api/kits') {
             $kData['components'] = [];
             $kitsMap[$k->id] = $kData;
         }
+        
 
         foreach ($components as $c) {
             $cData = (array)$c;
@@ -1109,6 +1120,7 @@ if ($method === 'GET' && $uri === '/api/kits') {
                 $kitsMap[$c->kit_id]['components'][] = $cData;
             }
         }
+        
 
         echo json_encode(['kits' => array_values($kitsMap)]);
         }
@@ -1455,6 +1467,7 @@ if ($driver === 'pgsql') {
 
 
 
+$createInventoryListener = new CreateInventoryItemOnVariantAdded();
 
 
 
@@ -1933,7 +1946,6 @@ if ($driver === 'pgsql') {
 
 
 
-$createInventoryListener = new CreateInventoryItemOnVariantAdded();
 
 
 

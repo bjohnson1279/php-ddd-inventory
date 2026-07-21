@@ -40,3 +40,22 @@ class InternalBarcodeGenerator
         // e.g. INV-A3F2-0C8E4B1D
     }
 }
+
+
+
+{
+
+
+    {
+
+
+            }
+
+    }
+
+    {
+        $tenantFragment  = strtoupper(substr(hash('sha256', $tenantId), 0, 4));
+        $variantFragment = strtoupper(substr(hash('sha256', $variantId . $salt), 0, 8));
+
+    }
+}

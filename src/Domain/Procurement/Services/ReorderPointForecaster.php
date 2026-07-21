@@ -35,10 +35,10 @@ class ReorderPointForecaster
 
         if ($tenantId !== null) {
             $sku = new SKU($skuStr);
-            $product = $product ?? $this->productRepo->findBySku($sku);
-            if ($product) {
-                $allPos = $allPos ?? $this->poRepo->findAll();
             $product = $this->productRepo->findBySku($sku);
+            if ($product) {
+            $product = $product ?? $this->productRepo->findBySku($sku);
+                $allPos = $allPos ?? $this->poRepo->findAll();
                 $allPos = $this->poRepo->findAll();
                 $receivedPos = [];
 

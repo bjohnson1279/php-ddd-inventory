@@ -26,14 +26,3 @@ class CapacityExceededException extends \DomainException
     public function getLimit(): float { return $this->limit; }
     public function getProspective(): float { return $this->prospective; }
 }
-
-
-use Exception;
-
-{
-
-    {
-
-    }
-
-}

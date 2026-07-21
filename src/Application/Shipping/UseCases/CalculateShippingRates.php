@@ -24,14 +24,3 @@ class CalculateShippingRates
         return $this->carrierService->fetchRates($sku, $quantity, $destinationAddress);
     }
 }
-
-
-
-{
-
-    {
-        if (empty($sku) || empty($destinationAddress)) {
-        }
-
-    }
-}

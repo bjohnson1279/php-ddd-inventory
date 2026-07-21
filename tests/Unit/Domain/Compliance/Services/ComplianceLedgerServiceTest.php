@@ -18,10 +18,11 @@ class ComplianceLedgerServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        putenv('COMPLIANCE_PRIVATE_KEY=test-secret-key');
         $this->savedEntries = [];
 
         $this->mockRepo = $this->createMock(ComplianceLedgerRepositoryInterface::class);
+        putenv('COMPLIANCE_PRIVATE_KEY=test-secret-key');
+
         
 
 
@@ -48,15 +49,16 @@ class ComplianceLedgerServiceTest extends TestCase
         $container->instance(ComplianceLedgerRepositoryInterface::class, $this->mockRepo);
     }
 
+    public function testLogEventGeneratesValidBlockChain()
+    {
+        $payload = ['sku' => 'SKU-TEST-1', 'quantity' => 100];
     protected function tearDown(): void
     {
         putenv('COMPLIANCE_PRIVATE_KEY');
         parent::tearDown();
     }
 
-    public function testLogEventGeneratesValidBlockChain()
     {
-        $payload = ['sku' => 'SKU-TEST-1', 'quantity' => 100];
         
     {
 
@@ -125,10 +127,12 @@ class ComplianceLedgerServiceTest extends TestCase
             $entry1->getSignature(),
             json_encode(['sku' => 'TAMPERED-SKU']),
             $entry1->getCreatedAt()
+        );
 
         $this->savedEntries[0] = $tamperedEntry1;
 
-        );
+
+
 
 
         $validationResult = ComplianceLedgerService::validateLedger('tenant-1');
@@ -139,8 +143,11 @@ class ComplianceLedgerServiceTest extends TestCase
 
     public function testValidationFailsIfSignatureIsInvalid()
     {
+        $payload = ['sku' => 'SKU-TEST-1'];
+        $entry1 = ComplianceLedgerService::logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
 
         // Tamper with signature
+
             'invalid-signature-value',
             $entry1->getPayload(),
 
@@ -188,8 +195,6 @@ class ComplianceLedgerServiceTest extends TestCase
 
     }
 }
-        $payload = ['sku' => 'SKU-TEST-1'];
-        $entry1 = ComplianceLedgerService::logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
 
         $tamperedEntry1 = new ComplianceLedgerEntry(
             $entry1->getId(),
@@ -199,6 +204,8 @@ class ComplianceLedgerServiceTest extends TestCase
             $entry1->getSequenceNumber(),
             $entry1->getPreviousHash(),
             $entry1->getCurrentHash(),
+            'invalid-signature-value',
+            $entry1->getPayload(),
             $entry1->getCreatedAt()
         );
 
@@ -207,5 +214,6 @@ class ComplianceLedgerServiceTest extends TestCase
         $validationResult = ComplianceLedgerService::validateLedger('tenant-1');
         $this->assertFalse($validationResult['isValid']);
         $this->assertEquals(1, $validationResult['failedSequenceNumber']);
+        $this->assertStringContainsString('Cryptographic signature validation failed', $validationResult['reason']);
     }
 }

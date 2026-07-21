@@ -71,6 +71,7 @@ final class WebhookSubscriptionTest extends TestCase
             'tenant_id' => $this->tenantId,
             'email'     => $this->email,
             'password'  => $this->password,
+        ]);
         $this->assertEquals(200, $loginRes['status']);
         $this->token = $loginRes['body']['token'];
     }
@@ -98,6 +99,7 @@ final class WebhookSubscriptionTest extends TestCase
         $updateRes = $this->request('PUT', '/api/webhook-subscriptions/' . $subId, [
             'targetUrl' => 'https://example.com/webhook-updated',
             'isActive' => false
+        ], $this->token);
         $this->assertEquals(200, $updateRes['status']);
         $this->assertEquals('https://example.com/webhook-updated', $updateRes['body']['targetUrl']);
         $this->assertFalse($updateRes['body']['isActive']);
@@ -117,14 +119,17 @@ final class WebhookSubscriptionTest extends TestCase
         $subId = \Ramsey\Uuid\Uuid::uuid4()->toString();
         Capsule::table('webhook_subscriptions')->insert([
             'id' => $subId,
+            'tenant_id' => $this->tenantId,
             'target_url' => 'https://example.com/target',
             'secret' => 'sec',
             'event_types' => json_encode(['TestEvent']),
             'is_active' => true
+        ]);
 
         $deliveryId = \Ramsey\Uuid\Uuid::uuid4()->toString();
         Capsule::table('webhook_deliveries')->insert([
             'id' => $deliveryId,
+            'tenant_id' => $this->tenantId,
             'subscription_id' => $subId,
             'event_type' => 'TestEvent',
             'payload' => json_encode(['sku' => 'SKU-1']),
@@ -132,8 +137,11 @@ final class WebhookSubscriptionTest extends TestCase
             'attempts' => 0,
             'next_attempt_at' => (new \DateTime())->format('Y-m-d H:i:s'),
             'created_at' => (new \DateTime())->format('Y-m-d H:i:s')
+        ]);
 
         // Run the CLI worker script with --once flag
+        $output = [];
+
         $worker = new \InventoryApp\Application\Webhooks\Workers\WebhookDeliveryWorker();
         $worker->run(true);
         $resultCode = -1;
@@ -177,6 +185,7 @@ final class WebhookSubscriptionTest extends TestCase
         return [
             'status' => $statusCode,
             'body'   => (json_last_error() === JSON_ERROR_NONE) ? $decoded : $result
+        ];
     }
 }
 

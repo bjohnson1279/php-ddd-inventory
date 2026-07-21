@@ -127,21 +127,6 @@ if ($driver !== 'sqlite') {
         ");
 
         $connection->statement("
-            CREATE TABLE IF NOT EXISTS compliance_ledgers (
-                id VARCHAR(50) PRIMARY KEY,
-                tenant_id VARCHAR(50) NOT NULL,
-                actor_id VARCHAR(50) NOT NULL,
-                event_type VARCHAR(100) NOT NULL,
-                sequence_number INTEGER NOT NULL,
-                previous_hash VARCHAR(64) NOT NULL,
-                current_hash VARCHAR(64) NOT NULL,
-                signature VARCHAR(64) NOT NULL,
-                payload TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ");
-
-        $connection->statement("
             CREATE TABLE IF NOT EXISTS outbox_events (
                 id VARCHAR(50) PRIMARY KEY,
                 event_name VARCHAR(255) NOT NULL,
@@ -198,7 +183,6 @@ if ($driver === 'sqlite') {
         'stock_onboardings', 
         'journal_entries', 
         'api_tokens', 
-        'user_roles',
         'users', 
         'shopify_location_mappings',
         'shopify_sku_mappings',
@@ -211,6 +195,7 @@ if ($driver === 'sqlite') {
         'kits',
         'kit_components',
         'roles',
+        'user_roles',
         'role_permissions',
         'notifications',
         'inventory_cost_layers',
@@ -220,12 +205,16 @@ if ($driver === 'sqlite') {
         'reorder_policies',
         'demand_forecasts',
         'shipments',
-        'outbox_events', 'compliance_ledgers'
         'outbox_events',
         'webhook_subscriptions',
         'compliance_ledgers'
         'compliance_ledgers',
+        'webhook_subscriptions',
         'webhook_deliveries',
+        'audit_discrepancies',
+        'rmas',
+        'rma_items',
+        'quarantine_items'
         'compliance_ledgers'
         'compliance_ledgers',
         'webhook_subscriptions'
@@ -254,7 +243,6 @@ if ($driver === 'sqlite') {
         stock_onboardings, 
         journal_entries, 
         api_tokens, 
-        user_roles,
         users, 
         shopify_location_mappings,
         shopify_sku_mappings,
@@ -267,6 +255,7 @@ if ($driver === 'sqlite') {
         kits,
         kit_components,
         roles,
+        user_roles,
         role_permissions,
         notifications,
         inventory_cost_layers,
@@ -280,7 +269,12 @@ if ($driver === 'sqlite') {
         webhook_subscriptions,
         compliance_ledgers
         compliance_ledgers,
+        webhook_subscriptions,
         webhook_deliveries,
+        audit_discrepancies,
+        rmas,
+        rma_items,
+        quarantine_items
         compliance_ledgers
         compliance_ledgers,
         webhook_subscriptions

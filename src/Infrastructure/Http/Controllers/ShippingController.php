@@ -143,6 +143,8 @@ class ShippingController
             $body = json_decode(file_get_contents('php://input'), true) ?: [];
 
             $sku = $body['sku'] ?? null;
+            $quantityVal = $body['quantity'] ?? null;
+            $quantity = $quantityVal !== null ? (int)$quantityVal : null;
             $destinationAddress = $body['destinationAddress'] ?? null;
             $strategyName = $body['strategyName'] ?? null;
 

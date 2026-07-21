@@ -151,8 +151,8 @@ class AssembleKit
             occurredAt: new \DateTimeImmutable(),
             metadata: ['locationId' => $locationId]
         );
-        $this->ledgerRepository->appendAll($ledgerEntriesToAppend);
         $this->ledgerRepository->append($kitLedgerEntry);
+        $this->ledgerRepository->appendAll($ledgerEntriesToAppend);
         $ledgerEntries[] = $kitLedgerEntry;
         $this->ledgerRepository->appendAll($ledgerEntries);
 

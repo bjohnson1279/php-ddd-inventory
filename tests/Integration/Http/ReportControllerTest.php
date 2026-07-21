@@ -21,18 +21,19 @@ final class ReportControllerTest extends TestCase
     public static function setUpBeforeClass(): void
     {
         $output = [];
+        $command = "php -S 127.0.0.1:8089 public/index.php > tests/Integration/Http/server_report.log 2>&1 & echo $!";
+
+        exec($command, $output);
+        self::$pid = (int)($output[0] ?? 0);
+
         $dbConn = getenv('DB_CONNECTION') ?: 'pgsql';
         $dbDb = getenv('DB_DATABASE') ?: '';
         $dbHost = getenv('DB_HOST') ?: '';
         $dbUser = getenv('DB_USERNAME') ?: '';
         $dbPass = getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '';
         $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8089 public/index.php > tests/Integration/Http/server_report.log 2>&1 & echo $!";
-        $command = "php -S 127.0.0.1:8089 public/index.php > tests/Integration/Http/server_report.log 2>&1 & echo $!";
         $command = "php -S 127.0.0.1:8097 public/index.php > tests/Integration/Http/server_report.log 2>&1 & echo $!";
         
-        exec($command, $output);
-        self::$pid = (int)($output[0] ?? 0);
-        $command = "php -S 127.0.0.1:8089 public/index.php > tests/Integration/Http/server_report.log 2>&1 & echo $!";
 
 
 
@@ -85,6 +86,7 @@ final class ReportControllerTest extends TestCase
             'tenant_id' => $this->tenantId,
             'email'     => $this->email,
             'password'  => $this->password,
+        ]);
 
         $this->assertEquals(200, $loginRes['status']);
         $this->token = $loginRes['body']['token'];
@@ -105,6 +107,7 @@ final class ReportControllerTest extends TestCase
             'reorder_threshold' => 5,
             'created_at'        => date('Y-m-d H:i:s'),
             'updated_at'        => date('Y-m-d H:i:s')
+        ]);
 
         // 2. Seed Location Stock (15 units)
         DB::table('product_locations')->insert([
@@ -113,6 +116,8 @@ final class ReportControllerTest extends TestCase
             'stock_quantity'    => 15,
             'open_box_quantity' => 0,
             'damaged_quantity'  => 0,
+            'updated_at'        => date('Y-m-d H:i:s')
+        ]);
 
         // 3. Seed Cost Layers
         DB::table('inventory_cost_layers')->insert([
@@ -126,10 +131,17 @@ final class ReportControllerTest extends TestCase
                 'purchase_order_id'  => 'PO-1',
                 'received_at'        => '2026-01-01 00:00:00'
             ],
+            [
+                'id'                 => uuidv4(),
+                'tenant_id'          => $this->tenantId,
+                'variant_id'         => $sku,
+                'original_quantity'  => 10,
+                'remaining_quantity' => 10,
                 'unit_cost_cents'    => 1200,
                 'purchase_order_id'  => 'PO-2',
                 'received_at'        => '2026-02-01 00:00:00'
             ]
+        ]);
 
         // 4. Request valuation report
         $res = $this->request('GET', '/api/reports/valuation', [], $this->token);
@@ -168,6 +180,7 @@ final class ReportControllerTest extends TestCase
                 'method'        => $method,
                 'content'       => json_encode($body),
                 'ignore_errors' => true,
+            ]
         ];
 
         if ($token) {
@@ -187,6 +200,7 @@ final class ReportControllerTest extends TestCase
         return [
             'status' => $statusCode,
             'body'   => json_decode((string)$result, true) ?: $result
+        ];
     }
 }
 

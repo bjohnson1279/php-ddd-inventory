@@ -43,6 +43,7 @@ final class DatabaseQueueTest extends TestCase
         ]);
         DB::table('locations')->insertOrIgnore([
             ['id' => 'LOC-INT', 'name' => 'Integration Location', 'type' => 'TEST']
+        ]);
 
         ServiceContainer::resetDispatcher();
     }
@@ -64,6 +65,7 @@ final class DatabaseQueueTest extends TestCase
             'reorder_threshold' => 5,
             'created_at'        => date('Y-m-d H:i:s'),
             'updated_at'        => date('Y-m-d H:i:s')
+        ]);
 
         // Seed product location stock (10 units)
         DB::table('product_locations')->insertOrIgnore([
@@ -72,6 +74,8 @@ final class DatabaseQueueTest extends TestCase
             'stock_quantity'    => 10,
             'open_box_quantity' => 0,
             'damaged_quantity'  => 0,
+            'updated_at'        => date('Y-m-d H:i:s')
+        ]);
 
         // Seed catalog product & variant to satisfy foreign key constraint on shopify_sku_mappings
         $catalogProductId = uuidv4();
@@ -80,12 +84,15 @@ final class DatabaseQueueTest extends TestCase
             'name'        => 'Queue Test Product',
             'department'  => 'GEN',
             'created_at'  => date('Y-m-d H:i:s')
+        ]);
         DB::table('catalog_variants')->insertOrIgnore([
             'id'          => uuidv4(),
             'product_id'  => $catalogProductId,
             'sku'         => $skuStr,
             'price'       => 10.00,
             'attributes'  => '{}',
+            'created_at'  => date('Y-m-d H:i:s')
+        ]);
 
         // 2. Seed Shopify mappings so the Shopify sync listener tries to execute (otherwise it returns early)
         DB::table('shopify_sku_mappings')->insertOrIgnore([
@@ -93,12 +100,14 @@ final class DatabaseQueueTest extends TestCase
             'sku'                       => $skuStr,
             'shopify_inventory_item_id' => 'shp-inv-123',
             'created_at'                => date('Y-m-d H:i:s')
+        ]);
 
         DB::table('shopify_location_mappings')->insertOrIgnore([
             'id'                  => uuidv4(),
             'our_location_id'     => $locationStr,
             'shopify_location_id' => 'shp-loc-456',
             'created_at'          => date('Y-m-d H:i:s')
+        ]);
 
         // Verify queue is empty
         $this->assertEquals(0, DB::table('queued_jobs')->count());
@@ -113,6 +122,7 @@ final class DatabaseQueueTest extends TestCase
             $syncClient,
             $mappingRepo,
             ServiceContainer::productRepo($tenantId)
+        );
 
         $dispatcher = ServiceContainer::dispatcher();
         $dispatcher->subscribe(StockReceived::class, [$shopifyListener, 'handle']);
@@ -123,6 +133,7 @@ final class DatabaseQueueTest extends TestCase
             5,
             'PO-QUEUE',
             new DateTimeImmutable()
+        );
 
         $dispatcher->dispatch($event);
 
@@ -146,6 +157,7 @@ final class DatabaseQueueTest extends TestCase
         $this->assertEquals(0, $resultCode, implode("\n", $output));
 
         // Verify job was removed from queue on completion/failure processing
+        $this->assertEquals(0, DB::table('queued_jobs')->count());
 
         $logString = implode("\n", $output);
         $this->assertStringContainsString("Processing Job ID", $logString);
@@ -162,12 +174,25 @@ final class DatabaseQueueTest extends TestCase
             'id'          => $productId,
             'name'        => 'Outbound Sync Catalog Product',
             'description' => 'A test catalog product',
+            'department'  => 'GEN',
+            'created_at'  => date('Y-m-d H:i:s')
+        ]);
 
         // Register SyncCatalogToShopify listener on the dispatcher
+        $syncClient = new \InventoryApp\Infrastructure\Integration\Shopify\ShopifyInventorySync(
             'mock.shopify.com',
+            'token'
+        );
+        $mappingRepo = new \InventoryApp\Infrastructure\Integration\Shopify\ShopifyMappingRepository();
         $catalogSyncListener = new \InventoryApp\Application\Catalog\Listeners\SyncCatalogToShopify($syncClient, $mappingRepo);
 
+        $dispatcher = ServiceContainer::dispatcher();
         $dispatcher->subscribe(\InventoryApp\Domain\Catalog\Events\VariantAddedToCatalog::class, [$catalogSyncListener, 'handle']);
+
+        // Verify queue is empty
+        $this->assertEquals(0, DB::table('queued_jobs')->count());
+
+
 
 
         // Execute AddVariant usecase to trigger event
@@ -180,13 +205,25 @@ final class DatabaseQueueTest extends TestCase
             $skuStr,
             ['color' => 'blue'],
             25.50
+        );
 
         // Verify job is queued in the database table
+        $this->assertEquals(1, DB::table('queued_jobs')->count());
+        $job = DB::table('queued_jobs')->first();
         $this->assertEquals('InventoryApp\Application\Catalog\Listeners\SyncCatalogToShopify', $job->listener_class);
 
         // Run the queue worker to process the job
+        $output = [];
+        $resultCode = -1;
+        $cmd = "php scripts/queue-worker.php --once";
+        exec($cmd, $output, $resultCode);
 
         // Verify worker completed successfully and job is deleted from queue
+        $this->assertEquals(0, $resultCode, implode("\n", $output));
+        $this->assertEquals(0, DB::table('queued_jobs')->count());
+
+
+
 
         // Verify the mapping was successfully created in the database mapping table!
         $this->assertEquals('mock-inv-item-' . $skuStr, $mappingRepo->findShopifyInventoryItemId($skuStr));
@@ -195,17 +232,27 @@ final class DatabaseQueueTest extends TestCase
     public function testJournalEntryRecordedQueuesQuickBooksSync(): void
     {
         $entryId = uuidv4();
+        $tenantId = 'test-tenant';
 
         // 1. Register SyncJournalToQuickBooks listener on the dispatcher
         $syncClient = new \InventoryApp\Infrastructure\Integration\QuickBooks\QuickBooksJournalSync(
             'mock-company',
+            'token'
+        );
         $mappingRepo = new \InventoryApp\Infrastructure\Integration\QuickBooks\QuickBooksMappingRepository();
         $qboSyncListener = new \InventoryApp\Application\Accounting\Listeners\SyncJournalToQuickBooks($syncClient, $mappingRepo);
 
+        $dispatcher = ServiceContainer::dispatcher();
         $dispatcher->subscribe(\InventoryApp\Domain\Accounting\Events\JournalEntryRecorded::class, [$qboSyncListener, 'handle']);
 
+        // Verify queue is empty
+        $this->assertEquals(0, DB::table('queued_jobs')->count());
 
         // 2. Instantiate and save a journal entry using the repository to trigger the event
+        DB::table('tenants')->insertOrIgnore(['id' => 'test-tenant', 'name' => 'Test Tenant']);
+
+
+
         $journalRepo = ServiceContainer::journalRepo();
         $entry = new \InventoryApp\Domain\Accounting\Aggregates\JournalEntry(
             $entryId,
@@ -214,6 +261,7 @@ final class DatabaseQueueTest extends TestCase
             'Integration Test Journal Entry to QBO',
             'ref-qbo-123',
             \InventoryApp\Domain\Accounting\Enums\AccountingMethod::Accrual
+        );
         $entry->addLine(\InventoryApp\Domain\Accounting\ValueObjects\AccountCode::cash(), 5000, \InventoryApp\Domain\Accounting\Enums\DebitCredit::Debit, 'Deposit');
         $entry->addLine(\InventoryApp\Domain\Accounting\ValueObjects\AccountCode::salesRevenue(), 5000, \InventoryApp\Domain\Accounting\Enums\DebitCredit::Credit, 'Revenue');
         $entry->assertBalanced();
@@ -221,9 +269,20 @@ final class DatabaseQueueTest extends TestCase
         $journalRepo->save($entry);
 
         // 3. Verify job is queued in the database table
+        $this->assertEquals(1, DB::table('queued_jobs')->count());
+        $job = DB::table('queued_jobs')->first();
         $this->assertEquals('InventoryApp\Application\Accounting\Listeners\SyncJournalToQuickBooks', $job->listener_class);
 
         // 4. Run the queue worker to process the job
+        $output = [];
+        $resultCode = -1;
+        $cmd = "php scripts/queue-worker.php --once";
+        exec($cmd, $output, $resultCode);
+
+        // Verify worker completed successfully and job is deleted from queue
+        $this->assertEquals(0, $resultCode, implode("\n", $output));
+        $this->assertEquals(0, DB::table('queued_jobs')->count());
+
 
 
         // 5. Verify the mapping was successfully created in the mapping table
@@ -233,22 +292,53 @@ final class DatabaseQueueTest extends TestCase
 
     public function testJournalEntryRecordedQueuesXeroSync(): void
     {
+        $entryId = uuidv4();
+        $tenantId = 'test-tenant';
 
         $syncClient = new \InventoryApp\Infrastructure\Integration\Xero\XeroJournalSync(
             'mock-tenant',
+            'token'
+        );
         $mappingRepo = new \InventoryApp\Infrastructure\Integration\Xero\XeroMappingRepository();
         $xeroSyncListener = new \InventoryApp\Application\Accounting\Listeners\SyncJournalToXero($syncClient, $mappingRepo);
 
+        $dispatcher = ServiceContainer::dispatcher();
         $dispatcher->subscribe(\InventoryApp\Domain\Accounting\Events\JournalEntryRecorded::class, [$xeroSyncListener, 'handle']);
 
+        // Verify queue is empty
+        $this->assertEquals(0, DB::table('queued_jobs')->count());
 
+        DB::table('tenants')->insertOrIgnore(['id' => 'test-tenant', 'name' => 'Test Tenant']);
+        $journalRepo = ServiceContainer::journalRepo();
+        $entry = new \InventoryApp\Domain\Accounting\Aggregates\JournalEntry(
+            $entryId,
+            $tenantId,
+            new \DateTimeImmutable(),
             'Integration Test Journal Entry to Xero',
             'ref-xero-123',
+            \InventoryApp\Domain\Accounting\Enums\AccountingMethod::Accrual
         $entry->addLine(\InventoryApp\Domain\Accounting\ValueObjects\AccountCode::cash(), 3000, \InventoryApp\Domain\Accounting\Enums\DebitCredit::Debit, 'Deposit');
         $entry->addLine(\InventoryApp\Domain\Accounting\ValueObjects\AccountCode::salesRevenue(), 3000, \InventoryApp\Domain\Accounting\Enums\DebitCredit::Credit, 'Revenue');
+        $entry->assertBalanced();
 
+        $journalRepo->save($entry);
 
+        $this->assertEquals(1, DB::table('queued_jobs')->count());
+        $job = DB::table('queued_jobs')->first();
         $this->assertEquals('InventoryApp\Application\Accounting\Listeners\SyncJournalToXero', $job->listener_class);
+
+        $output = [];
+        $resultCode = -1;
+        $cmd = "php scripts/queue-worker.php --once";
+        exec($cmd, $output, $resultCode);
+
+        $this->assertEquals(0, $resultCode, implode("\n", $output));
+
+
+
+
+
+
 
 
 
@@ -258,22 +348,53 @@ final class DatabaseQueueTest extends TestCase
 
     public function testJournalEntryRecordedQueuesNetSuiteSync(): void
     {
+        $entryId = uuidv4();
+        $tenantId = 'test-tenant';
 
         $syncClient = new \InventoryApp\Infrastructure\Integration\NetSuite\NetSuiteJournalSync(
             'mock-account',
+            'token'
+        );
         $mappingRepo = new \InventoryApp\Infrastructure\Integration\NetSuite\NetSuiteMappingRepository();
         $nsSyncListener = new \InventoryApp\Application\Accounting\Listeners\SyncJournalToNetSuite($syncClient, $mappingRepo);
 
+        $dispatcher = ServiceContainer::dispatcher();
         $dispatcher->subscribe(\InventoryApp\Domain\Accounting\Events\JournalEntryRecorded::class, [$nsSyncListener, 'handle']);
 
+        // Verify queue is empty
+        $this->assertEquals(0, DB::table('queued_jobs')->count());
 
+        DB::table('tenants')->insertOrIgnore(['id' => 'test-tenant', 'name' => 'Test Tenant']);
+        $journalRepo = ServiceContainer::journalRepo();
+        $entry = new \InventoryApp\Domain\Accounting\Aggregates\JournalEntry(
+            $entryId,
+            $tenantId,
+            new \DateTimeImmutable(),
             'Integration Test Journal Entry to NetSuite',
             'ref-ns-123',
+            \InventoryApp\Domain\Accounting\Enums\AccountingMethod::Accrual
         $entry->addLine(\InventoryApp\Domain\Accounting\ValueObjects\AccountCode::cash(), 4500, \InventoryApp\Domain\Accounting\Enums\DebitCredit::Debit, 'Deposit');
         $entry->addLine(\InventoryApp\Domain\Accounting\ValueObjects\AccountCode::salesRevenue(), 4500, \InventoryApp\Domain\Accounting\Enums\DebitCredit::Credit, 'Revenue');
+        $entry->assertBalanced();
 
+        $journalRepo->save($entry);
 
+        $this->assertEquals(1, DB::table('queued_jobs')->count());
+        $job = DB::table('queued_jobs')->first();
         $this->assertEquals('InventoryApp\Application\Accounting\Listeners\SyncJournalToNetSuite', $job->listener_class);
+
+        $output = [];
+        $resultCode = -1;
+        $cmd = "php scripts/queue-worker.php --once";
+        exec($cmd, $output, $resultCode);
+
+        $this->assertEquals(0, $resultCode, implode("\n", $output));
+
+
+
+
+
+
 
 
 
@@ -295,13 +416,24 @@ final class DatabaseQueueTest extends TestCase
             'reserved_at'    => null,
             'available_at'   => date('Y-m-d H:i:s'),
             'created_at'     => date('Y-m-d H:i:s')
+        ]);
 
+        $this->assertEquals(1, DB::table('queued_jobs')->count());
 
         // 2. Run queue worker
+        $output = [];
+        $resultCode = -1;
+        $cmd = "php scripts/queue-worker.php --once";
+        exec($cmd, $output, $resultCode);
 
         // Verify exit code is 0 (failures are caught and job is released/deleted)
+        $this->assertEquals(0, $resultCode, implode("\n", $output));
 
         // The job should still exist in the queue but with attempts incremented and reserved_at nullified
+
+
+
+
         $job = DB::table('queued_jobs')->where('id', $jobId)->first();
         $this->assertEquals(1, $job->attempts);
         $this->assertNull($job->reserved_at);
@@ -316,6 +448,13 @@ final class DatabaseQueueTest extends TestCase
         DB::table('queued_jobs')->where('id', $jobId)->update([
             'attempts'     => 5,
             'available_at' => date('Y-m-d H:i:s') // Make it available again
+        ]);
+
+        $output = [];
+        $resultCode = -1;
+        exec($cmd, $output, $resultCode);
+
+        $this->assertEquals(0, $resultCode, implode("\n", $output));
 
 
 

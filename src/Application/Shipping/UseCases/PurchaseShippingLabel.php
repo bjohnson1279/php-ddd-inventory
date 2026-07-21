@@ -131,8 +131,8 @@ class PurchaseShippingLabel
             $tenantId,
             new DateTimeImmutable(),
             "Shipping carrier label purchased: {$carrier} {$labelResult->trackingNumber}",
-            $method
             $shipmentId,
+            $method
         );
 
         $freightExpense = new AccountCode("5400", "Shipping & Freight Expense", "expense");
@@ -155,6 +155,9 @@ class PurchaseShippingLabel
         ));
 
         return new PurchaseShippingLabelResult(
+            $shipmentId,
+            $labelResult->trackingNumber,
+            $labelResult->labelUrl,
             $labelResult->rateCents
     }
 }
@@ -187,9 +190,6 @@ class PurchaseShippingLabel
 
 
 
-            $shipmentId,
-            $labelResult->trackingNumber,
-            $labelResult->labelUrl,
         );
     }
 }

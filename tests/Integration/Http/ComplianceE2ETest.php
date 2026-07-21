@@ -283,7 +283,6 @@ final class ComplianceE2ETest extends TestCase
 
         $this->assertEquals(201, $varRes['status']);
 
-        $this->assertEquals(201, $varRes['status']);
 
             'type' => 'WAREHOUSE',
 

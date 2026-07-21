@@ -21,16 +21,16 @@ final class ForecastingE2ETest extends TestCase
     public static function setUpBeforeClass(): void
     {
         $output = [];
+        $command = "php -S 127.0.0.1:8089 public/index.php > tests/Integration/Http/server_forecasting.log 2>&1 & echo $!";
+        exec($command, $output);
+        self::$pid = (int)($output[0] ?? 0);
         $dbConn = getenv('DB_CONNECTION') ?: 'pgsql';
         $dbDb = getenv('DB_DATABASE') ?: '';
         $dbHost = getenv('DB_HOST') ?: '';
         $dbUser = getenv('DB_USERNAME') ?: '';
         $dbPass = getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '';
         $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8089 public/index.php > tests/Integration/Http/server_forecasting.log 2>&1 & echo $!";
-        exec($command, $output);
-        self::$pid = (int)($output[0] ?? 0);
         
-        $command = "php -S 127.0.0.1:8089 public/index.php > tests/Integration/Http/server_forecasting.log 2>&1 & echo $!";
 
         for ($i = 0; $i < 50; $i++) {
             $fp = @fsockopen('127.0.0.1', 8089, $errno, $errstr, 0.1);
@@ -75,17 +75,20 @@ final class ForecastingE2ETest extends TestCase
             'tenant_id' => $this->tenantId,
             'email'     => $this->email,
             'password'  => $this->password,
+        ]);
         $this->assertEquals(200, $loginRes['status']);
         $this->token = $loginRes['body']['token'];
 
         // Seed product
         Capsule::table('products')->insert([
             'id' => uuidv4(),
+            'tenant_id' => $this->tenantId,
             'sku' => 'IPHONE-15',
             'name' => 'iPhone 15',
             'department' => 'Electronics',
             'reorder_threshold' => 10,
             'version_id' => 1
+        ]);
     }
 
     public function testForecastingLifecycle(): void
@@ -121,11 +124,22 @@ final class ForecastingE2ETest extends TestCase
                 'metadata' => json_encode(['locationId' => $locationId]),
                 'created_at' => $nowStr,
             ],
+            [
+                'id' => uuidv4(),
+                'tenant_id' => $this->tenantId,
+                'variant_id' => $sku,
+                'quantity' => -10,
+                'reason' => 'sale',
+                'actor_id' => 'system',
                 'reference_id' => '2',
                 'occurred_at' => $fiveDaysAgo,
+                'metadata' => json_encode(['locationId' => $locationId]),
+                'created_at' => $nowStr,
+            ],
                 'reference_id' => '3',
                 'occurred_at' => $tenDaysAgo,
             ]
+        ]);
 
         // 3. Request demand planning report
         $reportRes = $this->request('GET', '/api/forecasting/report?locationId=' . $locationId, [], $this->token);
@@ -150,9 +164,11 @@ final class ForecastingE2ETest extends TestCase
             'locationId' => $locationId,
             'forecastDays' => 15,
             'trendMultiplier' => 1.2
+        ], $this->token);
 
         $this->assertEquals(200, $forecastRes['status'], json_encode($forecastRes));
         $this->assertMatchesRegularExpression('/success/i', $forecastRes['body']['message']);
+
         
 
         $forecast = $forecastRes['body']['forecast'];
@@ -172,6 +188,14 @@ final class ForecastingE2ETest extends TestCase
 
     public function testSeasonalForecasting(): void
     {
+        $sku = 'IPHONE-15';
+        $locationId = 'LOC-INT';
+
+        $receiveRes = $this->request('POST', '/api/inventory/receive', [
+            'sku'         => $sku,
+            'quantity'    => 50,
+            'location_id' => $locationId
+        ], $this->token);
 
         $this->assertEquals(200, $receiveRes['status']);
 
@@ -188,16 +212,38 @@ final class ForecastingE2ETest extends TestCase
 
         $recentSaleStr = (new \DateTime())->modify('-5 days')->format('Y-m-d H:i:s');
 
+        Capsule::table('ledger_entries')->insert([
+            [
+                'id' => uuidv4(),
+                'tenant_id' => $this->tenantId,
+                'variant_id' => $sku,
+                'quantity' => -10,
+                'reason' => 'sale',
+                'actor_id' => 'system',
                 'reference_id' => 'rec-1',
                 'occurred_at' => $recentSaleStr,
+                'metadata' => json_encode(['locationId' => $locationId]),
+                'created_at' => $nowStr,
+            ],
                 'quantity' => -30,
                 'reference_id' => 'rec-2',
                 'occurred_at' => $sameMonthLastYearStr,
                 'reference_id' => 'rec-3',
                 'occurred_at' => $diffMonthLastYearStr,
+            ]
+        ]);
 
+        $forecastRes = $this->request('POST', '/api/forecasting/forecast', [
+            'sku' => $sku,
+            'locationId' => $locationId,
             'forecastDays' => 30,
             'trendMultiplier' => 1.0
+        ], $this->token);
+
+        $this->assertEquals(200, $forecastRes['status'], json_encode($forecastRes));
+
+        $forecast = $forecastRes['body']['forecast'];
+
 
         
 
@@ -214,6 +260,7 @@ final class ForecastingE2ETest extends TestCase
                 'method'        => $method,
                 'content'       => json_encode($body),
                 'ignore_errors' => true,
+            ]
         ];
 
         if ($token) {
@@ -234,6 +281,7 @@ final class ForecastingE2ETest extends TestCase
         return [
             'status' => $statusCode,
             'body'   => (json_last_error() === JSON_ERROR_NONE) ? $decoded : $result
+        ];
     }
 }
 
@@ -352,7 +400,6 @@ final class ForecastingE2ETest extends TestCase
 
 
         
-        $sameMonthLastYear = (new \DateTime())->modify('-364 days');
 
 
 

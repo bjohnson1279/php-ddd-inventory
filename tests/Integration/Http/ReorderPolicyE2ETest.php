@@ -22,18 +22,18 @@ final class ReorderPolicyE2ETest extends TestCase
     {
         // Start built-in PHP development server in the background on port 8088
         $output = [];
+        $command = "php -S 127.0.0.1:8088 public/index.php > tests/Integration/Http/server_reorder.log 2>&1 & echo $!";
+
+        exec($command, $output);
+        self::$pid = (int)($output[0] ?? 0);
         $dbConn = getenv('DB_CONNECTION') ?: 'pgsql';
         $dbDb = getenv('DB_DATABASE') ?: '';
         $dbHost = getenv('DB_HOST') ?: '';
         $dbUser = getenv('DB_USERNAME') ?: '';
         $dbPass = getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '';
         $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8088 public/index.php > tests/Integration/Http/server_reorder.log 2>&1 & echo $!";
-        $command = "php -S 127.0.0.1:8088 public/index.php > tests/Integration/Http/server_reorder.log 2>&1 & echo $!";
         
-        exec($command, $output);
-        self::$pid = (int)($output[0] ?? 0);
         
-        $command = "php -S 127.0.0.1:8088 public/index.php > tests/Integration/Http/server_reorder.log 2>&1 & echo $!";
 
 
         // Wait for server to bind
@@ -89,6 +89,7 @@ final class ReorderPolicyE2ETest extends TestCase
             'tenant_id' => $this->tenantId,
             'email'     => $this->email,
             'password'  => $this->password,
+        ]);
 
         $this->assertEquals(200, $loginRes['status'], json_encode($loginRes));
         $this->token = $loginRes['body']['token'];
@@ -96,11 +97,13 @@ final class ReorderPolicyE2ETest extends TestCase
         // Seed product
         Capsule::table('products')->insert([
             'id' => uuidv4(),
+            'tenant_id' => $this->tenantId,
             'sku' => 'CAT-SKU-1',
             'name' => 'Test Product',
             'department' => 'Test Department',
             'reorder_threshold' => 10,
             'version_id' => 1
+        ]);
     }
 
     public function testReorderPolicyLifecycle(): void
@@ -129,11 +132,15 @@ final class ReorderPolicyE2ETest extends TestCase
             'sku'         => 'CAT-SKU-1',
             'quantity'    => 20,
             'location_id' => 'LOC-INT'
+        ], $this->token);
         $this->assertEquals(200, $receiveRes['status'], json_encode($receiveRes));
 
         // 4. Dispatch stock (5 items) -> stock becomes 15 (still > 10) -> no auto-reorder PO created
         $dispatchRes1 = $this->request('POST', '/api/inventory/dispatch', [
+            'sku'         => 'CAT-SKU-1',
             'quantity'    => 5,
+            'location_id' => 'LOC-INT'
+        ], $this->token);
         $this->assertEquals(200, $dispatchRes1['status'], json_encode($dispatchRes1));
 
         $draftPoCount = Capsule::table('purchase_orders')
@@ -144,10 +151,16 @@ final class ReorderPolicyE2ETest extends TestCase
 
         // 5. Dispatch stock (6 items) -> stock becomes 9 (<= 10) -> auto-reorder PO should be created!
         $dispatchRes2 = $this->request('POST', '/api/inventory/dispatch', [
+            'sku'         => 'CAT-SKU-1',
             'quantity'    => 6,
+            'location_id' => 'LOC-INT'
+        ], $this->token);
         $this->assertEquals(200, $dispatchRes2['status'], json_encode($dispatchRes2));
 
         $draftPo = Capsule::table('purchase_orders')
+            ->where('tenant_id', $this->tenantId)
+            ->where('status', 'DRAFT')
+
             ->first();
         $this->assertNotNull($draftPo, "Draft purchase order should have been auto-generated");
         $this->assertEquals('AUTO-SYSTEM-VENDOR', $draftPo->vendor_id);
@@ -156,6 +169,7 @@ final class ReorderPolicyE2ETest extends TestCase
         // Verify the item
         $poItem = Capsule::table('purchase_order_items')
             ->where('purchase_order_id', $draftPo->id)
+            ->first();
         $this->assertNotNull($poItem);
         $this->assertEquals('CAT-SKU-1', $poItem->variant_id);
         $this->assertEquals(50, $poItem->quantity); // Reorder quantity
@@ -163,9 +177,11 @@ final class ReorderPolicyE2ETest extends TestCase
 
     public function testReorderPolicyRbacPermissions(): void
     {
+        $suffix = bin2hex(random_bytes(4));
         // 1. Invite new user
         $inviteRes = $this->request('POST', '/api/users', [
             'email' => "staff-{$suffix}@example.com",
+        ], $this->token);
         
 
         $this->assertEquals(201, $inviteRes['status'], json_encode($inviteRes));
@@ -173,8 +189,12 @@ final class ReorderPolicyE2ETest extends TestCase
         $tempPassword = $inviteRes['body']['temporary_password'];
 
         // 2. Login as staff
+        $loginRes = $this->request('POST', '/api/auth/login', [
+            'tenant_id' => $this->tenantId,
             'email'     => "staff-{$suffix}@example.com",
             'password'  => $tempPassword,
+        ]);
+        $this->assertEquals(200, $loginRes['status'], json_encode($loginRes));
         $staffToken = $loginRes['body']['token'];
 
         // Assign staff role explicitly
@@ -182,29 +202,48 @@ final class ReorderPolicyE2ETest extends TestCase
         Capsule::table('user_roles')->insert([
             'user_id' => $viewerUserId,
             'role_id' => 'staff'
+        ]);
 
         // 3. Try to create policy as staff -> should fail (403)
+        $createRes = $this->request('POST', '/api/reorder-policies', [
+            'sku'             => 'CAT-SKU-1',
+            'locationId'      => 'LOC-INT',
+            'reorderPoint'    => 10,
+            'reorderQuantity' => 50,
+            'safetyStock'     => 5
+
         ], $staffToken);
         $this->assertEquals(403, $createRes['status']);
 
         // Admin creates it
         $adminCreateRes = $this->request('POST', '/api/reorder-policies', [
+            'sku'             => 'CAT-SKU-1',
+            'locationId'      => 'LOC-INT',
+            'reorderPoint'    => 10,
+            'reorderQuantity' => 50,
+            'safetyStock'     => 5
+        ], $this->token);
         $this->assertEquals(200, $adminCreateRes['status']);
 
         // 4. Try to get policy as staff -> should succeed (200) since staff has read permission
         $getRes = $this->request('GET', '/api/reorder-policies/CAT-SKU-1/LOC-INT', [], $staffToken);
         $this->assertEquals(200, $getRes['status']);
+        $this->assertEquals(10, $getRes['body']['reorderPoint']);
     }
 
     public function testReorderPolicyDynamicEvaluation(): void
     {
         // 1. Create a dynamic policy (dynamicRopEnabled => true)
+        $createRes = $this->request('POST', '/api/reorder-policies', [
             'sku'                 => 'CAT-SKU-1',
             'locationId'          => 'LOC-INT',
             'reorderPoint'        => 10,
             'reorderQuantity'     => 50,
             'safetyStock'         => 5,
             'dynamicRopEnabled'   => true
+        ], $this->token);
+
+        $this->assertEquals(200, $createRes['status'], json_encode($createRes));
 
         $this->assertTrue($createRes['body']['dynamicRopEnabled']);
 
@@ -239,6 +278,7 @@ final class ReorderPolicyE2ETest extends TestCase
             'location_id'            => 'LOC-INT',
             'created_at'             => $occurredAt->modify('-6 days')->format('Y-m-d H:i:s'),
             'updated_at'             => $occurredAt->modify('-2 days')->format('Y-m-d H:i:s'),
+        ]);
         Capsule::table('purchase_order_items')->insert([
             'id'                => uuidv4(),
             'purchase_order_id' => $po1Id,
@@ -246,14 +286,27 @@ final class ReorderPolicyE2ETest extends TestCase
             'quantity'          => 100,
             'received_quantity' => 100,
             'unit_cost_cents'   => 1000
+        ]);
 
         // PO 2: took 6 days
         $po2Id = uuidv4();
+        Capsule::table('purchase_orders')->insert([
             'id'                     => $po2Id,
             'purchase_order_number'  => 'PO-200',
+            'vendor_id'              => 'supplier-1',
+            'tenant_id'              => $this->tenantId,
+            'status'                 => 'RECEIVED',
+            'location_id'            => 'LOC-INT',
             'created_at'             => $occurredAt->modify('-12 days')->format('Y-m-d H:i:s'),
             'updated_at'             => $occurredAt->modify('-6 days')->format('Y-m-d H:i:s'),
+        Capsule::table('purchase_order_items')->insert([
+            'id'                => uuidv4(),
             'purchase_order_id' => $po2Id,
+            'variant_id'        => $product->id,
+            'quantity'          => 100,
+            'received_quantity' => 100,
+            'unit_cost_cents'   => 1000
+
 
         // 4. Run evaluate endpoint
         $evalRes = $this->request('POST', '/api/reorder-policies/evaluate', [], $this->token);
@@ -264,6 +317,7 @@ final class ReorderPolicyE2ETest extends TestCase
         foreach ($evalRes['body']['results'] as $res) {
             if ($res['sku'] === 'CAT-SKU-1') {
                 $catResult = $res;
+                break;
             }
         }
         $this->assertNotNull($catResult);
@@ -271,7 +325,12 @@ final class ReorderPolicyE2ETest extends TestCase
         $this->assertTrue($catResult['triggered']);
 
         // Verify draft PO was created in database
+        $draftPo = Capsule::table('purchase_orders')
+            ->where('tenant_id', $this->tenantId)
+            ->where('status', 'DRAFT')
+            ->first();
         $this->assertNotNull($draftPo);
+        $this->assertStringStartsWith('AUTO-REORDER-CAT-SKU-1-', $draftPo->purchase_order_number);
     }
 
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
@@ -304,6 +363,7 @@ final class ReorderPolicyE2ETest extends TestCase
         return [
             'status' => $statusCode,
             'body'   => (json_last_error() === JSON_ERROR_NONE) ? $decoded : $result
+        ];
     }
 }
 

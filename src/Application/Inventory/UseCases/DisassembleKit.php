@@ -92,14 +92,6 @@ class DisassembleKit
         $totalEstimatedComponentsCost = 0;
         $componentAvgCosts = [];
 
-        $componentVariantIds = array_map(fn($c) => $c->variantId, $kit->components());
-
-        try {
-            $allActiveLayers = $this->costLayerRepository->getActiveLayersByVariantIds($componentVariantIds, 'received_at ASC');
-        } catch (\Exception $e) {
-            $allActiveLayers = [];
-        }
-
         foreach ($kit->components() as $component) {
             $needed = $component->quantity * $quantity;
             $avgUnitCost = 0;

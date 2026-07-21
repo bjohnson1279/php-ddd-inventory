@@ -18,8 +18,10 @@ interface CostLayerRepositoryInterface
 
     public function findBySerial(string $variantId, string $serialNumber): ?InventoryCostLayer;
 
+    /**
      * @param string[] $serialNumbers
      * @return InventoryCostLayer[]
+     */
     public function findBySerials(string $variantId, array $serialNumbers): array;
 }
      * @param string[] $variantIds

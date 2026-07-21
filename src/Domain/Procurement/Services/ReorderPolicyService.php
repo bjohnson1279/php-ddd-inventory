@@ -31,6 +31,7 @@ class ReorderPolicyService
         $policies = $this->reorderPolicyRepository->findAll();
         $results = [];
 
+        foreach ($policies as $policy) {
         // Bolt optimization: Extract database queries out of the loop
         $allPos = $this->poRepository->findAll();
 
@@ -43,7 +44,6 @@ class ReorderPolicyService
             $products[$p->getSku()->getValue()] = $p;
         }
 
-        foreach ($policies as $policy) {
             $skuStr = $policy->sku->getValue();
             $product = $products[$skuStr] ?? null;
 
@@ -111,28 +111,30 @@ class ReorderPolicyService
                     $poNumber = 'AUTO-REORDER-' . $skuStr . '-' . strtoupper(base_convert((string)time(), 10, 36));
                     $poId = Uuid::uuid4()->toString();
                     $itemId = Uuid::uuid4()->toString();
-                    
+
                     $item = new PurchaseOrderItem(
                         $itemId,
+                        $skuStr,
                         $policy->reorderQuantity,
                         0,
                         0
+                    
 
-                        $skuStr,
                     );
 
                     $po = new PurchaseOrder(
                         $poId,
                         $poNumber,
                         'AUTO-SYSTEM-VENDOR',
-                        PurchaseOrderStatus::Draft,
-                        [$item]
-
-                    $this->poRepository->save($po);
-                    $allPos[] = $po; // Bolt optimization: Append new PO to avoid duplicate generation in subsequent iterations
                         $tenantId,
                         $policy->locationId,
+                        PurchaseOrderStatus::Draft,
+                        [$item]
                     );
+
+                    $this->poRepository->save($po);
+
+                    $allPos[] = $po; // Bolt optimization: Append new PO to avoid duplicate generation in subsequent iterations
 
                     $triggered = true;
                 } else {

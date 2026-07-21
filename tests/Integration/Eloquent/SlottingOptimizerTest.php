@@ -51,6 +51,7 @@ final class SlottingOptimizerTest extends TestCase
         Capsule::table('warehouse_locations')->insert([
                 'id' => 'LOC-CLOSE',
 
+            [
                 'warehouse_id' => 'WH1',
                 'zone' => 'Z1',
                 'aisle' => 'A1',
@@ -110,6 +111,7 @@ final class SlottingOptimizerTest extends TestCase
                 'location_id' => 'LOC-FAR',
                 'stock_quantity' => 100,
             ],
+            [
                 'product_id' => $prodId2,
                 'location_id' => 'LOC-CLOSE',
                 'stock_quantity' => 50,
@@ -161,28 +163,5 @@ final class SlottingOptimizerTest extends TestCase
 
         // savings = velocity (80) * distDiff (18) * 2 = 2880
         $this->assertEquals(2880, $sugg['estimatedSavings']);
-    }
-}
-
-
-
-
-{
-
-    {
-
-
-    }
-
-    {
-
-
-
-
-
-
-
-
-
     }
 }

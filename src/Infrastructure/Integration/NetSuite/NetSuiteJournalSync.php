@@ -7,7 +7,6 @@ namespace InventoryApp\Infrastructure\Integration\NetSuite;
  *
  * Triggered by our domain events (e.g. JournalEntryRecorded) to keep
  * NetSuite general ledger in sync.
- *
  * @see https://docs.oracle.com/en/cloud/saas/netsuite/ns-online-help/section_4272186716.html
  */
 class NetSuiteJournalSync
@@ -71,19 +70,18 @@ class NetSuiteJournalSync
 
         $ch = curl_init($url);
         curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => $body,
-            CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_SSL_VERIFYHOST => 2,
-            CURLOPT_TIMEOUT        => 30,
-            CURLOPT_CONNECTTIMEOUT => 10,
-            CURLOPT_HTTPHEADER     => [
+            CURLOPT_RETURNTRANSFER   => true,
+            CURLOPT_POST             => true,
+            CURLOPT_POSTFIELDS       => $body,
+            CURLOPT_SSL_VERIFYPEER   => true,
+            CURLOPT_SSL_VERIFYHOST   => 2,
+            CURLOPT_CONNECTTIMEOUT   => 10,
+            CURLOPT_TIMEOUT          => 30,
+            CURLOPT_HTTPHEADER       => [
                 'Content-Type: application/json',
                 'Accept: application/json',
                 'Authorization: Bearer ' . $this->token,
             ],
-        ]);
 
         $response   = curl_exec($ch);
         $httpStatus = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -103,5 +101,63 @@ class NetSuiteJournalSync
         }
 
         return (string)$nsId;
+    }
+}
+
+
+{
+
+    {
+    }
+
+    {
+        }
+
+
+
+
+            }
+
+
+
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $body,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_HTTPHEADER     => [
+
+
+        }
+
+        }
+
+    }
+}
+
+
+{
+
+    {
+    }
+
+    {
+        }
+
+
+
+
+            }
+
+
+
+            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_CONNECTTIMEOUT => 10,
+
+
+        }
+
+        }
+
     }
 }

@@ -26,7 +26,7 @@ final class AuditE2ETest extends TestCase
         putenv("QUICKBOOKS_ACCESS_TOKEN=mock-qbo-token");
 
         $output = [];
-        $command = "php -S 127.0.0.1:8094 public/index.php > tests/Integration/Http/server_audit.log 2>&1 & echo $!";
+        $command = "php -S 127.0.0.1:8092 public/index.php > tests/Integration/Http/server_audit.log 2>&1 & echo $!";
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
         
@@ -179,7 +179,7 @@ final class AuditE2ETest extends TestCase
 
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
     {
-        $url = 'http://127.0.0.1:8094' . $path;
+        $url = 'http://127.0.0.1:8092' . $path;
         $options = [
             'http' => [
                 'header'        => "Content-Type: application/json\r\n",
@@ -206,6 +206,59 @@ final class AuditE2ETest extends TestCase
         return [
             'status' => $statusCode,
             'body'   => (json_last_error() === JSON_ERROR_NONE) ? $decoded : $result
+    }
+}
+
+
+
+
+
+{
+
+    {
+
+        $command = "php -S 127.0.0.1:8094 public/index.php > tests/Integration/Http/server_audit.log 2>&1 & echo $!";
+        
+            }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+            }
+        }
+
+
+    }
+
+    {
+        $url = 'http://127.0.0.1:8094' . $path;
+
+        }
+
+        
+        }
+
     }
 }
 

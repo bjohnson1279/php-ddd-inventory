@@ -17,8 +17,7 @@ class SqliteSetup
             self::getReturnsQueries(),
             self::getForecastingQueries(),
             self::getShippingQueries(),
-            self::getComplianceQueries(),
-            self::getWebhookQueries()
+            self::getComplianceQueries()
         );
 
         foreach ($queries as $q) {
@@ -500,35 +499,6 @@ class SqliteSetup
               signature VARCHAR(64) NOT NULL,
               payload TEXT NOT NULL,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )"
-        ];
-    }
-
-    private static function getWebhookQueries(): array
-    {
-        return [
-            "CREATE TABLE IF NOT EXISTS webhook_subscriptions (
-                id VARCHAR(50) PRIMARY KEY,
-                tenant_id VARCHAR(50) NOT NULL,
-                target_url TEXT NOT NULL,
-                secret TEXT NOT NULL,
-                event_types TEXT NOT NULL,
-                is_active BOOLEAN NOT NULL DEFAULT 1,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )",
-            "CREATE TABLE IF NOT EXISTS webhook_deliveries (
-                id VARCHAR(50) PRIMARY KEY,
-                tenant_id VARCHAR(50) NOT NULL,
-                subscription_id VARCHAR(50) NOT NULL,
-                event_type VARCHAR(255) NOT NULL,
-                payload TEXT NOT NULL,
-                status VARCHAR(50) NOT NULL,
-                attempts INTEGER NOT NULL DEFAULT 0,
-                last_error TEXT,
-                next_attempt_at DATETIME,
-                processed_at DATETIME,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (subscription_id) REFERENCES webhook_subscriptions (id) ON DELETE CASCADE
             )"
         ];
     }

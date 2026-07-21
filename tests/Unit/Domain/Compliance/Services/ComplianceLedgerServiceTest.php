@@ -31,7 +31,6 @@ class ComplianceLedgerServiceTest extends TestCase
         // Mock findAll
         $this->mockRepo->method('findAll')->willReturnCallback(function (?string $tenantId = null) {
             return $this->savedEntries;
-        });
 
         // Mock getLastEntry
         $this->mockRepo->method('getLastEntry')->willReturnCallback(function (?string $tenantId = null) {
@@ -39,7 +38,6 @@ class ComplianceLedgerServiceTest extends TestCase
                 return null;
             }
             return $this->savedEntries[count($this->savedEntries) - 1];
-        });
 
         // Override binding in ServiceContainer
         $container = ServiceContainer::getInstance();
@@ -77,8 +75,6 @@ class ComplianceLedgerServiceTest extends TestCase
     {
         $payload = ['sku' => 'SKU-TEST-1'];
         
-        $entry1 = ComplianceLedgerService::logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
-        $entry2 = ComplianceLedgerService::logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
 
         // Tamper with the previous hash of block 2
         $tamperedEntry2 = new ComplianceLedgerEntry(
@@ -97,7 +93,6 @@ class ComplianceLedgerServiceTest extends TestCase
         // Replace entry2 in our memory representation
         $this->savedEntries[1] = $tamperedEntry2;
 
-        $validationResult = ComplianceLedgerService::validateLedger('tenant-1');
         $this->assertFalse($validationResult['isValid']);
         $this->assertEquals(2, $validationResult['failedSequenceNumber']);
         $this->assertStringContainsString('Chaining hash mismatch', $validationResult['reason']);
@@ -105,8 +100,6 @@ class ComplianceLedgerServiceTest extends TestCase
 
     public function testValidationFailsIfBlockContentIsTampered()
     {
-        $payload = ['sku' => 'SKU-TEST-1'];
-        $entry1 = ComplianceLedgerService::logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
 
         // Tamper with the payload data without updating hash/signature
         $tamperedEntry1 = new ComplianceLedgerEntry(
@@ -120,40 +113,61 @@ class ComplianceLedgerServiceTest extends TestCase
             $entry1->getSignature(),
             json_encode(['sku' => 'TAMPERED-SKU']),
             $entry1->getCreatedAt()
-        );
 
         $this->savedEntries[0] = $tamperedEntry1;
 
-        $validationResult = ComplianceLedgerService::validateLedger('tenant-1');
-        $this->assertFalse($validationResult['isValid']);
         $this->assertEquals(1, $validationResult['failedSequenceNumber']);
         $this->assertStringContainsString('Block content hash mismatch', $validationResult['reason']);
     }
 
     public function testValidationFailsIfSignatureIsInvalid()
     {
-        $payload = ['sku' => 'SKU-TEST-1'];
-        $entry1 = ComplianceLedgerService::logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
 
         // Tamper with signature
-        $tamperedEntry1 = new ComplianceLedgerEntry(
-            $entry1->getId(),
-            $entry1->getTenantId(),
-            $entry1->getActorId(),
-            $entry1->getEventType(),
-            $entry1->getSequenceNumber(),
-            $entry1->getPreviousHash(),
-            $entry1->getCurrentHash(),
             'invalid-signature-value',
             $entry1->getPayload(),
-            $entry1->getCreatedAt()
-        );
 
-        $this->savedEntries[0] = $tamperedEntry1;
 
-        $validationResult = ComplianceLedgerService::validateLedger('tenant-1');
-        $this->assertFalse($validationResult['isValid']);
-        $this->assertEquals(1, $validationResult['failedSequenceNumber']);
         $this->assertStringContainsString('Cryptographic signature validation failed', $validationResult['reason']);
+    }
+}
+
+
+
+
+{
+
+    {
+
+        
+
+
+            }
+
+    }
+
+    {
+        
+
+
+    }
+
+    {
+        
+
+
+
+    }
+
+    {
+
+
+
+    }
+
+    {
+
+
+
     }
 }

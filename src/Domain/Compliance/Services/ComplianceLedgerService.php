@@ -57,7 +57,6 @@ class ComplianceLedgerService
 
     public static function validateLedger(string $tenantId = null): array
     {
-        $repo = ServiceContainer::complianceLedgerRepo();
         $entries = $repo->findAll($tenantId);
         $privateKey = self::getPrivateKey();
 
@@ -77,11 +76,7 @@ class ComplianceLedgerService
             } else {
                 $expectedPrevHash = str_repeat('0', 64);
                 if ($entry->getPreviousHash() !== $expectedPrevHash) {
-                    return [
-                        'isValid' => false,
-                        'failedSequenceNumber' => $entry->getSequenceNumber(),
                         'reason' => "First block must have zeroed previous hash. Found: " . $entry->getPreviousHash()
-                    ];
                 }
             }
 
@@ -100,14 +95,43 @@ class ComplianceLedgerService
             // 3. Verify signature
             $expectedSignature = hash_hmac('sha256', $entry->getCurrentHash(), $privateKey);
             if ($entry->getSignature() !== $expectedSignature) {
-                return [
-                    'isValid' => false,
-                    'failedSequenceNumber' => $entry->getSequenceNumber(),
                     'reason' => "Cryptographic signature validation failed for sequence #" . $entry->getSequenceNumber()
-                ];
             }
         }
 
         return ['isValid' => true];
+    }
+}
+
+
+
+{
+    {
+            return 'compliance-fallback-secret-key-12345!@#';
+        }
+    }
+
+    {
+
+        }
+
+
+
+
+    }
+
+    {
+
+
+                }
+                }
+            }
+
+
+            }
+
+            }
+        }
+
     }
 }

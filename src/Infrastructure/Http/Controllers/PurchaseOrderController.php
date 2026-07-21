@@ -9,6 +9,7 @@ use InventoryApp\Domain\Inventory\Repositories\ProductRepositoryInterface;
 use InventoryApp\Domain\Accounting\Repositories\CostLayerRepositoryInterface;
 use InventoryApp\Application\Procurement\UseCases\CreatePurchaseOrder;
 use InventoryApp\Application\Procurement\UseCases\ReceivePurchaseOrder;
+use InventoryApp\Application\Inventory\Factories\ReceiveStockFactory;
 use InventoryApp\Application\Shared\Decorators\AutoRetryUseCaseDecorator;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Exception;
@@ -140,7 +141,8 @@ class PurchaseOrderController
                 'items' => 'required|array'
             ]);
 
-            $baseUseCase = new ReceivePurchaseOrder($poRepo, $productRepo, $costLayerRepo, $events);
+            $receiveStockFactory = new ReceiveStockFactory($productRepo, $events, null, $costLayerRepo);
+            $baseUseCase = new ReceivePurchaseOrder($poRepo, $costLayerRepo, $receiveStockFactory);
             $useCase = new AutoRetryUseCaseDecorator($baseUseCase);
             $useCase->execute([
                 'purchaseOrderId' => $id,

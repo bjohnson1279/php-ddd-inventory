@@ -22,6 +22,7 @@ final class SlottingOptimizerTest extends TestCase
         Capsule::table('products')->delete();
         Capsule::table('warehouse_locations')->delete();
         Capsule::table('locations')->delete();
+        Capsule::table('locations')->whereNotIn('id', ['LOC-INT', 'LOC-INT-quarantine'])->delete();
 
         // Seed tenant to satisfy foreign key constraint
         Capsule::table('tenants')->insert([

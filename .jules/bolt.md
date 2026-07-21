@@ -69,3 +69,23 @@
 ## 2024-07-26 - Updating PHPUnit mock closures for batch migrations
 **Learning:** When refactoring a single-entity insertion method (like `append(LedgerEntry)`) into a batch method (`appendAll(array)`), failing to update the closure signature in PHPUnit mock expectations (`$this->callback(function (LedgerEntry $entry) { ... })`) to accept an array (`function (array $entries)`) will cause `TypeError` test failures because the framework attempts to pass an array into a parameter expecting an object.
 **Action:** When updating PHPUnit mock expectations from a single entity to a batch array, ensure the `$this->callback()` closure signature is explicitly updated to accept an `array` parameter and iterate over the entries appropriately.
+## 2026-07-16 - N+1 Query in DemandForecaster bulk evaluation
+**Learning:** In bulk reporting operations (like ), helper methods inside loops (like ) can trigger N+1 queries if they internally perform database lookups, even if the parent method pre-fetches the data into maps.
+**Action:** When a method is called in a loop and performs database lookups, modify its signature to accept optional pre-fetched arrays (e.g. ). In the loop, pass the pre-fetched mapped data downward instead of relying on the method's internal fallback lookups.
+
+## 2024-07-16 - N+1 Query in DemandForecaster bulk evaluation
+**Learning:** In bulk reporting operations (like DemandForecaster::getDemandPlanningReport), helper methods inside loops (like calculateSalesVelocity) can trigger N+1 queries if they internally perform database lookups, even if the parent method pre-fetches the data into maps. Also, looping over arrays that have already been queried (e.g. findAll) to look up specific entities (e.g. findBySkuAndLocation) triggers N+1.
+**Action:** When a method is called in a loop and performs database lookups, modify its signature to accept optional pre-fetched arrays (e.g. ?array $entries = null). In the loop, pass the pre-fetched mapped data downward instead of relying on the method's internal fallback lookups. For repositories returning maps, directly access array keys.
+
+
+
+
+
+
+
+
+
+
+
+
+

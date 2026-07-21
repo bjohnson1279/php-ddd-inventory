@@ -19,7 +19,7 @@ final class ApiTokenServiceTest extends TestCase
     protected function setUp(): void
     {
         $this->userId = uuidv4();
-        
+
         DB::table('tenants')->insertOrIgnore(['id' => $this->tenantId, 'name' => 'Test Tenant']);
         DB::table('users')->insertOrIgnore([
             'id' => $this->userId,
@@ -53,9 +53,9 @@ final class ApiTokenServiceTest extends TestCase
     {
         $service = new ApiTokenService();
         $token = $service->issue($this->userId, $this->tenantId);
-        
+
         $service->revokeAll($this->userId);
-        
+
         $this->assertNull($service->validate($token));
     }
 }

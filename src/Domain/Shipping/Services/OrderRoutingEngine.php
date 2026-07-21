@@ -55,7 +55,7 @@ class OrderRoutingEngine
                         break;
                     }
                 }
-                
+
                 $dist = $candidate['geoLocation']->distanceTo($destination);
                 $totalDistance += $dist;
 

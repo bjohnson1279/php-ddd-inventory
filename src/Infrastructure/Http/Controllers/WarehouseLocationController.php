@@ -29,7 +29,7 @@ class WarehouseLocationController
             ]);
 
             $path = $request->query('path') ?? ($request->validate([])['path'] ?? null);
-            
+
             $maxWeight = (int) $body['maxWeightGrams'];
             $maxVolume = (float) $body['maxVolumeCubicMeters'];
 

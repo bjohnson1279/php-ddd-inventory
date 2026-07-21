@@ -42,7 +42,7 @@ class XeroJournalSync
         $xeroLines = array_map(function ($line) {
             $isCredit = strtolower($line['type']) === 'credit';
             $amount = (float)($line['amountCents'] / 100.0);
-            
+
             // Xero Manual Journals use positive for debits, negative for credits in general ledger lines
             $lineAmount = $isCredit ? -$amount : $amount;
 

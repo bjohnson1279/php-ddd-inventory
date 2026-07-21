@@ -105,3 +105,24 @@ use Illuminate\Database\Capsule\Manager as Capsule;
 
     }
 }
+
+
+
+
+
+{
+    {
+        }
+
+    }
+
+    {
+
+
+
+        $cmd = "php scripts/outbox-worker.php --once";
+
+
+
+    }
+}

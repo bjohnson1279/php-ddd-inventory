@@ -352,3 +352,98 @@ use Illuminate\Database\Capsule\Manager as Capsule;
     {
     }
 }
+
+
+
+
+
+{
+    {
+        }
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+
+
+
+        $cmd = "php scripts/queue-worker.php --once";
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+    }
+}

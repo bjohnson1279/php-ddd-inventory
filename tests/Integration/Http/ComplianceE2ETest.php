@@ -59,6 +59,8 @@ final class ComplianceE2ETest extends TestCase
         Capsule::table('users')->delete();
         Capsule::table('user_roles')->delete();
         Capsule::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
+        Capsule::table('catalog_variants')->truncate();
+        Capsule::table('catalog_products')->truncate();
         Capsule::table('catalog_variants')->delete();
         Capsule::table('catalog_products')->delete();
         Capsule::table('locations')->where('id', '!=', 'LOC-INT')->delete();
@@ -83,6 +85,7 @@ final class ComplianceE2ETest extends TestCase
             'tenant_id' => $this->tenantId,
             'email'     => $this->email,
             'password'  => $this->password,
+        ]);
         $this->token = $loginRes['body']['token'];
     }
 
@@ -107,6 +110,7 @@ final class ComplianceE2ETest extends TestCase
             'sku'   => 'SKU-COMP-1',
             'price' => 1000,
             'attributes' => []
+        ], $this->token);
         $this->assertEquals(201, $varRes['status']);
 
         // Setup location
@@ -114,12 +118,14 @@ final class ComplianceE2ETest extends TestCase
             'id'   => 'LOC-COMP-1',
             'name' => 'LOC-COMP-1',
             'type' => 'WAREHOUSE',
+        ]);
 
         // Receive stock
         $receiveRes = $this->request('POST', '/api/inventory/receive', [
             'sku'         => 'SKU-COMP-1',
             'quantity'    => 50,
             'location_id' => 'LOC-COMP-1'
+        ], $this->token);
         $this->assertEquals(200, $receiveRes['status'], json_encode($receiveRes));
 
         // 3. Verify ledger entry was created
@@ -170,6 +176,7 @@ final class ComplianceE2ETest extends TestCase
         return [
             'status' => $statusCode,
             'body'   => (json_last_error() === JSON_ERROR_NONE) ? $decoded : $result
+        ];
     }
 }
 

@@ -100,3 +100,77 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+## 2024-07-28 - Bulk Ledger Inserts
+**Learning:** In the domain architecture, when Use Cases like `AssembleKit`, `DisassembleKit`, or services like `OpeningBalanceService` process multiple components or items, appending ledger entries sequentially causes N+1 queries.
+**Action:** Use an `appendAll(array $entries)` method on `LedgerRepositoryInterface` to collect the `$ledgerEntries` in a batch within the Use Case and persist them once outside the loop.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

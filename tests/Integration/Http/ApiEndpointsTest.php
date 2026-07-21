@@ -531,7 +531,7 @@ final class ApiEndpointsTest extends TestCase
         ]);
 
         // 3. Register Location mapping so webhook resolves LOC-INT
-        \Illuminate\Database\Capsule\Manager::table('shopify_location_mappings')->insert([
+        \Illuminate\Database\Capsule\Manager::table('shopify_location_mappings')->insertOrIgnore([
             'id'                  => uuidv4(),
             'our_location_id'     => 'LOC-INT',
             'shopify_location_id' => 'shopify-loc-1234',

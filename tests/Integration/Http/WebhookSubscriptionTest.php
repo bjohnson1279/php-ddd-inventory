@@ -172,14 +172,22 @@ final class WebhookSubscriptionTest extends TestCase
             'payload' => json_encode(['sku' => 'SKU-1']),
             'status' => 'Pending',
             'attempts' => 0,
-            'next_attempt_at' => (new \DateTime())->format('Y-m-d H:i:s'),
+            'next_attempt_at' => (new \DateTime('-10 minutes'))->format('Y-m-d H:i:s'),
             'created_at' => (new \DateTime())->format('Y-m-d H:i:s')
         ]);
 
         // Run the CLI worker script with --once flag
-        $output = [];
-        $resultCode = -1;
-        exec("php scripts/webhook-worker.php --once", $output, $resultCode);
+        $extDir = 'C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext';
+        $phpBin = PHP_BINARY;
+        $dbPath = __DIR__ . '/../../../storage/data/test_webhooksubscriptiontest.sqlite';
+
+        if (PHP_OS_FAMILY === 'Windows') {
+            $cmd = "set DB_CONNECTION=sqlite&& set DB_DATABASE={$dbPath}&& \"{$phpBin}\" -d extension_dir=\"{$extDir}\" -d extension=mbstring -d extension=pdo_sqlite scripts/webhook-worker.php --once";
+        } else {
+            $cmd = "DB_CONNECTION=sqlite DB_DATABASE=" . escapeshellarg($dbPath) . " php scripts/webhook-worker.php --once";
+        }
+
+        exec($cmd, $output, $resultCode);
 
         // It should try to send, fail (since internet domain target_url or mock), and increment attempt
         $delivery = Capsule::table('webhook_deliveries')->where('id', $deliveryId)->first();

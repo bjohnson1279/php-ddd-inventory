@@ -19,7 +19,7 @@ final class DatabaseOutboxWorkerTest extends TestCase
     protected function setUp(): void
     {
         Capsule::table('queued_jobs')->delete();
-        Capsule::table('outbox_messages')->delete();
+        Capsule::table('outbox_events')->delete();
         // Clean up outbox events to ensure run-to-run isolation
         if (getenv('DB_CONNECTION') === 'sqlite' || DB::connection()->getDriverName() === 'sqlite') {
             require_once __DIR__ . '/../../../src/Infrastructure/Persistence/sqlite_setup.php';

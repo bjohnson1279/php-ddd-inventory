@@ -27,10 +27,10 @@ final class ShippingCarrierE2ETest extends TestCase
         $dbUser = getenv('DB_USERNAME') ?: '';
         $dbPass = getenv('DB_PASSWORD') ?: '';
         $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8092 public/index.php > tests/Integration/Http/server_shipping.log 2>&1 & echo $!";
+        $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8095 public/index.php > tests/Integration/Http/server_shipping.log 2>&1 & echo $!";
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
 
-        $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8095 public/index.php > tests/Integration/Http/server_shipping.log 2>&1 & echo $!";
         
         for ($i = 0; $i < 50; $i++) {
             $fp = @fsockopen('127.0.0.1', 8092, $errno, $errstr, 0.1);
@@ -155,6 +155,7 @@ final class ShippingCarrierE2ETest extends TestCase
         // 7. Verify Outbox event generated
         $outboxStatsRes = $this->request('GET', '/api/outbox/stats', [], $this->token);
         $this->assertEquals(200, $outboxStatsRes['status'], json_encode($outboxStatsRes));
+        $this->assertEquals(1, $outboxStatsRes['body']['totalPending']);
         $this->assertContains($outboxStatsRes['body']['totalPending'], [0, 1]);
         $this->assertEquals(1, $outboxStatsRes['body']['totalPending'] + $outboxStatsRes['body']['totalProcessed']);
         $this->assertEquals('ShipmentCreatedEvent', $outboxStatsRes['body']['recentFailures'][0]['eventName'] ?? $outboxStatsRes['body']['recentFailures'] === [] ? 'ShipmentCreatedEvent' : '');

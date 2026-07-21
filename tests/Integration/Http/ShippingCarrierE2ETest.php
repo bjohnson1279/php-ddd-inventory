@@ -32,6 +32,7 @@ final class ShippingCarrierE2ETest extends TestCase
         $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8095 public/index.php > tests/Integration/Http/server_shipping.log 2>&1 & echo $!";
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
+
         
         for ($i = 0; $i < 50; $i++) {
             $fp = @fsockopen('127.0.0.1', 8092, $errno, $errstr, 0.1);
@@ -144,6 +145,7 @@ final class ShippingCarrierE2ETest extends TestCase
         $ledger = Capsule::table('journal_entries')->where('tenant_id', $this->tenantId)->get()->toArray();
         $this->assertCount(1, $ledger);
         $this->assertStringContainsString('purchased: UPS Ground', $ledger[0]->description);
+
         
         $lines = json_decode($ledger[0]->lines, true);
         $this->assertCount(2, $lines);
@@ -159,6 +161,7 @@ final class ShippingCarrierE2ETest extends TestCase
         $this->assertContains($outboxStatsRes['body']['totalPending'], [0, 1]);
         $this->assertEquals(1, $outboxStatsRes['body']['totalPending'] + $outboxStatsRes['body']['totalProcessed']);
         $this->assertEquals('ShipmentCreatedEvent', $outboxStatsRes['body']['recentFailures'][0]['eventName'] ?? $outboxStatsRes['body']['recentFailures'] === [] ? 'ShipmentCreatedEvent' : '');
+
         
         // Let's directly check database outbox count to be sure
         $dbOutboxCount = Capsule::table('outbox_events')->count();
@@ -177,6 +180,7 @@ final class ShippingCarrierE2ETest extends TestCase
         // Verify subsequent outbox event
         $dbOutboxCount2 = Capsule::table('outbox_events')->count();
         $this->assertEquals(2, $dbOutboxCount2);
+
         
         $outboxEvents = Capsule::table('outbox_events')->orderBy('occurred_on', 'asc')->get()->toArray();
         $this->assertEquals('ShipmentCreatedEvent', $outboxEvents[0]->event_name);
@@ -269,6 +273,7 @@ final class ShippingCarrierE2ETest extends TestCase
 
         $context = stream_context_create($options);
         $result = @file_get_contents($url, false, $context);
+
         
         $statusCode = 500;
         if (isset($http_response_header) && isset($http_response_header[0])) {

@@ -48,8 +48,9 @@ final class SlottingOptimizerTest extends TestCase
 
         // 1. Seed two locations
         Capsule::table('warehouse_locations')->insert([
-            [
                 'id' => 'LOC-CLOSE',
+
+            [
                 'warehouse_id' => 'WH1',
                 'zone' => 'Z1',
                 'aisle' => 'A1',

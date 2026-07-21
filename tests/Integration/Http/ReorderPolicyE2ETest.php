@@ -32,6 +32,9 @@ final class ReorderPolicyE2ETest extends TestCase
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
         
+        $command = "php -S 127.0.0.1:8088 public/index.php > tests/Integration/Http/server_reorder.log 2>&1 & echo $!";
+
+
         // Wait for server to bind
         for ($i = 0; $i < 50; $i++) {
             $fp = @fsockopen('127.0.0.1', 8088, $errno, $errstr, 0.1);
@@ -59,6 +62,7 @@ final class ReorderPolicyE2ETest extends TestCase
         Capsule::table('users')->delete();
         Capsule::table('user_roles')->delete();
         Capsule::table('tenants')->where('id', '!=', 'test-tenant')->delete();
+        Capsule::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
         \Illuminate\Database\Capsule\Manager::table('tenants')->insertOrIgnore([['id' => 'test-tenant', 'name' => 'Test Tenant']]);
                 Capsule::table('product_locations')->delete();
         Capsule::table('inventory_transactions')->delete();
@@ -162,6 +166,7 @@ final class ReorderPolicyE2ETest extends TestCase
         $inviteRes = $this->request('POST', '/api/users', [
             'email' => "staff-{$suffix}@example.com",
         
+
         $this->assertEquals(201, $inviteRes['status'], json_encode($inviteRes));
         $viewerUserId = $inviteRes['body']['user_id'];
         $tempPassword = $inviteRes['body']['temporary_password'];
@@ -206,6 +211,7 @@ final class ReorderPolicyE2ETest extends TestCase
         $product = Capsule::table('products')->where('sku', 'CAT-SKU-1')->first();
         $occurredAt = new \DateTimeImmutable();
         
+
         for ($i = 0; $i < 30; $i++) {
             Capsule::table('ledger_entries')->insert([
                 'id'           => uuidv4(),
@@ -252,6 +258,7 @@ final class ReorderPolicyE2ETest extends TestCase
         $evalRes = $this->request('POST', '/api/reorder-policies/evaluate', [], $this->token);
         $this->assertEquals(200, $evalRes['status'], json_encode($evalRes));
         
+
         $catResult = null;
         foreach ($evalRes['body']['results'] as $res) {
             if ($res['sku'] === 'CAT-SKU-1') {
@@ -285,6 +292,7 @@ final class ReorderPolicyE2ETest extends TestCase
         $context = stream_context_create($options);
         $result = @file_get_contents($url, false, $context);
         
+
         $statusCode = 500;
         if (isset($http_response_header) && isset($http_response_header[0])) {
             preg_match('{HTTP\/\S*\s(\d{3})}', $http_response_header[0], $match);

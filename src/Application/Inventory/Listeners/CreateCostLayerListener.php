@@ -57,7 +57,7 @@ class CreateCostLayerListener
 
         $tenantId = $this->resolveTenantId();
         $sku = $event->getSku()->getValue();
-        
+
         // Lookup default catalog price to establish unit cost
         if (!isset(self::$priceCache[$sku])) {
             $this->preloadPrices([$sku]);
@@ -81,7 +81,7 @@ class CreateCostLayerListener
     public function handleOpeningBalancePosted(OpeningBalancePosted $event): void
     {
         $tenantId = $this->resolveTenantId();
-        
+
         $layer = new InventoryCostLayer(
             Uuid::uuid4()->toString(),
             $event->variantId,

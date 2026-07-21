@@ -30,6 +30,8 @@ final class ForecastingE2ETest extends TestCase
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
         
+        $command = "php -S 127.0.0.1:8089 public/index.php > tests/Integration/Http/server_forecasting.log 2>&1 & echo $!";
+
         for ($i = 0; $i < 50; $i++) {
             $fp = @fsockopen('127.0.0.1', 8089, $errno, $errstr, 0.1);
             if ($fp) {
@@ -135,6 +137,7 @@ final class ForecastingE2ETest extends TestCase
         $this->assertEquals($locationId, $reportItem['locationId']);
         $this->assertEquals(50, $reportItem['currentStock']);
         
+
         // 30 units in 30 days -> ADS 30d should be exactly 1.0 (30 / 30)
         $this->assertEquals(1.0, $reportItem['averageDailySales30d']);
         // Days of cover = currentStock (50) / ADS 30d (1.0) = 50 days
@@ -151,6 +154,7 @@ final class ForecastingE2ETest extends TestCase
         $this->assertEquals(200, $forecastRes['status'], json_encode($forecastRes));
         $this->assertMatchesRegularExpression('/success/i', $forecastRes['body']['message']);
         
+
         $forecast = $forecastRes['body']['forecast'];
         $this->assertEquals($sku, $forecast['sku']);
         $this->assertEquals($locationId, $forecast['locationId']);
@@ -164,6 +168,38 @@ final class ForecastingE2ETest extends TestCase
         $reportItem2 = $reportRes2['body'][0];
         $this->assertEquals(18, $reportItem2['forecastedDemand30d']);
         $this->assertEquals(0.85, $reportItem2['confidenceLevel']);
+    }
+
+    public function testSeasonalForecasting(): void
+    {
+
+        $this->assertEquals(200, $receiveRes['status']);
+
+        $now = new \DateTime();
+        $nowStr = $now->format('Y-m-d H:i:s');
+
+        $sameMonthLastYear = (new \DateTime())->modify('-364 days');
+        $sameMonthLastYearStr = $sameMonthLastYear->format('Y-m-d H:i:s');
+
+        $diffMonthLastYear = (new \DateTime())->modify('-300 days');
+        $diffMonthLastYearStr = $diffMonthLastYear->format('Y-m-d H:i:s');
+
+        $recentSaleStr = (new \DateTime())->modify('-5 days')->format('Y-m-d H:i:s');
+
+                'reference_id' => 'rec-1',
+                'occurred_at' => $recentSaleStr,
+                'quantity' => -30,
+                'reference_id' => 'rec-2',
+                'occurred_at' => $sameMonthLastYearStr,
+                'reference_id' => 'rec-3',
+                'occurred_at' => $diffMonthLastYearStr,
+
+            'forecastDays' => 30,
+            'trendMultiplier' => 1.0
+
+
+        $this->assertGreaterThan(10, $forecast['forecastedQuantity']);
+        $this->assertEquals(0.90, $forecast['confidenceLevel']);
     }
 
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
@@ -184,6 +220,7 @@ final class ForecastingE2ETest extends TestCase
         $context = stream_context_create($options);
         $result = @file_get_contents($url, false, $context);
         
+
         $statusCode = 500;
         if (isset($http_response_header) && isset($http_response_header[0])) {
             preg_match('{HTTP\/\S*\s(\d{3})}', $http_response_header[0], $match);
@@ -308,6 +345,16 @@ final class ForecastingE2ETest extends TestCase
         
         $this->assertGreaterThan(10, $forecast['forecastedQuantity']);
         $this->assertEquals(0.90, $forecast['confidenceLevel']);
+    {
+
+
+        
+
+
+
+
+
+        
     }
 
     {

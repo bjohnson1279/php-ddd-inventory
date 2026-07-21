@@ -15,7 +15,7 @@ class JournalEntryTest extends TestCase
     public function testBalancedEntryPassesValidation(): void
     {
         $entry = new JournalEntry('e1', 't1', new \DateTimeImmutable(), 'Test Sale', 'ref-1', AccountingMethod::Accrual);
-        
+
         // Debit AR 100.00
         $entry->addLine(AccountCode::accountsReceivable(), 10000, DebitCredit::Debit, 'Customer owes money');
         // Credit Revenue 100.00
@@ -40,7 +40,7 @@ class JournalEntryTest extends TestCase
     public function testNegativeAmountThrowsException(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        
+
         $entry = new JournalEntry('e3', 't1', new \DateTimeImmutable(), 'Invalid Line', null, AccountingMethod::Accrual);
         $entry->addLine(AccountCode::cash(), -500, DebitCredit::Debit);
     }
@@ -48,7 +48,7 @@ class JournalEntryTest extends TestCase
     public function testZeroAmountThrowsException(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        
+
         $entry = new JournalEntry('e4', 't1', new \DateTimeImmutable(), 'Invalid Line', null, AccountingMethod::Accrual);
         $entry->addLine(AccountCode::cash(), 0, DebitCredit::Debit);
     }

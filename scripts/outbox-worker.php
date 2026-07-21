@@ -43,9 +43,9 @@ do {
                 $conf->set('metadata.broker.list', $kafkaUrl);
                 $producer = new \RdKafka\Producer($conf);
                 $topic = $producer->newTopic('inventory-events');
-                
+
                 $tenantId = function_exists('tenantId') ? tenantId() : 'system';
-                
+
                 $kafkaPayload = [
                     'type' => $name,
                     'payload' => array_merge($payloadData, [

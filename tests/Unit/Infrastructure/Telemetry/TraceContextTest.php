@@ -18,7 +18,7 @@ class TraceContextTest extends TestCase
     {
         $customId = 'my-custom-trace-id-999';
         TraceContext::setTraceId($customId);
-        
+
         $this->assertEquals($customId, TraceContext::getTraceId());
     }
 
@@ -26,7 +26,7 @@ class TraceContextTest extends TestCase
     {
         $first = TraceContext::getTraceId();
         $this->assertNotEmpty($first);
-        
+
         $second = TraceContext::getTraceId();
         $this->assertEquals($first, $second);
     }

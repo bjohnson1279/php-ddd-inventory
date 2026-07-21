@@ -19,7 +19,7 @@ class TransferStock
     public function execute(SKU $sku, LocationId $fromLocation, LocationId $toLocation, Quantity $quantity): void
     {
         $product = $this->productRepository->findBySku($sku);
-        
+
         if (!$product) {
             throw new Exception("Product not found with SKU: " . $sku->getValue());
         }

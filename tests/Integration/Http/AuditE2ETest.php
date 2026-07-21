@@ -127,6 +127,9 @@ final class AuditE2ETest extends TestCase
 
         // Seed ledger entry with quantity
         Capsule::table('ledger_entries')->insert([
+
+
+
             'variant_id' => $productId,
             'quantity' => 10,
             'reason' => 'opening_balance',
@@ -137,6 +140,7 @@ final class AuditE2ETest extends TestCase
 
         // Seed journal entry without mapping
         Capsule::table('journal_entries')->insert([
+
             'entry_date' => date('Y-m-d'),
             'description' => 'Test unmapped journal',
             'method' => 'accrual',

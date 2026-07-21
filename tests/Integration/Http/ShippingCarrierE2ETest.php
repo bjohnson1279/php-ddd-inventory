@@ -196,6 +196,7 @@ final class ShippingCarrierE2ETest extends TestCase
 
             'name' => 'Route Test Product',
 
+
         // Receive stock:
         // WH-EAST: 5 units
         $resEast = $this->request('POST', '/api/inventory/receive', [

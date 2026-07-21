@@ -30,6 +30,8 @@ final class ShippingCarrierE2ETest extends TestCase
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
 
+        $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8095 public/index.php > tests/Integration/Http/server_shipping.log 2>&1 & echo $!";
+        
         for ($i = 0; $i < 50; $i++) {
             $fp = @fsockopen('127.0.0.1', 8092, $errno, $errstr, 0.1);
             if ($fp) {
@@ -146,6 +148,7 @@ final class ShippingCarrierE2ETest extends TestCase
         $this->assertCount(1, $ledger);
         $this->assertStringContainsString('purchased: UPS Ground', $ledger[0]->description);
 
+        
         $lines = json_decode($ledger[0]->lines, true);
         $this->assertCount(2, $lines);
         $this->assertEquals('5400', $lines[0]['account']);
@@ -159,6 +162,9 @@ final class ShippingCarrierE2ETest extends TestCase
         $this->assertEquals(1, $outboxStatsRes['body']['totalPending']);
         $this->assertEquals('ShipmentCreatedEvent', $outboxStatsRes['body']['recentFailures'][0]['eventName'] ?? $outboxStatsRes['body']['recentFailures'] === [] ? 'ShipmentCreatedEvent' : '');
 
+        $this->assertContains($outboxStatsRes['body']['totalPending'], [0, 1]);
+        $this->assertEquals(1, $outboxStatsRes['body']['totalPending'] + $outboxStatsRes['body']['totalProcessed']);
+        
         // Let's directly check database outbox count to be sure
         $dbOutboxCount = Capsule::table('outbox_events')->count();
         $this->assertEquals(1, $dbOutboxCount);
@@ -178,6 +184,7 @@ final class ShippingCarrierE2ETest extends TestCase
         $dbOutboxCount2 = Capsule::table('outbox_events')->count();
         $this->assertEquals(2, $dbOutboxCount2);
 
+        
         $outboxEvents = Capsule::table('outbox_events')->orderBy('occurred_on', 'asc')->get()->toArray();
         $this->assertEquals('ShipmentCreatedEvent', $outboxEvents[0]->event_name);
         $this->assertEquals('ShipmentStatusUpdatedEvent', $outboxEvents[1]->event_name);
@@ -203,7 +210,7 @@ final class ShippingCarrierE2ETest extends TestCase
             'department' => 'Logistics',
             'reorder_threshold' => 10,
             'version_id' => 1
-        ]);
+
 
         // Receive stock:
         // WH-EAST: 5 units
@@ -275,6 +282,7 @@ final class ShippingCarrierE2ETest extends TestCase
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
     {
         $url = 'http://127.0.0.1:8092' . $path;
+        $url = 'http://127.0.0.1:8095' . $path;
         $options = [
             'http' => [
                 'header'        => "Content-Type: application/json\r\n",
@@ -291,6 +299,7 @@ final class ShippingCarrierE2ETest extends TestCase
         $context = stream_context_create($options);
         $result = @file_get_contents($url, false, $context);
 
+        
         $statusCode = 500;
         if (isset($http_response_header) && isset($http_response_header[0])) {
             preg_match('{HTTP\/\S*\s(\d{3})}', $http_response_header[0], $match);
@@ -302,5 +311,118 @@ final class ShippingCarrierE2ETest extends TestCase
             'status' => $statusCode,
             'body'   => (json_last_error() === JSON_ERROR_NONE) ? $decoded : $result
         ];
+    }
+}
+
+
+
+
+
+{
+    private static $serverProcess = null;
+
+        public static function setUpBeforeClass(): void
+    {
+        $baseDir = realpath(__DIR__ . '/../../..');
+        $dbPath = $baseDir . '/storage/data/test_shippingcarriere2etest.sqlite';
+        if (!file_exists($dbPath)) {
+            @mkdir(dirname($dbPath), 0777, true);
+            @touch($dbPath);
+        }
+        $extDir = 'C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext';
+        $phpExec = PHP_BINARY . ' -d extension_dir="C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext" -d extension=pdo -d extension=mbstring -d extension=pdo_sqlite';
+        $cmd = $phpExec . ' -S 127.0.0.1:8096 public/index.php';
+        
+        $descriptors = [
+            0 => ["pipe", "r"],
+            1 => ["file", __DIR__ . '/server_shippingcarriere2etest.log', "a"],
+            2 => ["file", __DIR__ . '/server_shippingcarriere2etest.log', "a"],
+        
+        $env = array_merge($_ENV, [
+            'DB_CONNECTION' => 'sqlite',
+            'DB_DATABASE' => $dbPath,
+            'APP_ENV' => 'testing',
+        
+                putenv("DB_DATABASE={$dbPath}");
+        $_ENV['DB_DATABASE'] = $dbPath;
+        $_SERVER['DB_DATABASE'] = $dbPath;
+        
+        $capsule = new \Illuminate\Database\Capsule\Manager();
+        $capsule->addConnection([
+            'driver'   => 'sqlite',
+            'database' => $dbPath,
+            'prefix'   => '',
+        $capsule->setAsGlobal();
+        $capsule->bootEloquent();
+        
+        require_once __DIR__ . '/../../../src/Infrastructure/Persistence/sqlite_setup.php';
+        \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
+
+        self::$serverProcess = proc_open($cmd, $descriptors, $pipes, $baseDir, $env);
+        
+        // Wait for server to bind
+            }
+            usleep(50000); // 50ms
+        }
+    }
+
+        public static function tearDownAfterClass(): void
+    {
+        if (self::$serverProcess && is_resource(self::$serverProcess)) {
+            proc_terminate(self::$serverProcess);
+            proc_close(self::$serverProcess);
+            self::$serverProcess = null;
+        }
+    }
+
+    {
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+        
+
+        
+
+
+
+        
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+            }
+        }
+
+    }
+
+    {
+        $url = 'http://127.0.0.1:8096' . $path;
+
+        }
+
+        
+        }
+
     }
 }

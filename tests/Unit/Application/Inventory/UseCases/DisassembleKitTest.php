@@ -47,6 +47,7 @@ class DisassembleKitTest extends TestCase
     {
         $this->productRepository->expects($this->never())->method('save');
         $this->ledgerRepository->expects($this->never())->method('appendAll');
+        $this->ledgerRepository->expects($this->never())->method('append');
         $this->costLayerRepository->expects($this->never())->method('saveBatch');
         $this->costLayerRepository->expects($this->never())->method('save');
         $this->journalService->expects($this->never())->method('onKitDisassembly');
@@ -85,6 +86,9 @@ class DisassembleKitTest extends TestCase
             'actorId' => 'actor-1',
             'referenceId' => 'ref-1'
         ]);
+
+
+
     }
 
     public function testExecuteThrowsExceptionWhenKitProductNotFound(): void
@@ -110,6 +114,7 @@ class DisassembleKitTest extends TestCase
             'actorId' => 'actor-1',
             'referenceId' => 'ref-1'
         ]);
+
     }
 
     public function testExecuteThrowsExceptionWhenInsufficientStock(): void
@@ -121,6 +126,7 @@ class DisassembleKitTest extends TestCase
         $this->journalService->expects($this->never())->method('onKitDisassembly');
 
         $kit = new Kit('kit-id', 'KIT-1', 'Test Kit');
+
 
         $kitProduct = Product::create(
             'prod_kit_1',
@@ -146,6 +152,9 @@ class DisassembleKitTest extends TestCase
             'actorId' => 'actor-1',
             'referenceId' => 'ref-1'
         ]);
+
+
+
     }
 
     public function testExecuteSuccessfullyDisassemblesKit(): void
@@ -174,6 +183,7 @@ class DisassembleKitTest extends TestCase
 
         $this->kitRepository->method('findBySku')->willReturn($kit);
 
+
         $this->productRepository->method('findBySku')
             ->with($this->callback(function (SKU $sku) use ($expectedSku) {
                 return $sku->getValue() === $expectedSku;
@@ -186,7 +196,7 @@ class DisassembleKitTest extends TestCase
 
         $this->productRepository->method('findByIds')->willReturnMap([
             [['comp-1'], ['comp-1' => $compProduct]]
-        ]);
+
 
         $this->ledgerRepository->method('currentQuantity')->willReturn(5);
 
@@ -197,6 +207,10 @@ class DisassembleKitTest extends TestCase
             ['prod_kit_1', 'received_at ASC', [$kitLayer]],
             ['comp-1', 'received_at ASC', [$compLayer]]
         ]);
+            ['prod_kit_1', 'received_at ASC', [$kitLayer]]
+
+        $this->costLayerRepository->method('getActiveLayersByVariantIds')->willReturnMap([
+            [['comp-1'], 'received_at ASC', ['comp-1' => [$compLayer]]]
 
         $this->costLayerRepository->expects($this->atLeastOnce())->method('saveBatch');
 
@@ -225,7 +239,13 @@ class DisassembleKitTest extends TestCase
                     if ($entry->metadata['locationId'] !== 'LOC-1') return false;
                 }
                 return true;
-            }));
+
+        $this->ledgerRepository->expects($this->exactly(2))
+            ->method('append')
+            ->with($this->callback(function ($entry) {
+                return $entry->actorId === 'actor-1'
+                    && $entry->referenceId === 'ref-1'
+                    && $entry->metadata['locationId'] === 'LOC-1';
 
         $this->journalService->expects($this->once())
             ->method('onKitDisassembly')
@@ -270,12 +290,16 @@ class DisassembleKitTest extends TestCase
             }))
             ->willReturn($kitProduct);
 
+
+
+
         $this->productRepository->method('findById')->willReturn(null);
         $this->productRepository->method('findByIds')->willReturn([]);
 
         $this->ledgerRepository->method('currentQuantity')->willReturn(5);
 
         $kitLayer = new InventoryCostLayer('layer-1', 'prod_kit_1', 'tenant-1', 5, 2000, new \DateTimeImmutable(), 'ref-1');
+
 
         $this->costLayerRepository->method('getActiveLayers')->willReturnCallback(function($variantId) use ($kitLayer) {
             if ($variantId === 'prod_kit_1') {
@@ -295,6 +319,9 @@ class DisassembleKitTest extends TestCase
             'actorId' => 'actor-1',
             'referenceId' => 'ref-1'
         ]);
+        $this->costLayerRepository->method('getActiveLayersByVariantIds')->willReturn([]);
+
+
     }
 
     public function testExecuteFallsBackToDefaultCostWhenGetActiveLayersThrowsException(): void
@@ -317,9 +344,7 @@ class DisassembleKitTest extends TestCase
             new SKU('COMP-1'),
             'Test Component 1',
             new Department('PARTS'),
-            new LocationId('LOC-1'),
             new Quantity(10)
-        );
 
         $this->kitRepository->method('findBySku')->willReturn($kit);
 
@@ -335,7 +360,6 @@ class DisassembleKitTest extends TestCase
 
         $this->productRepository->method('findByIds')->willReturnMap([
             [['comp-1'], ['comp-1' => $compProduct]]
-        ]);
 
         $this->ledgerRepository->method('currentQuantity')->willReturn(5);
 
@@ -347,6 +371,18 @@ class DisassembleKitTest extends TestCase
             }
             throw new \Exception("Database error");
         });
+
+
+
+
+
+
+
+
+
+            }
+
+        $this->costLayerRepository->method('getActiveLayersByVariantIds')->willReturnCallback(function($variantIds) {
 
         $this->costLayerRepository->expects($this->once())->method('save')->with($this->callback(function (InventoryCostLayer $layer) {
             return $layer->unitCostCents === 1000;
@@ -392,6 +428,11 @@ class DisassembleKitTest extends TestCase
 
         $this->ledgerRepository->method('currentQuantity')->willReturn(5);
 
+
+
+
+
+
         // Simulation: Get active layers returns insufficient or empty array causing DomainException in CostLayerService
         $this->costLayerRepository->method('getActiveLayers')->willReturn([]);
 
@@ -428,9 +469,7 @@ class DisassembleKitTest extends TestCase
             new SKU('COMP-1'),
             'Test Component 1',
             new Department('PARTS'),
-            new LocationId('LOC-1'),
             new Quantity(10)
-        );
 
         $this->kitRepository->method('findBySku')->willReturn($kit);
 
@@ -446,7 +485,6 @@ class DisassembleKitTest extends TestCase
 
         $this->productRepository->method('findByIds')->willReturnMap([
             [['comp-1'], ['comp-1' => $compProduct]]
-        ]);
 
         $this->ledgerRepository->method('currentQuantity')->willReturn(5);
 
@@ -473,6 +511,128 @@ class DisassembleKitTest extends TestCase
             'quantity' => 1,
             'actorId' => 'actor-1',
             'referenceId' => 'ref-1'
-        ]);
+
+
+
+
+
+
+
+
+
+
+            }
+
+
+
+    }
+}
+
+
+
+{
+
+    {
+
+    }
+
+    {
+
+
+    }
+
+    {
+
+
+
+    }
+
+    {
+
+
+
+    }
+
+    {
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+            ['prod_kit_1', 'received_at ASC', [$kitLayer]],
+            ['comp-1', 'received_at ASC', [$compLayer]]
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+            }
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+            }
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+            }
+
+
     }
 }

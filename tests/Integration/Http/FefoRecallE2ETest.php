@@ -67,7 +67,6 @@ final class FefoRecallE2ETest extends TestCase
             'tenant_id' => $this->tenantId,
             'email'     => $this->email,
             'password'  => $this->password,
-        ]);
 
         $this->assertEquals(200, $loginRes['status']);
         $this->token = $loginRes['body']['token'];
@@ -86,7 +85,6 @@ final class FefoRecallE2ETest extends TestCase
             'description' => 'Test',
             'department' => 'GEN',
             'created_at' => date('Y-m-d H:i:s'),
-        ]);
 
         DB::table('catalog_variants')->insert([
             'id' => $productId, // in this app variant ID is often product ID or similar, but SKU is unique
@@ -94,8 +92,6 @@ final class FefoRecallE2ETest extends TestCase
             'sku' => $sku,
             'attributes' => '[]',
             'price' => 15.0,
-            'created_at' => date('Y-m-d H:i:s'),
-        ]);
 
         // Seed domain product and location
         DB::table('products')->insert([
@@ -107,7 +103,6 @@ final class FefoRecallE2ETest extends TestCase
             'reorder_threshold' => 5,
             'created_at'        => date('Y-m-d H:i:s'),
             'updated_at'        => date('Y-m-d H:i:s')
-        ]);
 
         DB::table('product_locations')->insert([
             'product_id'        => $productId,
@@ -115,8 +110,6 @@ final class FefoRecallE2ETest extends TestCase
             'stock_quantity'    => 0,
             'open_box_quantity' => 0,
             'damaged_quantity'  => 0,
-            'updated_at'        => date('Y-m-d H:i:s')
-        ]);
 
         // 2. Receive Stock for Lot 1 (Expires later)
         $receiveLot1 = $this->request('POST', '/api/inventory/receive', [
@@ -131,13 +124,10 @@ final class FefoRecallE2ETest extends TestCase
 
         // 3. Receive Stock for Lot 2 (Expires earlier)
         $receiveLot2 = $this->request('POST', '/api/inventory/receive', [
-            'sku'         => $sku,
             'quantity'    => 20,
-            'location_id' => 'LOC-INT',
             'lot_number'  => 'LOT-EARLY-02',
             'expiration_date' => '2026-06-30 23:59:59',
             'unit_cost_cents' => 1200
-        ], $this->token);
         $this->assertEquals(200, $receiveLot2['status'], json_encode($receiveLot2));
 
         // 4. Request FEFO picking suggestions
@@ -153,11 +143,8 @@ final class FefoRecallE2ETest extends TestCase
 
         // 5. Dispatch Stock from Lot 2 (LOT-EARLY-02)
         $dispatchRes = $this->request('POST', '/api/inventory/dispatch', [
-            'sku'         => $sku,
             'quantity'    => 15,
-            'location_id' => 'LOC-INT',
             'lot_number'  => 'LOT-EARLY-02'
-        ], $this->token);
         $this->assertEquals(200, $dispatchRes['status'], json_encode($dispatchRes));
 
         // 6. Trace Product Recall for LOT-EARLY-02
@@ -199,6 +186,146 @@ final class FefoRecallE2ETest extends TestCase
         return [
             'status' => $statusCode,
             'body'   => json_decode((string)$result, true) ?: $result
-        ];
+    }
+}
+
+
+
+
+
+{
+
+    {
+        $command = "php -S 127.0.0.1:8096 public/index.php > tests/Integration/Http/server_fefo.log 2>&1 & echo $!";
+        
+        
+            }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+    {
+        $url = 'http://127.0.0.1:8096' . $path;
+
+        }
+
+        
+        }
+
+    }
+}
+
+
+
+
+
+{
+    private static $serverProcess = null;
+
+        public static function setUpBeforeClass(): void
+    {
+        $baseDir = realpath(__DIR__ . '/../../..');
+        $dbPath = $baseDir . '/storage/data/test_feforecalle2etest.sqlite';
+        if (!file_exists($dbPath)) {
+            @mkdir(dirname($dbPath), 0777, true);
+            @touch($dbPath);
+        }
+        $extDir = 'C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext';
+        $phpExec = PHP_BINARY . ' -d extension_dir="C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext" -d extension=pdo -d extension=mbstring -d extension=pdo_sqlite';
+        $cmd = $phpExec . ' -S 127.0.0.1:8093 public/index.php';
+        
+        $descriptors = [
+            0 => ["pipe", "r"],
+            1 => ["file", __DIR__ . '/server_feforecalle2etest.log', "a"],
+            2 => ["file", __DIR__ . '/server_feforecalle2etest.log', "a"],
+        
+        $env = array_merge($_ENV, [
+            'DB_CONNECTION' => 'sqlite',
+            'DB_DATABASE' => $dbPath,
+            'APP_ENV' => 'testing',
+        
+                putenv("DB_DATABASE={$dbPath}");
+        $_ENV['DB_DATABASE'] = $dbPath;
+        $_SERVER['DB_DATABASE'] = $dbPath;
+        
+        $capsule = new \Illuminate\Database\Capsule\Manager();
+        $capsule->addConnection([
+            'driver'   => 'sqlite',
+            'database' => $dbPath,
+            'prefix'   => '',
+        $capsule->setAsGlobal();
+        $capsule->bootEloquent();
+        
+        require_once __DIR__ . '/../../../src/Infrastructure/Persistence/sqlite_setup.php';
+        \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
+
+        self::$serverProcess = proc_open($cmd, $descriptors, $pipes, $baseDir, $env);
+        
+            }
+        }
+    }
+
+        public static function tearDownAfterClass(): void
+    {
+        if (self::$serverProcess && is_resource(self::$serverProcess)) {
+            proc_terminate(self::$serverProcess);
+            proc_close(self::$serverProcess);
+            self::$serverProcess = null;
+        }
+    }
+
+    {
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+    {
+        $url = 'http://127.0.0.1:8093' . $path;
+
+        }
+
+        
+        }
+
     }
 }

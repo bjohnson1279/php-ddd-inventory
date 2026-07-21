@@ -12,38 +12,71 @@ require_once __DIR__ . '/../bootstrap.php';
 /** @group integration */
 final class ShippingCarrierE2ETest extends TestCase
 {
-    private static ?int $pid = null;
+    private static $serverProcess = null;
     private string $tenantId;
     private string $email;
     private string $password;
     private ?string $token = null;
 
-    public static function setUpBeforeClass(): void
+        public static function setUpBeforeClass(): void
     {
-        $output = [];
-        $dbConn = getenv('DB_CONNECTION') ?: 'pgsql';
-        $dbDb = getenv('DB_DATABASE') ?: '';
-        $dbHost = getenv('DB_HOST') ?: '';
-        $dbUser = getenv('DB_USERNAME') ?: '';
-        $dbPass = getenv('DB_PASSWORD') ?: '';
-        $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8092 public/index.php > tests/Integration/Http/server_shipping.log 2>&1 & echo $!";
-        exec($command, $output);
-        self::$pid = (int)($output[0] ?? 0);
+        $baseDir = realpath(__DIR__ . '/../../..');
+        $dbPath = $baseDir . '/storage/data/test_shippingcarriere2etest.sqlite';
+        if (!file_exists($dbPath)) {
+            @mkdir(dirname($dbPath), 0777, true);
+            @touch($dbPath);
+        }
+        $extDir = 'C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext';
+        $phpExec = PHP_BINARY . ' -d extension_dir="C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext" -d extension=pdo -d extension=mbstring -d extension=pdo_sqlite';
+        $cmd = $phpExec . ' -S 127.0.0.1:8096 public/index.php';
         
+        $descriptors = [
+            0 => ["pipe", "r"],
+            1 => ["file", __DIR__ . '/server_shippingcarriere2etest.log', "a"],
+            2 => ["file", __DIR__ . '/server_shippingcarriere2etest.log', "a"],
+        ];
+        
+        $env = array_merge($_ENV, [
+            'DB_CONNECTION' => 'sqlite',
+            'DB_DATABASE' => $dbPath,
+            'APP_ENV' => 'testing',
+        ]);
+        
+                putenv("DB_DATABASE={$dbPath}");
+        $_ENV['DB_DATABASE'] = $dbPath;
+        $_SERVER['DB_DATABASE'] = $dbPath;
+        
+        $capsule = new \Illuminate\Database\Capsule\Manager();
+        $capsule->addConnection([
+            'driver'   => 'sqlite',
+            'database' => $dbPath,
+            'prefix'   => '',
+        ]);
+        $capsule->setAsGlobal();
+        $capsule->bootEloquent();
+        
+        require_once __DIR__ . '/../../../src/Infrastructure/Persistence/sqlite_setup.php';
+        \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
+
+        self::$serverProcess = proc_open($cmd, $descriptors, $pipes, $baseDir, $env);
+        
+        // Wait for server to bind
         for ($i = 0; $i < 50; $i++) {
             $fp = @fsockopen('127.0.0.1', 8092, $errno, $errstr, 0.1);
             if ($fp) {
                 fclose($fp);
                 break;
             }
-            usleep(50000);
+            usleep(50000); // 50ms
         }
     }
 
-    public static function tearDownAfterClass(): void
+        public static function tearDownAfterClass(): void
     {
-        if (self::$pid) {
-            exec("kill " . self::$pid . " > /dev/null 2>&1");
+        if (self::$serverProcess && is_resource(self::$serverProcess)) {
+            proc_terminate(self::$serverProcess);
+            proc_close(self::$serverProcess);
+            self::$serverProcess = null;
         }
     }
 
@@ -275,7 +308,7 @@ final class ShippingCarrierE2ETest extends TestCase
 
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
     {
-        $url = 'http://127.0.0.1:8092' . $path;
+        $url = 'http://127.0.0.1:8096' . $path;
         $options = [
             'http' => [
                 'header'        => "Content-Type: application/json\r\n",

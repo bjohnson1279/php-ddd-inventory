@@ -67,7 +67,7 @@ class EventDispatcher implements EventDispatcherInterface
     private function queueListener(object $listenerObj, object $event): void
     {
         $tenantId = function_exists('tenantId') ? tenantId() : 'system';
-        
+
         try {
             \Illuminate\Database\Capsule\Manager::table('queued_jobs')->insert([
                 'id'             => \Ramsey\Uuid\Uuid::uuid4()->toString(),

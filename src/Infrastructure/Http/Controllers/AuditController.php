@@ -38,7 +38,7 @@ class AuditController
         try {
             $status = $request->query('status');
             $discrepancies = $this->repo->findAll($tenantId, $status);
-            
+
             $formatted = [];
             foreach ($discrepancies as $d) {
                 $formatted[] = [

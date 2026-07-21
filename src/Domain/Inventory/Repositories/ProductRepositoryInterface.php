@@ -8,9 +8,9 @@ use InventoryApp\Domain\Inventory\ValueObjects\SKU;
 interface ProductRepositoryInterface
 {
     public function findById(string $id): ?Product;
-    
+
     public function findBySku(SKU $sku): ?Product;
-    
+
     /**
      * @param SKU[] $skus
      * @return array<string, Product> Array of products indexed by SKU value
@@ -24,7 +24,7 @@ interface ProductRepositoryInterface
     public function findByIds(array $ids): array;
 
     public function save(Product $product): void;
-    
+
     /**
      * @param Product[] $products
      */

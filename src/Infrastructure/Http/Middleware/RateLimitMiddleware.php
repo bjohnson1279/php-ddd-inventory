@@ -48,6 +48,7 @@ class RateLimitMiddleware
             return $next($request);
         }
         $cacheFile = sys_get_temp_dir() . '/rate_limit_' . md5($ip) . '.json';
+        $cacheFile = sys_get_temp_dir() . '/rate_limit_' . hash('sha256', $ip) . '.json';
 
         $now = time();
         $requests = [];

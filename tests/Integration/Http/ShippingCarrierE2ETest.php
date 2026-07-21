@@ -160,6 +160,7 @@ final class ShippingCarrierE2ETest extends TestCase
 
         $this->assertContains($outboxStatsRes['body']['totalPending'], [0, 1]);
         $this->assertEquals(1, $outboxStatsRes['body']['totalPending'] + $outboxStatsRes['body']['totalProcessed']);
+
         
         // Let's directly check database outbox count to be sure
         $dbOutboxCount = Capsule::table('outbox_events')->count();

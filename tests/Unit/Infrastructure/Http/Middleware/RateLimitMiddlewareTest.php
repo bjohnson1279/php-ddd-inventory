@@ -16,6 +16,7 @@ class RateLimitMiddlewareTest extends TestCase
         // clear old cache
         $ip = '10.0.0.' . rand(1, 255); // Use something other than 127.0.0.1 to avoid the PHPUNIT_COMPOSER_INSTALL bypass
         $cacheFile = $this->tempDir . '/rate_limit_' . md5($ip) . '.json';
+        $cacheFile = $this->tempDir . '/rate_limit_' . hash('sha256', $ip) . '.json';
         if (file_exists($cacheFile)) {
             unlink($cacheFile);
         }
@@ -55,6 +56,7 @@ class RateLimitMiddlewareTest extends TestCase
         $_SERVER['HTTP_X_FORWARDED_FOR'] = '192.168.1.5, 10.0.0.2'; // Should be ignored
 
         $cacheFile = $this->tempDir . '/rate_limit_' . md5($untrustedProxyIp) . '.json';
+        $cacheFile = $this->tempDir . '/rate_limit_' . hash('sha256', $untrustedProxyIp) . '.json';
         if (file_exists($cacheFile)) {
             unlink($cacheFile);
         }
@@ -85,6 +87,7 @@ class RateLimitMiddlewareTest extends TestCase
         $_SERVER['HTTP_X_FORWARDED_FOR'] = $clientIp . ', 192.168.1.1'; // 192.168.1.1 is also trusted below
 
         $cacheFile = $this->tempDir . '/rate_limit_' . md5($clientIp) . '.json';
+        $cacheFile = $this->tempDir . '/rate_limit_' . hash('sha256', $clientIp) . '.json';
         if (file_exists($cacheFile)) {
             unlink($cacheFile);
         }

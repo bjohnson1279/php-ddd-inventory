@@ -54,6 +54,7 @@ final class ApiEndpointsTest extends TestCase
         DB::table('users')->delete();
         DB::table('user_roles')->delete();
         DB::table('tenants')->where('id', '!=', 'test-tenant')->delete();
+        DB::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
         \Illuminate\Database\Capsule\Manager::table('tenants')->insertOrIgnore([['id' => 'test-tenant', 'name' => 'Test Tenant']]);
                 $suffix = bin2hex(random_bytes(4));
         $this->tenantId = 'tenant-' . $suffix;
@@ -522,6 +523,13 @@ final class ApiEndpointsTest extends TestCase
         $this->assertCount(1, $listRes2['body']['notifications']);
         $notif = $listRes2['body']['notifications'][0];
         $this->assertEquals('Stock Received', $notif['title']);
+        $this->assertCount(2, $listRes2['body']['notifications']);
+        $titles = array_column($listRes2['body']['notifications'], 'title');
+        $this->assertContains('Stock Received', $titles);
+        $this->assertContains('Stock Level Updated', $titles);
+        $notif = $listRes2['body']['notifications'][0]['title'] === 'Stock Received'
+            ? $listRes2['body']['notifications'][0]
+            : $listRes2['body']['notifications'][1];
         $this->assertFalse((bool)$notif['is_read']);
 
         // 4. Test SSE subscribe endpoint
@@ -538,6 +546,13 @@ final class ApiEndpointsTest extends TestCase
         // Check is_read is true
         $listRes3 = $this->request('GET', '/api/notifications', [], $this->token);
         $this->assertTrue((bool)$listRes3['body']['notifications'][0]['is_read']);
+        foreach ($listRes3['body']['notifications'] as $n) {
+            if ($n['id'] === $notif['id']) {
+                $this->assertTrue((bool)$n['is_read']);
+                $found = true;
+            }
+        }
+        $this->assertTrue($found);
 
         // 6. Mark all as read
         $readAllRes = $this->request('POST', '/api/notifications/read-all', [], $this->token);
@@ -718,6 +733,215 @@ final class ApiEndpointsTest extends TestCase
 
 
 {
+    private static $serverProcess = null;
+
+        public static function setUpBeforeClass(): void
+    {
+        $baseDir = realpath(__DIR__ . '/../../..');
+        $dbPath = $baseDir . '/storage/data/test_apiendpointstest.sqlite';
+        if (!file_exists($dbPath)) {
+            @mkdir(dirname($dbPath), 0777, true);
+            @touch($dbPath);
+        }
+        $extDir = 'C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext';
+        $phpExec = PHP_BINARY . ' -d extension_dir="C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext" -d extension=pdo -d extension=mbstring -d extension=pdo_sqlite';
+        $cmd = $phpExec . ' -S 127.0.0.1:8085 public/index.php';
+        
+        $descriptors = [
+            0 => ["pipe", "r"],
+            1 => ["file", __DIR__ . '/server_apiendpointstest.log', "a"],
+            2 => ["file", __DIR__ . '/server_apiendpointstest.log', "a"],
+        
+        $env = array_merge($_ENV, [
+            'DB_CONNECTION' => 'sqlite',
+            'DB_DATABASE' => $dbPath,
+            'APP_ENV' => 'testing',
+            'SHOPIFY_WEBHOOK_SECRET' => 'test-secret-env',
+        
+                putenv("DB_DATABASE={$dbPath}");
+        $_ENV['DB_DATABASE'] = $dbPath;
+        $_SERVER['DB_DATABASE'] = $dbPath;
+        
+        $capsule = new \Illuminate\Database\Capsule\Manager();
+        $capsule->addConnection([
+            'driver'   => 'sqlite',
+            'database' => $dbPath,
+            'prefix'   => '',
+        $capsule->setAsGlobal();
+        $capsule->bootEloquent();
+        
+        require_once __DIR__ . '/../../../src/Infrastructure/Persistence/sqlite_setup.php';
+        \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
+
+        self::$serverProcess = proc_open($cmd, $descriptors, $pipes, $baseDir, $env);
+        
+            }
+        }
+    }
+
+        public static function tearDownAfterClass(): void
+    {
+        if (self::$serverProcess && is_resource(self::$serverProcess)) {
+            proc_terminate(self::$serverProcess);
+            proc_close(self::$serverProcess);
+            self::$serverProcess = null;
+        }
+    }
+
+    {
+
+
+
+
+    }
+
+    {
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+        
+                }
+            }
+        }
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+    }
+
+    {
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+        \Illuminate\Database\Capsule\Manager::table('shopify_location_mappings')->insertOrIgnore([
+
+
+
+        
+
+
+
+        
+        
+
+
+
+
+
+        
+    }
+
+    {
+
+
+
+
+
+
+
+
+            }
+        }
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+
+        }
+    }
+
+    {
+
+        }
+
+        
+        }
+
+    }
+}
+
+
+
+
+
+{
 
     {
 
@@ -854,6 +1078,11 @@ final class ApiEndpointsTest extends TestCase
             }
         }
         $this->assertTrue($found);
+
+
+
+            }
+        }
 
     }
 

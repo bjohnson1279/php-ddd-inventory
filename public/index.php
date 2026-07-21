@@ -122,6 +122,7 @@ $registerProductUseCase = new \InventoryApp\Application\Inventory\UseCases\Regis
     ServiceContainer::productRepo('system'),
     $dispatcher
 $createInventoryListener = new CreateInventoryItemOnVariantAdded($registerProductUseCase);
+$createInventoryListener = new CreateInventoryItemOnVariantAdded();
 $dispatcher->subscribe(VariantAddedToCatalog::class, [$createInventoryListener, 'handle']);
 
 // Register Realtime Notification Listener
@@ -1409,6 +1410,508 @@ if ($method === 'POST' && str_starts_with($uri, '/webhooks/shopify/')) {
 // ── Fallback ──────────────────────────────────────────────────────────────────
 http_response_code(200);
 echo json_encode(['message' => 'DDD Inventory API is running', 'uri' => $uri]);
+
+
+    }
+    @file_put_contents(__DIR__ . '/../storage/logs/server_error.log', '[UNHANDLED] ' . get_class($e) . ': ' . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine() . "\n" . $e->getTraceAsString() . "\n", FILE_APPEND);
+    echo json_encode(['error' => 'Internal server error', 'exception' => get_class($e), 'message' => $e->getMessage()]);
+    return;
+
+    }
+
+
+$envDriver = getenv('DB_CONNECTION');
+
+if ($driver === 'pgsql') {
+    if (!extension_loaded('pdo_pgsql')) {
+        $driver = 'sqlite';
+    } else {
+        $pgHost = getenv('DB_HOST') ?: 'db';
+        $pgPort = (int)(getenv('DB_PORT') ?: 5432);
+        $fp = @fsockopen($pgHost, $pgPort, $errno, $errstr, 0.1);
+        if (!$fp) {
+            $driver = 'sqlite';
+            fclose($fp);
+        }
+    }
+}
+
+    putenv('DB_CONNECTION=sqlite');
+    $_ENV['DB_CONNECTION'] = 'sqlite';
+    $_SERVER['DB_CONNECTION'] = 'sqlite';
+}
+
+
+    }
+        'password'  => getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '',
+}
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{
+
+    {
+    }
+
+    {
+        }
+    }
+
+    {
+
+        }
+
+        }
+
+        }
+
+        }
+    }
+
+    {
+        }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+    }
+}
+
+
+{
+
+    }
+
+        return;
+    }
+
+
+    }
+
+
+        }
+    }
+}
+
+{
+}
+
+
+
+
+    }
+    }
+
+
+
+    }
+
+
+        }
+
+
+            }
+        }
+
+        }
+
+    }
+}
+
+}
+
+}
+
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+
+}
+
+        
+        
+        }
+        
+            }
+
+
+
+            }
+
+            }
+        }
+
+}
+
+        }
+
+            
+        
+        }
+    }
+}
+
+
+        }
+
+
+
+            }
+        }
+
+}
+
+
+}
+
+        }
+
+
+        }
+
+        }
+    }
+}
+
+        }
+
+
+        }
+    }
+}
+
+        }
+
+
+        }
+    }
+}
+
+        }
+
+        }
+
+        }
+    }
+}
+
+        }
+
+        }
+    }
+}
+
+        }
+
+        }
+    }
+}
+
+        }
+
+
+        }
+    }
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+}
+
+}
+
+}
+
+}
+
+        
+        }
+        
+            }
+        }
+        
+        }
+    }
+}
+
+
+}
+
+}
+
+}
+
+}
+
+}
+
+
+}
+
+        }
+    }
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+        }
+    }
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+        
+        }
+        
+            }
+        }
+        
+        }
+    }
+}
+
+}
+
+}
+
+}
+
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+
+    }
+
+        }
+    }
+}
+
+
+    }
+
+        }
+    }
+}
+
+
+        }
+
+        }
+    }
+}
+
+
+    }
+
+        }
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+
+
+
+    }
+
+
+
+        }
+    }
+
+        }
+    }
+
+}
+
 
 
     }

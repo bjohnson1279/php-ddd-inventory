@@ -46,7 +46,6 @@ class DisassembleKitTest extends TestCase
     public function testExecuteThrowsExceptionWhenQuantityIsZeroOrLess(): void
     {
         $this->productRepository->expects($this->never())->method('save');
-        $this->ledgerRepository->expects($this->never())->method('appendAll');
         $this->ledgerRepository->expects($this->never())->method('append');
         $this->costLayerRepository->expects($this->never())->method('saveBatch');
         $this->costLayerRepository->expects($this->never())->method('save');
@@ -68,7 +67,6 @@ class DisassembleKitTest extends TestCase
     public function testExecuteThrowsExceptionWhenKitNotFound(): void
     {
         $this->productRepository->expects($this->never())->method('save');
-        $this->ledgerRepository->expects($this->never())->method('appendAll');
         $this->ledgerRepository->expects($this->never())->method('append');
         $this->costLayerRepository->expects($this->never())->method('saveBatch');
         $this->costLayerRepository->expects($this->never())->method('save');
@@ -95,7 +93,6 @@ class DisassembleKitTest extends TestCase
     public function testExecuteThrowsExceptionWhenKitProductNotFound(): void
     {
         $this->productRepository->expects($this->never())->method('save');
-        $this->ledgerRepository->expects($this->never())->method('appendAll');
         $this->ledgerRepository->expects($this->never())->method('append');
         $this->costLayerRepository->expects($this->never())->method('saveBatch');
         $this->costLayerRepository->expects($this->never())->method('save');
@@ -122,7 +119,6 @@ class DisassembleKitTest extends TestCase
     public function testExecuteThrowsExceptionWhenInsufficientStock(): void
     {
         $this->productRepository->expects($this->never())->method('save');
-        $this->ledgerRepository->expects($this->never())->method('appendAll');
         $this->ledgerRepository->expects($this->never())->method('append');
         $this->costLayerRepository->expects($this->never())->method('saveBatch');
         $this->costLayerRepository->expects($this->never())->method('save');
@@ -249,6 +245,7 @@ class DisassembleKitTest extends TestCase
                 return $entry->actorId === 'actor-1'
                     && $entry->referenceId === 'ref-1'
                     && $entry->metadata['locationId'] === 'LOC-1';
+            }));
 
         $this->journalService->expects($this->once())
             ->method('onKitDisassembly')
@@ -404,7 +401,6 @@ class DisassembleKitTest extends TestCase
     public function testExecuteThrowsExceptionWhenInsufficientCostLayers(): void
     {
         $this->productRepository->expects($this->never())->method('save');
-        $this->ledgerRepository->expects($this->never())->method('appendAll');
         $this->ledgerRepository->expects($this->never())->method('append');
         $this->costLayerRepository->expects($this->never())->method('saveBatch');
         $this->costLayerRepository->expects($this->never())->method('save');

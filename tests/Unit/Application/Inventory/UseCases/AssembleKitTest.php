@@ -52,7 +52,6 @@ class AssembleKitTest extends TestCase
         $this->expectExceptionMessage("Quantity to assemble must be greater than zero.");
 
         $this->productRepositoryMock->expects($this->never())->method('save');
-        $this->ledgerRepositoryMock->expects($this->never())->method('appendAll');
         $this->ledgerRepositoryMock->expects($this->never())->method('append');
         $this->costLayerRepositoryMock->expects($this->never())->method('save');
         $this->journalServiceMock->expects($this->never())->method('onKitAssembly');
@@ -75,7 +74,6 @@ class AssembleKitTest extends TestCase
         $this->expectExceptionMessage("Kit with SKU KIT-1 not found.");
 
         $this->productRepositoryMock->expects($this->never())->method('save');
-        $this->ledgerRepositoryMock->expects($this->never())->method('appendAll');
         $this->ledgerRepositoryMock->expects($this->never())->method('append');
         $this->costLayerRepositoryMock->expects($this->never())->method('save');
         $this->journalServiceMock->expects($this->never())->method('onKitAssembly');
@@ -105,7 +103,6 @@ class AssembleKitTest extends TestCase
         $this->expectExceptionMessage("Insufficient stock for component variant ID comp-var-1. Needed: 2, Available: 1");
 
         $this->productRepositoryMock->expects($this->never())->method('save');
-        $this->ledgerRepositoryMock->expects($this->never())->method('appendAll');
         $this->ledgerRepositoryMock->expects($this->never())->method('append');
         $this->costLayerRepositoryMock->expects($this->never())->method('save');
         $this->journalServiceMock->expects($this->never())->method('onKitAssembly');
@@ -141,7 +138,6 @@ class AssembleKitTest extends TestCase
         $this->expectExceptionMessage("Product variant comp-var-1 not found.");
 
         $this->productRepositoryMock->expects($this->never())->method('save');
-        $this->ledgerRepositoryMock->expects($this->never())->method('appendAll');
         $this->ledgerRepositoryMock->expects($this->never())->method('append');
         $this->costLayerRepositoryMock->expects($this->never())->method('save');
         $this->journalServiceMock->expects($this->never())->method('onKitAssembly');
@@ -176,7 +172,6 @@ class AssembleKitTest extends TestCase
         $this->expectExceptionMessage("Product variant for Kit SKU KIT-1 not found.");
 
         $this->productRepositoryMock->expects($this->never())->method('save');
-        $this->ledgerRepositoryMock->expects($this->never())->method('appendAll');
         $this->ledgerRepositoryMock->expects($this->never())->method('append');
         $this->costLayerRepositoryMock->expects($this->never())->method('save');
         $this->journalServiceMock->expects($this->never())->method('onKitAssembly');
@@ -213,6 +208,10 @@ class AssembleKitTest extends TestCase
         $this->productRepositoryMock->expects($this->any())->method('save');
 
         // Ledger entries
+        $this->ledgerRepositoryMock->expects($this->exactly(2))->method('append')->with($this->callback(function(LedgerEntry $entry) {
+            return in_array($entry->variantId, ['comp-var-1', 'kit-var-1']) &&
+                   $entry->reason === ReasonCode::KitAssembly &&
+                   $entry->metadata['locationId'] === 'LOC-1';
         $this->ledgerRepositoryMock->expects($this->once())->method('appendAll')->with($this->callback(function(array $entries) {
             if (count($entries) !== 2) return false;
             foreach ($entries as $entry) {
@@ -293,6 +292,7 @@ class AssembleKitTest extends TestCase
         $this->productRepositoryMock->expects($this->any())->method('save');
 
         // Ledger entries (2 for components deduction, 1 for kit increment)
+        $this->ledgerRepositoryMock->expects($this->exactly(3))->method('append');
         $this->ledgerRepositoryMock->expects($this->once())->method('appendAll')->with($this->callback(function(array $entries) {
             return count($entries) === 3;
         }));

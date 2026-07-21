@@ -88,6 +88,7 @@ class AssembleKit
         $totalCostCents = 0;
         $modifiedProducts = [];
         $ledgerEntriesToAppend = [];
+        $ledgerEntries = [];
         foreach ($componentsToConsume as $comp) {
             $breakdown = $this->costLayerService->consumeFifoLayers($comp['variantId'], $comp['needed']);
             $totalCostCents += $breakdown->totalCostCents;
@@ -99,6 +100,7 @@ class AssembleKit
 
             // Write deduction to ledger_entries
             $ledgerEntriesToAppend[] = new LedgerEntry(
+            $ledgerEntry = new LedgerEntry(
                 id: Uuid::uuid4()->toString(),
                 variantId: $comp['variantId'],
                 quantity: -$comp['needed'],
@@ -108,6 +110,7 @@ class AssembleKit
                 occurredAt: new \DateTimeImmutable(),
                 metadata: ['locationId' => $locationId]
             );
+            $ledgerEntries[] = $ledgerEntry;
         }
 
         // Save all modified products collectively (Optimized write)
@@ -137,6 +140,7 @@ class AssembleKit
 
         // 7. Write increment ledger entry for Kit variant
         $ledgerEntriesToAppend[] = new LedgerEntry(
+        $kitLedgerEntry = new LedgerEntry(
             id: Uuid::uuid4()->toString(),
             variantId: $kitProduct->getId(),
             quantity: $quantity,
@@ -147,6 +151,8 @@ class AssembleKit
             metadata: ['locationId' => $locationId]
         );
         $this->ledgerRepository->appendAll($ledgerEntriesToAppend);
+        $ledgerEntries[] = $kitLedgerEntry;
+        $this->ledgerRepository->appendAll($ledgerEntries);
 
         // 8. Write balanced double-entry Journal Entry
         $this->journalService->onKitAssembly(

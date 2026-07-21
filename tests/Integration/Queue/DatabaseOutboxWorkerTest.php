@@ -62,3 +62,23 @@ final class DatabaseOutboxWorkerTest extends TestCase
         $this->assertEquals(0, $pendingCountAfter);
     }
 }
+
+
+
+
+
+{
+    {
+        }
+
+    }
+
+    {
+
+
+
+
+
+
+    }
+}

@@ -31,6 +31,18 @@ class InMemoryLedgerRepository implements LedgerRepositoryInterface
     public function append(LedgerEntry $entry): void
     {
         $this->appendAll([$entry]);
+        $rows = $this->read();
+        $rows[] = [
+            'id' => $entry->id,
+            'variantId' => $entry->variantId,
+            'quantity' => $entry->quantity,
+            'reason' => $entry->reason->value,
+            'actorId' => $entry->actorId,
+            'referenceId' => $entry->referenceId,
+            'occurredAt' => $entry->occurredAt->format(DATE_ATOM),
+            'metadata' => $entry->metadata,
+        ];
+        $this->write($rows);
     }
 
     public function appendAll(array $entries): void
@@ -39,6 +51,8 @@ class InMemoryLedgerRepository implements LedgerRepositoryInterface
             return;
         }
         $rows = $this->read();
+
+
         foreach ($entries as $entry) {
             $rows[] = [
                 'id' => $entry->id,
@@ -51,6 +65,7 @@ class InMemoryLedgerRepository implements LedgerRepositoryInterface
                 'metadata' => $entry->metadata,
             ];
         }
+
         $this->write($rows);
     }
 

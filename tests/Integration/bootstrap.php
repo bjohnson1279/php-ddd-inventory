@@ -126,6 +126,21 @@ if ($driver !== 'sqlite') {
         ");
 
         $connection->statement("
+            CREATE TABLE IF NOT EXISTS compliance_ledgers (
+                id VARCHAR(50) PRIMARY KEY,
+                tenant_id VARCHAR(50) NOT NULL,
+                actor_id VARCHAR(50) NOT NULL,
+                event_type VARCHAR(100) NOT NULL,
+                sequence_number INTEGER NOT NULL,
+                previous_hash VARCHAR(64) NOT NULL,
+                current_hash VARCHAR(64) NOT NULL,
+                signature VARCHAR(64) NOT NULL,
+                payload TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ");
+
+        $connection->statement("
             CREATE TABLE IF NOT EXISTS outbox_events (
                 id VARCHAR(50) PRIMARY KEY,
                 event_name VARCHAR(255) NOT NULL,
@@ -154,7 +169,8 @@ if ($driver === 'sqlite') {
         'inventory_counts', 
         'ledger_entries', 
         'serialized_items', 
-        'barcodes', 
+        'barcodes',
+        'compliance_ledgers',
         'stock_onboarding_items', 
         'stock_onboardings', 
         'journal_entries', 
@@ -181,7 +197,6 @@ if ($driver === 'sqlite') {
         'reorder_policies',
         'demand_forecasts',
         'shipments',
-        'outbox_events'
         'outbox_events', 'compliance_ledgers'
         'outbox_events',
         'compliance_ledgers'
@@ -197,14 +212,18 @@ if ($driver === 'sqlite') {
     $connection->table('tenants')->where('id', '!=', 'test-tenant')->delete();
 } else {
     $connection->statement('TRUNCATE TABLE
+        catalog_products,
+        catalog_variants,
         inventory_transactions, 
         product_locations, 
+        compliance_ledgers,
         products, 
         inventory_count_items, 
         inventory_counts, 
         ledger_entries, 
         serialized_items, 
-        barcodes, 
+        barcodes,
+        compliance_ledgers,
         stock_onboarding_items, 
         stock_onboardings, 
         journal_entries, 
@@ -231,7 +250,6 @@ if ($driver === 'sqlite') {
         reorder_policies,
         demand_forecasts,
         shipments,
-        outbox_events
         outbox_events,
         compliance_ledgers
         compliance_ledgers,
@@ -240,7 +258,7 @@ if ($driver === 'sqlite') {
     RESTART IDENTITY CASCADE');
 
     // Wipe all tenants except test-tenant
-    $connection->table('tenants')->where('id', '!=', 'test-tenant')->delete();
+    $connection->table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
 }
 
 // Ensure standard locations exist
@@ -250,7 +268,10 @@ $connection->table('locations')->insertOrIgnore([
 
 // Ensure standard test tenant exists
 $connection->table('tenants')->upsert(
-    [['id' => 'test-tenant', 'name' => 'Test Tenant']],
+    [
+        ['id' => 'test-tenant', 'name' => 'Test Tenant'],
+        ['id' => 'system', 'name' => 'System Tenant']
+    ],
     ['id'],
     ['name']
 );

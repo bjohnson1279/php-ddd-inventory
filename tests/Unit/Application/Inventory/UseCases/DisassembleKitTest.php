@@ -69,6 +69,7 @@ class DisassembleKitTest extends TestCase
     {
         $this->productRepository->expects($this->never())->method('save');
         $this->ledgerRepository->expects($this->never())->method('appendAll');
+        $this->ledgerRepository->expects($this->never())->method('append');
         $this->costLayerRepository->expects($this->never())->method('saveBatch');
         $this->costLayerRepository->expects($this->never())->method('save');
         $this->journalService->expects($this->never())->method('onKitDisassembly');
@@ -95,6 +96,7 @@ class DisassembleKitTest extends TestCase
     {
         $this->productRepository->expects($this->never())->method('save');
         $this->ledgerRepository->expects($this->never())->method('appendAll');
+        $this->ledgerRepository->expects($this->never())->method('append');
         $this->costLayerRepository->expects($this->never())->method('saveBatch');
         $this->costLayerRepository->expects($this->never())->method('save');
         $this->journalService->expects($this->never())->method('onKitDisassembly');
@@ -121,6 +123,7 @@ class DisassembleKitTest extends TestCase
     {
         $this->productRepository->expects($this->never())->method('save');
         $this->ledgerRepository->expects($this->never())->method('appendAll');
+        $this->ledgerRepository->expects($this->never())->method('append');
         $this->costLayerRepository->expects($this->never())->method('saveBatch');
         $this->costLayerRepository->expects($this->never())->method('save');
         $this->journalService->expects($this->never())->method('onKitDisassembly');
@@ -402,6 +405,7 @@ class DisassembleKitTest extends TestCase
     {
         $this->productRepository->expects($this->never())->method('save');
         $this->ledgerRepository->expects($this->never())->method('appendAll');
+        $this->ledgerRepository->expects($this->never())->method('append');
         $this->costLayerRepository->expects($this->never())->method('saveBatch');
         $this->costLayerRepository->expects($this->never())->method('save');
         $this->journalService->expects($this->never())->method('onKitDisassembly');

@@ -53,6 +53,7 @@ class AssembleKitTest extends TestCase
 
         $this->productRepositoryMock->expects($this->never())->method('save');
         $this->ledgerRepositoryMock->expects($this->never())->method('appendAll');
+        $this->ledgerRepositoryMock->expects($this->never())->method('append');
         $this->costLayerRepositoryMock->expects($this->never())->method('save');
         $this->journalServiceMock->expects($this->never())->method('onKitAssembly');
 
@@ -75,6 +76,7 @@ class AssembleKitTest extends TestCase
 
         $this->productRepositoryMock->expects($this->never())->method('save');
         $this->ledgerRepositoryMock->expects($this->never())->method('appendAll');
+        $this->ledgerRepositoryMock->expects($this->never())->method('append');
         $this->costLayerRepositoryMock->expects($this->never())->method('save');
         $this->journalServiceMock->expects($this->never())->method('onKitAssembly');
 
@@ -104,6 +106,7 @@ class AssembleKitTest extends TestCase
 
         $this->productRepositoryMock->expects($this->never())->method('save');
         $this->ledgerRepositoryMock->expects($this->never())->method('appendAll');
+        $this->ledgerRepositoryMock->expects($this->never())->method('append');
         $this->costLayerRepositoryMock->expects($this->never())->method('save');
         $this->journalServiceMock->expects($this->never())->method('onKitAssembly');
 
@@ -139,6 +142,7 @@ class AssembleKitTest extends TestCase
 
         $this->productRepositoryMock->expects($this->never())->method('save');
         $this->ledgerRepositoryMock->expects($this->never())->method('appendAll');
+        $this->ledgerRepositoryMock->expects($this->never())->method('append');
         $this->costLayerRepositoryMock->expects($this->never())->method('save');
         $this->journalServiceMock->expects($this->never())->method('onKitAssembly');
 
@@ -173,6 +177,7 @@ class AssembleKitTest extends TestCase
 
         $this->productRepositoryMock->expects($this->never())->method('save');
         $this->ledgerRepositoryMock->expects($this->never())->method('appendAll');
+        $this->ledgerRepositoryMock->expects($this->never())->method('append');
         $this->costLayerRepositoryMock->expects($this->never())->method('save');
         $this->journalServiceMock->expects($this->never())->method('onKitAssembly');
 

@@ -7,7 +7,6 @@ namespace InventoryApp\Infrastructure\Integration\NetSuite;
  *
  * Triggered by our domain events (e.g. JournalEntryRecorded) to keep
  * NetSuite general ledger in sync.
- *
  * @see https://docs.oracle.com/en/cloud/saas/netsuite/ns-online-help/section_4272186716.html
  */
 class NetSuiteJournalSync
@@ -83,7 +82,6 @@ class NetSuiteJournalSync
                 'Accept: application/json',
                 'Authorization: Bearer ' . $this->token,
             ],
-        ]);
 
         $response   = curl_exec($ch);
         $httpStatus = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -103,5 +101,36 @@ class NetSuiteJournalSync
         }
 
         return (string)$nsId;
+    }
+}
+
+
+{
+
+    {
+    }
+
+    {
+        }
+
+
+
+
+            }
+
+
+
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $body,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_HTTPHEADER     => [
+
+
+        }
+
+        }
+
     }
 }

@@ -119,7 +119,6 @@ class PurchaseShippingLabel
             $labelResult->rateCents,
             ShipmentStatus::LabelGenerated,
             new DateTimeImmutable()
-        );
         $this->shipmentRepository->save($shipment);
 
         // 6. Generate double-entry ledger listings
@@ -130,9 +129,7 @@ class PurchaseShippingLabel
             $tenantId,
             new DateTimeImmutable(),
             "Shipping carrier label purchased: {$carrier} {$labelResult->trackingNumber}",
-            $shipmentId,
             $method
-        );
 
         $freightExpense = new AccountCode("5400", "Shipping & Freight Expense", "expense");
         $freightLiability = new AccountCode("2100", "Accrued Shipping Liabilities", "liability");
@@ -154,10 +151,37 @@ class PurchaseShippingLabel
         ));
 
         return new PurchaseShippingLabelResult(
-            $shipmentId,
-            $labelResult->trackingNumber,
-            $labelResult->labelUrl,
             $labelResult->rateCents
-        );
+    }
+}
+
+
+
+
+
+{
+
+        if (empty($sku) || $quantity <= 0 || empty($destinationAddress) || empty($carrier) || empty($locationId) || empty($tenantId)) {
+        }
+
+
+        }
+
+        }
+
+
+
+
+                }
+            }
+            }
+        }
+
+
+
+
+
+
+
     }
 }

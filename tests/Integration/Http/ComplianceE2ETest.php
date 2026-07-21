@@ -89,7 +89,6 @@ final class ComplianceE2ETest extends TestCase
             'tenant_id' => $this->tenantId,
             'email'     => $this->email,
             'password'  => $this->password,
-        ]);
         $this->token = $loginRes['body']['token'];
     }
 
@@ -114,32 +113,27 @@ final class ComplianceE2ETest extends TestCase
             'sku'   => 'SKU-COMP-1',
             'price' => 1000,
             'attributes' => []
-        ], $this->token);
         $this->assertTrue(in_array($varRes['status'], [200, 201]));
 
         // Setup inventory product manually because queue workers might not run in this E2E env
         Capsule::table('products')->insertOrIgnore([
             'id' => bin2hex(random_bytes(16)),
-            'tenant_id' => $this->tenantId,
             'sku' => 'SKU-COMP-1',
             'name' => 'Test Product',
             'department' => 'Test Dept',
             'version_id' => 1
-        ]);
 
         // Setup location
         Capsule::table('locations')->insertOrIgnore([
             'id'   => 'LOC-COMP-1',
             'name' => 'LOC-COMP-1',
             'type' => 'WAREHOUSE'
-        ]);
 
         // Receive stock
         $receiveRes = $this->request('POST', '/api/inventory/receive', [
             'sku'         => 'SKU-COMP-1',
             'quantity'    => 50,
             'location_id' => 'LOC-COMP-1'
-        ], $this->token);
         $this->assertEquals(200, $receiveRes['status'], json_encode($receiveRes));
 
         // 3. Verify ledger entry was created
@@ -189,6 +183,94 @@ final class ComplianceE2ETest extends TestCase
         return [
             'status' => $statusCode,
             'body'   => (json_last_error() === JSON_ERROR_NONE) ? $decoded : $result
-        ];
+    }
+}
+
+
+
+
+
+{
+    private static $serverProcess = null;
+
+        public static function setUpBeforeClass(): void
+    {
+        $baseDir = realpath(__DIR__ . '/../../..');
+        $dbPath = $baseDir . '/storage/data/test_compliancee2etest.sqlite';
+        if (!file_exists($dbPath)) {
+            @mkdir(dirname($dbPath), 0777, true);
+            @touch($dbPath);
+        }
+        $extDir = 'C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext';
+        $phpExec = PHP_BINARY . ' -d extension_dir="C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext" -d extension=pdo -d extension=mbstring -d extension=pdo_sqlite';
+        $cmd = $phpExec . ' -S 127.0.0.1:8094 public/index.php';
+        
+        $descriptors = [
+            0 => ["pipe", "r"],
+            1 => ["file", __DIR__ . '/server_compliancee2etest.log', "a"],
+            2 => ["file", __DIR__ . '/server_compliancee2etest.log', "a"],
+        
+        $env = array_merge($_ENV, [
+            'DB_CONNECTION' => 'sqlite',
+            'DB_DATABASE' => $dbPath,
+            'APP_ENV' => 'testing',
+        
+                putenv("DB_DATABASE={$dbPath}");
+        $_ENV['DB_DATABASE'] = $dbPath;
+        $_SERVER['DB_DATABASE'] = $dbPath;
+        
+        $capsule = new \Illuminate\Database\Capsule\Manager();
+        $capsule->addConnection([
+            'driver'   => 'sqlite',
+            'database' => $dbPath,
+            'prefix'   => '',
+        $capsule->setAsGlobal();
+        $capsule->bootEloquent();
+        
+        require_once __DIR__ . '/../../../src/Infrastructure/Persistence/sqlite_setup.php';
+        \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
+
+        self::$serverProcess = proc_open($cmd, $descriptors, $pipes, $baseDir, $env);
+        
+            }
+            usleep(50000); // 50ms
+        }
+    }
+
+        public static function tearDownAfterClass(): void
+    {
+        if (self::$serverProcess && is_resource(self::$serverProcess)) {
+            proc_terminate(self::$serverProcess);
+            proc_close(self::$serverProcess);
+            self::$serverProcess = null;
+        }
+    }
+
+    {
+
+
+
+    }
+
+    {
+
+
+        $this->assertEquals(201, $varRes['status']);
+
+            'type' => 'WAREHOUSE',
+
+
+
+
+    }
+
+    {
+        $url = 'http://127.0.0.1:8094' . $path;
+
+        }
+
+        
+        }
+
     }
 }

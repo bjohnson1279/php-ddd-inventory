@@ -67,7 +67,3 @@
 **Vulnerability:** Rate limit bypass via IP Spoofing (X-Forwarded-For).
 **Learning:** The rate limiter blindly trusted the `HTTP_X_FORWARDED_FOR` header or failed to properly walk the proxy chain from right to left to establish the true client IP against a list of trusted proxies.
 **Prevention:** Always validate `REMOTE_ADDR` against a trusted proxy list before parsing `HTTP_X_FORWARDED_FOR`, and traverse the list right-to-left to safely extract the untrusted client IP.
-## 2026-07-20 - Removed Hardcoded DB Password Fallback
-**Vulnerability:** The application used a hardcoded fallback value `'secret'` if the `DB_PASSWORD` environment variable was not found, which could lead to unauthorized access in misconfigured environments.
-**Learning:** Default values used with getenv() fallback configurations can inadvertently introduce hardcoded credentials into production environments if variables are missing.
-**Prevention:** Avoid hardcoding default credentials. Use strict comparisons (`!== false`) when fetching critical environment variables, and fallback to an empty string instead of supplying a potentially guessable fallback like 'secret'.

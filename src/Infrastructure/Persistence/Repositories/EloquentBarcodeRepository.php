@@ -52,7 +52,7 @@ class EloquentBarcodeRepository implements BarcodeRepositoryInterface
         $reflector = new \ReflectionClass($set);
         $prop = $reflector->getProperty('assignments');
         $prop->setAccessible(true);
-        
+
         $assignments = [];
         foreach ($models as $model) {
             $barcode = new Barcode(BarcodeSymbology::from($model->symbology), $model->value);

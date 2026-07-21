@@ -59,7 +59,7 @@ class PutawaySuggester
         foreach ($allStocks as $stock) {
             if (!$stock->product) continue;
             $locId = $stock->location_id;
-            
+
             $weight = $stock->stock_quantity * ($stock->product->weight_grams ?? 0);
             $volume = $stock->stock_quantity * ($stock->product->volume_cubic_meters ?? 0.0);
 
@@ -159,7 +159,7 @@ class PutawaySuggester
 
             $maxWeightUnits = $variantWeight > 0 ? floor($cand['remainingWeight'] / $variantWeight) : INF;
             $maxVolumeUnits = $variantVolume > 0.0 ? floor($cand['remainingVolume'] / $variantVolume) : INF;
-            
+
             $maxUnitsToFit = min($maxWeightUnits, $maxVolumeUnits);
 
             if ($maxUnitsToFit <= 0) {

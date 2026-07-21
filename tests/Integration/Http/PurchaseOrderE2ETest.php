@@ -12,54 +12,21 @@ require_once __DIR__ . '/../bootstrap.php';
 /** @group integration */
 final class PurchaseOrderE2ETest extends TestCase
 {
-    private static $serverProcess = null;
+    private static ?int $pid = null;
     private string $tenantId;
     private string $email;
     private string $password;
     private ?string $token = null;
 
-        public static function setUpBeforeClass(): void
+    public static function setUpBeforeClass(): void
     {
-        $baseDir = realpath(__DIR__ . '/../../..');
-        $dbPath = $baseDir . '/storage/data/test_purchaseordere2etest.sqlite';
-        if (!file_exists($dbPath)) {
-            @mkdir(dirname($dbPath), 0777, true);
-            @touch($dbPath);
-        }
-        $extDir = 'C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext';
-        $phpExec = PHP_BINARY . ' -d extension_dir="C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext" -d extension=pdo -d extension=mbstring -d extension=pdo_sqlite';
-        $cmd = $phpExec . ' -S 127.0.0.1:8086 public/index.php';
-        
-        $descriptors = [
-            0 => ["pipe", "r"],
-            1 => ["file", __DIR__ . '/server_purchaseordere2etest.log', "a"],
-            2 => ["file", __DIR__ . '/server_purchaseordere2etest.log', "a"],
-        ];
-        
-        $env = array_merge($_ENV, [
-            'DB_CONNECTION' => 'sqlite',
-            'DB_DATABASE' => $dbPath,
-            'APP_ENV' => 'testing',
-        ]);
-        
-                putenv("DB_DATABASE={$dbPath}");
-        $_ENV['DB_DATABASE'] = $dbPath;
-        $_SERVER['DB_DATABASE'] = $dbPath;
-        
-        $capsule = new \Illuminate\Database\Capsule\Manager();
-        $capsule->addConnection([
-            'driver'   => 'sqlite',
-            'database' => $dbPath,
-            'prefix'   => '',
-        ]);
-        $capsule->setAsGlobal();
-        $capsule->bootEloquent();
-        
-        require_once __DIR__ . '/../../../src/Infrastructure/Persistence/sqlite_setup.php';
-        \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
+        // Start built-in PHP development server in the background on port 8086
+        $output = [];
+        $command = "php -S 127.0.0.1:8086 public/index.php > tests/Integration/Http/server_po.log 2>&1 & echo $!";
 
-        self::$serverProcess = proc_open($cmd, $descriptors, $pipes, $baseDir, $env);
-        
+        exec($command, $output);
+        self::$pid = (int)($output[0] ?? 0);
+
         // Wait for server to bind
         for ($i = 0; $i < 50; $i++) {
             $fp = @fsockopen('127.0.0.1', 8086, $errno, $errstr, 0.1);
@@ -71,12 +38,10 @@ final class PurchaseOrderE2ETest extends TestCase
         }
     }
 
-        public static function tearDownAfterClass(): void
+    public static function tearDownAfterClass(): void
     {
-        if (self::$serverProcess && is_resource(self::$serverProcess)) {
-            proc_terminate(self::$serverProcess);
-            proc_close(self::$serverProcess);
-            self::$serverProcess = null;
+        if (self::$pid) {
+            exec("kill " . self::$pid . " > /dev/null 2>&1");
         }
     }
 
@@ -257,7 +222,7 @@ final class PurchaseOrderE2ETest extends TestCase
         $inviteRes = $this->request('POST', '/api/users', [
             'email' => "staff-{$suffix}@example.com",
         ], $this->token);
-        
+
         $this->assertEquals(201, $inviteRes['status'], json_encode($inviteRes));
         $viewerUserId = $inviteRes['body']['user_id'];
         $tempPassword = $inviteRes['body']['temporary_password'];
@@ -340,7 +305,7 @@ final class PurchaseOrderE2ETest extends TestCase
 
         $context = stream_context_create($options);
         $result = @file_get_contents($url, false, $context);
-        
+
         $statusCode = 500;
         if (isset($http_response_header) && isset($http_response_header[0])) {
             preg_match('{HTTP\/\S*\s(\d{3})}', $http_response_header[0], $match);

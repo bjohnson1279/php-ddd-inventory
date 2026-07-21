@@ -77,7 +77,7 @@ class WebhookSubscriptionController
 
             // Read the inputs manually since some fields might be optional
             $body = $request->validate([]); // trigger validator parsing
-            
+
             if (isset($body['targetUrl'])) {
                 $sub->target_url = $body['targetUrl'];
             }

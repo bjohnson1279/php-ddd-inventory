@@ -7,6 +7,7 @@ namespace InventoryApp\Infrastructure\Integration\Xero;
  *
  * Triggered by our domain events (e.g. JournalEntryRecorded) to keep
  * the Xero chart of accounts in sync.
+ *
  * @see https://developer.xero.com/documentation/api/accounting/manualjournals
  */
 class XeroJournalSync
@@ -78,6 +79,7 @@ class XeroJournalSync
                 'Xero-tenant-id: ' . $this->tenantId,
                 'Authorization: Bearer ' . $this->accessToken,
             ],
+        ]);
 
         $response = curl_exec($ch);
 
@@ -103,29 +105,5 @@ class XeroJournalSync
         }
 
         return (string)$xeroId;
-    }
-}
-
-
-{
-
-    {
-    }
-
-    {
-        }
-
-
-            
-
-
-
-
-        $response   = curl_exec($ch);
-
-        }
-
-        }
-
     }
 }

@@ -12,86 +12,44 @@ require_once __DIR__ . '/../bootstrap.php';
 /** @group integration */
 final class AuditE2ETest extends TestCase
 {
-    private static $serverProcess = null;
+    private static ?int $pid = null;
     private string $tenantId;
     private string $email;
     private string $password;
     private ?string $token = null;
 
-        public static function setUpBeforeClass(): void
+    public static function setUpBeforeClass(): void
     {
-        $baseDir = realpath(__DIR__ . '/../../..');
-        $dbPath = $baseDir . '/storage/data/test_audite2etest.sqlite';
-        if (!file_exists($dbPath)) {
-            @mkdir(dirname($dbPath), 0777, true);
-            @touch($dbPath);
-        }
-        $extDir = 'C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext';
-        $phpExec = PHP_BINARY . ' -d extension_dir="C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext" -d extension=pdo -d extension=mbstring -d extension=pdo_sqlite';
-        $cmd = $phpExec . ' -S 127.0.0.1:8095 public/index.php';
-        
-        $descriptors = [
-            0 => ["pipe", "r"],
-            1 => ["file", __DIR__ . '/server_audite2etest.log', "a"],
-            2 => ["file", __DIR__ . '/server_audite2etest.log', "a"],
-        ];
-        
-        putenv('SHOPIFY_SHOP_URL=mock-store.myshopify.com');
-        putenv('SHOPIFY_ACCESS_TOKEN=mock-token');
-        putenv('QUICKBOOKS_ACCESS_TOKEN=mock-token');
-        $_ENV['SHOPIFY_SHOP_URL'] = 'mock-store.myshopify.com';
-        $_ENV['SHOPIFY_ACCESS_TOKEN'] = 'mock-token';
-        $_ENV['QUICKBOOKS_ACCESS_TOKEN'] = 'mock-token';
+        // Configure mock env variables for the test server
+        putenv("SHOPIFY_SHOP_URL=mock.myshopify.com");
+        putenv("SHOPIFY_ACCESS_TOKEN=mock-token");
+        putenv("QUICKBOOKS_ACCESS_TOKEN=mock-qbo-token");
 
-        $env = array_merge($_ENV, [
-            'DB_CONNECTION' => 'sqlite',
-            'DB_DATABASE' => $dbPath,
-            'APP_ENV' => 'testing',
-        ]);
-        
-                putenv("DB_DATABASE={$dbPath}");
-        $_ENV['DB_DATABASE'] = $dbPath;
-        $_SERVER['DB_DATABASE'] = $dbPath;
-        
-        $capsule = new \Illuminate\Database\Capsule\Manager();
-        $capsule->addConnection([
-            'driver'   => 'sqlite',
-            'database' => $dbPath,
-            'prefix'   => '',
-        ]);
-        $capsule->setAsGlobal();
-        $capsule->bootEloquent();
-        
-        require_once __DIR__ . '/../../../src/Infrastructure/Persistence/sqlite_setup.php';
-        \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
+        $output = [];
+        $command = "php -S 127.0.0.1:8092 public/index.php > tests/Integration/Http/server_audit.log 2>&1 & echo $!";
+        exec($command, $output);
+        self::$pid = (int)($output[0] ?? 0);
 
-        self::$serverProcess = proc_open($cmd, $descriptors, $pipes, $baseDir, $env);
-        
-        // Wait for server to bind
         for ($i = 0; $i < 50; $i++) {
             $fp = @fsockopen('127.0.0.1', 8092, $errno, $errstr, 0.1);
             if ($fp) {
                 fclose($fp);
                 break;
             }
-            usleep(50000); // 50ms
+            usleep(50000);
         }
     }
 
-        public static function tearDownAfterClass(): void
+    public static function tearDownAfterClass(): void
     {
-        if (self::$serverProcess && is_resource(self::$serverProcess)) {
-            proc_terminate(self::$serverProcess);
-            proc_close(self::$serverProcess);
-            self::$serverProcess = null;
+        if (self::$pid) {
+            exec("kill " . self::$pid . " > /dev/null 2>&1");
         }
     }
 
     protected function setUp(): void
     {
-        Capsule::table('catalog_variants')->delete();
-        Capsule::table('catalog_products')->delete();
-                Capsule::table('audit_discrepancies')->delete();
+        Capsule::table('audit_discrepancies')->delete();
         Capsule::table('shopify_sku_mappings')->delete();
         Capsule::table('shopify_location_mappings')->delete();
         Capsule::table('quickbooks_journal_mappings')->delete();
@@ -240,7 +198,7 @@ final class AuditE2ETest extends TestCase
 
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
     {
-        $url = 'http://127.0.0.1:8095' . $path;
+        $url = 'http://127.0.0.1:8092' . $path;
         $options = [
             'http' => [
                 'header'        => "Content-Type: application/json\r\n",
@@ -256,7 +214,7 @@ final class AuditE2ETest extends TestCase
 
         $context = stream_context_create($options);
         $result = @file_get_contents($url, false, $context);
-        
+
         $statusCode = 500;
         if (isset($http_response_header) && isset($http_response_header[0])) {
             preg_match('{HTTP\/\S*\s(\d{3})}', $http_response_header[0], $match);

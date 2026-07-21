@@ -36,6 +36,13 @@ final class AuditE2ETest extends TestCase
             2 => ["file", __DIR__ . '/server_audite2etest.log', "a"],
         ];
         
+        putenv('SHOPIFY_SHOP_URL=mock-store.myshopify.com');
+        putenv('SHOPIFY_ACCESS_TOKEN=mock-token');
+        putenv('QUICKBOOKS_ACCESS_TOKEN=mock-token');
+        $_ENV['SHOPIFY_SHOP_URL'] = 'mock-store.myshopify.com';
+        $_ENV['SHOPIFY_ACCESS_TOKEN'] = 'mock-token';
+        $_ENV['QUICKBOOKS_ACCESS_TOKEN'] = 'mock-token';
+
         $env = array_merge($_ENV, [
             'DB_CONNECTION' => 'sqlite',
             'DB_DATABASE' => $dbPath,
@@ -84,8 +91,7 @@ final class AuditE2ETest extends TestCase
     {
         Capsule::table('catalog_variants')->delete();
         Capsule::table('catalog_products')->delete();
-        Capsule::table('audit_logs')->delete();
-        Capsule::table('audit_discrepancies')->delete();
+                Capsule::table('audit_discrepancies')->delete();
         Capsule::table('shopify_sku_mappings')->delete();
         Capsule::table('shopify_location_mappings')->delete();
         Capsule::table('quickbooks_journal_mappings')->delete();

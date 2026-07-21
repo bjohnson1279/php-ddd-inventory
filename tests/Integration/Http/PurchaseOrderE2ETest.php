@@ -367,3 +367,67 @@ final class PurchaseOrderE2ETest extends TestCase
 
     }
 }
+
+
+
+
+
+{
+
+    {
+        $command = "php -S 127.0.0.1:8086 public/index.php > tests/Integration/Http/server_po.log 2>&1 & echo $!";
+        
+        
+            }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+    {
+        
+
+
+
+
+
+
+    }
+
+    {
+
+        }
+
+        
+        }
+
+    }
+}

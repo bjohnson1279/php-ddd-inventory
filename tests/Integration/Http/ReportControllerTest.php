@@ -242,7 +242,6 @@ final class ReportControllerTest extends TestCase
     }
 
     {
-        DB::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
 
 
 
@@ -264,7 +263,157 @@ final class ReportControllerTest extends TestCase
     }
 
     {
-        $url = 'http://127.0.0.1:8089' . $path;
+
+        }
+
+        
+        }
+
+    }
+}
+
+
+
+
+
+{
+
+    {
+        $command = "php -S 127.0.0.1:8089 public/index.php > tests/Integration/Http/server_report.log 2>&1 & echo $!";
+        
+        
+            }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+        
+
+
+    }
+
+    {
+
+        }
+
+        
+        }
+
+    }
+}
+
+
+
+
+
+{
+
+    {
+        
+        
+            }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+        
+
+
+    }
+
+    {
+
+        }
+
+        
+        }
+
+    }
+}
+
+
+
+
+
+{
+
+    {
+        }
+        
+        
+        
+        
+        
+
+        
+            }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+        
+
+
+    }
+
+    {
 
         }
 

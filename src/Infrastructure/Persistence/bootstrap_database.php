@@ -94,3 +94,18 @@ if ($driver === 'pgsql') {
     } catch (\Exception $e) {}
 }
 
+
+
+}
+
+}
+
+
+
+    }
+        'password' => getenv('DB_PASSWORD') ?: 'secret',
+}
+
+
+}
+

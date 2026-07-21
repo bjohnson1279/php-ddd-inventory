@@ -442,3 +442,83 @@ final class WarehouseLocationE2ETest extends TestCase
 
     }
 }
+
+
+
+
+
+{
+
+    {
+        $command = "php -S 127.0.0.1:8091 public/index.php > tests/Integration/Http/server_warehouse.log 2>&1 & echo $!";
+        
+        
+            }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+
+
+
+
+
+    }
+
+    {
+        
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+    }
+
+    {
+
+
+
+
+
+    }
+
+    {
+
+
+
+    }
+
+    {
+
+
+
+
+
+    }
+
+    {
+
+            }
+        }
+    }
+
+    {
+
+        }
+
+        
+        }
+
+    }
+}

@@ -21,6 +21,11 @@ final class ComplianceE2ETest extends TestCase
     public static function setUpBeforeClass(): void
     {
         $output = [];
+        $command = "php -S 127.0.0.1:8092 public/index.php > tests/Integration/Http/server_compliance.log 2>&1 & echo $!";
+
+        exec($command, $output);
+        self::$pid = (int)($output[0] ?? 0);
+
         $dbConn = getenv('DB_CONNECTION') ?: 'pgsql';
         $dbDb = getenv('DB_DATABASE') ?: '';
         $dbHost = getenv('DB_HOST') ?: '';
@@ -29,8 +34,6 @@ final class ComplianceE2ETest extends TestCase
         $dbPass = getenv('DB_PASSWORD') ?: '';
         $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8092 public/index.php > tests/Integration/Http/server_compliance.log 2>&1 & echo $!";
         
-        exec($command, $output);
-        self::$pid = (int)($output[0] ?? 0);
         
         // Wait for server to bind
         for ($i = 0; $i < 50; $i++) {
@@ -58,6 +61,8 @@ final class ComplianceE2ETest extends TestCase
         Capsule::table('user_roles')->delete();
         Capsule::table('tenants')->where('id', '!=', 'test-tenant')->delete();
         Capsule::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
+        Capsule::table('catalog_variants')->truncate();
+        Capsule::table('catalog_products')->truncate();
         Capsule::table('catalog_variants')->delete();
         Capsule::table('catalog_products')->delete();
         Capsule::table('locations')->where('id', '!=', 'LOC-INT')->delete();
@@ -82,6 +87,7 @@ final class ComplianceE2ETest extends TestCase
             'tenant_id' => $this->tenantId,
             'email'     => $this->email,
             'password'  => $this->password,
+        ]);
         $this->token = $loginRes['body']['token'];
     }
 
@@ -108,6 +114,7 @@ final class ComplianceE2ETest extends TestCase
             'price' => 1000,
             'attributes' => []
         $this->assertEquals(200, $varRes['status']);
+        ], $this->token);
         $this->assertEquals(201, $varRes['status']);
 
         // Setup location
@@ -116,12 +123,14 @@ final class ComplianceE2ETest extends TestCase
             'name' => 'LOC-COMP-1',
             'type' => 'WAREHOUSE',
             'tenant_id' => $this->tenantId
+        ]);
 
         // Receive stock
         $receiveRes = $this->request('POST', '/api/inventory/receive', [
             'sku'         => 'SKU-COMP-1',
             'quantity'    => 50,
             'location_id' => 'LOC-COMP-1'
+        ], $this->token);
         $this->assertEquals(200, $receiveRes['status'], json_encode($receiveRes));
 
         // 3. Verify ledger entry was created
@@ -160,6 +169,7 @@ final class ComplianceE2ETest extends TestCase
 
         $context = stream_context_create($options);
         $result = @file_get_contents($url, false, $context);
+
         
         $statusCode = 500;
         if (isset($http_response_header) && isset($http_response_header[0])) {
@@ -171,6 +181,7 @@ final class ComplianceE2ETest extends TestCase
         return [
             'status' => $statusCode,
             'body'   => (json_last_error() === JSON_ERROR_NONE) ? $decoded : $result
+        ];
     }
 }
 

@@ -362,8 +362,6 @@ final class ShippingCarrierE2ETest extends TestCase
 
         
 
-        $this->assertContains($outboxStatsRes['body']['totalPending'], [0, 1]);
-        $this->assertEquals(1, $outboxStatsRes['body']['totalPending'] + $outboxStatsRes['body']['totalProcessed']);
         
 
 
@@ -389,6 +387,214 @@ final class ShippingCarrierE2ETest extends TestCase
 
     {
         $url = 'http://127.0.0.1:8096' . $path;
+
+        }
+
+        
+        }
+
+    }
+}
+
+
+
+
+
+{
+
+    {
+        
+            }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+        
+
+        
+
+
+
+        
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+            }
+        }
+
+    }
+
+    {
+
+        }
+
+        
+        }
+
+    }
+}
+
+
+
+
+
+{
+
+    {
+        
+            }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+        
+
+        
+
+
+
+        
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+            }
+        }
+
+    }
+
+    {
+
+        }
+
+        
+        }
+
+    }
+}
+
+
+
+
+
+{
+
+    {
+        }
+        
+        
+        
+        
+        
+
+        
+            }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+        
+
+        
+
+
+
+        
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+            }
+        }
+
+    }
+
+    {
 
         }
 

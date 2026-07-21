@@ -77,6 +77,14 @@ class NetSuiteJournalSync
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
             CURLOPT_HTTPHEADER     => [
+            CURLOPT_RETURNTRANSFER   => true,
+            CURLOPT_POST             => true,
+            CURLOPT_POSTFIELDS       => $body,
+            CURLOPT_SSL_VERIFYPEER   => true,
+            CURLOPT_SSL_VERIFYHOST   => 2,
+            CURLOPT_CONNECTTIMEOUT   => 10,
+            CURLOPT_TIMEOUT          => 30,
+            CURLOPT_HTTPHEADER       => [
                 'Content-Type: application/json',
                 'Accept: application/json',
                 'Authorization: Bearer ' . $this->token,
@@ -101,5 +109,63 @@ class NetSuiteJournalSync
         }
 
         return (string)$nsId;
+    }
+}
+
+
+{
+
+    {
+    }
+
+    {
+        }
+
+
+
+
+            }
+
+
+
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $body,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_HTTPHEADER     => [
+
+
+        }
+
+        }
+
+    }
+}
+
+
+{
+
+    {
+    }
+
+    {
+        }
+
+
+
+
+            }
+
+
+
+            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_CONNECTTIMEOUT => 10,
+
+
+        }
+
+        }
+
     }
 }

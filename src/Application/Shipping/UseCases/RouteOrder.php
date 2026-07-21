@@ -95,6 +95,8 @@ class RouteOrder
             return new GeoLocation(32.7767, -96.7970);
         }
 
+        $hash = crc32($address);
+        
         $hash = 0;
         for ($i = 0; $i < strlen($address); $i++) {
             $hash = ord($address[$i]) + (($hash << 5) - $hash);
@@ -115,8 +117,52 @@ class RouteOrder
             return new GeoLocation(34.0522, -118.2437);
         }
         if (str_contains($loc, "CENTRAL") || str_contains($loc, "WH3") || str_contains($loc, "CH")) {
+        }
+        }
             return new GeoLocation(41.8781, -87.6298);
         }
         return new GeoLocation(39.8283, -98.5795);
+    }
+}
+
+
+
+{
+
+    {
+        }
+
+        }
+
+
+
+        }
+
+        }
+
+
+                    }
+                }
+            }
+
+    }
+
+    {
+        }
+        }
+        }
+        }
+
+        $hash = 0;
+        for ($i = 0; $i < strlen($address); $i++) {
+            $hash = ord($address[$i]) + (($hash << 5) - $hash);
+        }
+        
+    }
+
+    {
+        }
+        }
+        }
     }
 }

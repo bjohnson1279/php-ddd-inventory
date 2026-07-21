@@ -29,6 +29,15 @@ final class ApiEndpointsTest extends TestCase
 
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
+        $dbConn = getenv('DB_CONNECTION') ?: 'pgsql';
+        $dbDb = getenv('DB_DATABASE') ?: '';
+        $dbHost = getenv('DB_HOST') ?: '';
+        $dbUser = getenv('DB_USERNAME') ?: '';
+        $dbPass = getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '';
+        $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8085 public/index.php > tests/Integration/Http/server_api.log 2>&1 & echo $!";
+        
+        
+
 
         // Wait for server to bind
         for ($i = 0; $i < 50; $i++) {
@@ -53,6 +62,7 @@ final class ApiEndpointsTest extends TestCase
         // Generate unique tenant details for each test run to ensure isolation
         DB::table('users')->delete();
         DB::table('user_roles')->delete();
+        DB::table('tenants')->where('id', '!=', 'test-tenant')->delete();
         DB::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
         \Illuminate\Database\Capsule\Manager::table('tenants')->insertOrIgnore([['id' => 'test-tenant', 'name' => 'Test Tenant']]);
                 $suffix = bin2hex(random_bytes(4));
@@ -137,6 +147,7 @@ final class ApiEndpointsTest extends TestCase
 
         \Illuminate\Database\Capsule\Manager::table('catalog_variants')->insert([
             'id' => $variantId,
+
             'product_id' => $variantId,
             'sku' => $sku,
             'attributes' => '[]',
@@ -174,6 +185,7 @@ final class ApiEndpointsTest extends TestCase
         ], $this->token);
         $this->assertEquals(201, $assignRes['status'], json_encode($assignRes));
 
+
         // 3. Dispatch Barcode Scan via HTTP endpoint
         $scanRes = $this->request('POST', '/api/barcodes/scan', [
             'rawScan' => $barcodeValue,
@@ -191,6 +203,7 @@ final class ApiEndpointsTest extends TestCase
         // 4. Query notifications stream mock (GET /api/notifications)
         $notifRes = $this->request('GET', '/api/notifications', [], $this->token);
         $this->assertEquals(200, $notifRes['status'], json_encode($notifRes));
+        
 
         $found = false;
         foreach ($notifRes['body']['notifications'] as $n) {
@@ -342,6 +355,7 @@ final class ApiEndpointsTest extends TestCase
         // 1. Create Product UoM Configuration
         $createRes = $this->request('POST', '/api/uom/configurations', [
             'variant_id' => $variantId,
+
             'base_unit'  => [
                 'name'         => 'Each',
                 'abbreviation' => 'ea',
@@ -350,6 +364,7 @@ final class ApiEndpointsTest extends TestCase
         ], $this->token);
 
         $this->assertEquals(201, $createRes['status'], json_encode($createRes));
+
         $configId = $createRes['body']['id'];
         $this->assertNotEmpty($configId);
 
@@ -375,8 +390,6 @@ final class ApiEndpointsTest extends TestCase
             'sale_unit' => [
                 'name'         => 'Each',
                 'abbreviation' => 'ea',
-                'category'     => 'discrete',
-            ],
         ], $this->token);
         $this->assertEquals(200, $unitRes['status'], json_encode($unitRes));
 
@@ -418,6 +431,7 @@ final class ApiEndpointsTest extends TestCase
         ], $this->token);
 
         $this->assertEquals(201, $createRes['status'], json_encode($createRes));
+
         $kitId = $createRes['body']['id'];
         $this->assertNotEmpty($kitId);
 
@@ -494,8 +508,7 @@ final class ApiEndpointsTest extends TestCase
             'stock_quantity'    => 50,
             'open_box_quantity' => 0,
             'damaged_quantity'  => 0,
-            'updated_at'        => date('Y-m-d H:i:s')
-        ]);
+
 
         // 3. Register Location mapping so webhook resolves LOC-INT
         \Illuminate\Database\Capsule\Manager::table('shopify_location_mappings')->insert([
@@ -533,6 +546,7 @@ final class ApiEndpointsTest extends TestCase
         $calculatedHmac = base64_encode(hash_hmac('sha256', $jsonPayload, $secret, true));
 
         $url = 'http://127.0.0.1:8085/api/webhooks/shopify?tenant_id=' . $this->tenantId;
+        
 
         $options = [
             'http' => [
@@ -552,12 +566,14 @@ final class ApiEndpointsTest extends TestCase
         $statusCode = (int)$match[1];
 
         $this->assertEquals(200, $statusCode, $result);
+        
 
         // 5. Verify stock decreased from 50 to 45
         $stockQty = (int)\Illuminate\Database\Capsule\Manager::table('product_locations')
             ->where('product_id', $productId)
             ->where('location_id', 'LOC-INT')
             ->value('stock_quantity');
+        
 
         $this->assertEquals(45, $stockQty);
 
@@ -587,6 +603,7 @@ final class ApiEndpointsTest extends TestCase
             ->where('product_id', $productId)
             ->where('location_id', 'LOC-INT')
             ->value('stock_quantity');
+        
 
         $this->assertEquals(50, $newStockQty);
     }
@@ -619,8 +636,8 @@ final class ApiEndpointsTest extends TestCase
             'stock_quantity'    => 0,
             'open_box_quantity' => 0,
             'damaged_quantity'  => 0,
-            'updated_at'        => date('Y-m-d H:i:s')
-        ]);
+
+
 
         // Receive stock
         $receiveRes = $this->request('POST', '/api/inventory/receive', [
@@ -633,6 +650,9 @@ final class ApiEndpointsTest extends TestCase
         // 3. Check notifications now has 1 item
         $listRes2 = $this->request('GET', '/api/notifications', [], $this->token);
         $this->assertEquals(200, $listRes2['status']);
+        $this->assertCount(1, $listRes2['body']['notifications']);
+        $notif = $listRes2['body']['notifications'][0];
+        $this->assertEquals('Stock Received', $notif['title']);
         $this->assertCount(2, $listRes2['body']['notifications']);
         $titles = array_column($listRes2['body']['notifications'], 'title');
         $this->assertContains('Stock Received', $titles);
@@ -656,6 +676,7 @@ final class ApiEndpointsTest extends TestCase
         // Check is_read is true
         $listRes3 = $this->request('GET', '/api/notifications', [], $this->token);
         $found = false;
+        $this->assertTrue((bool)$listRes3['body']['notifications'][0]['is_read']);
         foreach ($listRes3['body']['notifications'] as $n) {
             if ($n['id'] === $notif['id']) {
                 $this->assertTrue((bool)$n['is_read']);
@@ -692,13 +713,13 @@ final class ApiEndpointsTest extends TestCase
             ['product_id' => $compAId, 'location_id' => $locationId, 'stock_quantity' => 10, 'open_box_quantity' => 0, 'damaged_quantity' => 0, 'updated_at' => date('Y-m-d H:i:s')],
             ['product_id' => $compBId, 'location_id' => $locationId, 'stock_quantity' => 20, 'open_box_quantity' => 0, 'damaged_quantity' => 0, 'updated_at' => date('Y-m-d H:i:s')],
             ['product_id' => $kitProductId, 'location_id' => $locationId, 'stock_quantity' => 0, 'open_box_quantity' => 0, 'damaged_quantity' => 0, 'updated_at' => date('Y-m-d H:i:s')]
-        ]);
 
         // Seed ledger entries for component stocks
         \Illuminate\Database\Capsule\Manager::table('ledger_entries')->insert([
             ['id' => uuidv4(), 'tenant_id' => $this->tenantId, 'variant_id' => $compAId, 'quantity' => 10, 'reason' => 'purchase_receipt', 'actor_id' => 'system', 'occurred_at' => date('Y-m-d H:i:s')],
             ['id' => uuidv4(), 'tenant_id' => $this->tenantId, 'variant_id' => $compBId, 'quantity' => 20, 'reason' => 'purchase_receipt', 'actor_id' => 'system', 'occurred_at' => date('Y-m-d H:i:s')]
-        ]);
+
+
 
         // Seed costing layers for COMP-A (unit cost 100) and COMP-B (unit cost 200)
         \Illuminate\Database\Capsule\Manager::table('inventory_cost_layers')->insert([
@@ -861,6 +882,7 @@ final class ApiEndpointsTest extends TestCase
 
         $context = stream_context_create($options);
         $result = @file_get_contents($url, false, $context);
+        
 
         $statusCode = 500;
         if (isset($http_response_header) && isset($http_response_header[0])) {
@@ -872,5 +894,399 @@ final class ApiEndpointsTest extends TestCase
             'status' => $statusCode,
             'body'   => json_decode((string)$result, true) ?: $result
         ];
+    }
+}
+
+
+
+
+
+{
+    private static $serverProcess = null;
+
+        public static function setUpBeforeClass(): void
+    {
+        $baseDir = realpath(__DIR__ . '/../../..');
+        $dbPath = $baseDir . '/storage/data/test_apiendpointstest.sqlite';
+        if (!file_exists($dbPath)) {
+            @mkdir(dirname($dbPath), 0777, true);
+            @touch($dbPath);
+        }
+        $extDir = 'C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext';
+        $phpExec = PHP_BINARY . ' -d extension_dir="C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext" -d extension=pdo -d extension=mbstring -d extension=pdo_sqlite';
+        $cmd = $phpExec . ' -S 127.0.0.1:8085 public/index.php';
+        
+        $descriptors = [
+            0 => ["pipe", "r"],
+            1 => ["file", __DIR__ . '/server_apiendpointstest.log', "a"],
+            2 => ["file", __DIR__ . '/server_apiendpointstest.log', "a"],
+        
+        $env = array_merge($_ENV, [
+            'DB_CONNECTION' => 'sqlite',
+            'DB_DATABASE' => $dbPath,
+            'APP_ENV' => 'testing',
+            'SHOPIFY_WEBHOOK_SECRET' => 'test-secret-env',
+        
+                putenv("DB_DATABASE={$dbPath}");
+        $_ENV['DB_DATABASE'] = $dbPath;
+        $_SERVER['DB_DATABASE'] = $dbPath;
+        
+        $capsule = new \Illuminate\Database\Capsule\Manager();
+        $capsule->addConnection([
+            'driver'   => 'sqlite',
+            'database' => $dbPath,
+            'prefix'   => '',
+        $capsule->setAsGlobal();
+        $capsule->bootEloquent();
+        
+        require_once __DIR__ . '/../../../src/Infrastructure/Persistence/sqlite_setup.php';
+        \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
+
+        self::$serverProcess = proc_open($cmd, $descriptors, $pipes, $baseDir, $env);
+        
+            }
+        }
+    }
+
+        public static function tearDownAfterClass(): void
+    {
+        if (self::$serverProcess && is_resource(self::$serverProcess)) {
+            proc_terminate(self::$serverProcess);
+            proc_close(self::$serverProcess);
+            self::$serverProcess = null;
+        }
+    }
+
+    {
+        DB::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
+
+
+
+
+    }
+
+    {
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+        
+                }
+            }
+        }
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+    }
+
+    {
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+        \Illuminate\Database\Capsule\Manager::table('shopify_location_mappings')->insertOrIgnore([
+
+
+
+        
+
+
+
+        
+        
+
+
+
+
+
+        
+    }
+
+    {
+
+
+
+
+
+        $this->assertCount(2, $listRes2['body']['notifications']);
+        $titles = array_column($listRes2['body']['notifications'], 'title');
+        $this->assertContains('Stock Received', $titles);
+        $this->assertContains('Stock Level Updated', $titles);
+        $notif = $listRes2['body']['notifications'][0]['title'] === 'Stock Received'
+            ? $listRes2['body']['notifications'][0]
+            : $listRes2['body']['notifications'][1];
+
+
+
+        foreach ($listRes3['body']['notifications'] as $n) {
+            if ($n['id'] === $notif['id']) {
+                $this->assertTrue((bool)$n['is_read']);
+                $found = true;
+            }
+        }
+        $this->assertTrue($found);
+
+
+
+            }
+        }
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+
+        }
+    }
+
+    {
+
+        }
+
+        
+        }
+
+    }
+}
+
+
+
+
+
+{
+
+    {
+
+        $command = "php -S 127.0.0.1:8085 public/index.php > tests/Integration/Http/server_api.log 2>&1 & echo $!";
+
+        
+            }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+
+
+
+
+    }
+
+    {
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+        
+                }
+            }
+        }
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+    }
+
+    {
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+        
+
+
+
+        
+        
+
+
+
+
+
+        
+    }
+
+    {
+
+
+
+
+
+
+
+
+            }
+        }
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+
+        }
+    }
+
+    {
+
+        }
+
+        
+        }
+
     }
 }

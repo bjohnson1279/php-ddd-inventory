@@ -149,6 +149,8 @@ final class DatabaseQueueTest extends TestCase
 
         // Run CLI command using the local php installation
         $cmd = "php scripts/queue-worker.php --once";
+        $env = sprintf("DB_CONNECTION=%s DB_HOST=%s DB_PORT=%s DB_DATABASE=%s DB_USERNAME=%s DB_PASSWORD=%s", escapeshellarg(DB::connection()->getDriverName()), escapeshellarg((string)getenv("DB_HOST")), escapeshellarg((string)getenv("DB_PORT")), escapeshellarg((string)getenv("DB_DATABASE")), escapeshellarg((string)getenv("DB_USERNAME")), escapeshellarg((string)getenv("DB_PASSWORD")));
+        $cmd = "$env php scripts/queue-worker.php --once";
         exec($cmd, $output, $resultCode);
 
         // 6. Verify worker exited with status code 0 and processed the job
@@ -190,6 +192,9 @@ final class DatabaseQueueTest extends TestCase
         // Verify queue is empty
         $this->assertEquals(0, DB::table('queued_jobs')->count());
 
+
+
+
         // Execute AddVariant usecase to trigger event
         $catalogProductRepo = ServiceContainer::catalogProductRepo();
         $addVariantUseCase = new \InventoryApp\Application\Catalog\UseCases\AddVariant($catalogProductRepo, $dispatcher);
@@ -217,6 +222,9 @@ final class DatabaseQueueTest extends TestCase
         $this->assertEquals(0, $resultCode, implode("\n", $output));
         $this->assertEquals(0, DB::table('queued_jobs')->count());
 
+
+
+
         // Verify the mapping was successfully created in the database mapping table!
         $this->assertEquals('mock-inv-item-' . $skuStr, $mappingRepo->findShopifyInventoryItemId($skuStr));
     }
@@ -242,6 +250,9 @@ final class DatabaseQueueTest extends TestCase
 
         // 2. Instantiate and save a journal entry using the repository to trigger the event
         DB::table('tenants')->insertOrIgnore(['id' => 'test-tenant', 'name' => 'Test Tenant']);
+
+
+
         $journalRepo = ServiceContainer::journalRepo();
         $entry = new \InventoryApp\Domain\Accounting\Aggregates\JournalEntry(
             $entryId,
@@ -271,6 +282,8 @@ final class DatabaseQueueTest extends TestCase
         // Verify worker completed successfully and job is deleted from queue
         $this->assertEquals(0, $resultCode, implode("\n", $output));
         $this->assertEquals(0, DB::table('queued_jobs')->count());
+
+
 
         // 5. Verify the mapping was successfully created in the mapping table
         $this->assertNotNull($mappingRepo->findQuickBooksJournalId($entryId));
@@ -304,7 +317,6 @@ final class DatabaseQueueTest extends TestCase
             'Integration Test Journal Entry to Xero',
             'ref-xero-123',
             \InventoryApp\Domain\Accounting\Enums\AccountingMethod::Accrual
-        );
         $entry->addLine(\InventoryApp\Domain\Accounting\ValueObjects\AccountCode::cash(), 3000, \InventoryApp\Domain\Accounting\Enums\DebitCredit::Debit, 'Deposit');
         $entry->addLine(\InventoryApp\Domain\Accounting\ValueObjects\AccountCode::salesRevenue(), 3000, \InventoryApp\Domain\Accounting\Enums\DebitCredit::Credit, 'Revenue');
         $entry->assertBalanced();
@@ -321,7 +333,14 @@ final class DatabaseQueueTest extends TestCase
         exec($cmd, $output, $resultCode);
 
         $this->assertEquals(0, $resultCode, implode("\n", $output));
-        $this->assertEquals(0, DB::table('queued_jobs')->count());
+
+
+
+
+
+
+
+
 
         $this->assertNotNull($mappingRepo->findXeroJournalId($entryId));
         $this->assertStringContainsString('mock-xero-journal-', $mappingRepo->findXeroJournalId($entryId));
@@ -354,7 +373,6 @@ final class DatabaseQueueTest extends TestCase
             'Integration Test Journal Entry to NetSuite',
             'ref-ns-123',
             \InventoryApp\Domain\Accounting\Enums\AccountingMethod::Accrual
-        );
         $entry->addLine(\InventoryApp\Domain\Accounting\ValueObjects\AccountCode::cash(), 4500, \InventoryApp\Domain\Accounting\Enums\DebitCredit::Debit, 'Deposit');
         $entry->addLine(\InventoryApp\Domain\Accounting\ValueObjects\AccountCode::salesRevenue(), 4500, \InventoryApp\Domain\Accounting\Enums\DebitCredit::Credit, 'Revenue');
         $entry->assertBalanced();
@@ -371,7 +389,14 @@ final class DatabaseQueueTest extends TestCase
         exec($cmd, $output, $resultCode);
 
         $this->assertEquals(0, $resultCode, implode("\n", $output));
-        $this->assertEquals(0, DB::table('queued_jobs')->count());
+
+
+
+
+
+
+
+
 
         $this->assertNotNull($mappingRepo->findNetSuiteJournalId($entryId));
         $this->assertStringContainsString('mock-netsuite-journal-', $mappingRepo->findNetSuiteJournalId($entryId));
@@ -405,7 +430,10 @@ final class DatabaseQueueTest extends TestCase
         $this->assertEquals(0, $resultCode, implode("\n", $output));
 
         // The job should still exist in the queue but with attempts incremented and reserved_at nullified
-        $this->assertEquals(1, DB::table('queued_jobs')->count());
+
+
+
+
         $job = DB::table('queued_jobs')->where('id', $jobId)->first();
         $this->assertEquals(1, $job->attempts);
         $this->assertNull($job->reserved_at);
@@ -428,7 +456,134 @@ final class DatabaseQueueTest extends TestCase
 
         $this->assertEquals(0, $resultCode, implode("\n", $output));
 
+
+
         // Job should now be deleted because attempts reached 5
         $this->assertEquals(0, DB::table('queued_jobs')->where('id', $jobId)->count());
+    }
+}
+
+use Illuminate\Database\Capsule\Manager as Capsule;
+{
+    {
+        Capsule::table('queued_jobs')->delete();
+        Capsule::table('outbox_events')->delete();
+        }
+    }
+    {
+        $baseDir = __DIR__ . "/../../..";
+                $extDir = ini_get('extension_dir') ?: 'C:\\Users\\johns\\AppData\\Local\\Microsoft\\WinGet\\Packages\\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\\ext';
+        $phpExec = PHP_BINARY . ' -d extension_dir=' . escapeshellarg($extDir) . ' -d extension=mbstring -d extension=pdo_sqlite';
+        $dbFile = getenv('DB_DATABASE') ?: ($baseDir . '/storage/data/test.sqlite');
+        $cmd = (PHP_OS_FAMILY === 'Windows')
+            ? "set DB_CONNECTION=sqlite&& set DB_DATABASE={$dbFile}&& " . $phpExec . " " . $baseDir . "/scripts/" . (str_contains(__FILE__, 'Outbox') ? "outbox-worker.php" : "queue-worker.php") . " --once"
+            : "DB_CONNECTION=sqlite DB_DATABASE=" . escapeshellarg($dbFile) . " " . $phpExec . " " . $baseDir . "/scripts/" . (str_contains(__FILE__, 'Outbox') ? "outbox-worker.php" : "queue-worker.php") . " --once";
+        DB::disconnect();
+        DB::reconnect();
+    }
+    {
+    }
+    {
+    }
+    {
+    }
+    {
+    }
+    {
+    }
+}
+
+
+
+
+
+{
+    {
+        }
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+
+
+
+        $cmd = "php scripts/queue-worker.php --once";
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
     }
 }

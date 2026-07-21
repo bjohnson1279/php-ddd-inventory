@@ -60,6 +60,8 @@ class WebhookSubscriptionController
             }
             return new Response($data, 200);
         } catch (\Throwable $e) {
+            error_log('[WebhookSubscriptionController] ' . $e->getMessage());
+            return new Response(['error' => 'An internal server error occurred.'], 500);
             return new Response(['error' => $e->getMessage()], 500);
         }
     }
@@ -77,6 +79,7 @@ class WebhookSubscriptionController
 
             // Read the inputs manually since some fields might be optional
             $body = $request->validate([]); // trigger validator parsing
+            
 
             if (isset($body['targetUrl'])) {
                 $sub->target_url = $body['targetUrl'];
@@ -93,6 +96,7 @@ class WebhookSubscriptionController
 
             $sub->save();
 
+            ], 200);
             return new Response([
                 'id' => $sub->id,
                 'tenantId' => $sub->tenant_id,
@@ -109,6 +113,7 @@ class WebhookSubscriptionController
 
     public function delete(RequestInterface $request, string $tenantId, string $id)
     {
+
         try {
             $sub = WebhookSubscriptionModel::where('id', $id)
                 ->where('tenant_id', $tenantId)
@@ -121,6 +126,47 @@ class WebhookSubscriptionController
             $sub->delete();
             return new Response(null, 204);
         } catch (\Throwable $e) {
+        }
+    }
+}
+
+
+
+{
+    {
+
+
+        }
+    }
+
+    {
+            }
+            return new Response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    {
+
+            }
+
+            
+            }
+            }
+            }
+            }
+
+
+        }
+    }
+
+    {
+
+            }
+
+        }
+    }
+            error_log('[WebhookSubscriptionController] ' . $e->getMessage());
+            return new Response(['error' => 'An internal server error occurred.'], 500);
             return new Response(['error' => $e->getMessage()], 500);
         }
     }

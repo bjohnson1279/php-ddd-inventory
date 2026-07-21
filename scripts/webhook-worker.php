@@ -5,10 +5,20 @@ require_once __DIR__ . '/../vendor/autoload.php';
 // Bootstrap database capsule
 $capsule = require_once __DIR__ . '/../src/Infrastructure/Persistence/bootstrap_database.php';
 
+use InventoryApp\Application\Webhooks\Workers\WebhookDeliveryWorker;
+
+$once = in_array('--once', $argv);
+
+$worker = new WebhookDeliveryWorker();
+$worker->run($once);
+
+
+
 use InventoryApp\Infrastructure\Models\WebhookSubscriptionModel;
 use InventoryApp\Infrastructure\Models\WebhookDeliveryModel;
 
-$once = in_array('--once', $argv);
+
+
 
 echo "Starting DDD Webhook Delivery Worker...\n";
 
@@ -113,7 +123,6 @@ do {
             $delivery->attempts = $nextAttempts;
             $delivery->last_error = $e->getMessage();
             $delivery->next_attempt_at = $nextAttemptAt;
-            $delivery->save();
         }
     }
 

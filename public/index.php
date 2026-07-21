@@ -49,6 +49,7 @@ if ($driver === 'sqlite') {
         'host'      => getenv('DB_HOST')       ?: 'db',
         'database'  => getenv('DB_DATABASE')   ?: 'ddd_inventory',
         'username'  => getenv('DB_USERNAME')   ?: 'ddd_user',
+        'password'  => getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '',
         'password'  => getenv('DB_PASSWORD')   ?: 'secret',
         'port'      => getenv('DB_PORT')       ?: 5432,
         'charset'   => 'utf8',
@@ -68,7 +69,6 @@ if ($driver === 'sqlite') {
     ]);
     $conn->table('tenants')->insertOrIgnore([
         ['id' => 'test-tenant', 'name' => 'Test Tenant']
-    ]);
     $conn->table('roles')->insertOrIgnore([
         ['id' => 'admin',   'name' => 'Administrator'],
         ['id' => 'manager', 'name' => 'Manager'],
@@ -132,6 +132,7 @@ $registerProductUseCase = new \InventoryApp\Application\Inventory\UseCases\Regis
     ServiceContainer::productRepo('system'),
     $dispatcher
 );
+$createInventoryListener = new CreateInventoryItemOnVariantAdded($registerProductUseCase);
 $createInventoryListener = new CreateInventoryItemOnVariantAdded();
 $dispatcher->subscribe(VariantAddedToCatalog::class, [$createInventoryListener, 'handle']);
 
@@ -317,9 +318,8 @@ if ($method === 'GET' && $uri === '/api/notifications/subscribe') {
     }
     $tokenData = (new \InventoryApp\Infrastructure\Identity\ApiTokenService())->validate($token);
     if ($tokenData === null) {
-        http_response_code(401);
         echo json_encode(['error' => 'Unauthorized: Invalid token']);
-        exit;
+    }
     }
 
     $tenantId = $tokenData->tenant_id;
@@ -418,44 +418,29 @@ if ($method === 'GET' && $uri === '/api/webhook-subscriptions') {
     if (!$actor || !$actor->canDo('users:manage')) {
         http_response_code(403);
         echo json_encode(['error' => 'Forbidden']);
-        exit;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\WebhookSubscriptionController())->list($request, tenantId());
-    http_response_code($response->getStatusCode());
-    echo $response->getContent();
-    exit;
 }
 
 if ($method === 'PUT' && preg_match('#^/api/webhook-subscriptions/([^/]+)$#', $uri, $m)) {
-    requireAuth();
     $id = urldecode($m[1]);
-    $actingUserId = $_SERVER['auth.user_id'] ?? '';
-    $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('users:manage')) {
-        http_response_code(403);
-        echo json_encode(['error' => 'Forbidden']);
-        exit;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\WebhookSubscriptionController())->update($request, tenantId(), $id);
-    http_response_code($response->getStatusCode());
-    echo $response->getContent();
-    exit;
 }
 
 if ($method === 'DELETE' && preg_match('#^/api/webhook-subscriptions/([^/]+)$#', $uri, $m)) {
-    requireAuth();
-    $id = urldecode($m[1]);
-    $actingUserId = $_SERVER['auth.user_id'] ?? '';
-    $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('users:manage')) {
-        http_response_code(403);
-        echo json_encode(['error' => 'Forbidden']);
-        exit;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\WebhookSubscriptionController())->delete($request, tenantId(), $id);
-    http_response_code($response->getStatusCode());
-    echo $response->getContent();
-    exit;
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
 }
 
 // ── Route: POST /api/audit/run ────────────────────────────────────────────────
@@ -472,6 +457,7 @@ if ($method === 'POST' && $uri === '/api/audit/run') {
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+    }
 }
 
 // ── Route: GET /api/audit/discrepancies ───────────────────────────────────────
@@ -488,6 +474,7 @@ if ($method === 'GET' && $uri === '/api/audit/discrepancies') {
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+    }
 }
 
 // ── Route: POST /api/audit/discrepancies/{id}/resolve ──────────────────────────
@@ -505,6 +492,7 @@ if ($method === 'POST' && preg_match('#^/api/audit/discrepancies/([^/]+)/resolve
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+    }
 }
 
 // ── Route: POST /auth/register ────────────────────────────────────────────────
@@ -525,6 +513,7 @@ if ($method === 'POST' && $uri === '/api/setup') {
     $middleware = new \InventoryApp\Infrastructure\Http\Middleware\RateLimitMiddleware(5, 60);
     $response = $middleware->handle($request, function ($req) {
         $body = json_decode(file_get_contents('php://input'), true) ?: [];
+        
 
         $orgName = $body['orgName'] ?? '';
         $tenantId = $body['tenantId'] ?? '';
@@ -537,6 +526,12 @@ if ($method === 'POST' && $uri === '/api/setup') {
         }
 
         try {
+        
+        }
+        
+
+        }
+
             $existingTenant = Capsule::table('tenants')->where('id', $tenantId)->first();
             if ($existingTenant) {
                 return new \InventoryApp\Infrastructure\Http\Response(['error' => 'Forbidden: Tenant already exists.'], 403);
@@ -580,6 +575,7 @@ if ($method === 'POST' && $uri === '/api/setup') {
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+
 }
 
 // ── Route: GET /api/users ─────────────────────────────────────────────────────
@@ -595,6 +591,7 @@ if ($method === 'GET' && $uri === '/api/users') {
         $userModels = \InventoryApp\Infrastructure\Models\UserModel::with('userRoles')
             ->where('tenant_id', tenantId())
             ->get();
+            
 
         $users = $userModels->map(function($model) {
             $roles = $model->userRoles->pluck('id')->all();
@@ -605,6 +602,7 @@ if ($method === 'GET' && $uri === '/api/users') {
                 'role' => $role
             ];
         })->all();
+        
 
         http_response_code(200);
         echo json_encode(['users' => $users]);
@@ -663,6 +661,9 @@ if ($method === 'POST' && $uri === '/api/users') {
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+            }
+        }
+
 }
 
 // ── Route: POST /auth/login ───────────────────────────────────────────────────
@@ -676,6 +677,7 @@ if ($method === 'POST' && ($uri === '/auth/login' || $uri === '/api/auth/login')
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+
 }
 
 // ── Route: POST /api/returns/rma ───────────────────────────────────────
@@ -736,6 +738,8 @@ if ($method === 'POST' && $uri === '/api/returns/rma') {
         }
     }
     exit;
+        }
+    }
 }
 
 // ── Route: POST /api/returns/rma/{id}/authorize ───────────────────────────────────────
@@ -767,6 +771,8 @@ if ($method === 'POST' && preg_match('#^/api/returns/rma/([^/]+)/authorize$#', $
         }
     }
     exit;
+        }
+    }
 }
 
 // ── Route: POST /api/returns/rma/{id}/receive ───────────────────────────────────────
@@ -783,6 +789,8 @@ if ($method === 'POST' && preg_match('#^/api/returns/rma/([^/]+)/receive$#', $ur
 
         $rmaId = $m[1];
         $body = json_decode(file_get_contents('php://input'), true) ?: [];
+        }
+
         $useCase = new \InventoryApp\Application\Returns\UseCases\ReceiveRMA(
             ServiceContainer::rmaRepo(),
             ServiceContainer::productRepo(tenantId()),
@@ -812,6 +820,9 @@ if ($method === 'POST' && preg_match('#^/api/returns/rma/([^/]+)/receive$#', $ur
         }
     }
     exit;
+
+        }
+    }
 }
 
 // ── Route: GET /api/returns/rma/{id} ───────────────────────────────────────
@@ -862,6 +873,12 @@ if ($method === 'GET' && preg_match('#^/api/returns/rma/([^/]+)$#', $uri, $m)) {
         }
     }
     exit;
+        }
+
+        }
+
+        }
+    }
 }
 
 // ── Route: GET /api/returns/quarantine ───────────────────────────────────────
@@ -897,6 +914,10 @@ if ($method === 'GET' && $uri === '/api/returns/quarantine') {
         }
     }
     exit;
+        }
+
+        }
+    }
 }
 
 // ── Route: GET /api/returns/quarantine/{id} ───────────────────────────────────────
@@ -913,6 +934,8 @@ if ($method === 'GET' && preg_match('#^/api/returns/quarantine/([^/]+)$#', $uri,
 
         http_response_code(200);
         echo json_encode([
+        }
+
             'id' => $item->getId(),
             'variantId' => $item->getVariantId(),
             'quantity' => $item->getQuantity(),
@@ -934,6 +957,8 @@ if ($method === 'GET' && preg_match('#^/api/returns/quarantine/([^/]+)$#', $uri,
         }
     }
     exit;
+        }
+    }
 }
 
 // ── Route: POST /api/returns/quarantine/{id}/resolve ───────────────────────────────────────
@@ -977,6 +1002,11 @@ if ($method === 'POST' && preg_match('#^/api/returns/quarantine/([^/]+)/resolve$
         }
     }
     exit;
+        }
+
+
+        }
+    }
 }
 
 // ── Route: POST /api/inventory/receive ───────────────────────────────────────
@@ -1089,6 +1119,7 @@ if ($method === 'POST' && $uri === '/api/inventory/allocate') {
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+    }
 }
 
 // ── Route: POST /api/inventory/release-allocation ────────────────────────────
@@ -1106,6 +1137,7 @@ if ($method === 'POST' && $uri === '/api/inventory/release-allocation') {
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+    }
 }
 
 // ── Route: POST /api/inventory/fulfill-allocation ────────────────────────────
@@ -1123,6 +1155,7 @@ if ($method === 'POST' && $uri === '/api/inventory/fulfill-allocation') {
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+    }
 }
 
 // ── Route: POST /api/inventory/create-in-transit ─────────────────────────────
@@ -1140,6 +1173,7 @@ if ($method === 'POST' && $uri === '/api/inventory/create-in-transit') {
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+    }
 }
 
 // ── Route: POST /api/inventory/receive-in-transit ────────────────────────────
@@ -1157,6 +1191,7 @@ if ($method === 'POST' && $uri === '/api/inventory/receive-in-transit') {
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+    }
 }
 
 // ── Route: POST /api/inventory/counts ────────────────────────────────────────
@@ -1211,6 +1246,7 @@ if ($method === 'GET' && $uri === '/api/catalog/products') {
     try {
         $products = Capsule::table('catalog_products')->get()->toArray();
         $variants = Capsule::table('catalog_variants')->get()->toArray();
+        
 
         $productsMap = [];
         foreach ($products as $p) {
@@ -1218,6 +1254,7 @@ if ($method === 'GET' && $uri === '/api/catalog/products') {
             $pData['variants'] = [];
             $productsMap[$p->id] = $pData;
         }
+        
 
         foreach ($variants as $v) {
             $vData = (array)$v;
@@ -1241,6 +1278,10 @@ if ($method === 'GET' && $uri === '/api/catalog/products') {
         }
     }
     exit;
+        
+
+        }
+    }
 }
 
 
@@ -1334,6 +1375,8 @@ if ($method === 'GET' && $uri === '/api/serials') {
         }
     }
     exit;
+        }
+    }
 }
 
 // Route: POST /api/serials/{id}/receive
@@ -1471,6 +1514,8 @@ if ($method === 'GET' && $uri === '/api/onboardings') {
         }
     }
     exit;
+        }
+    }
 }
 
 // Route: POST /api/onboardings/{id}/items
@@ -1562,6 +1607,7 @@ if ($method === 'GET' && $uri === '/api/shipping/rates') {
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+    }
 }
 
 // Route: POST /api/shipping/labels
@@ -1603,6 +1649,7 @@ if ($method === 'GET' && $uri === '/api/shipping/shipments') {
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+    }
 }
 
 // Route: POST /api/shipping/shipments/{id}/track
@@ -1624,6 +1671,7 @@ if ($method === 'POST' && preg_match('#^/api/shipping/shipments/([^/]+)/track$#'
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+    }
 }
 
 // Route: POST /api/shipping/route
@@ -1644,6 +1692,7 @@ if ($method === 'POST' && $uri === '/api/shipping/route') {
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+    }
 }
 
 // ── Outbox ──────────────────────────────────────────────────────────────────────
@@ -1661,6 +1710,7 @@ if ($method === 'GET' && $uri === '/api/outbox/stats') {
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+    }
 }
 
 // Route: GET /api/outbox/dead-letter
@@ -1677,6 +1727,7 @@ if ($method === 'GET' && $uri === '/api/outbox/dead-letter') {
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+    }
 }
 
 // Route: POST /api/outbox/{id}/retry
@@ -1694,6 +1745,7 @@ if ($method === 'POST' && preg_match('#^/api/outbox/([^/]+)/retry$#', $uri, $m))
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+    }
 }
 
 // ── Unit of Measure (UoM) ────────────────────────────────────────────────────
@@ -1772,6 +1824,7 @@ if ($method === 'GET' && $uri === '/api/kits') {
     try {
         $kits = Capsule::table('kits')->get()->toArray();
         $components = Capsule::table('kit_components')->get()->toArray();
+        
 
         $kitsMap = [];
         foreach ($kits as $k) {
@@ -1779,6 +1832,7 @@ if ($method === 'GET' && $uri === '/api/kits') {
             $kData['components'] = [];
             $kitsMap[$k->id] = $kData;
         }
+        
 
         foreach ($components as $c) {
             $cData = (array)$c;
@@ -1800,6 +1854,10 @@ if ($method === 'GET' && $uri === '/api/kits') {
         }
     }
     exit;
+        
+
+        }
+    }
 }
 
 // Route: POST /api/kits/{id}/components
@@ -1861,6 +1919,7 @@ if ($method === 'POST' && $uri === '/api/kits/assemble') {
         ServiceContainer::productRepo(tenantId()),
         ServiceContainer::ledgerRepo(tenantId()),
         ServiceContainer::costLayerRepo(tenantId()),
+    }
         new \InventoryApp\Domain\Accounting\Services\AccountingJournalService(
             ServiceContainer::journalRepo(tenantId()),
             new \InventoryApp\Domain\Accounting\Services\CostLayerService(ServiceContainer::costLayerRepo(tenantId()))
@@ -1896,6 +1955,7 @@ if ($method === 'POST' && $uri === '/api/kits/disassemble') {
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+    }
 }
 
 // ── Route: POST /api/warehouse-locations ───────────────────────────────────────
@@ -1913,6 +1973,7 @@ if ($method === 'POST' && $uri === '/api/warehouse-locations') {
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+    }
 }
 
 // ── Route: DELETE /api/warehouse-locations/{id} ─────────────────────────────────
@@ -1931,6 +1992,7 @@ if ($method === 'DELETE' && preg_match('#^/api/warehouse-locations/([^/]+)$#', $
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+    }
 }
 
 // ── Route: GET /api/warehouse-locations ───────────────────────────────────────
@@ -2033,6 +2095,10 @@ if ($method === 'POST' && $uri === '/api/inventory/sale') {
         }
     }
     exit;
+    }
+
+        }
+    }
 }
 
 // ── Route: POST /api/inventory/return ────────────────────────────────────────
@@ -2067,6 +2133,10 @@ if ($method === 'POST' && $uri === '/api/inventory/return') {
         }
     }
     exit;
+    }
+
+        }
+    }
 }
 
 // ── Route: GET /api/inventory/counts/{id} ────────────────────────────────────
@@ -2080,6 +2150,7 @@ if ($method === 'GET' && preg_match('#^/api/inventory/counts/([^/]+)$#', $uri, $
             http_response_code(404);
             echo json_encode(['error' => 'Inventory count not found']);
             exit;
+
         }
         $items = array_map(fn($item) => [
             'sku'      => $item->getSku()->getValue(),
@@ -2103,6 +2174,8 @@ if ($method === 'GET' && preg_match('#^/api/inventory/counts/([^/]+)$#', $uri, $
         }
     }
     exit;
+        }
+    }
 }
 
 // ── Route: PATCH /api/users/{id}/role ────────────────────────────────────────
@@ -2135,6 +2208,10 @@ if ($method === 'PATCH' && preg_match('#^/api/users/([^/]+)/role$#', $uri, $m)) 
         }
     }
     exit;
+    }
+
+        }
+    }
 }
 
 // ── Route: POST /api/purchase-orders ─────────────────────────────────────────
@@ -2152,6 +2229,7 @@ if ($method === 'POST' && $uri === '/api/purchase-orders') {
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+    }
 }
 
 // ── Route: GET /api/purchase-orders/{id} ──────────────────────────────────────
@@ -2170,6 +2248,7 @@ if ($method === 'GET' && preg_match('#^/api/purchase-orders/([^/]+)$#', $uri, $m
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+    }
 }
 
 // ── Route: POST /api/purchase-orders/{id}/approve ─────────────────────────────
@@ -2188,6 +2267,7 @@ if ($method === 'POST' && preg_match('#^/api/purchase-orders/([^/]+)/approve$#',
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+    }
 }
 
 // ── Route: POST /api/purchase-orders/{id}/send ────────────────────────────────
@@ -2206,6 +2286,7 @@ if ($method === 'POST' && preg_match('#^/api/purchase-orders/([^/]+)/send$#', $u
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+    }
 }
 
 // ── Route: POST /api/purchase-orders/{id}/receive ─────────────────────────────
@@ -2220,6 +2301,7 @@ if ($method === 'POST' && preg_match('#^/api/purchase-orders/([^/]+)/receive$#',
         exit;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\PurchaseOrderController())
+    }
         ->receive(
             $request,
             $id,
@@ -2248,6 +2330,7 @@ if ($method === 'POST' && $uri === '/api/reorder-policies') {
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+    }
 }
 
 // ── Route: POST /api/reorder-policies/evaluate ───────────────────────────────
@@ -2265,6 +2348,7 @@ if ($method === 'POST' && $uri === '/api/reorder-policies/evaluate') {
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+    }
 }
 
 // ── Route: GET /api/reorder-policies/{sku}/{locationId} ──────────────────────
@@ -2284,6 +2368,7 @@ if ($method === 'GET' && preg_match('#^/api/reorder-policies/([^/]+)/([^/]+)$#',
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+    }
 }
 
 // ── Route: GET /api/forecasting/report ───────────────────────────────────────
@@ -2307,6 +2392,7 @@ if ($method === 'GET' && $uri === '/api/forecasting/report') {
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+    }
 }
 
 // ── Route: GET /api/forecasting/stock-velocity ─────────────────────────────────
@@ -2326,6 +2412,7 @@ if ($method === 'GET' && $uri === '/api/forecasting/stock-velocity') {
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+    }
 }
 
 // ── Route: POST /api/forecasting/forecast ──────────────────────────────────────
@@ -2349,6 +2436,7 @@ if ($method === 'POST' && $uri === '/api/forecasting/forecast') {
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
+    }
 }
 
 // ── Shopify Webhooks ──────────────────────────────────────────────────────────
@@ -2385,6 +2473,7 @@ if ($method === 'POST' && str_starts_with($uri, '/webhooks/shopify/')) {
         try {
             $mapper->handleOrderPaid($payload);
         } catch (\Exception $e) {
+
             // Log but always return 200 — Shopify retries on non-200 responses,
             // which could cause duplicate stock decrements on transient errors.
             error_log('[Shopify webhook] orders/paid error: ' . $e->getMessage());
@@ -2404,6 +2493,7 @@ if ($method === 'POST' && str_starts_with($uri, '/webhooks/shopify/')) {
         http_response_code(200);
         echo json_encode(['message' => 'Accepted']);
         exit;
+        }
     }
 
     // Unknown Shopify topic — still verified, just not handled yet
@@ -2415,3 +2505,987 @@ if ($method === 'POST' && str_starts_with($uri, '/webhooks/shopify/')) {
 // ── Fallback ──────────────────────────────────────────────────────────────────
 http_response_code(200);
 echo json_encode(['message' => 'DDD Inventory API is running', 'uri' => $uri]);
+
+
+    }
+    @file_put_contents(__DIR__ . '/../storage/logs/server_error.log', '[UNHANDLED] ' . get_class($e) . ': ' . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine() . "\n" . $e->getTraceAsString() . "\n", FILE_APPEND);
+    echo json_encode(['error' => 'Internal server error', 'exception' => get_class($e), 'message' => $e->getMessage()]);
+    return;
+
+    }
+
+
+$envDriver = getenv('DB_CONNECTION');
+
+if ($driver === 'pgsql') {
+    if (!extension_loaded('pdo_pgsql')) {
+        $driver = 'sqlite';
+    } else {
+        $pgHost = getenv('DB_HOST') ?: 'db';
+        $pgPort = (int)(getenv('DB_PORT') ?: 5432);
+        $fp = @fsockopen($pgHost, $pgPort, $errno, $errstr, 0.1);
+        if (!$fp) {
+            $driver = 'sqlite';
+            fclose($fp);
+        }
+    }
+}
+
+    putenv('DB_CONNECTION=sqlite');
+    $_ENV['DB_CONNECTION'] = 'sqlite';
+    $_SERVER['DB_CONNECTION'] = 'sqlite';
+}
+
+
+    }
+        'password'  => getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '',
+}
+
+}
+
+
+
+
+
+
+
+
+$createInventoryListener = new CreateInventoryItemOnVariantAdded();
+
+
+
+
+
+
+
+
+{
+
+    {
+    }
+
+    {
+        }
+    }
+
+    {
+
+        }
+
+        }
+
+        }
+
+        }
+    }
+
+    {
+        }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+    }
+}
+
+
+{
+
+    }
+
+        return;
+    }
+
+
+    }
+
+
+        }
+    }
+}
+
+{
+}
+
+
+
+
+    }
+    }
+
+
+
+    }
+
+
+        }
+
+
+            }
+        }
+
+        }
+
+    }
+}
+
+}
+
+}
+
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+
+}
+
+        
+        
+        }
+        
+            }
+
+
+
+            }
+
+            }
+        }
+
+}
+
+        }
+
+            
+        
+        }
+    }
+}
+
+
+        }
+
+
+
+            }
+        }
+
+}
+
+
+}
+
+        }
+
+
+        }
+
+        }
+    }
+}
+
+        }
+
+
+        }
+    }
+}
+
+        }
+
+
+        }
+    }
+}
+
+        }
+
+        }
+
+        }
+    }
+}
+
+        }
+
+        }
+    }
+}
+
+        }
+
+        }
+    }
+}
+
+        }
+
+
+        }
+    }
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+}
+
+}
+
+}
+
+}
+
+        
+        }
+        
+            }
+        }
+        
+        }
+    }
+}
+
+
+}
+
+}
+
+}
+
+}
+
+}
+
+
+}
+
+        }
+    }
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+        }
+    }
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+        
+        }
+        
+            }
+        }
+        
+        }
+    }
+}
+
+}
+
+}
+
+}
+
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+}
+
+}
+
+}
+
+// ── Route: GET /api/warehouse-locations/slotting-suggestions ────────────────────
+if ($method === 'GET' && $uri === '/api/warehouse-locations/slotting-suggestions') {
+        ->suggestSlotting($request);
+}
+
+}
+
+}
+
+}
+
+
+    }
+
+        }
+    }
+}
+
+
+    }
+
+        }
+    }
+}
+
+
+        }
+
+        }
+    }
+}
+
+
+    }
+
+        }
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+
+
+
+    }
+
+
+
+        }
+    }
+
+        }
+    }
+
+}
+
+
+
+    }
+
+    }
+
+
+
+
+    }
+        'password'  => getenv('DB_PASSWORD')   ?: 'secret',
+}
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{
+
+    {
+    }
+
+    {
+        }
+    }
+
+    {
+
+        }
+
+        }
+
+        }
+
+        }
+    }
+
+    {
+        }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+    }
+}
+
+
+{
+
+    }
+
+    }
+
+
+    }
+
+
+        }
+    }
+}
+
+{
+}
+
+
+
+
+    }
+    }
+
+
+
+    }
+
+
+        }
+
+
+            }
+        }
+
+        }
+
+    }
+}
+
+}
+
+}
+
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+
+}
+
+        
+        
+        }
+        
+            }
+
+
+
+            }
+
+            }
+        }
+
+}
+
+        }
+
+            
+        
+        }
+    }
+}
+
+
+        }
+
+
+
+            }
+        }
+
+}
+
+
+}
+
+        }
+
+
+        }
+
+        }
+    }
+}
+
+        }
+
+
+        }
+    }
+}
+
+        }
+
+
+        }
+    }
+}
+
+        }
+
+        }
+
+        }
+    }
+}
+
+        }
+
+        }
+    }
+}
+
+        }
+
+        }
+    }
+}
+
+        }
+
+
+        }
+    }
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+}
+
+}
+
+}
+
+}
+
+        
+        }
+        
+            }
+        }
+        
+        }
+    }
+}
+
+
+}
+
+}
+
+}
+
+}
+
+}
+
+
+}
+
+        }
+    }
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+        }
+    }
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+        
+        }
+        
+            }
+        }
+        
+        }
+    }
+}
+
+}
+
+}
+
+}
+
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+}
+
+
+    }
+
+        }
+    }
+}
+
+
+    }
+
+        }
+    }
+}
+
+
+        }
+
+        }
+    }
+}
+
+
+    }
+
+        }
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+    }
+}
+
+
+
+
+    }
+
+
+
+        }
+    }
+
+        }
+    }
+
+}
+

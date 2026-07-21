@@ -124,7 +124,7 @@ export default function Serials() {
       setActSaleId('');
       setActReturnId('');
       setActReason('');
-      
+
       // Refresh items and update selected
       const updatedRes = await api.get('/serials');
       const updatedItems = updatedRes.items || [];

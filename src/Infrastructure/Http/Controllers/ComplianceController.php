@@ -37,8 +37,11 @@ class ComplianceController
 
             return new Response($data, 200);
         } catch (Exception $e) {
-            error_log('[ComplianceController] ' . $e->getMessage());
-            return new Response(['error' => 'An internal server error occurred.'], 500);
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[ComplianceController] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
+            return new Response(['error' => $e->getMessage()], 400);
         }
     }
 
@@ -49,8 +52,11 @@ class ComplianceController
             $result = ComplianceLedgerService::validateLedger($tenantId);
             return new Response($result, 200);
         } catch (Exception $e) {
-            error_log('[ComplianceController] ' . $e->getMessage());
-            return new Response(['error' => 'An internal server error occurred.'], 500);
+            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+                error_log('[ComplianceController] ' . $e->getMessage());
+                return new Response(['error' => 'An internal server error occurred.'], 500);
+            }
+            return new Response(['error' => $e->getMessage()], 400);
         }
     }
 }

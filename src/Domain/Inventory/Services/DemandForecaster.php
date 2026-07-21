@@ -52,11 +52,9 @@ class DemandForecaster
 
         $history30d = array_filter($history90d, function ($e) use ($thirtyDaysAgo) {
             return $e->occurredAt >= $thirtyDaysAgo;
-        });
 
         $history7d = array_filter($history30d, function ($e) use ($sevenDaysAgo) {
             return $e->occurredAt >= $sevenDaysAgo;
-        });
 
         $locationStock = $product->getStockAt($locationId);
         $currentStock = $locationStock->getStockQuantity()->getValue();
@@ -100,15 +98,11 @@ class DemandForecaster
         $baseQuantity = $velocity['averageDailySales30d'] * $forecastDays;
 
         // --- Seasonal Multiplier Calculation ---
-        $now = new DateTimeImmutable();
         $oneYearAgo = $now->modify('-365 days');
         $entries = $this->ledgerRepo->entriesFor($sku->getValue(), $locationId->getValue());
 
         $dispatches = array_filter($entries, function ($e) use ($oneYearAgo) {
             return $e->occurredAt >= $oneYearAgo &&
-                $e->quantity < 0 &&
-                ($e->reason === ReasonCode::Sale || $e->reason === ReasonCode::KitSale);
-        });
 
         $seasonalMultiplier = 1.0;
         if (!empty($dispatches)) {
@@ -262,5 +256,79 @@ class DemandForecaster
         }
 
         return $reportItems;
+    }
+}
+
+
+
+{
+
+    public function calculateSalesVelocity(SKU $sku, LocationId $locationId, ?Product $product = null): array
+    {
+        }
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+        }
+
+    }
+
+
+
+
+            }
+
+
+                }
+            }
+        }
+
+
+
+        $confidenceLevel = $velocity['averageDailySales30d'] > 0 ? ($seasonalMultiplier != 1.0 ? 0.90 : 0.85) : 0.5;
+
+
+
+
+        }
+
+    }
+
+    {
+
+
+        }
+
+        }
+
+
+            }
+
+            $velocity = $this->calculateSalesVelocity($sku, $locationId, $product);
+            $policy = $this->replenishmentRuleRepo->findBySkuAndLocation($sku, $locationId->getValue());
+
+
+
+                }
+            }
+
+
+
+
+
+
+
+        }
+
     }
 }

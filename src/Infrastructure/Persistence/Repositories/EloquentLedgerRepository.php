@@ -105,7 +105,7 @@ class EloquentLedgerRepository implements LedgerRepositoryInterface
             ->where('variant_id', $variantId);
 
         if ($locationId !== null) {
-            $query->whereRaw("metadata->>'locationId' = ?", [$locationId]);
+            $query->where('metadata->locationId', $locationId);
         }
 
         return $query->orderBy('occurred_at')
@@ -131,7 +131,7 @@ class EloquentLedgerRepository implements LedgerRepositoryInterface
 
         return LedgerEntryModel::where('tenant_id', $this->tenantId)
             ->whereIn('variant_id', $variantIds)
-            ->whereRaw("metadata->>'locationId' = ?", [$locationId])
+            ->where('metadata->locationId', $locationId)
             ->orderBy('occurred_at')
             ->get()
             ->map(fn($row) => new LedgerEntry(
@@ -151,7 +151,7 @@ class EloquentLedgerRepository implements LedgerRepositoryInterface
     {
         return LedgerEntryModel::where('tenant_id', $this->tenantId)
             ->where('variant_id', $variantId)
-            ->whereRaw("metadata->>'locationId' = ?", [$locationId])
+            ->where('metadata->locationId', $locationId)
             ->exists();
     }
 

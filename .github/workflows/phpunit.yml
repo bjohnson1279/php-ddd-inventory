@@ -4,7 +4,6 @@ on:
   push:
     branches: [ master ]
   pull_request:
-    branches: [ master ]
 
 permissions:
   contents: read
@@ -24,7 +23,6 @@ jobs:
 
       - name: Cache Composer
         uses: actions/cache@v4
-        with:
           path: ~/.composer/cache
           key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
           restore-keys: ${{ runner.os }}-composer-
@@ -37,7 +35,6 @@ jobs:
 
   integration:
     name: Integration tests (with Postgres)
-    runs-on: ubuntu-latest
     services:
       postgres:
         image: timescale/timescaledb:latest-pg15
@@ -53,30 +50,14 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-    steps:
-      - uses: actions/checkout@v4
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.2'
-          extensions: mbstring, xml, intl, pdo, pdo_pgsql
 
-      - name: Cache Composer
-        uses: actions/cache@v4
-        with:
-          path: ~/.composer/cache
-          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
-          restore-keys: ${{ runner.os }}-composer-
 
-      - name: Install Composer dependencies
-        run: composer install --no-interaction --prefer-dist --no-scripts
 
       - name: Install psql client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
       - name: Wait for Postgres
-        env:
           PGPASSWORD: secret
         run: |
           until pg_isready -h localhost -p 5432 -U ddd_user -d ddd_inventory; do
@@ -85,19 +66,32 @@ jobs:
           done
 
       - name: Apply DB schema
-        env:
-          PGPASSWORD: secret
-        run: |
           for f in docker/postgres/init/*.sql; do
             echo "Applying $f..."
             psql -v ON_ERROR_STOP=1 -h localhost -U ddd_user -d ddd_inventory -f "$f"
-          done
 
       - name: Run PHPUnit (integration)
-        env:
           DB_HOST: localhost
           DB_PORT: 5432
           DB_DATABASE: ddd_inventory
           DB_USERNAME: ddd_user
           DB_PASSWORD: secret
         run: php vendor/bin/phpunit tests/Integration --testdox
+
+
+
+
+
+
+
+
+          --health-cmd "pg_isready -U ddd_user"
+
+
+
+
+
+
+          until pg_isready -h localhost -p 5432 -U ddd_user; do
+
+

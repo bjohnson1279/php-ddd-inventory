@@ -148,15 +148,12 @@ class DisassembleKit
 
             // Add increment ledger entry for this component
             $ledgerEntriesToAppend[] = new LedgerEntry(
-                id: Uuid::uuid4()->toString(),
-                variantId: $item['variantId'],
                 quantity: $item['quantity'],
                 reason: ReasonCode::KitDisassembly,
                 actorId: $actorId,
                 referenceId: $referenceId,
                 occurredAt: new \DateTimeImmutable(),
                 metadata: ['locationId' => $locationId]
-            );
         }
 
         $this->ledgerRepository->appendAll($ledgerEntriesToAppend);
@@ -168,6 +165,47 @@ class DisassembleKit
             $kitSkuStr,
             $totalDisassembledCost,
             $referenceId
-        );
+    }
+}
+
+
+
+{
+
+    }
+
+    {
+
+        }
+
+        }
+
+        }
+
+        }
+
+
+
+        $kitLedgerEntry = new LedgerEntry(
+        $this->ledgerRepository->append($kitLedgerEntry);
+
+
+
+                }
+                }
+            }
+
+        }
+
+
+
+
+
+            }
+
+            $ledgerEntry = new LedgerEntry(
+            $this->ledgerRepository->append($ledgerEntry);
+        }
+
     }
 }

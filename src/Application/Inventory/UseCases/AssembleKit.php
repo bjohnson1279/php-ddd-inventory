@@ -65,7 +65,6 @@ class AssembleKit
         $productsMap = $this->productRepository->findByIds($componentVariantIds);
 
         $componentsToConsume = [];
-        foreach ($kit->components() as $component) {
             $needed = $component->quantity * $quantity;
             $available = $availableQuantities[$component->variantId] ?? 0;
             if ($available < $needed) {
@@ -137,15 +136,12 @@ class AssembleKit
 
         // 7. Write increment ledger entry for Kit variant
         $ledgerEntriesToAppend[] = new LedgerEntry(
-            id: Uuid::uuid4()->toString(),
-            variantId: $kitProduct->getId(),
             quantity: $quantity,
             reason: ReasonCode::KitAssembly,
             actorId: $actorId,
             referenceId: $referenceId,
             occurredAt: new \DateTimeImmutable(),
             metadata: ['locationId' => $locationId]
-        );
         $this->ledgerRepository->appendAll($ledgerEntriesToAppend);
 
         // 8. Write balanced double-entry Journal Entry
@@ -155,6 +151,46 @@ class AssembleKit
             $kitSkuStr,
             $totalCostCents,
             $referenceId
-        );
+    }
+}
+
+
+
+{
+
+    }
+
+    {
+
+        }
+
+        }
+
+        }
+
+        }
+
+
+            }
+
+            }
+
+        }
+
+
+
+            $ledgerEntry = new LedgerEntry(
+            $this->ledgerRepository->append($ledgerEntry);
+        }
+
+        }
+
+
+
+
+
+        $kitLedgerEntry = new LedgerEntry(
+        $this->ledgerRepository->append($kitLedgerEntry);
+
     }
 }

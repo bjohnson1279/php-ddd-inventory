@@ -69,3 +69,16 @@
 ## 2024-07-26 - Updating PHPUnit mock closures for batch migrations
 **Learning:** When refactoring a single-entity insertion method (like `append(LedgerEntry)`) into a batch method (`appendAll(array)`), failing to update the closure signature in PHPUnit mock expectations (`$this->callback(function (LedgerEntry $entry) { ... })`) to accept an array (`function (array $entries)`) will cause `TypeError` test failures because the framework attempts to pass an array into a parameter expecting an object.
 **Action:** When updating PHPUnit mock expectations from a single entity to a batch array, ensure the `$this->callback()` closure signature is explicitly updated to accept an `array` parameter and iterate over the entries appropriately.
+
+
+
+
+
+
+
+
+
+
+
+
+

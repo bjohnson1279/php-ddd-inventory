@@ -56,7 +56,6 @@ class InMemoryLedgerRepository implements LedgerRepositoryInterface
 
     public function currentQuantity(string $variantId): int
     {
-        $rows = $this->read();
         $sum = 0;
         foreach ($rows as $r) {
             if ($r['variantId'] === $variantId) $sum += (int)$r['quantity'];
@@ -66,12 +65,10 @@ class InMemoryLedgerRepository implements LedgerRepositoryInterface
 
     public function currentQuantities(array $variantIds): array
     {
-        $rows = $this->read();
         $map = [];
         foreach ($variantIds as $vId) {
             $map[$vId] = 0;
         }
-        foreach ($rows as $r) {
             $vId = $r['variantId'];
             if (isset($map[$vId])) {
                 $map[$vId] += (int) $r['quantity'];
@@ -82,9 +79,7 @@ class InMemoryLedgerRepository implements LedgerRepositoryInterface
 
     public function entriesFor(string $variantId, ?string $locationId = null): array
     {
-        $rows = $this->read();
         $out = [];
-        foreach ($rows as $r) {
             if ($r['variantId'] !== $variantId) continue;
 
             if ($locationId !== null) {
@@ -110,10 +105,7 @@ class InMemoryLedgerRepository implements LedgerRepositoryInterface
 
     public function entriesForSkusAndLocation(array $variantIds, string $locationId): array
     {
-        $rows = $this->read();
-        $out = [];
         $variantMap = array_flip($variantIds);
-        foreach ($rows as $r) {
             if (!isset($variantMap[$r['variantId']])) continue;
 
             $meta = $r['metadata'] ?? [];
@@ -121,26 +113,12 @@ class InMemoryLedgerRepository implements LedgerRepositoryInterface
                 continue;
             }
 
-            $out[] = new LedgerEntry(
-                $r['id'],
-                $r['variantId'],
-                (int)$r['quantity'],
-                \InventoryApp\Domain\Inventory\Enums\ReasonCode::from($r['reason']),
-                $r['actorId'],
-                $r['referenceId'] ?? null,
-                new \DateTimeImmutable($r['occurredAt']),
-                $r['metadata'] ?? [],
-            );
         }
-        return $out;
     }
 
     public function hasAnyEntries(string $variantId, string $locationId): bool
     {
-        $rows = $this->read();
-        foreach ($rows as $r) {
             if ($r['variantId'] === $variantId) {
-                $meta = $r['metadata'] ?? [];
                 if (isset($meta['locationId']) && $meta['locationId'] === $locationId) return true;
             }
         }
@@ -149,10 +127,6 @@ class InMemoryLedgerRepository implements LedgerRepositoryInterface
 
     public function findRecallEntries(string $lotNumber): array
     {
-        $rows = $this->read();
-        $out = [];
-        foreach ($rows as $r) {
-            $meta = $r['metadata'] ?? [];
             if (isset($meta['lotNumber']) && $meta['lotNumber'] === $lotNumber) {
                 $out[] = new LedgerEntry(
                     $r['id'],
@@ -167,6 +141,67 @@ class InMemoryLedgerRepository implements LedgerRepositoryInterface
             }
         }
         usort($out, fn($a, $b) => $b->occurredAt <=> $a->occurredAt);
-        return $out;
+    }
+}
+
+
+
+{
+
+    {
+    }
+
+    {
+    }
+
+    {
+    }
+
+    {
+        $rows[] = [
+            'id' => $entry->id,
+            'variantId' => $entry->variantId,
+            'quantity' => $entry->quantity,
+            'reason' => $entry->reason->value,
+            'actorId' => $entry->actorId,
+            'referenceId' => $entry->referenceId,
+            'occurredAt' => $entry->occurredAt->format(DATE_ATOM),
+            'metadata' => $entry->metadata,
+        ];
+    }
+
+    {
+        }
+    }
+
+    {
+        }
+            }
+        }
+    }
+
+    {
+
+                }
+            }
+
+        }
+    }
+
+    {
+
+            }
+
+        }
+    }
+
+    {
+            }
+        }
+    }
+
+    {
+            }
+        }
     }
 }

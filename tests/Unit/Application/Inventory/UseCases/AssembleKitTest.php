@@ -70,22 +70,10 @@ class AssembleKitTest extends TestCase
     {
         $this->kitRepositoryMock->method('findBySku')->willReturn(null);
 
-        $this->expectException(Exception::class);
         $this->expectExceptionMessage("Kit with SKU KIT-1 not found.");
 
-        $this->productRepositoryMock->expects($this->never())->method('save');
-        $this->ledgerRepositoryMock->expects($this->never())->method('appendAll');
-        $this->costLayerRepositoryMock->expects($this->never())->method('save');
-        $this->journalServiceMock->expects($this->never())->method('onKitAssembly');
 
-        $this->useCase->execute([
-            'tenantId' => 'tenant-1',
-            'locationId' => 'LOC-1',
-            'kitSku' => 'KIT-1',
             'quantity' => 1,
-            'actorId' => 'actor-1',
-            'referenceId' => 'ref-1'
-        ]);
     }
 
     public function testExecuteThrowsExceptionIfInsufficientStockForComponent()
@@ -99,34 +87,16 @@ class AssembleKitTest extends TestCase
         $kitProduct = Product::create('kit-var-1', new SKU('KIT-1'), 'Test Kit', new Department('DEP'), new LocationId('LOC-1'), new Quantity(0));
         $this->productRepositoryMock->method('findBySku')->with($this->callback(function($sku) { return $sku->getValue() === 'KIT-1'; }))->willReturn($kitProduct);
 
-        $this->expectException(Exception::class);
         $this->expectExceptionMessage("Insufficient stock for component variant ID comp-var-1. Needed: 2, Available: 1");
 
-        $this->productRepositoryMock->expects($this->never())->method('save');
-        $this->ledgerRepositoryMock->expects($this->never())->method('appendAll');
-        $this->costLayerRepositoryMock->expects($this->never())->method('save');
-        $this->journalServiceMock->expects($this->never())->method('onKitAssembly');
 
-        $this->useCase->execute([
-            'tenantId' => 'tenant-1',
-            'locationId' => 'LOC-1',
-            'kitSku' => 'KIT-1',
-            'quantity' => 1,
-            'actorId' => 'actor-1',
-            'referenceId' => 'ref-1'
-        ]);
     }
 
     public function testExecuteThrowsExceptionIfComponentProductNotFound()
     {
-        $kit = new Kit('k-1', 'KIT-1', 'Test Kit');
-        $kit->addComponent('comp-var-1', 2);
 
-        $this->kitRepositoryMock->method('findBySku')->willReturn($kit);
         $this->ledgerRepositoryMock->method('currentQuantities')->willReturn(['comp-var-1' => 5]);
 
-        $kitProduct = Product::create('kit-var-1', new SKU('KIT-1'), 'Test Kit', new Department('DEP'), new LocationId('LOC-1'), new Quantity(0));
-        $this->productRepositoryMock->method('findBySku')->with($this->callback(function($sku) { return $sku->getValue() === 'KIT-1'; }))->willReturn($kitProduct);
 
         // Mock CostLayerService consumption (inside cost layer repository)
         $costLayer = new InventoryCostLayer('cl-1', 'comp-var-1', 'tenant-1', 5, 1000, new \DateTimeImmutable());
@@ -134,74 +104,38 @@ class AssembleKitTest extends TestCase
 
         $this->productRepositoryMock->method('findByIds')->willReturn([]);
 
-        $this->expectException(Exception::class);
         $this->expectExceptionMessage("Product variant comp-var-1 not found.");
 
-        $this->productRepositoryMock->expects($this->never())->method('save');
-        $this->ledgerRepositoryMock->expects($this->never())->method('appendAll');
-        $this->costLayerRepositoryMock->expects($this->never())->method('save');
-        $this->journalServiceMock->expects($this->never())->method('onKitAssembly');
 
-        $this->useCase->execute([
-            'tenantId' => 'tenant-1',
-            'locationId' => 'LOC-1',
-            'kitSku' => 'KIT-1',
-            'quantity' => 1,
-            'actorId' => 'actor-1',
-            'referenceId' => 'ref-1'
-        ]);
     }
 
     public function testExecuteThrowsExceptionIfKitProductNotFound()
     {
-        $kit = new Kit('k-1', 'KIT-1', 'Test Kit');
-        $kit->addComponent('comp-var-1', 2);
 
-        $this->kitRepositoryMock->method('findBySku')->willReturn($kit);
-        $this->ledgerRepositoryMock->method('currentQuantities')->willReturn(['comp-var-1' => 5]);
 
-        $costLayer = new InventoryCostLayer('cl-1', 'comp-var-1', 'tenant-1', 5, 1000, new \DateTimeImmutable());
-        $this->costLayerRepositoryMock->method('getActiveLayers')->willReturn([$costLayer]);
 
         $componentProduct = Product::create('comp-var-1', new SKU('COMP-1'), 'Comp 1', new Department('DEP'), new LocationId('LOC-1'), new Quantity(5));
         $this->productRepositoryMock->method('findByIds')->willReturn(['comp-var-1' => $componentProduct]);
 
         $this->productRepositoryMock->method('findBySku')->with($this->callback(function($sku) { return $sku->getValue() === 'KIT-1'; }))->willReturn(null);
 
-        $this->expectException(Exception::class);
         $this->expectExceptionMessage("Product variant for Kit SKU KIT-1 not found.");
 
-        $this->productRepositoryMock->expects($this->never())->method('save');
-        $this->ledgerRepositoryMock->expects($this->never())->method('appendAll');
-        $this->costLayerRepositoryMock->expects($this->never())->method('save');
-        $this->journalServiceMock->expects($this->never())->method('onKitAssembly');
 
-        $this->useCase->execute([
-            'tenantId' => 'tenant-1',
-            'locationId' => 'LOC-1',
-            'kitSku' => 'KIT-1',
-            'quantity' => 1,
-            'actorId' => 'actor-1',
-            'referenceId' => 'ref-1'
-        ]);
     }
 
     public function testExecuteSuccessfullyAssemblesKit()
     {
         // 1. Kit
-        $kit = new Kit('k-1', 'KIT-1', 'Test Kit');
-        $kit->addComponent('comp-var-1', 2);
         $this->kitRepositoryMock->expects($this->once())->method('findBySku')->with('KIT-1')->willReturn($kit);
 
         // 2. Component stock check
         $this->ledgerRepositoryMock->expects($this->once())->method('currentQuantities')->willReturn(['comp-var-1' => 5]);
 
         // 3. Consume cost layer (2 units * $10.00 = $20.00 total)
-        $costLayer = new InventoryCostLayer('cl-1', 'comp-var-1', 'tenant-1', 5, 1000, new \DateTimeImmutable());
         $this->costLayerRepositoryMock->expects($this->once())->method('getActiveLayers')->with('comp-var-1')->willReturn([$costLayer]);
 
         // Component product deduction
-        $componentProduct = Product::create('comp-var-1', new SKU('COMP-1'), 'Comp 1', new Department('DEP'), new LocationId('LOC-1'), new Quantity(5));
         $this->productRepositoryMock->expects($this->once())->method('findByIds')->willReturn(['comp-var-1' => $componentProduct]);
 
         $this->productRepositoryMock->expects($this->any())->method('saveAll');
@@ -219,7 +153,6 @@ class AssembleKitTest extends TestCase
         }));
 
         // Kit product increment
-        $kitProduct = Product::create('kit-var-1', new SKU('KIT-1'), 'Test Kit', new Department('DEP'), new LocationId('LOC-1'), new Quantity(0));
         $this->productRepositoryMock->expects($this->once())->method('findBySku')->with($this->callback(function($sku) { return $sku->getValue() === 'KIT-1'; }))->willReturn($kitProduct);
 
         // Save new kit cost layer (unit cost = 2000 / 1 = 2000)
@@ -230,14 +163,6 @@ class AssembleKitTest extends TestCase
         // Journal entry
         $this->journalServiceMock->expects($this->once())->method('onKitAssembly')->with('tenant-1', $this->anything(), 'KIT-1', 2000, 'ref-1');
 
-        $this->useCase->execute([
-            'tenantId' => 'tenant-1',
-            'locationId' => 'LOC-1',
-            'kitSku' => 'KIT-1',
-            'quantity' => 1,
-            'actorId' => 'actor-1',
-            'referenceId' => 'ref-1'
-        ]);
 
         $this->assertEquals(3, $componentProduct->getTotalStockQuantity()->getValue());
         $this->assertEquals(1, $kitProduct->getTotalStockQuantity()->getValue());
@@ -246,13 +171,9 @@ class AssembleKitTest extends TestCase
     public function testExecuteSuccessfullyAssemblesKitWithMultipleComponentsAndQuantity()
     {
         // Setup kit with 2 components
-        $kit = new Kit('k-1', 'KIT-1', 'Test Kit');
-        $kit->addComponent('comp-var-1', 2);
         $kit->addComponent('comp-var-2', 3);
-        $this->kitRepositoryMock->expects($this->once())->method('findBySku')->with('KIT-1')->willReturn($kit);
 
         // Pre-fetch kit product
-        $kitProduct = Product::create('kit-var-1', new SKU('KIT-1'), 'Test Kit', new Department('DEP'), new LocationId('LOC-1'), new Quantity(0));
         $this->productRepositoryMock->expects($this->once())
              ->method('findBySku')
              ->with($this->callback(function($sku) { return $sku->getValue() === 'KIT-1'; }))
@@ -284,13 +205,9 @@ class AssembleKitTest extends TestCase
              });
 
         // Ensure proper saves
-        $this->productRepositoryMock->expects($this->any())->method('saveAll');
-        $this->productRepositoryMock->expects($this->any())->method('save');
 
         // Ledger entries (2 for components deduction, 1 for kit increment)
-        $this->ledgerRepositoryMock->expects($this->once())->method('appendAll')->with($this->callback(function(array $entries) {
             return count($entries) === 3;
-        }));
 
         // Total cost = $20 + $60 = $80. Quantity = 2. Unit cost = $40.
         $this->costLayerRepositoryMock->expects($this->any())->method('save')
@@ -301,17 +218,91 @@ class AssembleKitTest extends TestCase
         $this->journalServiceMock->expects($this->once())->method('onKitAssembly')
              ->with('tenant-1', $this->anything(), 'KIT-1', 8000, 'ref-1');
 
-        $this->useCase->execute([
-            'tenantId' => 'tenant-1',
-            'locationId' => 'LOC-1',
-            'kitSku' => 'KIT-1',
             'quantity' => 2,
-            'actorId' => 'actor-1',
-            'referenceId' => 'ref-1'
-        ]);
 
         $this->assertEquals(6, $comp1->getTotalStockQuantity()->getValue()); // 10 - 4
         $this->assertEquals(9, $comp2->getTotalStockQuantity()->getValue()); // 15 - 6
         $this->assertEquals(2, $kitProduct->getTotalStockQuantity()->getValue()); // 0 + 2
+    }
+}
+
+
+
+{
+
+    {
+
+    }
+
+    {
+
+        $this->ledgerRepositoryMock->expects($this->never())->method('append');
+
+    }
+
+    {
+
+
+
+    }
+
+    {
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+        $this->ledgerRepositoryMock->expects($this->exactly(2))->method('append')->with($this->callback(function(LedgerEntry $entry) {
+            return in_array($entry->variantId, ['comp-var-1', 'kit-var-1']) &&
+                   $entry->reason === ReasonCode::KitAssembly &&
+                   $entry->metadata['locationId'] === 'LOC-1';
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+        $this->ledgerRepositoryMock->expects($this->exactly(3))->method('append');
+
+
+
+
     }
 }

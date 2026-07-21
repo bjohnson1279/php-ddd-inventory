@@ -23,7 +23,7 @@ class DemandForecaster
         private readonly DemandForecastRepositoryInterface $demandForecastRepo
     ) {}
 
-    public function calculateSalesVelocity(SKU $sku, LocationId $locationId, ?Product $product = null): array
+    public function calculateSalesVelocity(SKU $sku, LocationId $locationId, ?Product $product = null, ?array $entries = null): array
     {
         // ⚡ Bolt: Use injected product if provided to prevent N+1 redundant queries.
         $product = $product ?? $this->productRepo->findBySku($sku);
@@ -31,7 +31,7 @@ class DemandForecaster
             throw new \Exception("Product not found for SKU: " . $sku->getValue());
         }
 
-        $entries = $this->ledgerRepo->entriesFor($sku->getValue(), $locationId->getValue());
+        $entries = $entries ?? $this->ledgerRepo->entriesFor($sku->getValue(), $locationId->getValue());
 
         return $this->calculateSalesVelocityFromData($product, $locationId, $entries);
     }
@@ -52,11 +52,9 @@ class DemandForecaster
 
         $history30d = array_filter($history90d, function ($e) use ($thirtyDaysAgo) {
             return $e->occurredAt >= $thirtyDaysAgo;
-        });
 
         $history7d = array_filter($history30d, function ($e) use ($sevenDaysAgo) {
             return $e->occurredAt >= $sevenDaysAgo;
-        });
 
         $locationStock = $product->getStockAt($locationId);
         $currentStock = $locationStock->getStockQuantity()->getValue();
@@ -100,15 +98,11 @@ class DemandForecaster
         $baseQuantity = $velocity['averageDailySales30d'] * $forecastDays;
 
         // --- Seasonal Multiplier Calculation ---
-        $now = new DateTimeImmutable();
         $oneYearAgo = $now->modify('-365 days');
         $entries = $this->ledgerRepo->entriesFor($sku->getValue(), $locationId->getValue());
 
         $dispatches = array_filter($entries, function ($e) use ($oneYearAgo) {
             return $e->occurredAt >= $oneYearAgo &&
-                $e->quantity < 0 &&
-                ($e->reason === ReasonCode::Sale || $e->reason === ReasonCode::KitSale);
-        });
 
         $seasonalMultiplier = 1.0;
         if (!empty($dispatches)) {
@@ -137,7 +131,7 @@ class DemandForecaster
         $periodStart = new DateTimeImmutable();
         $periodEnd = $periodStart->modify('+' . $forecastDays . ' days');
 
-        $confidenceLevel = $velocity['averageDailySales30d'] > 0 ? ($seasonalMultiplier != 1.0 ? 0.90 : 0.85) : 0.5;
+        $confidenceLevel = $velocity['averageDailySales30d'] > 0 ? ($seasonalMultiplier !== 1.0 ? 0.90 : 0.85) : 0.5;
 
         $id = new DemandForecastId(\Ramsey\Uuid\Uuid::uuid4()->toString());
 
@@ -207,8 +201,9 @@ class DemandForecaster
             }
 
             // ⚡ Bolt: Pass the pre-fetched $product to prevent N+1 query inside calculateSalesVelocity.
-            $velocity = $this->calculateSalesVelocity($sku, $locationId, $product);
-            $policy = $this->replenishmentRuleRepo->findBySkuAndLocation($sku, $locationId->getValue());
+            // This leverages the existing $entriesBySku and $policies pre-fetched above.
+            $velocity = $this->calculateSalesVelocity($sku, $locationId, $product, $entriesBySku[$skuStr] ?? []);
+            $policy = $policies[$skuStr] ?? null;
 
             $reorderPoint = $policy ? $policy->reorderPoint : 10;
             $reorderQuantity = $policy ? $policy->reorderQuantity : 20;
@@ -261,5 +256,79 @@ class DemandForecaster
         }
 
         return $reportItems;
+    }
+}
+
+
+
+{
+
+    public function calculateSalesVelocity(SKU $sku, LocationId $locationId, ?Product $product = null): array
+    {
+        }
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+        }
+
+    }
+
+
+
+
+            }
+
+
+                }
+            }
+        }
+
+
+
+        $confidenceLevel = $velocity['averageDailySales30d'] > 0 ? ($seasonalMultiplier != 1.0 ? 0.90 : 0.85) : 0.5;
+
+
+
+
+        }
+
+    }
+
+    {
+
+
+        }
+
+        }
+
+
+            }
+
+            $velocity = $this->calculateSalesVelocity($sku, $locationId, $product);
+            $policy = $this->replenishmentRuleRepo->findBySkuAndLocation($sku, $locationId->getValue());
+
+
+
+                }
+            }
+
+
+
+
+
+
+
+        }
+
     }
 }

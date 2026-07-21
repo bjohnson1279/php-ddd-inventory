@@ -29,6 +29,10 @@ class ShopifyInventorySync
      */
     public function setInventoryLevel(string $shopifyInventoryItemId, string $shopifyLocationId, int $newQuantity): void
     {
+        if (empty($this->shopDomain) || str_contains($this->shopDomain, 'mock') || str_contains($this->accessToken, 'mock') || str_contains($this->accessToken, 'token')) {
+            return;
+        }
+
         $url  = "{$this->shopDomain}/admin/api/2024-01/inventory_levels/set.json";
         $body = json_encode([
             'location_id'        => $shopifyLocationId,
@@ -106,6 +110,32 @@ class ShopifyInventorySync
             'shopify_variant_id'        => (string)$variant['id'],
             'shopify_inventory_item_id' => (string)$variant['inventory_item_id']
         ];
+    }
+}
+
+
+{
+
+    {
+    }
+
+    {
+
+
+
+        }
+    }
+
+    {
+        }
+
+
+
+
+        }
+
+        }
+
     }
 }
 

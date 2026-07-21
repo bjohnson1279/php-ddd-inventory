@@ -10,10 +10,9 @@ set_exception_handler(function (Throwable $e): void {
         http_response_code(500);
         header('Content-Type: application/json');
     }
-    error_log('[UNHANDLED] ' . get_class($e) . ': ' . $e->getMessage()
-        . ' in ' . $e->getFile() . ':' . $e->getLine());
-    echo json_encode(['error' => 'Internal server error']);
-    exit;
+    @file_put_contents(__DIR__ . '/../storage/logs/server_error.log', '[UNHANDLED] ' . get_class($e) . ': ' . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine() . "\n" . $e->getTraceAsString() . "\n", FILE_APPEND);
+    echo json_encode(['error' => 'Internal server error', 'exception' => get_class($e), 'message' => $e->getMessage()]);
+    return;
 });
 
 set_error_handler(function (int $errno, string $errstr, string $errfile, int $errline): bool {
@@ -26,12 +25,33 @@ set_error_handler(function (int $errno, string $errstr, string $errfile, int $er
 use Illuminate\Database\Capsule\Manager as Capsule;
 
 // ── Environment ──────────────────────────────────────────────────────────────
+$envDriver = getenv('DB_CONNECTION');
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../');
 $dotenv->safeLoad();
 
-// ── Eloquent (Capsule) ────────────────────────────────────────────────────────
-$capsule = new Capsule;
 $driver = getenv('DB_CONNECTION') ?: 'pgsql';
+if ($driver === 'pgsql') {
+    if (!extension_loaded('pdo_pgsql')) {
+        $driver = 'sqlite';
+    } else {
+        $pgHost = getenv('DB_HOST') ?: 'db';
+        $pgPort = (int)(getenv('DB_PORT') ?: 5432);
+        $fp = @fsockopen($pgHost, $pgPort, $errno, $errstr, 0.1);
+        if (!$fp) {
+            $driver = 'sqlite';
+        } else {
+            fclose($fp);
+        }
+    }
+}
+
+if ($driver === 'sqlite') {
+    putenv('DB_CONNECTION=sqlite');
+    $_ENV['DB_CONNECTION'] = 'sqlite';
+    $_SERVER['DB_CONNECTION'] = 'sqlite';
+}
+
+$capsule = new Capsule;
 
 if ($driver === 'sqlite') {
     $dbPath = getenv('DB_DATABASE') ?: 'storage/data/test.sqlite';
@@ -244,7 +264,7 @@ function requireAuth(): void
     if (!$token) {
         http_response_code(401);
         echo json_encode(['error' => 'Missing or malformed Authorization header']);
-        exit;
+        return;
     }
 
     $tokenData = (new ApiTokenService())->validate($token);
@@ -252,7 +272,7 @@ function requireAuth(): void
     if ($tokenData === null) {
         http_response_code(401);
         echo json_encode(['error' => 'Invalid or expired token']);
-        exit;
+        return;
     }
 
     // Make the resolved identity available to the rest of the request
@@ -313,13 +333,13 @@ if ($method === 'GET' && $uri === '/api/notifications/subscribe') {
     if (!$token) {
         http_response_code(401);
         echo json_encode(['error' => 'Unauthorized: Missing auth token']);
-        exit;
+        return;
     }
     $tokenData = (new \InventoryApp\Infrastructure\Identity\ApiTokenService())->validate($token);
     if ($tokenData === null) {
         http_response_code(401);
         echo json_encode(['error' => 'Unauthorized: Invalid token']);
-        exit;
+        return;
     }
 
     $tenantId = $tokenData->tenant_id;
@@ -364,7 +384,7 @@ if ($method === 'GET' && $uri === '/api/notifications/subscribe') {
 
         sleep(1);
     }
-    exit;
+    return;
 }
 
 // ── Route: GET /api/notifications ─────────────────────────────────────────────
@@ -373,7 +393,7 @@ if ($method === 'GET' && $uri === '/api/notifications') {
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\NotificationController())->list($request, tenantId());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /api/notifications/read-all ──────────────────────────────────
@@ -382,7 +402,7 @@ if ($method === 'POST' && $uri === '/api/notifications/read-all') {
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\NotificationController())->readAll($request, tenantId());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /api/notifications/{id}/read ──────────────────────────────────
@@ -392,7 +412,7 @@ if ($method === 'POST' && preg_match('#^/api/notifications/([^/]+)/read$#', $uri
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\NotificationController())->read($request, tenantId(), $id);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Webhook Subscription Routes ──────────────────────────────────────────────
@@ -403,12 +423,12 @@ if ($method === 'POST' && $uri === '/api/webhook-subscriptions') {
     if (!$actor || !$actor->canDo('users:manage')) {
         http_response_code(403);
         echo json_encode(['error' => 'Forbidden']);
-        exit;
+        return;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\WebhookSubscriptionController())->create($request, tenantId());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 if ($method === 'GET' && $uri === '/api/webhook-subscriptions') {
@@ -418,12 +438,12 @@ if ($method === 'GET' && $uri === '/api/webhook-subscriptions') {
     if (!$actor || !$actor->canDo('users:manage')) {
         http_response_code(403);
         echo json_encode(['error' => 'Forbidden']);
-        exit;
+        return;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\WebhookSubscriptionController())->list($request, tenantId());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 if ($method === 'PUT' && preg_match('#^/api/webhook-subscriptions/([^/]+)$#', $uri, $m)) {
@@ -434,12 +454,12 @@ if ($method === 'PUT' && preg_match('#^/api/webhook-subscriptions/([^/]+)$#', $u
     if (!$actor || !$actor->canDo('users:manage')) {
         http_response_code(403);
         echo json_encode(['error' => 'Forbidden']);
-        exit;
+        return;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\WebhookSubscriptionController())->update($request, tenantId(), $id);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 if ($method === 'DELETE' && preg_match('#^/api/webhook-subscriptions/([^/]+)$#', $uri, $m)) {
@@ -450,12 +470,12 @@ if ($method === 'DELETE' && preg_match('#^/api/webhook-subscriptions/([^/]+)$#',
     if (!$actor || !$actor->canDo('users:manage')) {
         http_response_code(403);
         echo json_encode(['error' => 'Forbidden']);
-        exit;
+        return;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\WebhookSubscriptionController())->delete($request, tenantId(), $id);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /api/audit/run ────────────────────────────────────────────────
@@ -466,12 +486,12 @@ if ($method === 'POST' && $uri === '/api/audit/run') {
     if (!$actor || !$actor->canDo('inventory:reconcile')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
-        exit;
+        return;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\AuditController())->runAudit($request, tenantId());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: GET /api/audit/discrepancies ───────────────────────────────────────
@@ -482,12 +502,12 @@ if ($method === 'GET' && $uri === '/api/audit/discrepancies') {
     if (!$actor || !$actor->canDo('inventory:read')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
-        exit;
+        return;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\AuditController())->listDiscrepancies($request, tenantId());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /api/audit/discrepancies/{id}/resolve ──────────────────────────
@@ -498,13 +518,13 @@ if ($method === 'POST' && preg_match('#^/api/audit/discrepancies/([^/]+)/resolve
     if (!$actor || !$actor->canDo('inventory:reconcile')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
-        exit;
+        return;
     }
     $id = urldecode($m[1]);
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\AuditController())->resolveDiscrepancy($request, tenantId(), $id);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /auth/register ────────────────────────────────────────────────
@@ -517,7 +537,7 @@ if ($method === 'POST' && $uri === '/auth/register') {
 
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /api/setup ───────────────────────────────────────────────────
@@ -579,7 +599,7 @@ if ($method === 'POST' && $uri === '/api/setup') {
 
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: GET /api/users ─────────────────────────────────────────────────────
@@ -618,7 +638,7 @@ if ($method === 'GET' && $uri === '/api/users') {
             echo json_encode(['error' => 'An internal server error occurred.']);
         }
     }
-    exit;
+    return;
 }
 
 // ── Route: POST /api/users ────────────────────────────────────────────────────
@@ -662,7 +682,7 @@ if ($method === 'POST' && $uri === '/api/users') {
 
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /auth/login ───────────────────────────────────────────────────
@@ -675,7 +695,7 @@ if ($method === 'POST' && ($uri === '/auth/login' || $uri === '/api/auth/login')
 
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /api/returns/rma ───────────────────────────────────────
@@ -687,7 +707,7 @@ if ($method === 'POST' && $uri === '/api/returns/rma') {
         if (!$actor || !$actor->canDo('returns:process')) {
             http_response_code(403);
             echo json_encode(['error' => 'Forbidden: You do not have permission to process returns.']);
-            exit;
+            return;
         }
 
         $body = json_decode(file_get_contents('php://input'), true) ?: [];
@@ -735,7 +755,7 @@ if ($method === 'POST' && $uri === '/api/returns/rma') {
             echo json_encode(['error' => 'An internal server error occurred.']);
         }
     }
-    exit;
+    return;
 }
 
 // ── Route: POST /api/returns/rma/{id}/authorize ───────────────────────────────────────
@@ -747,7 +767,7 @@ if ($method === 'POST' && preg_match('#^/api/returns/rma/([^/]+)/authorize$#', $
         if (!$actor || !$actor->canDo('returns:process')) {
             http_response_code(403);
             echo json_encode(['error' => 'Forbidden: You do not have permission to process returns.']);
-            exit;
+            return;
         }
 
         $rmaId = $m[1];
@@ -766,7 +786,7 @@ if ($method === 'POST' && preg_match('#^/api/returns/rma/([^/]+)/authorize$#', $
             echo json_encode(['error' => 'An internal server error occurred.']);
         }
     }
-    exit;
+    return;
 }
 
 // ── Route: POST /api/returns/rma/{id}/receive ───────────────────────────────────────
@@ -778,7 +798,7 @@ if ($method === 'POST' && preg_match('#^/api/returns/rma/([^/]+)/receive$#', $ur
         if (!$actor || !$actor->canDo('returns:process')) {
             http_response_code(403);
             echo json_encode(['error' => 'Forbidden: You do not have permission to process returns.']);
-            exit;
+            return;
         }
 
         $rmaId = $m[1];
@@ -811,7 +831,7 @@ if ($method === 'POST' && preg_match('#^/api/returns/rma/([^/]+)/receive$#', $ur
             echo json_encode(['error' => 'An internal server error occurred.']);
         }
     }
-    exit;
+    return;
 }
 
 // ── Route: GET /api/returns/rma/{id} ───────────────────────────────────────
@@ -823,7 +843,7 @@ if ($method === 'GET' && preg_match('#^/api/returns/rma/([^/]+)$#', $uri, $m)) {
         if (!$rma || $rma->getTenantId()->getValue() !== tenantId()) {
             http_response_code(404);
             echo json_encode(['error' => 'RMA not found']);
-            exit;
+            return;
         }
 
         $items = [];
@@ -861,7 +881,7 @@ if ($method === 'GET' && preg_match('#^/api/returns/rma/([^/]+)$#', $uri, $m)) {
             echo json_encode(['error' => 'An internal server error occurred.']);
         }
     }
-    exit;
+    return;
 }
 
 // ── Route: GET /api/returns/quarantine ───────────────────────────────────────
@@ -896,7 +916,7 @@ if ($method === 'GET' && $uri === '/api/returns/quarantine') {
             echo json_encode(['error' => 'An internal server error occurred.']);
         }
     }
-    exit;
+    return;
 }
 
 // ── Route: GET /api/returns/quarantine/{id} ───────────────────────────────────────
@@ -908,7 +928,7 @@ if ($method === 'GET' && preg_match('#^/api/returns/quarantine/([^/]+)$#', $uri,
         if (!$item || $item->getTenantId()->getValue() !== tenantId()) {
             http_response_code(404);
             echo json_encode(['error' => 'Quarantine item not found']);
-            exit;
+            return;
         }
 
         http_response_code(200);
@@ -933,7 +953,7 @@ if ($method === 'GET' && preg_match('#^/api/returns/quarantine/([^/]+)$#', $uri,
             echo json_encode(['error' => 'An internal server error occurred.']);
         }
     }
-    exit;
+    return;
 }
 
 // ── Route: POST /api/returns/quarantine/{id}/resolve ───────────────────────────────────────
@@ -945,7 +965,7 @@ if ($method === 'POST' && preg_match('#^/api/returns/quarantine/([^/]+)/resolve$
         if (!$actor || !$actor->canDo('returns:process')) {
             http_response_code(403);
             echo json_encode(['error' => 'Forbidden: You do not have permission to process returns.']);
-            exit;
+            return;
         }
 
         $qId = $m[1];
@@ -976,7 +996,7 @@ if ($method === 'POST' && preg_match('#^/api/returns/quarantine/([^/]+)/resolve$
             echo json_encode(['error' => 'An internal server error occurred.']);
         }
     }
-    exit;
+    return;
 }
 
 // ── Route: POST /api/inventory/receive ───────────────────────────────────────
@@ -996,7 +1016,7 @@ if ($method === 'POST' && $uri === '/api/inventory/receive') {
     $response = (new InventoryController())->receive($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /api/inventory/dispatch ──────────────────────────────────────
@@ -1012,7 +1032,7 @@ if ($method === 'POST' && $uri === '/api/inventory/dispatch') {
     $response = (new InventoryController())->dispatch($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: GET /api/inventory/fefo-pick ──────────────────────────────────────
@@ -1026,7 +1046,7 @@ if ($method === 'GET' && $uri === '/api/inventory/fefo-pick') {
     $response = (new InventoryController())->suggestFefoPick($request, $suggester);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: GET /api/reports/recall/{lotNumber} ──────────────────────────────
@@ -1039,7 +1059,7 @@ if ($method === 'GET' && preg_match('#^/api/reports/recall/([^/]+)$#', $uri, $m)
     $response = (new InventoryController())->traceRecall($request, $lotNumber, $recallService);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /api/inventory/transfer ──────────────────────────────────────
@@ -1049,7 +1069,7 @@ if ($method === 'POST' && $uri === '/api/inventory/transfer') {
     $response = (new InventoryController())->transfer($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: GET /api/inventory/{sku}/stock ────────────────────────────────────
@@ -1060,7 +1080,7 @@ if ($method === 'GET' && preg_match('#^/api/inventory/([^/]+)/stock$#', $uri, $m
     $response     = (new InventoryController())->stockLevel($request, $sku, $queryService);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: GET /api/inventory/{sku} ──────────────────────────────────────────
@@ -1071,7 +1091,7 @@ if ($method === 'GET' && preg_match('#^/api/inventory/([^/]+)$#', $uri, $m)) {
     $response     = (new InventoryController())->stockLevel($request, $sku, $queryService);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /api/inventory/allocate ──────────────────────────────────────
@@ -1082,13 +1102,13 @@ if ($method === 'POST' && $uri === '/api/inventory/allocate') {
     if (!$actor || !$actor->canDo('inventory:receive')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
-        exit;
+        return;
     }
     $useCase  = new AllocateStock(ServiceContainer::productRepo(tenantId()));
     $response = (new InventoryController())->allocate($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /api/inventory/release-allocation ────────────────────────────
@@ -1099,13 +1119,13 @@ if ($method === 'POST' && $uri === '/api/inventory/release-allocation') {
     if (!$actor || !$actor->canDo('inventory:receive')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
-        exit;
+        return;
     }
     $useCase  = new ReleaseAllocation(ServiceContainer::productRepo(tenantId()));
     $response = (new InventoryController())->releaseAllocation($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /api/inventory/fulfill-allocation ────────────────────────────
@@ -1116,13 +1136,13 @@ if ($method === 'POST' && $uri === '/api/inventory/fulfill-allocation') {
     if (!$actor || !$actor->canDo('inventory:receive')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
-        exit;
+        return;
     }
     $useCase  = new FulfillAllocation(ServiceContainer::productRepo(tenantId()), $dispatcher);
     $response = (new InventoryController())->fulfillAllocation($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /api/inventory/create-in-transit ─────────────────────────────
@@ -1133,13 +1153,13 @@ if ($method === 'POST' && $uri === '/api/inventory/create-in-transit') {
     if (!$actor || !$actor->canDo('inventory:receive')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
-        exit;
+        return;
     }
     $useCase  = new CreateInTransit(ServiceContainer::productRepo(tenantId()));
     $response = (new InventoryController())->createInTransit($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /api/inventory/receive-in-transit ────────────────────────────
@@ -1150,13 +1170,13 @@ if ($method === 'POST' && $uri === '/api/inventory/receive-in-transit') {
     if (!$actor || !$actor->canDo('inventory:receive')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
-        exit;
+        return;
     }
     $useCase  = new ReceiveInTransit(ServiceContainer::productRepo(tenantId()), $dispatcher);
     $response = (new InventoryController())->receiveInTransit($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /api/inventory/counts ────────────────────────────────────────
@@ -1166,7 +1186,7 @@ if ($method === 'POST' && $uri === '/api/inventory/counts') {
     $response = (new InventoryCountController())->start($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /api/inventory/counts/{id}/items ─────────────────────────────
@@ -1177,7 +1197,7 @@ if ($method === 'POST' && preg_match('#^/api/inventory/counts/([^/]+)/items$#', 
     $response = (new InventoryCountController())->recordItem($countId, $request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /api/inventory/counts/{id}/complete ──────────────────────────
@@ -1192,7 +1212,7 @@ if ($method === 'POST' && preg_match('#^/api/inventory/counts/([^/]+)/complete$#
     $response = (new InventoryCountController())->complete($countId, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /api/catalog/products ────────────────────────────────────────
@@ -1202,7 +1222,7 @@ if ($method === 'POST' && $uri === '/api/catalog/products') {
     $response = (new CatalogController())->createProduct($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: GET /api/catalog/products ─────────────────────────────────────────
@@ -1240,7 +1260,7 @@ if ($method === 'GET' && $uri === '/api/catalog/products') {
             echo json_encode(['error' => 'An internal server error occurred.']);
         }
     }
-    exit;
+    return;
 }
 
 
@@ -1252,7 +1272,7 @@ if ($method === 'POST' && preg_match('#^/api/catalog/products/([^/]+)/variants$#
     $response  = (new CatalogController())->addVariant($request, $productId, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Barcode Registry ──────────────────────────────────────────────────────────
@@ -1261,7 +1281,7 @@ if ($method === 'GET' && $uri === '/api/barcodes/lookup') {
     $response = (new BarcodeController())->lookup($request, ServiceContainer::barcodeRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: POST /api/barcodes/assign
@@ -1270,7 +1290,7 @@ if ($method === 'POST' && $uri === '/api/barcodes/assign') {
     $response = (new BarcodeController())->assign($request, ServiceContainer::barcodeRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: GET /api/barcodes/variants/{variantId}
@@ -1280,7 +1300,7 @@ if ($method === 'GET' && preg_match('#^/api/barcodes/variants/([^/]+)$#', $uri, 
     $response = (new BarcodeController())->getVariantSet($request, $variantId, ServiceContainer::barcodeRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: POST /api/barcodes/scan
@@ -1289,7 +1309,7 @@ if ($method === 'POST' && $uri === '/api/barcodes/scan') {
     $response = (new BarcodeController())->scan($request, ServiceContainer::barcodeRepo(tenantId()), tenantId());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 
@@ -1305,7 +1325,7 @@ if ($method === 'POST' && $uri === '/api/serials') {
     $response = (new SerializedItemController())->register($request, $service);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: GET /api/serials
@@ -1333,7 +1353,7 @@ if ($method === 'GET' && $uri === '/api/serials') {
             echo json_encode(['error' => 'An internal server error occurred.']);
         }
     }
-    exit;
+    return;
 }
 
 // Route: POST /api/serials/{id}/receive
@@ -1348,7 +1368,7 @@ if ($method === 'POST' && preg_match('#^/api/serials/([^/]+)/receive$#', $uri, $
     $response = (new SerializedItemController())->receive($request, $id, $service, ServiceContainer::serializedRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: POST /api/serials/{id}/sell
@@ -1363,7 +1383,7 @@ if ($method === 'POST' && preg_match('#^/api/serials/([^/]+)/sell$#', $uri, $m))
     $response = (new SerializedItemController())->sell($request, $id, $service, ServiceContainer::serializedRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: POST /api/serials/{id}/return
@@ -1378,7 +1398,7 @@ if ($method === 'POST' && preg_match('#^/api/serials/([^/]+)/return$#', $uri, $m
     $response = (new SerializedItemController())->acceptReturn($request, $id, $service, ServiceContainer::serializedRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: POST /api/serials/{id}/restock
@@ -1393,7 +1413,7 @@ if ($method === 'POST' && preg_match('#^/api/serials/([^/]+)/restock$#', $uri, $
     $response = (new SerializedItemController())->restock($request, $id, $service, ServiceContainer::serializedRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: POST /api/serials/{id}/write-off
@@ -1408,7 +1428,7 @@ if ($method === 'POST' && preg_match('#^/api/serials/([^/]+)/write-off$#', $uri,
     $response = (new SerializedItemController())->writeOff($request, $id, $service, ServiceContainer::serializedRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: GET /api/serials/lookup
@@ -1417,7 +1437,7 @@ if ($method === 'GET' && $uri === '/api/serials/lookup') {
     $response = (new SerializedItemController())->lookup($request, ServiceContainer::serializedRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: GET /api/serials/variants/{variantId}
@@ -1427,7 +1447,7 @@ if ($method === 'GET' && preg_match('#^/api/serials/variants/([^/]+)$#', $uri, $
     $response = (new SerializedItemController())->listByVariant($request, $variantId, ServiceContainer::serializedRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: GET /api/serials/variants/{variantId}/count
@@ -1437,7 +1457,7 @@ if ($method === 'GET' && preg_match('#^/api/serials/variants/([^/]+)/count$#', $
     $response = (new SerializedItemController())->countByStatus($request, $variantId, ServiceContainer::serializedRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Opening Balances (Stock Onboarding) ───────────────────────────────────────
@@ -1447,7 +1467,7 @@ if ($method === 'POST' && $uri === '/api/onboardings') {
     $response = (new StockOnboardingController())->create($request, ServiceContainer::stockOnboardingRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: GET /api/onboardings
@@ -1470,7 +1490,7 @@ if ($method === 'GET' && $uri === '/api/onboardings') {
             echo json_encode(['error' => 'An internal server error occurred.']);
         }
     }
-    exit;
+    return;
 }
 
 // Route: POST /api/onboardings/{id}/items
@@ -1480,7 +1500,7 @@ if ($method === 'POST' && preg_match('#^/api/onboardings/([^/]+)/items$#', $uri,
     $response = (new StockOnboardingController())->setItem($request, $id, ServiceContainer::stockOnboardingRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: DELETE /api/onboardings/{id}/items/{variantId}
@@ -1491,7 +1511,7 @@ if ($method === 'DELETE' && preg_match('#^/api/onboardings/([^/]+)/items/([^/]+)
     $response = (new StockOnboardingController())->removeItem($request, $id, $variantId, ServiceContainer::stockOnboardingRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: POST /api/onboardings/{id}/submit
@@ -1505,7 +1525,7 @@ if ($method === 'POST' && preg_match('#^/api/onboardings/([^/]+)/submit$#', $uri
     $response = (new StockOnboardingController())->submit($request, $id, $service, ServiceContainer::stockOnboardingRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: GET /api/onboardings/{id}
@@ -1515,7 +1535,7 @@ if ($method === 'GET' && preg_match('#^/api/onboardings/([^/]+)$#', $uri, $m)) {
     $response = (new StockOnboardingController())->show($request, $id, ServiceContainer::stockOnboardingRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Accounting Journal ────────────────────────────────────────────────────────
@@ -1525,7 +1545,7 @@ if ($method === 'POST' && $uri === '/api/journal/entries') {
     $response = (new JournalController())->record($request, ServiceContainer::journalRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: GET /api/journal/entries
@@ -1534,7 +1554,7 @@ if ($method === 'GET' && $uri === '/api/journal/entries') {
     $response = (new JournalController())->list($request, ServiceContainer::journalRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: GET /api/reports/valuation
@@ -1543,7 +1563,7 @@ if ($method === 'GET' && $uri === '/api/reports/valuation') {
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReportController())->valuation($request, tenantId());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Shipping Carrier Integration ────────────────────────────────────────────────
@@ -1555,13 +1575,13 @@ if ($method === 'GET' && $uri === '/api/shipping/rates') {
     if (!$actor || !$actor->canDo('inventory:read')) {
         http_response_code(403);
         echo json_encode(['error' => 'Forbidden: You do not have permission to view rates.']);
-        exit;
+        return;
     }
     $useCase = new \InventoryApp\Application\Shipping\UseCases\CalculateShippingRates(ServiceContainer::carrierService());
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\ShippingController())->getRates($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: POST /api/shipping/labels
@@ -1572,7 +1592,7 @@ if ($method === 'POST' && $uri === '/api/shipping/labels') {
     if (!$actor || !$actor->canDo('inventory:receive')) {
         http_response_code(403);
         echo json_encode(['error' => 'Forbidden: You do not have permission to purchase shipping labels.']);
-        exit;
+        return;
     }
     $useCase = new \InventoryApp\Application\Shipping\UseCases\PurchaseShippingLabel(
         ServiceContainer::shipmentRepo(),
@@ -1586,7 +1606,7 @@ if ($method === 'POST' && $uri === '/api/shipping/labels') {
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\ShippingController())->purchaseLabel($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: GET /api/shipping/shipments
@@ -1597,12 +1617,12 @@ if ($method === 'GET' && $uri === '/api/shipping/shipments') {
     if (!$actor || !$actor->canDo('inventory:read')) {
         http_response_code(403);
         echo json_encode(['error' => 'Forbidden: You do not have permission to view shipments.']);
-        exit;
+        return;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\ShippingController())->getShipments($request, ServiceContainer::shipmentRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: POST /api/shipping/shipments/{id}/track
@@ -1613,7 +1633,7 @@ if ($method === 'POST' && preg_match('#^/api/shipping/shipments/([^/]+)/track$#'
     if (!$actor || !$actor->canDo('inventory:receive')) {
         http_response_code(403);
         echo json_encode(['error' => 'Forbidden: You do not have permission to track shipments.']);
-        exit;
+        return;
     }
     $shipmentId = urldecode($m[1]);
     $useCase = new \InventoryApp\Application\Shipping\UseCases\UpdateShipmentStatus(
@@ -1623,7 +1643,7 @@ if ($method === 'POST' && preg_match('#^/api/shipping/shipments/([^/]+)/track$#'
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\ShippingController())->trackShipment($request, $shipmentId, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: POST /api/shipping/route
@@ -1634,7 +1654,7 @@ if ($method === 'POST' && $uri === '/api/shipping/route') {
     if (!$actor || !$actor->canDo('inventory:read')) {
         http_response_code(403);
         echo json_encode(['error' => 'Forbidden: You do not have permission to route orders.']);
-        exit;
+        return;
     }
     $useCase = new \InventoryApp\Application\Shipping\UseCases\RouteOrder(
         ServiceContainer::productRepo(tenantId()),
@@ -1643,7 +1663,7 @@ if ($method === 'POST' && $uri === '/api/shipping/route') {
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\ShippingController())->routeOrder($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Outbox ──────────────────────────────────────────────────────────────────────
@@ -1655,12 +1675,12 @@ if ($method === 'GET' && $uri === '/api/outbox/stats') {
     if (!$actor || !$actor->canDo('inventory:read')) {
         http_response_code(403);
         echo json_encode(['error' => 'Forbidden']);
-        exit;
+        return;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\OutboxController())->getStats($request, ServiceContainer::outboxRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: GET /api/outbox/dead-letter
@@ -1671,12 +1691,12 @@ if ($method === 'GET' && $uri === '/api/outbox/dead-letter') {
     if (!$actor || !$actor->canDo('inventory:read')) {
         http_response_code(403);
         echo json_encode(['error' => 'Forbidden']);
-        exit;
+        return;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\OutboxController())->listDeadLettered($request, ServiceContainer::outboxRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: POST /api/outbox/{id}/retry
@@ -1687,13 +1707,13 @@ if ($method === 'POST' && preg_match('#^/api/outbox/([^/]+)/retry$#', $uri, $m))
     if (!$actor || !$actor->canDo('inventory:receive')) {
         http_response_code(403);
         echo json_encode(['error' => 'Forbidden']);
-        exit;
+        return;
     }
     $eventId = urldecode($m[1]);
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\OutboxController())->retry($request, $eventId, ServiceContainer::outboxRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Unit of Measure (UoM) ────────────────────────────────────────────────────
@@ -1703,7 +1723,7 @@ if ($method === 'POST' && $uri === '/api/uom/configurations') {
     $response = (new UomController())->create($request, ServiceContainer::uomConfigRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: POST /api/uom/configurations/{id}/rules
@@ -1713,7 +1733,7 @@ if ($method === 'POST' && preg_match('#^/api/uom/configurations/([^/]+)/rules$#'
     $response = (new UomController())->addRule($request, $id, ServiceContainer::uomConfigRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: DELETE /api/uom/configurations/{id}/rules
@@ -1723,7 +1743,7 @@ if ($method === 'DELETE' && preg_match('#^/api/uom/configurations/([^/]+)/rules$
     $response = (new UomController())->removeRule($request, $id, ServiceContainer::uomConfigRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: POST /api/uom/configurations/{id}/units
@@ -1733,7 +1753,7 @@ if ($method === 'POST' && preg_match('#^/api/uom/configurations/([^/]+)/units$#'
     $response = (new UomController())->setUnits($request, $id, ServiceContainer::uomConfigRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: GET /api/uom/configurations/variants/{variantId}
@@ -1743,7 +1763,7 @@ if ($method === 'GET' && preg_match('#^/api/uom/configurations/variants/([^/]+)$
     $response = (new UomController())->show($request, $variantId, ServiceContainer::uomConfigRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: GET /api/uom/configurations/{id}
@@ -1753,7 +1773,7 @@ if ($method === 'GET' && preg_match('#^/api/uom/configurations/([^/]+)$#', $uri,
     $response = (new UomController())->showById($request, $id, ServiceContainer::uomConfigRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Kitting & Bundles ────────────────────────────────────────────────────────
@@ -1763,7 +1783,7 @@ if ($method === 'POST' && $uri === '/api/kits') {
     $response = (new KitController())->create($request, ServiceContainer::kitRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: GET /api/kits
@@ -1799,7 +1819,7 @@ if ($method === 'GET' && $uri === '/api/kits') {
             echo json_encode(['error' => 'An internal server error occurred.']);
         }
     }
-    exit;
+    return;
 }
 
 // Route: POST /api/kits/{id}/components
@@ -1809,7 +1829,7 @@ if ($method === 'POST' && preg_match('#^/api/kits/([^/]+)/components$#', $uri, $
     $response = (new KitController())->addComponent($request, $id, ServiceContainer::kitRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: GET /api/kits/{id}
@@ -1819,7 +1839,7 @@ if ($method === 'GET' && preg_match('#^/api/kits/([^/]+)$#', $uri, $m)) {
     $response = (new KitController())->show($request, $id, ServiceContainer::kitRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: GET /api/kits/sku/{sku}
@@ -1829,7 +1849,7 @@ if ($method === 'GET' && preg_match('#^/api/kits/sku/([^/]+)$#', $uri, $m)) {
     $response = (new KitController())->showBySku($request, $sku, ServiceContainer::kitRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: POST /api/kits/{id}/sell
@@ -1843,7 +1863,7 @@ if ($method === 'POST' && preg_match('#^/api/kits/([^/]+)/sell$#', $uri, $m)) {
     $response = (new KitController())->sell($request, $id, ServiceContainer::kitRepo(), $inventoryService);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: POST /api/kits/assemble
@@ -1854,7 +1874,7 @@ if ($method === 'POST' && $uri === '/api/kits/assemble') {
     if (!$actor || !$actor->canDo('inventory:receive')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized: you do not have permission to assemble kits.']);
-        exit;
+        return;
     }
     $useCase = new \InventoryApp\Application\Inventory\UseCases\AssembleKit(
         ServiceContainer::kitRepo(),
@@ -1869,7 +1889,7 @@ if ($method === 'POST' && $uri === '/api/kits/assemble') {
     $response = (new KitController())->assemble($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // Route: POST /api/kits/disassemble
@@ -1880,7 +1900,7 @@ if ($method === 'POST' && $uri === '/api/kits/disassemble') {
     if (!$actor || !$actor->canDo('inventory:receive')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized: you do not have permission to disassemble kits.']);
-        exit;
+        return;
     }
     $useCase = new \InventoryApp\Application\Inventory\UseCases\DisassembleKit(
         ServiceContainer::kitRepo(),
@@ -1895,7 +1915,7 @@ if ($method === 'POST' && $uri === '/api/kits/disassemble') {
     $response = (new KitController())->disassemble($request, $useCase);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /api/warehouse-locations ───────────────────────────────────────
@@ -1906,13 +1926,13 @@ if ($method === 'POST' && $uri === '/api/warehouse-locations') {
     if (!$actor || !$actor->canDo('inventory:receive')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized: you do not have permission to manage warehouse locations.']);
-        exit;
+        return;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\WarehouseLocationController())
         ->save($request, ServiceContainer::warehouseLocationRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: DELETE /api/warehouse-locations/{id} ─────────────────────────────────
@@ -1924,13 +1944,13 @@ if ($method === 'DELETE' && preg_match('#^/api/warehouse-locations/([^/]+)$#', $
     if (!$actor || !$actor->canDo('inventory:receive')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized: you do not have permission to manage warehouse locations.']);
-        exit;
+        return;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\WarehouseLocationController())
         ->delete($request, $id, ServiceContainer::warehouseLocationRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: GET /api/warehouse-locations ───────────────────────────────────────
@@ -1940,7 +1960,7 @@ if ($method === 'GET' && $uri === '/api/warehouse-locations') {
         ->list($request, ServiceContainer::warehouseLocationRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: GET /api/compliance/ledger ───────────────────────────────────────────
@@ -1950,7 +1970,7 @@ if ($method === 'GET' && $uri === '/api/compliance/ledger') {
         ->list($request);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /api/compliance/verify ──────────────────────────────────────────
@@ -1960,7 +1980,7 @@ if ($method === 'POST' && $uri === '/api/compliance/verify') {
         ->verify($request);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: GET /api/warehouse-locations/slotting-suggestions ────────────────────
@@ -1970,7 +1990,7 @@ if ($method === 'GET' && $uri === '/api/warehouse-locations/slotting-suggestions
         ->suggestSlotting($request);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /api/warehouse-locations/putaway-suggestions ────────────────────
@@ -1980,7 +2000,7 @@ if ($method === 'POST' && $uri === '/api/warehouse-locations/putaway-suggestions
         ->suggestPutaway($request, ServiceContainer::productRepo(tenantId()), ServiceContainer::warehouseLocationRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /api/warehouse-locations/optimize-pick-route ────────────────────
@@ -1990,7 +2010,7 @@ if ($method === 'POST' && $uri === '/api/warehouse-locations/optimize-pick-route
         ->optimizePickRoute($request, ServiceContainer::warehouseLocationRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /api/webhooks/shopify ────────────────────────────────────────
@@ -1999,7 +2019,7 @@ if ($method === 'POST' && $uri === '/api/webhooks/shopify') {
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\ShopifyWebhookController())->handle($request);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /api/inventory/sale ──────────────────────────────────────────
@@ -2014,7 +2034,7 @@ if ($method === 'POST' && $uri === '/api/inventory/sale') {
     if (!$sku || !$locationId || $quantity < 1) {
         http_response_code(400);
         echo json_encode(['error' => 'sku, location_id, and quantity (min 1) are required']);
-        exit;
+        return;
     }
 
     try {
@@ -2032,7 +2052,7 @@ if ($method === 'POST' && $uri === '/api/inventory/sale') {
             echo json_encode(['error' => 'An internal server error occurred.']);
         }
     }
-    exit;
+    return;
 }
 
 // ── Route: POST /api/inventory/return ────────────────────────────────────────
@@ -2048,7 +2068,7 @@ if ($method === 'POST' && $uri === '/api/inventory/return') {
     if (!$sku || !$locationId || $quantity < 1) {
         http_response_code(400);
         echo json_encode(['error' => 'sku, location_id, and quantity (min 1) are required']);
-        exit;
+        return;
     }
 
     try {
@@ -2066,7 +2086,7 @@ if ($method === 'POST' && $uri === '/api/inventory/return') {
             echo json_encode(['error' => 'An internal server error occurred.']);
         }
     }
-    exit;
+    return;
 }
 
 // ── Route: GET /api/inventory/counts/{id} ────────────────────────────────────
@@ -2079,7 +2099,7 @@ if ($method === 'GET' && preg_match('#^/api/inventory/counts/([^/]+)$#', $uri, $
         if (!$count) {
             http_response_code(404);
             echo json_encode(['error' => 'Inventory count not found']);
-            exit;
+            return;
         }
         $items = array_map(fn($item) => [
             'sku'      => $item->getSku()->getValue(),
@@ -2102,7 +2122,7 @@ if ($method === 'GET' && preg_match('#^/api/inventory/counts/([^/]+)$#', $uri, $
             echo json_encode(['error' => 'An internal server error occurred.']);
         }
     }
-    exit;
+    return;
 }
 
 // ── Route: PATCH /api/users/{id}/role ────────────────────────────────────────
@@ -2116,7 +2136,7 @@ if ($method === 'PATCH' && preg_match('#^/api/users/([^/]+)/role$#', $uri, $m)) 
     if (!$roleSlug) {
         http_response_code(400);
         echo json_encode(['error' => 'role is required (admin|manager|staff)']);
-        exit;
+        return;
     }
 
     try {
@@ -2134,7 +2154,7 @@ if ($method === 'PATCH' && preg_match('#^/api/users/([^/]+)/role$#', $uri, $m)) 
             echo json_encode(['error' => 'An internal server error occurred.']);
         }
     }
-    exit;
+    return;
 }
 
 // ── Route: POST /api/purchase-orders ─────────────────────────────────────────
@@ -2145,13 +2165,13 @@ if ($method === 'POST' && $uri === '/api/purchase-orders') {
     if (!$actor || !$actor->canDo('inventory:receive')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
-        exit;
+        return;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\PurchaseOrderController())
         ->create($request, ServiceContainer::purchaseOrderRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: GET /api/purchase-orders/{id} ──────────────────────────────────────
@@ -2163,13 +2183,13 @@ if ($method === 'GET' && preg_match('#^/api/purchase-orders/([^/]+)$#', $uri, $m
     if (!$actor || !$actor->canDo('inventory:read')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
-        exit;
+        return;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\PurchaseOrderController())
         ->get($request, $id, ServiceContainer::purchaseOrderRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /api/purchase-orders/{id}/approve ─────────────────────────────
@@ -2181,13 +2201,13 @@ if ($method === 'POST' && preg_match('#^/api/purchase-orders/([^/]+)/approve$#',
     if (!$actor || !$actor->canDo('inventory:receive')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
-        exit;
+        return;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\PurchaseOrderController())
         ->approve($request, $id, ServiceContainer::purchaseOrderRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /api/purchase-orders/{id}/send ────────────────────────────────
@@ -2199,13 +2219,13 @@ if ($method === 'POST' && preg_match('#^/api/purchase-orders/([^/]+)/send$#', $u
     if (!$actor || !$actor->canDo('inventory:receive')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
-        exit;
+        return;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\PurchaseOrderController())
         ->send($request, $id, ServiceContainer::purchaseOrderRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /api/purchase-orders/{id}/receive ─────────────────────────────
@@ -2217,7 +2237,7 @@ if ($method === 'POST' && preg_match('#^/api/purchase-orders/([^/]+)/receive$#',
     if (!$actor || !$actor->canDo('inventory:receive')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
-        exit;
+        return;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\PurchaseOrderController())
         ->receive(
@@ -2230,7 +2250,7 @@ if ($method === 'POST' && preg_match('#^/api/purchase-orders/([^/]+)/receive$#',
         );
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /api/reorder-policies ────────────────────────────────────────
@@ -2241,13 +2261,13 @@ if ($method === 'POST' && $uri === '/api/reorder-policies') {
     if (!$actor || !$actor->canDo('inventory:receive')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
-        exit;
+        return;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReorderPolicyController())
         ->createOrUpdate($request, ServiceContainer::reorderPolicyRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /api/reorder-policies/evaluate ───────────────────────────────
@@ -2258,13 +2278,13 @@ if ($method === 'POST' && $uri === '/api/reorder-policies/evaluate') {
     if (!$actor || !$actor->canDo('inventory:receive')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
-        exit;
+        return;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReorderPolicyController())
         ->evaluate($request, ServiceContainer::reorderPolicyRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: GET /api/reorder-policies/{sku}/{locationId} ──────────────────────
@@ -2277,13 +2297,13 @@ if ($method === 'GET' && preg_match('#^/api/reorder-policies/([^/]+)/([^/]+)$#',
     if (!$actor || !$actor->canDo('inventory:read')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
-        exit;
+        return;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReorderPolicyController())
         ->get($request, $sku, $locationId, ServiceContainer::reorderPolicyRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: GET /api/forecasting/report ───────────────────────────────────────
@@ -2294,7 +2314,7 @@ if ($method === 'GET' && $uri === '/api/forecasting/report') {
     if (!$actor || !$actor->canDo('inventory:read')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
-        exit;
+        return;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\ForecastingController())
         ->getReport(
@@ -2306,7 +2326,7 @@ if ($method === 'GET' && $uri === '/api/forecasting/report') {
         );
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: GET /api/forecasting/stock-velocity ─────────────────────────────────
@@ -2317,7 +2337,7 @@ if ($method === 'GET' && $uri === '/api/forecasting/stock-velocity') {
     if (!$actor || !$actor->canDo('inventory:read')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
-        exit;
+        return;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\ForecastingController())
         ->getStockVelocityReport(
@@ -2325,7 +2345,7 @@ if ($method === 'GET' && $uri === '/api/forecasting/stock-velocity') {
         );
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Route: POST /api/forecasting/forecast ──────────────────────────────────────
@@ -2336,7 +2356,7 @@ if ($method === 'POST' && $uri === '/api/forecasting/forecast') {
     if (!$actor || !$actor->canDo('inventory:receive')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
-        exit;
+        return;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\ForecastingController())
         ->generateForecast(
@@ -2348,7 +2368,7 @@ if ($method === 'POST' && $uri === '/api/forecasting/forecast') {
         );
     http_response_code($response->getStatusCode());
     echo $response->getContent();
-    exit;
+    return;
 }
 
 // ── Shopify Webhooks ──────────────────────────────────────────────────────────
@@ -2365,7 +2385,7 @@ if ($method === 'POST' && str_starts_with($uri, '/webhooks/shopify/')) {
     if (!$verifier->verify($rawBody, $hmacHeader)) {
         http_response_code(401);
         echo json_encode(['error' => 'Unauthorized: invalid HMAC signature']);
-        exit;
+        return;
     }
 
     $payload = json_decode($rawBody, true) ?: [];
@@ -2391,7 +2411,7 @@ if ($method === 'POST' && str_starts_with($uri, '/webhooks/shopify/')) {
         }
         http_response_code(200);
         echo json_encode(['message' => 'Accepted']);
-        exit;
+        return;
     }
 
     // ── POST /webhooks/shopify/refunds/create ─────────────────────────────────
@@ -2403,13 +2423,13 @@ if ($method === 'POST' && str_starts_with($uri, '/webhooks/shopify/')) {
         }
         http_response_code(200);
         echo json_encode(['message' => 'Accepted']);
-        exit;
+        return;
     }
 
     // Unknown Shopify topic — still verified, just not handled yet
     http_response_code(200);
     echo json_encode(['message' => 'Webhook topic not handled']);
-    exit;
+    return;
 }
 
 // ── Fallback ──────────────────────────────────────────────────────────────────

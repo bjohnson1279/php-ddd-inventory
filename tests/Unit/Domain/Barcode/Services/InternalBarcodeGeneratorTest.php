@@ -50,6 +50,8 @@ class InternalBarcodeGeneratorTest extends TestCase
         $generator = new InternalBarcodeGenerator($registry);
         $barcode = $generator->generate('variant-1', 'tenant-1');
 
+        // Should bypass salt 0 (collision) and succeed with salt 1 (different value)
+        $this->assertNotEquals('INV-52F3-C264D055', $barcode->value);
         $this->assertNotEquals('INV-9958-9CF83C66', $barcode->value);
     }
 }

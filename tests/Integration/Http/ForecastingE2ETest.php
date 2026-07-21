@@ -21,10 +21,16 @@ final class ForecastingE2ETest extends TestCase
     public static function setUpBeforeClass(): void
     {
         $output = [];
-        $command = "php -S 127.0.0.1:8089 public/index.php > tests/Integration/Http/server_forecasting.log 2>&1 & echo $!";
+        $dbConn = getenv('DB_CONNECTION') ?: 'pgsql';
+        $dbDb = getenv('DB_DATABASE') ?: '';
+        $dbHost = getenv('DB_HOST') ?: '';
+        $dbUser = getenv('DB_USERNAME') ?: '';
+        $dbPass = getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '';
+        $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8089 public/index.php > tests/Integration/Http/server_forecasting.log 2>&1 & echo $!";
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
         
+        $command = "php -S 127.0.0.1:8089 public/index.php > tests/Integration/Http/server_forecasting.log 2>&1 & echo $!";
 
         for ($i = 0; $i < 50; $i++) {
             $fp = @fsockopen('127.0.0.1', 8089, $errno, $errstr, 0.1);
@@ -312,6 +318,36 @@ final class ForecastingE2ETest extends TestCase
 
     }
 
+    public function testSeasonalForecasting(): void
+    {
+
+        $this->assertEquals(200, $receiveRes['status']);
+
+        $now = new \DateTime();
+        $nowStr = $now->format('Y-m-d H:i:s');
+        
+        $sameMonthLastYear = (new \DateTime())->modify('-364 days');
+        $sameMonthLastYearStr = $sameMonthLastYear->format('Y-m-d H:i:s');
+
+        $diffMonthLastYear = (new \DateTime())->modify('-300 days');
+        $diffMonthLastYearStr = $diffMonthLastYear->format('Y-m-d H:i:s');
+
+        $recentSaleStr = (new \DateTime())->modify('-5 days')->format('Y-m-d H:i:s');
+
+                'reference_id' => 'rec-1',
+                'occurred_at' => $recentSaleStr,
+                'quantity' => -30,
+                'reference_id' => 'rec-2',
+                'occurred_at' => $sameMonthLastYearStr,
+                'reference_id' => 'rec-3',
+                'occurred_at' => $diffMonthLastYearStr,
+
+            'forecastDays' => 30,
+            'trendMultiplier' => 1.0
+
+        
+        $this->assertGreaterThan(10, $forecast['forecastedQuantity']);
+        $this->assertEquals(0.90, $forecast['confidenceLevel']);
     {
 
 
@@ -343,6 +379,7 @@ final class ForecastingE2ETest extends TestCase
 {
 
     {
+        $command = "php -S 127.0.0.1:8089 public/index.php > tests/Integration/Http/server_forecasting.log 2>&1 & echo $!";
         
             }
         }

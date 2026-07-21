@@ -73,6 +73,16 @@
 **Prevention:** Always validate `REMOTE_ADDR` against a trusted proxy list before parsing `HTTP_X_FORWARDED_FOR`, and traverse the list right-to-left to safely extract the untrusted client IP.
 ## 2026-07-20 - Removed Hardcoded DB Password Fallback
 **Vulnerability:** The application used a hardcoded fallback value `'secret'` if the `DB_PASSWORD` environment variable was not found, which could lead to unauthorized access in misconfigured environments.
+
+
+
+
+
+## 2026-07-18 - Prevent Exception Message Leakage
+**Vulnerability:** Raw exception messages were leaked in 500 error responses in ForecastingController, WebhookSubscriptionController, and ShippingController.
+**Learning:** Returning $e->getMessage() directly to the client on unexpected 500 server errors can expose internal stack traces, DB schema details, or system states (CWE-209). Domain exceptions should be gracefully handled as 400 Bad Requests, while unexpected server errors should return generic messages while logging the actual issue.
+**Prevention:** Standardize error handling in all controllers to explicitly log unexpected exceptions internally via error_log() and return generic sanitised messages (e.g., 'An internal server error occurred.') for 500 responses, only allowing specific domain exception messages for 400 responses.
+## 2026-07-19 - Prevent Exception Message Leakage
 **Prevention:** Avoid hardcoding default credentials. Use strict comparisons (`!== false`) when fetching critical environment variables, and fallback to an empty string instead of supplying a potentially guessable fallback like 'secret'.
 ## 2024-11-20 - Unbounded cURL Execution in Integration Clients
 **Vulnerability:** The Xero API integration client (`XeroJournalSync`) lacked explicit `CURLOPT_TIMEOUT` and `CURLOPT_CONNECTTIMEOUT` options, defaulting to infinite timeouts.

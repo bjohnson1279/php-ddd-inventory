@@ -49,25 +49,25 @@ class ShopifyWebhookController
             if ($topic === 'orders/create') {
                 $orderId = 'shopify-order-' . ($data['id'] ?? 'unknown');
                 $lineItems = $data['line_items'] ?? [];
-                
+
                 $this->processBatch($lineItems, $locationId, $orderId, 'sale', $productRepo, $dispatcher);
-                
+
                 return new Response(['message' => 'Order webhook processed, stock decremented'], 200);
             }
 
             if ($topic === 'orders/cancelled') {
                 $orderId = 'shopify-order-' . ($data['id'] ?? 'unknown');
                 $lineItems = $data['line_items'] ?? [];
-                
+
                 $this->processBatch($lineItems, $locationId, $orderId, 'return', $productRepo, $dispatcher);
-                
+
                 return new Response(['message' => 'Cancellation webhook processed, stock restocked'], 200);
             }
 
             if ($topic === 'refunds/create') {
                 $orderId = 'shopify-order-' . ($data['order_id'] ?? 'unknown');
                 $refundLineItems = $data['refund_line_items'] ?? [];
-                
+
                 // Extract line_items from refund payload
                 $lineItems = [];
                 foreach ($refundLineItems as $rItem) {
@@ -77,7 +77,7 @@ class ShopifyWebhookController
                 }
 
                 $this->processBatch($lineItems, $locationId, $orderId, 'return', $productRepo, $dispatcher);
-                
+
                 return new Response(['message' => 'Refund webhook processed, stock restocked'], 200);
             }
 

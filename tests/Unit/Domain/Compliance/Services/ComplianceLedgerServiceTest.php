@@ -21,7 +21,11 @@ class ComplianceLedgerServiceTest extends TestCase
         $this->savedEntries = [];
 
         $this->mockRepo = $this->createMock(ComplianceLedgerRepositoryInterface::class);
+        putenv('COMPLIANCE_PRIVATE_KEY=test-secret-key');
+
         
+
+
         // Mock save
         $this->mockRepo->method('save')->willReturnCallback(function (ComplianceLedgerEntry $entry) {
             $this->savedEntries[] = $entry;
@@ -48,7 +52,16 @@ class ComplianceLedgerServiceTest extends TestCase
     public function testLogEventGeneratesValidBlockChain()
     {
         $payload = ['sku' => 'SKU-TEST-1', 'quantity' => 100];
+    protected function tearDown(): void
+    {
+        putenv('COMPLIANCE_PRIVATE_KEY');
+        parent::tearDown();
+    }
+
+    {
         
+    {
+
         // Log 1st event
         $entry1 = ComplianceLedgerService::logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
         $this->assertEquals(1, $entry1->getSequenceNumber());
@@ -70,6 +83,7 @@ class ComplianceLedgerServiceTest extends TestCase
     {
         $payload = ['sku' => 'SKU-TEST-1'];
         
+
         $entry1 = ComplianceLedgerService::logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
         $entry2 = ComplianceLedgerService::logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
 
@@ -117,6 +131,10 @@ class ComplianceLedgerServiceTest extends TestCase
 
         $this->savedEntries[0] = $tamperedEntry1;
 
+
+
+
+
         $validationResult = ComplianceLedgerService::validateLedger('tenant-1');
         $this->assertFalse($validationResult['isValid']);
         $this->assertEquals(1, $validationResult['failedSequenceNumber']);
@@ -129,6 +147,55 @@ class ComplianceLedgerServiceTest extends TestCase
         $entry1 = ComplianceLedgerService::logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
 
         // Tamper with signature
+
+            'invalid-signature-value',
+            $entry1->getPayload(),
+
+
+        $this->assertStringContainsString('Cryptographic signature validation failed', $validationResult['reason']);
+    }
+}
+
+
+
+
+{
+
+    {
+
+        
+
+
+            }
+
+    }
+
+    {
+        
+
+
+    }
+
+    {
+        
+
+
+
+    }
+
+    {
+
+
+
+    }
+
+    {
+
+
+
+    }
+}
+
         $tamperedEntry1 = new ComplianceLedgerEntry(
             $entry1->getId(),
             $entry1->getTenantId(),

@@ -12,54 +12,30 @@ require_once __DIR__ . '/../bootstrap.php';
 /** @group integration */
 final class ReturnsE2ETest extends TestCase
 {
-    private static $serverProcess = null;
+    private static ?int $pid = null;
     private string $tenantId;
     private string $email;
     private string $password;
     private ?string $token = null;
 
-        public static function setUpBeforeClass(): void
+    public static function setUpBeforeClass(): void
     {
-        $baseDir = realpath(__DIR__ . '/../../..');
-        $dbPath = $baseDir . '/storage/data/test_returnse2etest.sqlite';
-        if (!file_exists($dbPath)) {
-            @mkdir(dirname($dbPath), 0777, true);
-            @touch($dbPath);
-        }
-        $extDir = 'C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext';
-        $phpExec = PHP_BINARY . ' -d extension_dir="C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext" -d extension=pdo -d extension=mbstring -d extension=pdo_sqlite';
-        $cmd = $phpExec . ' -S 127.0.0.1:8091 public/index.php';
-        
-        $descriptors = [
-            0 => ["pipe", "r"],
-            1 => ["file", __DIR__ . '/server_returnse2etest.log', "a"],
-            2 => ["file", __DIR__ . '/server_returnse2etest.log', "a"],
-        ];
-        
-        $env = array_merge($_ENV, [
-            'DB_CONNECTION' => 'sqlite',
-            'DB_DATABASE' => $dbPath,
-            'APP_ENV' => 'testing',
-        ]);
-        
-                putenv("DB_DATABASE={$dbPath}");
-        $_ENV['DB_DATABASE'] = $dbPath;
-        $_SERVER['DB_DATABASE'] = $dbPath;
-        
-        $capsule = new \Illuminate\Database\Capsule\Manager();
-        $capsule->addConnection([
-            'driver'   => 'sqlite',
-            'database' => $dbPath,
-            'prefix'   => '',
-        ]);
-        $capsule->setAsGlobal();
-        $capsule->bootEloquent();
-        
-        require_once __DIR__ . '/../../../src/Infrastructure/Persistence/sqlite_setup.php';
-        \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
+        // Start built-in PHP development server in the background on port 8086
+        $output = [];
+        $command = "php -S 127.0.0.1:8090 public/index.php > tests/Integration/Http/server_returns.log 2>&1 & echo $!";
 
-        self::$serverProcess = proc_open($cmd, $descriptors, $pipes, $baseDir, $env);
+        exec($command, $output);
+        self::$pid = (int)($output[0] ?? 0);
+        $dbConn = getenv('DB_CONNECTION') ?: 'pgsql';
+        $dbDb = getenv('DB_DATABASE') ?: '';
+        $dbHost = getenv('DB_HOST') ?: '';
+        $dbUser = getenv('DB_USERNAME') ?: '';
+        $dbPass = getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '';
+        $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8090 public/index.php > tests/Integration/Http/server_returns.log 2>&1 & echo $!";
         
+        
+
+
         // Wait for server to bind
         for ($i = 0; $i < 50; $i++) {
             $fp = @fsockopen('127.0.0.1', 8090, $errno, $errstr, 0.1);
@@ -71,12 +47,10 @@ final class ReturnsE2ETest extends TestCase
         }
     }
 
-        public static function tearDownAfterClass(): void
+    public static function tearDownAfterClass(): void
     {
-        if (self::$serverProcess && is_resource(self::$serverProcess)) {
-            proc_terminate(self::$serverProcess);
-            proc_close(self::$serverProcess);
-            self::$serverProcess = null;
+        if (self::$pid) {
+            exec("kill " . self::$pid . " > /dev/null 2>&1");
         }
     }
 
@@ -85,6 +59,7 @@ final class ReturnsE2ETest extends TestCase
         // Generate unique tenant details for each test run to ensure isolation
         Capsule::table('users')->delete();
         Capsule::table('user_roles')->delete();
+        Capsule::table('tenants')->where('id', '!=', 'test-tenant')->delete();
         Capsule::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
         \Illuminate\Database\Capsule\Manager::table('tenants')->insertOrIgnore([['id' => 'test-tenant', 'name' => 'Test Tenant']]);
                 $suffix = bin2hex(random_bytes(4));
@@ -123,6 +98,7 @@ final class ReturnsE2ETest extends TestCase
             'email' => "viewer-{$suffix}@example.com",
         ], $this->token);
         
+
         $this->assertEquals(201, $inviteRes['status'], json_encode($inviteRes));
         $viewerUserId = $inviteRes['body']['user_id'];
         $tempPassword = $inviteRes['body']['temporary_password'];
@@ -208,7 +184,7 @@ final class ReturnsE2ETest extends TestCase
         ]);
 
         Capsule::table('product_locations')->insert([
-            [
+
                 'product_id' => $varX,
                 'location_id' => 'LOC-INT',
                 'stock_quantity' => 0,
@@ -222,23 +198,8 @@ final class ReturnsE2ETest extends TestCase
                 'stock_quantity' => 0,
                 'open_box_quantity' => 0,
                 'damaged_quantity' => 0,
-                'updated_at' => date('Y-m-d H:i:s')
-            ],
-            [
                 'product_id' => $varY,
                 'location_id' => 'LOC-INT',
-                'stock_quantity' => 0,
-                'open_box_quantity' => 0,
-                'damaged_quantity' => 0,
-                'updated_at' => date('Y-m-d H:i:s')
-            ],
-            [
-                'product_id' => $varY,
-                'location_id' => 'LOC-INT-quarantine',
-                'stock_quantity' => 0,
-                'open_box_quantity' => 0,
-                'damaged_quantity' => 0,
-                'updated_at' => date('Y-m-d H:i:s')
             ]
         ]);
 
@@ -316,6 +277,7 @@ final class ReturnsE2ETest extends TestCase
             ->where('location_id', 'LOC-INT-quarantine')
             ->value('stock_quantity');
         
+
         $this->assertEquals(1, $stockX);
         $this->assertEquals(2, $stockYQ);
 
@@ -328,6 +290,7 @@ final class ReturnsE2ETest extends TestCase
         $listQRes = $this->request('GET', '/api/returns/quarantine', [], $this->token);
         $this->assertEquals(200, $listQRes['status'], json_encode($listQRes));
         
+
         $targetQItem = null;
         foreach ($listQRes['body'] as $qItem) {
             if ($qItem['variantId'] === $varY) {
@@ -353,10 +316,9 @@ final class ReturnsE2ETest extends TestCase
             ->where('location_id', 'LOC-INT')
             ->value('stock_quantity');
         $stockYQResolved = (int)Capsule::table('product_locations')
-            ->where('product_id', $varY)
             ->where('location_id', 'LOC-INT-quarantine')
-            ->value('stock_quantity');
         
+
         $this->assertEquals(2, $stockY);
         $this->assertEquals(0, $stockYQResolved);
 
@@ -369,7 +331,7 @@ final class ReturnsE2ETest extends TestCase
 
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
     {
-        $url = 'http://127.0.0.1:8091' . $path;
+        $url = 'http://127.0.0.1:8090' . $path;
         $options = [
             'http' => [
                 'header'        => "Content-Type: application/json\r\n",
@@ -386,6 +348,7 @@ final class ReturnsE2ETest extends TestCase
         $context = stream_context_create($options);
         $result = @file_get_contents($url, false, $context);
         
+
         $statusCode = 500;
         if (isset($http_response_header) && isset($http_response_header[0])) {
             preg_match('{HTTP\/\S*\s(\d{3})}', $http_response_header[0], $match);
@@ -396,5 +359,194 @@ final class ReturnsE2ETest extends TestCase
             'status' => $statusCode,
             'body'   => json_decode((string)$result, true) ?: $result
         ];
+    }
+}
+
+
+
+
+
+{
+    private static $serverProcess = null;
+
+        public static function setUpBeforeClass(): void
+    {
+        $baseDir = realpath(__DIR__ . '/../../..');
+        $dbPath = $baseDir . '/storage/data/test_returnse2etest.sqlite';
+        if (!file_exists($dbPath)) {
+            @mkdir(dirname($dbPath), 0777, true);
+            @touch($dbPath);
+        }
+        $extDir = 'C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext';
+        $phpExec = PHP_BINARY . ' -d extension_dir="C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext" -d extension=pdo -d extension=mbstring -d extension=pdo_sqlite';
+        $cmd = $phpExec . ' -S 127.0.0.1:8091 public/index.php';
+        
+        $descriptors = [
+            0 => ["pipe", "r"],
+            1 => ["file", __DIR__ . '/server_returnse2etest.log', "a"],
+            2 => ["file", __DIR__ . '/server_returnse2etest.log', "a"],
+        
+        $env = array_merge($_ENV, [
+            'DB_CONNECTION' => 'sqlite',
+            'DB_DATABASE' => $dbPath,
+            'APP_ENV' => 'testing',
+        
+                putenv("DB_DATABASE={$dbPath}");
+        $_ENV['DB_DATABASE'] = $dbPath;
+        $_SERVER['DB_DATABASE'] = $dbPath;
+        
+        $capsule = new \Illuminate\Database\Capsule\Manager();
+        $capsule->addConnection([
+            'driver'   => 'sqlite',
+            'database' => $dbPath,
+            'prefix'   => '',
+        $capsule->setAsGlobal();
+        $capsule->bootEloquent();
+        
+        require_once __DIR__ . '/../../../src/Infrastructure/Persistence/sqlite_setup.php';
+        \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
+
+        self::$serverProcess = proc_open($cmd, $descriptors, $pipes, $baseDir, $env);
+        
+            }
+        }
+    }
+
+        public static function tearDownAfterClass(): void
+    {
+        if (self::$serverProcess && is_resource(self::$serverProcess)) {
+            proc_terminate(self::$serverProcess);
+            proc_close(self::$serverProcess);
+            self::$serverProcess = null;
+        }
+    }
+
+    {
+        Capsule::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
+
+
+
+
+    }
+
+    {
+        
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+
+
+        
+
+
+        
+            }
+        }
+
+
+
+        
+
+    }
+
+    {
+        $url = 'http://127.0.0.1:8091' . $path;
+
+        }
+
+        
+        }
+
+    }
+}
+
+
+
+
+
+{
+
+    {
+        $command = "php -S 127.0.0.1:8090 public/index.php > tests/Integration/Http/server_returns.log 2>&1 & echo $!";
+        
+        
+            }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+
+
+
+
+    }
+
+    {
+        
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+
+
+        
+
+
+        
+            }
+        }
+
+
+
+        
+
+    }
+
+    {
+
+        }
+
+        
+        }
+
     }
 }

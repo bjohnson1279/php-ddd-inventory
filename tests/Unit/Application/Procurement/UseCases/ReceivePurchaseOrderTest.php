@@ -5,193 +5,199 @@ namespace Tests\Unit\Application\Procurement\UseCases;
 use PHPUnit\Framework\TestCase;
 use InventoryApp\Application\Procurement\UseCases\ReceivePurchaseOrder;
 use InventoryApp\Domain\Procurement\Repositories\PurchaseOrderRepositoryInterface;
+use InventoryApp\Domain\Inventory\Repositories\ProductRepositoryInterface;
 use InventoryApp\Domain\Accounting\Repositories\CostLayerRepositoryInterface;
-use InventoryApp\Application\Inventory\Factories\ReceiveStockFactoryInterface;
-use InventoryApp\Application\Inventory\UseCases\ReceiveStock;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use InventoryApp\Domain\Procurement\Aggregates\PurchaseOrder;
 use InventoryApp\Domain\Procurement\Entities\PurchaseOrderItem;
 use InventoryApp\Domain\Procurement\Enums\PurchaseOrderStatus;
+use InventoryApp\Domain\Inventory\Entities\Product;
+use InventoryApp\Domain\Inventory\ValueObjects\SKU;
+use InventoryApp\Domain\Inventory\ValueObjects\Department;
+use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
+use InventoryApp\Domain\Inventory\ValueObjects\Quantity;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Exception;
-use DomainException;
+use DateTimeImmutable;
+use Ramsey\Uuid\Uuid;
 
 class ReceivePurchaseOrderTest extends TestCase
 {
     private $poRepository;
+    private $productRepository;
     private $costLayerRepository;
-    private $receiveStockFactory;
-    private $receiveStock;
+    private $eventDispatcher;
+    private ReceivePurchaseOrder $useCase;
     private $useCase;
 
     protected function setUp(): void
     {
         $this->poRepository = $this->createMock(PurchaseOrderRepositoryInterface::class);
+        $this->productRepository = $this->createMock(ProductRepositoryInterface::class);
         $this->costLayerRepository = $this->createMock(CostLayerRepositoryInterface::class);
-        $this->receiveStockFactory = $this->createMock(ReceiveStockFactoryInterface::class);
-        $this->receiveStock = $this->createMock(ReceiveStock::class);
+        $this->eventDispatcher = $this->createMock(EventDispatcherInterface::class);
 
         $this->useCase = new ReceivePurchaseOrder(
             $this->poRepository,
+            $this->productRepository,
             $this->costLayerRepository,
-            $this->receiveStockFactory
+            $this->eventDispatcher
         );
     }
 
-    public function testExecuteSuccessfullyReceivesItems(): void
-    {
-        $poId = 'po-1';
-        $variantId = 'VAR-1';
-        $locationId = 'LOC-1';
-        $tenantId = 'tenant-1';
-
-        $item = new PurchaseOrderItem('item-1', $variantId, 10, 1500, 0);
-        $po = new PurchaseOrder(
-            $poId,
-            'PO-100',
-            'vendor-1',
-            $tenantId,
-            $locationId,
-            PurchaseOrderStatus::Sent,
-            [$item]
-        );
-
-        $this->poRepository->expects($this->once())
-            ->method('findById')
-            ->with($poId)
-            ->willReturn($po);
-
-        $this->receiveStockFactory->expects($this->once())
-            ->method('create')
-            ->willReturn($this->receiveStock);
-
-        $this->receiveStock->expects($this->once())
-            ->method('execute')
-            ->willReturnCallback(function ($sku, $locId, $qty, $ref) use ($variantId, $locationId) {
-                $this->assertEquals($variantId, $sku->getValue());
-                $this->assertEquals($locationId, $locId->getValue());
-                $this->assertEquals(5, $qty->getValue());
-                $this->assertEquals('PO-100', $ref);
-            });
-
-        $this->costLayerRepository->expects($this->once())
-            ->method('saveBatch')
-            ->willReturnCallback(function (array $layers) use ($variantId, $tenantId, $poId) {
-                $this->assertCount(1, $layers);
-                $layer = $layers[0];
-                $this->assertEquals($variantId, $layer->variantId);
-                $this->assertEquals($tenantId, $layer->tenantId);
-                $this->assertEquals(5, $layer->originalQuantity);
-                $this->assertEquals(1500, $layer->unitCostCents);
-                $this->assertEquals($poId, $layer->purchaseOrderId);
-            });
-
-        $this->poRepository->expects($this->once())
-            ->method('save')
-            ->with($this->callback(function (PurchaseOrder $savedPo) use ($po) {
-                return $savedPo === $po &&
-                       $savedPo->getStatus() === PurchaseOrderStatus::PartiallyReceived &&
-                       $savedPo->getItems()[0]->getReceivedQuantity() === 5;
-            }));
-
-        $this->useCase->execute([
-            'purchaseOrderId' => $poId,
-            'items' => [
-                [
-                    'variantId' => $variantId,
-                    'quantityReceived' => 5
-                ]
-            ]
-        ]);
-    }
-
+    public function testExecuteThrowsExceptionWhenPurchaseOrderNotFound(): void
     public function testExecuteThrowsExceptionIfPurchaseOrderNotFound(): void
     {
         $this->poRepository->expects($this->once())
             ->method('findById')
-            ->with('non-existent-po')
+            ->with('po-123')
             ->willReturn(null);
 
         $this->expectException(Exception::class);
-        $this->expectExceptionMessage("Purchase order with ID non-existent-po not found.");
+        $this->expectExceptionMessage("Purchase order with ID po-123 not found.");
 
         $this->useCase->execute([
-            'purchaseOrderId' => 'non-existent-po',
+            'purchaseOrderId' => 'po-123',
             'items' => []
         ]);
+        $this->useCase->execute(['purchaseOrderId' => 'po-123', 'items' => []]);
     }
 
-    public function testExecuteThrowsExceptionIfItemNotFoundInPurchaseOrder(): void
+    public function testExecuteThrowsExceptionWhenItemNotFoundInPurchaseOrder(): void
     {
-        $poId = 'po-1';
         $po = new PurchaseOrder(
-            $poId,
-            'PO-100',
+            id: 'po-123',
+            purchaseOrderNumber: 'PO-001',
+            vendorId: 'vendor-1',
+            tenantId: 'tenant-1',
+            locationId: 'LOC-MAIN',
+            status: PurchaseOrderStatus::Sent,
+            items: [
+                new PurchaseOrderItem('item-1', 'variant-1', 10, 1000)
+            ]
+            'po-123',
+            'PO-NUM-001',
             'vendor-1',
             'tenant-1',
             'LOC-1',
             PurchaseOrderStatus::Sent,
-            [new PurchaseOrderItem('item-1', 'VAR-1', 10, 1500, 0)]
+            [] // Empty items
         );
 
         $this->poRepository->expects($this->once())
             ->method('findById')
-            ->with($poId)
+            ->with('po-123')
             ->willReturn($po);
 
-        $this->receiveStockFactory->expects($this->once())
-            ->method('create')
-            ->willReturn($this->receiveStock);
-
         $this->expectException(Exception::class);
-        $this->expectExceptionMessage("Item VAR-2 not found in purchase order PO-100.");
+        $this->expectExceptionMessage("Item variant-2 not found in purchase order PO-001.");
+        $this->expectExceptionMessage("Item unknown-variant not found in purchase order PO-NUM-001.");
 
         $this->useCase->execute([
-            'purchaseOrderId' => $poId,
+            'purchaseOrderId' => 'po-123',
             'items' => [
-                [
-                    'variantId' => 'VAR-2',
-                    'quantityReceived' => 5
-                ]
+                ['variantId' => 'variant-2', 'quantityReceived' => 5]
+                ['variantId' => 'unknown-variant', 'quantityReceived' => 5]
             ]
         ]);
     }
 
-    public function testExecuteThrowsExceptionForInvalidPurchaseOrderStatus(): void
+    public function testExecuteReceivesStockAndUpdatesPurchaseOrderAndCostLayers(): void
     {
-        $poId = 'po-1';
-        $variantId = 'VAR-1';
-
-        $item = new PurchaseOrderItem('item-1', $variantId, 10, 1500, 0);
-        // Created in Draft state, which should not allow receiving items
+        $poItem = new PurchaseOrderItem('item-1', 'variant-1', 10, 1500);
         $po = new PurchaseOrder(
-            $poId,
-            'PO-100',
+            id: 'po-123',
+            purchaseOrderNumber: 'PO-001',
+            vendorId: 'vendor-1',
+            tenantId: 'tenant-1',
+            locationId: 'LOC-MAIN',
+            status: PurchaseOrderStatus::Sent,
+            items: [$poItem]
+    public function testExecuteSuccessfullyReceivesPurchaseOrder(): void
+    {
+        $item1 = new PurchaseOrderItem('item-1', 'VARIANT-1', 10, 500); // quantity 10, 500 cents
+            'po-123',
+            'PO-NUM-001',
             'vendor-1',
             'tenant-1',
             'LOC-1',
-            PurchaseOrderStatus::Draft,
-            [$item]
+            PurchaseOrderStatus::Sent,
+            [$item1]
         );
 
         $this->poRepository->expects($this->once())
             ->method('findById')
-            ->with($poId)
+            ->with('po-123')
             ->willReturn($po);
 
-        $this->receiveStockFactory->expects($this->once())
-            ->method('create')
-            ->willReturn($this->receiveStock);
+        // Product Mock setup for ReceiveStock
+        $product = Product::create(
+            'prod-1',
+            new SKU('variant-1'),
+            'Test Product',
+            new Department('GENERAL'),
+            new LocationId('LOC-MAIN'),
+            new Quantity(50)
+        );
 
-        $this->expectException(DomainException::class);
-        $this->expectExceptionMessage("Can only receive items on Sent or Partially Received purchase orders.");
+        $productMock = Product::create(
+            new SKU('VARIANT-1'),
+            'Product 1',
+            new Department('DEP1'),
+            new LocationId('LOC-1'),
+            new Quantity(0)
+
+        // ReceiveStock dependency
+        $this->productRepository->expects($this->once())
+            ->method('findBySku')
+            ->with($this->callback(function (SKU $sku) {
+                return $sku->getValue() === 'VARIANT-1';
+            }))
+            ->willReturn($product);
+            ->willReturn($productMock);
+
+        $this->productRepository->expects($this->once())
+            ->method('save')
+            ->with($this->callback(function (Product $p) {
+                return $p->getTotalStockQuantity()->getValue() === 55;
+                return $p->getTotalStockQuantity()->getValue() === 5;
+            }));
+
+        $this->costLayerRepository->expects($this->once())
+            ->method('saveBatch')
+            ->with($this->callback(function (array $layers) {
+                if (count($layers) !== 1) return false;
+                $layer = $layers[0];
+                return $layer->variantId === 'variant-1'
+                    && $layer->tenantId === 'tenant-1'
+                    && $layer->originalQuantity === 5
+                    && $layer->unitCostCents === 1500
+            ->with($this->callback(function (array $costLayers) {
+                if (count($costLayers) !== 1) {
+                    return false;
+                }
+                $layer = $costLayers[0];
+                return $layer->variantId === 'VARIANT-1'
+                    && $layer->unitCostCents === 500
+                    && $layer->purchaseOrderId === 'po-123';
+            }));
+
+        $this->poRepository->expects($this->once())
+            ->method('save')
+            ->with($this->callback(function (PurchaseOrder $savedPo) use ($po) {
+                return $savedPo === $po && $po->getStatus() === PurchaseOrderStatus::PartiallyReceived;
+            ->with($this->callback(function (PurchaseOrder $po) {
+                return $po->getStatus() === PurchaseOrderStatus::PartiallyReceived;
+            }));
 
         $this->useCase->execute([
-            'purchaseOrderId' => $poId,
+            'purchaseOrderId' => 'po-123',
             'items' => [
-                [
-                    'variantId' => $variantId,
-                    'quantityReceived' => 5
-                ]
+                ['variantId' => 'variant-1', 'quantityReceived' => 5]
+                ['variantId' => 'VARIANT-1', 'quantityReceived' => 5]
             ]
         ]);
+
+        $this->assertEquals(5, $poItem->getReceivedQuantity());
     }
 }

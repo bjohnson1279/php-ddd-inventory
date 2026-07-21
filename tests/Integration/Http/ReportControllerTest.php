@@ -12,53 +12,32 @@ require_once __DIR__ . '/../bootstrap.php';
 /** @group integration */
 final class ReportControllerTest extends TestCase
 {
-    private static $serverProcess = null;
+    private static ?int $pid = null;
     private string $tenantId;
     private string $email;
     private string $password;
     private ?string $token = null;
 
-        public static function setUpBeforeClass(): void
+    public static function setUpBeforeClass(): void
     {
-        $baseDir = realpath(__DIR__ . '/../../..');
-        $dbPath = $baseDir . '/storage/data/test_reportcontrollertest.sqlite';
-        if (!file_exists($dbPath)) {
-            @mkdir(dirname($dbPath), 0777, true);
-            @touch($dbPath);
-        }
-        $extDir = 'C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext';
-        $phpExec = PHP_BINARY . ' -d extension_dir="C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext" -d extension=pdo -d extension=mbstring -d extension=pdo_sqlite';
-        $cmd = $phpExec . ' -S 127.0.0.1:8089 public/index.php';
-        
-        $descriptors = [
-            0 => ["pipe", "r"],
-            1 => ["file", __DIR__ . '/server_reportcontrollertest.log', "a"],
-            2 => ["file", __DIR__ . '/server_reportcontrollertest.log', "a"],
-        ];
-        
-        $env = array_merge($_ENV, [
-            'DB_CONNECTION' => 'sqlite',
-            'DB_DATABASE' => $dbPath,
-            'APP_ENV' => 'testing',
-        ]);
-        
-                putenv("DB_DATABASE={$dbPath}");
-        $_ENV['DB_DATABASE'] = $dbPath;
-        $_SERVER['DB_DATABASE'] = $dbPath;
-        
-        $capsule = new \Illuminate\Database\Capsule\Manager();
-        $capsule->addConnection([
-            'driver'   => 'sqlite',
-            'database' => $dbPath,
-            'prefix'   => '',
-        ]);
-        $capsule->setAsGlobal();
-        $capsule->bootEloquent();
-        
-        require_once __DIR__ . '/../../../src/Infrastructure/Persistence/sqlite_setup.php';
-        \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
+        $output = [];
+        $command = "php -S 127.0.0.1:8089 public/index.php > tests/Integration/Http/server_report.log 2>&1 & echo $!";
 
-        self::$serverProcess = proc_open($cmd, $descriptors, $pipes, $baseDir, $env);
+        exec($command, $output);
+        self::$pid = (int)($output[0] ?? 0);
+
+        $dbConn = getenv('DB_CONNECTION') ?: 'pgsql';
+        $dbDb = getenv('DB_DATABASE') ?: '';
+        $dbHost = getenv('DB_HOST') ?: '';
+        $dbUser = getenv('DB_USERNAME') ?: '';
+        $dbPass = getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '';
+        $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8089 public/index.php > tests/Integration/Http/server_report.log 2>&1 & echo $!";
+        $command = "php -S 127.0.0.1:8097 public/index.php > tests/Integration/Http/server_report.log 2>&1 & echo $!";
+        
+
+
+
+        
         
         // Wait for server to bind
         for ($i = 0; $i < 50; $i++) {
@@ -71,12 +50,10 @@ final class ReportControllerTest extends TestCase
         }
     }
 
-        public static function tearDownAfterClass(): void
+    public static function tearDownAfterClass(): void
     {
-        if (self::$serverProcess && is_resource(self::$serverProcess)) {
-            proc_terminate(self::$serverProcess);
-            proc_close(self::$serverProcess);
-            self::$serverProcess = null;
+        if (self::$pid) {
+            exec("kill " . self::$pid . " > /dev/null 2>&1");
         }
     }
 
@@ -84,6 +61,7 @@ final class ReportControllerTest extends TestCase
     {
         DB::table('users')->delete();
         DB::table('user_roles')->delete();
+        DB::table('tenants')->where('id', '!=', 'test-tenant')->delete();
         DB::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
         \Illuminate\Database\Capsule\Manager::table('tenants')->insertOrIgnore([['id' => 'test-tenant', 'name' => 'Test Tenant']]);
                 $suffix = bin2hex(random_bytes(4));
@@ -174,6 +152,7 @@ final class ReportControllerTest extends TestCase
 
         // Asserts
         $this->assertEquals(15, $body['total_items_count']);
+
         
         // FIFO Valuation for remaining inventory:
         // Newest layers: Layer 2 has 10 units ($120). Layer 1 has 5 units remaining ($50).
@@ -194,6 +173,7 @@ final class ReportControllerTest extends TestCase
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
     {
         $url = 'http://127.0.0.1:8089' . $path;
+        $url = 'http://127.0.0.1:8097' . $path;
         $options = [
             'http' => [
                 'header'        => "Content-Type: application/json\r\n",
@@ -209,6 +189,7 @@ final class ReportControllerTest extends TestCase
 
         $context = stream_context_create($options);
         $result = @file_get_contents($url, false, $context);
+
         
         $statusCode = 500;
         if (isset($http_response_header) && isset($http_response_header[0])) {
@@ -220,5 +201,246 @@ final class ReportControllerTest extends TestCase
             'status' => $statusCode,
             'body'   => json_decode((string)$result, true) ?: $result
         ];
+    }
+}
+
+
+
+
+
+{
+    private static $serverProcess = null;
+
+        public static function setUpBeforeClass(): void
+    {
+        $baseDir = realpath(__DIR__ . '/../../..');
+        $dbPath = $baseDir . '/storage/data/test_reportcontrollertest.sqlite';
+        if (!file_exists($dbPath)) {
+            @mkdir(dirname($dbPath), 0777, true);
+            @touch($dbPath);
+        }
+        $extDir = 'C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext';
+        $phpExec = PHP_BINARY . ' -d extension_dir="C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext" -d extension=pdo -d extension=mbstring -d extension=pdo_sqlite';
+        $cmd = $phpExec . ' -S 127.0.0.1:8089 public/index.php';
+        
+        $descriptors = [
+            0 => ["pipe", "r"],
+            1 => ["file", __DIR__ . '/server_reportcontrollertest.log', "a"],
+            2 => ["file", __DIR__ . '/server_reportcontrollertest.log', "a"],
+        
+        $env = array_merge($_ENV, [
+            'DB_CONNECTION' => 'sqlite',
+            'DB_DATABASE' => $dbPath,
+            'APP_ENV' => 'testing',
+        
+                putenv("DB_DATABASE={$dbPath}");
+        $_ENV['DB_DATABASE'] = $dbPath;
+        $_SERVER['DB_DATABASE'] = $dbPath;
+        
+        $capsule = new \Illuminate\Database\Capsule\Manager();
+        $capsule->addConnection([
+            'driver'   => 'sqlite',
+            'database' => $dbPath,
+            'prefix'   => '',
+        $capsule->setAsGlobal();
+        $capsule->bootEloquent();
+        
+        require_once __DIR__ . '/../../../src/Infrastructure/Persistence/sqlite_setup.php';
+        \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
+
+        self::$serverProcess = proc_open($cmd, $descriptors, $pipes, $baseDir, $env);
+        
+            }
+        }
+    }
+
+        public static function tearDownAfterClass(): void
+    {
+        if (self::$serverProcess && is_resource(self::$serverProcess)) {
+            proc_terminate(self::$serverProcess);
+            proc_close(self::$serverProcess);
+            self::$serverProcess = null;
+        }
+    }
+
+    {
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+        
+
+
+    }
+
+    {
+
+        }
+
+        
+        }
+
+    }
+}
+
+
+
+
+
+{
+
+    {
+        $command = "php -S 127.0.0.1:8089 public/index.php > tests/Integration/Http/server_report.log 2>&1 & echo $!";
+        
+        
+            }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+        
+
+
+    }
+
+    {
+
+        }
+
+        
+        }
+
+    }
+}
+
+
+
+
+
+{
+
+    {
+        
+        
+            }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+        
+
+
+    }
+
+    {
+
+        }
+
+        
+        }
+
+    }
+}
+
+
+
+
+
+{
+
+    {
+        }
+        
+        
+        
+        
+        
+
+        
+            }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+        
+
+
+    }
+
+    {
+
+        }
+
+        
+        }
+
     }
 }

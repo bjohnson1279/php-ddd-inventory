@@ -17,7 +17,7 @@ class ProcessReturnTest extends TestCase
     public function testExecuteProcessesReturnAndSavesProduct()
     {
         $repositoryMock = $this->createMock(ProductRepositoryInterface::class);
-        
+
         $product = Product::create(
             'prod_123',
             new SKU('TSHIRT-L-RED'),

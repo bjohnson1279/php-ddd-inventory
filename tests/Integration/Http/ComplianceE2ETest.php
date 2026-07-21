@@ -93,7 +93,7 @@ final class ComplianceE2ETest extends TestCase
             'description' => 'Test Desc',
             'department'  => 'Test Dept'
         ], $this->token);
-        $this->assertEquals(200, $prodRes['status']);
+        $this->assertEquals(201, $prodRes['status']);
         $productId = $prodRes['body']['id'];
 
         $varRes = $this->request('POST', "/api/catalog/products/{$productId}/variants", [
@@ -101,14 +101,13 @@ final class ComplianceE2ETest extends TestCase
             'price' => 1000,
             'attributes' => []
         ], $this->token);
-        $this->assertEquals(200, $varRes['status']);
+        $this->assertEquals(201, $varRes['status']);
 
         // Setup location
         Capsule::table('locations')->insertOrIgnore([
             'id'   => 'LOC-COMP-1',
             'name' => 'LOC-COMP-1',
-            'type' => 'WAREHOUSE',
-            'tenant_id' => $this->tenantId
+            'type' => 'WAREHOUSE'
         ]);
 
         // Receive stock

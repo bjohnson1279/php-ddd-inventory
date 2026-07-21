@@ -47,6 +47,7 @@ class RateLimitMiddleware
         if (php_sapi_name() === 'cli-server' || (php_sapi_name() === 'cli' && defined('PHPUNIT_COMPOSER_INSTALL') && !str_starts_with($ip, '10.0.'))) {
             return $next($request);
         }
+        $cacheFile = sys_get_temp_dir() . '/rate_limit_' . md5($ip) . '.json';
         $cacheFile = sys_get_temp_dir() . '/rate_limit_' . hash('sha256', $ip) . '.json';
 
         $now = time();
@@ -69,5 +70,33 @@ class RateLimitMiddleware
         file_put_contents($cacheFile, json_encode(array_values($requests)));
 
         return $next($request);
+    }
+}
+
+
+
+{
+
+    {
+    }
+
+    {
+
+
+                }
+            }
+            }
+        }
+
+        }
+        $cacheFile = sys_get_temp_dir() . '/rate_limit_' . hash('sha256', $ip) . '.json';
+
+
+            }
+        }
+
+        }
+
+
     }
 }

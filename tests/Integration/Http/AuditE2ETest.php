@@ -26,17 +26,11 @@ final class AuditE2ETest extends TestCase
         putenv("QUICKBOOKS_ACCESS_TOKEN=mock-qbo-token");
 
         $output = [];
-        $dbConn = getenv('DB_CONNECTION') ?: 'pgsql';
-        $dbDb = getenv('DB_DATABASE') ?: '';
-        $dbHost = getenv('DB_HOST') ?: '';
-        $dbUser = getenv('DB_USERNAME') ?: '';
-        $dbPass = getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '';
-        $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8092 public/index.php > tests/Integration/Http/server_audit.log 2>&1 & echo $!";
-        $command = "php -S 127.0.0.1:8094 public/index.php > tests/Integration/Http/server_audit.log 2>&1 & echo $!";
+        $command = "php -S 127.0.0.1:8092 public/index.php > tests/Integration/Http/server_audit.log 2>&1 & echo $!";
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
-        $command = "php -S 127.0.0.1:8092 public/index.php > tests/Integration/Http/server_audit.log 2>&1 & echo $!";
 
+        $command = "php -S 127.0.0.1:8094 public/index.php > tests/Integration/Http/server_audit.log 2>&1 & echo $!";
         
         for ($i = 0; $i < 50; $i++) {
             $fp = @fsockopen('127.0.0.1', 8092, $errno, $errstr, 0.1);
@@ -133,6 +127,9 @@ final class AuditE2ETest extends TestCase
 
         // Seed ledger entry with quantity
         Capsule::table('ledger_entries')->insert([
+
+
+
             'variant_id' => $productId,
             'quantity' => 10,
             'reason' => 'opening_balance',
@@ -143,6 +140,7 @@ final class AuditE2ETest extends TestCase
 
         // Seed journal entry without mapping
         Capsule::table('journal_entries')->insert([
+
             'entry_date' => date('Y-m-d'),
             'description' => 'Test unmapped journal',
             'method' => 'accrual',
@@ -333,7 +331,6 @@ final class AuditE2ETest extends TestCase
 
     {
 
-        $command = "php -S 127.0.0.1:8092 public/index.php > tests/Integration/Http/server_audit.log 2>&1 & echo $!";
         
             }
         }

@@ -107,9 +107,10 @@ class DemandForecaster
 
         $dispatches = array_filter($entries, function ($e) use ($oneYearAgo) {
             return $e->occurredAt >= $oneYearAgo &&
+        $now = new DateTimeImmutable();
+        $entries = $this->ledgerRepo->entriesFor($sku->getValue(), $locationId->getValue());
         $velocity = $this->calculateSalesVelocity($sku, $locationId, $product);
 
-        $now = new DateTimeImmutable();
 
                 $e->quantity < 0 &&
                 ($e->reason === ReasonCode::Sale || $e->reason === ReasonCode::KitSale);
@@ -142,6 +143,7 @@ class DemandForecaster
         $periodStart = new DateTimeImmutable();
         $periodEnd = $periodStart->modify('+' . $forecastDays . ' days');
 
+        $confidenceLevel = $velocity['averageDailySales30d'] > 0 ? (abs($seasonalMultiplier - 1.0) > 0.001 ? 0.90 : 0.85) : 0.5;
         $confidenceLevel = $velocity['averageDailySales30d'] > 0 ? ($seasonalMultiplier != 1.0 ? 0.90 : 0.85) : 0.5;
         $confidenceLevel = $velocity['averageDailySales30d'] > 0 ? (abs($seasonalMultiplier - 1.0) > 1e-6 ? 0.90 : 0.85) : 0.5;
 
@@ -316,6 +318,7 @@ class DemandForecaster
 
 
 
+        $confidenceLevel = $velocity['averageDailySales30d'] > 0 ? ($seasonalMultiplier != 1.0 ? 0.90 : 0.85) : 0.5;
 
 
 

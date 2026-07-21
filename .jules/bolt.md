@@ -65,23 +65,21 @@
 ## 2024-07-13 - Eliminate N+1 DB queries in bulk stock updates via SyncStockToShopify batching
 **Learning:** When processing bulk operations (like complete inventory counts, sales, or returns), dispatching domain events individually inside loops can trigger repetitive database lookups within listeners like `SyncStockToShopify`. Specifically, syncing stock to Shopify triggers queries on `shopify_sku_mappings` and `shopify_location_mappings` for every single event.
 **Action:** Always wrap event dispatch loops for bulk domain operations with `\InventoryApp\Application\Inventory\Listeners\SyncStockToShopify::beginBatch(...)` and `endBatch()` inside a `try...finally` block. This allows the listener to pre-fetch Shopify metadata mapping in a single query, eliminating the N+1 problem.
-## 2024-07-28 - Bulk Ledger Inserts
-**Learning:** In the domain architecture, when Use Cases like `AssembleKit`, `DisassembleKit`, or services like `OpeningBalanceService` process multiple components or items, appending ledger entries sequentially causes N+1 queries.
-**Action:** Use an `appendAll(array $entries)` method on `LedgerRepositoryInterface` to collect the `$ledgerEntries` in a batch within the Use Case and persist them once outside the loop.
+## 2026-07-18 - Optimize string hashing with crc32
+**Learning:** Replaced a manual character-by-character string hashing loop with PHP's native `crc32()` function. This yielded an enormous (~98%) performance improvement because native functions implemented in C are significantly faster than iterating over string characters in PHP userland.
+**Action:** When a deterministic numeric hash of a string is needed for arbitrary distribution (e.g., generating fallback coordinates) and the specific hash value isn't strictly mandated by an external contract, always prefer native PHP hashing functions like `crc32()` over manual implementations.
+## 2024-05-24 - Batch Fetching Cost Layers for Kit Components
 
+**Learning:** Replacing an N+1 query inside a kit component loop with a batch fetch method using `whereIn` grouped by `variant_id` drastically reduces database queries without breaking fallback functionality for active layers when handling expected domain exceptions.
+**Action:** Always inspect loops containing repository fetches for batch-fetching opportunities in application use cases. Ensure fallback states are preserved when utilizing the new batch queries.
 
+## 2026-07-18 - Fix N+1 queries in DemandForecaster
+**Learning:** Found multiple N+1 queries in `DemandForecaster`. `generateDemandForecast` fetched ledger entries and then passed them to `calculateSalesVelocity` which fetched them again. `getDemandPlanningReport` looped over SKUs and inside the loop, fetched policies and entries sequentially despite having batched queries available earlier.
+**Action:** Always verify that batched queries (like `findBySkusAndLocation`) are actually mapped and used inside subsequent loops rather than performing redundant individual queries. Ensure helper functions accept optional batched data to prevent duplicate database roundtrips.
 
-
-
-
-
-
-
-
-
-
-
-
+## 2026-07-18 - Isolated HTTP Server Databases in Integration Tests
+**Learning:** When using `php -S` to spawn background servers for local integration tests, the spawned process executes in a completely separate memory space. If `DB_CONNECTION=sqlite` and `DB_DATABASE=:memory:` are used, the test process and the background server process will each create their own, totally isolated in-memory SQLite databases, causing HTTP requests to fail when looking for data seeded by the test's `setUp` method. Additionally, if the test runner doesn't explicitly pass the `DB_*` environment variables down to the `php -S` sub-process, the background server will fall back to its defaults (e.g., trying to connect to a default `pgsql` database).
+**Action:** When writing HTTP E2E integration tests that spawn a background `php -S` server, always explicitly export and pass the `DB_*` environment variables directly into the command string (e.g., `DB_CONNECTION={$dbConn} ... php -S ...`). When testing locally with SQLite, never use `:memory:`; instead, use a shared physical SQLite file (like `storage/data/test.sqlite`) so both processes can interact with the same database state.
 ## 2026-07-16 - N+1 Query in DemandForecaster bulk evaluation
 **Learning:** In bulk reporting operations (like ), helper methods inside loops (like ) can trigger N+1 queries if they internally perform database lookups, even if the parent method pre-fetches the data into maps.
 **Action:** When a method is called in a loop and performs database lookups, modify its signature to accept optional pre-fetched arrays (e.g. ). In the loop, pass the pre-fetched mapped data downward instead of relying on the method's internal fallback lookups.
@@ -115,18 +113,53 @@
 
 
 
-## 2024-05-24 - Batch Fetching Cost Layers for Kit Components
+## 2024-07-28 - Bulk Ledger Inserts
+**Learning:** In the domain architecture, when Use Cases like `AssembleKit`, `DisassembleKit`, or services like `OpeningBalanceService` process multiple components or items, appending ledger entries sequentially causes N+1 queries.
+**Action:** Use an `appendAll(array $entries)` method on `LedgerRepositoryInterface` to collect the `$ledgerEntries` in a batch within the Use Case and persist them once outside the loop.
 
-**Learning:** Replacing an N+1 query inside a kit component loop with a batch fetch method using `whereIn` grouped by `variant_id` drastically reduces database queries without breaking fallback functionality for active layers when handling expected domain exceptions.
-**Action:** Always inspect loops containing repository fetches for batch-fetching opportunities in application use cases. Ensure fallback states are preserved when utilizing the new batch queries.
 
-## 2026-07-18 - Fix N+1 queries in DemandForecaster
-**Learning:** Found multiple N+1 queries in `DemandForecaster`. `generateDemandForecast` fetched ledger entries and then passed them to `calculateSalesVelocity` which fetched them again. `getDemandPlanningReport` looped over SKUs and inside the loop, fetched policies and entries sequentially despite having batched queries available earlier.
-**Action:** Always verify that batched queries (like `findBySkusAndLocation`) are actually mapped and used inside subsequent loops rather than performing redundant individual queries. Ensure helper functions accept optional batched data to prevent duplicate database roundtrips.
 
-## 2026-07-18 - Isolated HTTP Server Databases in Integration Tests
-**Learning:** When using `php -S` to spawn background servers for local integration tests, the spawned process executes in a completely separate memory space. If `DB_CONNECTION=sqlite` and `DB_DATABASE=:memory:` are used, the test process and the background server process will each create their own, totally isolated in-memory SQLite databases, causing HTTP requests to fail when looking for data seeded by the test's `setUp` method. Additionally, if the test runner doesn't explicitly pass the `DB_*` environment variables down to the `php -S` sub-process, the background server will fall back to its defaults (e.g., trying to connect to a default `pgsql` database).
-**Action:** When writing HTTP E2E integration tests that spawn a background `php -S` server, always explicitly export and pass the `DB_*` environment variables directly into the command string (e.g., `DB_CONNECTION={$dbConn} ... php -S ...`). When testing locally with SQLite, never use `:memory:`; instead, use a shared physical SQLite file (like `storage/data/test.sqlite`) so both processes can interact with the same database state.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

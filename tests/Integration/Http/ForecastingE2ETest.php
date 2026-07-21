@@ -177,6 +177,8 @@ final class ForecastingE2ETest extends TestCase
 
         $now = new \DateTime();
         $nowStr = $now->format('Y-m-d H:i:s');
+        
+        $sameMonthLastYear = (new \DateTime())->modify('-365 days');
 
         $sameMonthLastYear = (new \DateTime())->modify('-364 days');
         $sameMonthLastYearStr = $sameMonthLastYear->format('Y-m-d H:i:s');
@@ -197,6 +199,7 @@ final class ForecastingE2ETest extends TestCase
             'forecastDays' => 30,
             'trendMultiplier' => 1.0
 
+        
 
         $this->assertGreaterThan(10, $forecast['forecastedQuantity']);
         $this->assertEquals(0.90, $forecast['confidenceLevel']);
@@ -349,6 +352,7 @@ final class ForecastingE2ETest extends TestCase
 
 
         
+        $sameMonthLastYear = (new \DateTime())->modify('-364 days');
 
 
 

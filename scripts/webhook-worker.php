@@ -18,6 +18,7 @@ use InventoryApp\Infrastructure\Models\WebhookSubscriptionModel;
 use InventoryApp\Infrastructure\Models\WebhookDeliveryModel;
 
 
+
 echo "Starting DDD Webhook Delivery Worker...\n";
 
 do {
@@ -121,6 +122,7 @@ do {
             $delivery->attempts = $nextAttempts;
             $delivery->last_error = $e->getMessage();
             $delivery->next_attempt_at = $nextAttemptAt;
+            $delivery->save();
         }
     }
 

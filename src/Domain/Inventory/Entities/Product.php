@@ -29,18 +29,18 @@ class Product extends AggregateRoot
     private int $versionId;
     private ?int $weightGrams;
     private ?float $volumeCubicMeters;
-    
+
     /** @var array<string, LocationStock> */
     private array $locationStocks = [];
-    
+
     /** @var InventoryTransaction[] */
     private array $pendingTransactions = [];
 
     public function __construct(
-        string $id, 
-        SKU $sku, 
-        string $name, 
-        Department $department, 
+        string $id,
+        SKU $sku,
+        string $name,
+        Department $department,
         ?Quantity $reorderThreshold = null,
         int $versionId = 1,
         ?int $weightGrams = null,
@@ -57,10 +57,10 @@ class Product extends AggregateRoot
     }
 
     public static function create(
-        string $id, 
-        SKU $sku, 
-        string $name, 
-        Department $department, 
+        string $id,
+        SKU $sku,
+        string $name,
+        Department $department,
         LocationId $initialLocation,
         Quantity $initialStock,
         ?Quantity $reorderThreshold = null
@@ -134,9 +134,9 @@ class Product extends AggregateRoot
     }
 
     private function recordTransaction(
-        TransactionType $type, 
-        int $quantityChange, 
-        Condition $condition, 
+        TransactionType $type,
+        int $quantityChange,
+        Condition $condition,
         ?string $reference = null
     ): void {
         $this->pendingTransactions[] = new InventoryTransaction(
@@ -158,7 +158,7 @@ class Product extends AggregateRoot
     {
         $stock = $this->getOrCreateLocationStock($locationId);
         $stock->addStock($quantity, new Condition(Condition::NEW));
-        
+
         $this->recordTransaction(
             new TransactionType(TransactionType::RECEIPT),
             $quantity->getValue(),
@@ -180,7 +180,7 @@ class Product extends AggregateRoot
     {
         $stock = $this->getOrCreateLocationStock($locationId);
         $stock->subtractStock($this->sku->getValue(), $quantity, new Condition(Condition::NEW));
-        
+
         $this->recordTransaction(
             new TransactionType(TransactionType::DISPATCH),
             -$quantity->getValue(),
@@ -203,7 +203,7 @@ class Product extends AggregateRoot
     {
         $stock = $this->getOrCreateLocationStock($locationId);
         $stock->subtractStock($this->sku->getValue(), $quantity, new Condition(Condition::NEW));
-        
+
         $this->recordTransaction(
             new TransactionType(TransactionType::SALE),
             -$quantity->getValue(),
@@ -226,7 +226,7 @@ class Product extends AggregateRoot
     {
         $stock = $this->getOrCreateLocationStock($locationId);
         $difference = $actualQuantity->getValue() - $stock->getStockQuantity()->getValue();
-        
+
         if ($difference > 0) {
             $stock->addStock(new Quantity($difference), new Condition(Condition::NEW));
             $this->recordTransaction(new TransactionType(TransactionType::ADJUSTMENT), $difference, new Condition(Condition::NEW), $reference);
@@ -255,7 +255,7 @@ class Product extends AggregateRoot
     {
         $stock = $this->getOrCreateLocationStock($locationId);
         $stock->addStock($quantity, $condition);
-        
+
         $this->recordTransaction(new TransactionType(TransactionType::RETURN), $quantity->getValue(), $condition, $reference);
 
         $this->recordEvent(new ReturnProcessed(
@@ -318,14 +318,14 @@ class Product extends AggregateRoot
     {
         $stock = $this->getOrCreateLocationStock($locationId);
         $stock->fulfillAllocation($quantity);
-        
+
         $this->recordTransaction(
             new TransactionType(TransactionType::DISPATCH),
             -$quantity->getValue(),
             new Condition(Condition::NEW),
             "FULFILL_ALLOCATION"
         );
-        
+
         $this->recordEvent(new StockDispatched(
             $this->sku,
             $locationId,
@@ -333,7 +333,7 @@ class Product extends AggregateRoot
             "FULFILL_ALLOCATION",
             new DateTimeImmutable()
         ));
-        
+
         $this->recordLowStockIfNeeded();
     }
 
@@ -347,14 +347,14 @@ class Product extends AggregateRoot
     {
         $stock = $this->getOrCreateLocationStock($locationId);
         $stock->receiveInTransit($quantity);
-        
+
         $this->recordTransaction(
             new TransactionType(TransactionType::RECEIPT),
             $quantity->getValue(),
             new Condition(Condition::NEW),
             "RECEIVE_IN_TRANSIT"
         );
-        
+
         $this->recordEvent(new StockReceived(
             $this->sku,
             $locationId,

@@ -26,6 +26,7 @@ class WebhookSubscriptionController
                 'secret' => $validated['secret'],
                 'event_types' => json_encode($validated['eventTypes']),
                 'is_active' => true
+            ]);
 
             return new Response([
                 'id' => $sub->id,
@@ -43,6 +44,7 @@ class WebhookSubscriptionController
 
     public function list(RequestInterface $request, string $tenantId)
     {
+        try {
             $subs = WebhookSubscriptionModel::where('tenant_id', $tenantId)->get();
             $data = [];
             foreach ($subs as $sub) {
@@ -59,11 +61,14 @@ class WebhookSubscriptionController
             return new Response($data, 200);
             error_log('[WebhookSubscriptionController] ' . $e->getMessage());
             return new Response(['error' => 'An internal server error occurred.'], 500);
+        } catch (\Throwable $e) {
+            return new Response(['error' => $e->getMessage()], 500);
         }
     }
 
     public function update(RequestInterface $request, string $tenantId, string $id)
     {
+        try {
             $sub = WebhookSubscriptionModel::where('id', $id)
                 ->where('tenant_id', $tenantId)
                 ->first();
@@ -75,6 +80,7 @@ class WebhookSubscriptionController
             // Read the inputs manually since some fields might be optional
             $body = $request->validate([]); // trigger validator parsing
             
+
             if (isset($body['targetUrl'])) {
                 $sub->target_url = $body['targetUrl'];
             }
@@ -91,12 +97,29 @@ class WebhookSubscriptionController
             $sub->save();
 
             ], 200);
+            return new Response([
+                'id' => $sub->id,
+                'tenantId' => $sub->tenant_id,
+                'targetUrl' => $sub->target_url,
+                'secret' => $sub->secret,
+                'eventTypes' => json_decode($sub->event_types, true),
+                'isActive' => (bool)$sub->is_active,
+                'createdAt' => $sub->created_at
+        } catch (\Throwable $e) {
+            return new Response(['error' => $e->getMessage()], 400);
         }
     }
 
     public function delete(RequestInterface $request, string $tenantId, string $id)
     {
 
+        try {
+            $sub = WebhookSubscriptionModel::where('id', $id)
+                ->where('tenant_id', $tenantId)
+                ->first();
+
+            if (!$sub) {
+                return new Response(['error' => 'Webhook subscription not found'], 404);
             }
 
             $sub->delete();
@@ -138,6 +161,9 @@ class WebhookSubscriptionController
 
             }
 
+        }
+    }
+        } catch (\Throwable $e) {
         }
     }
 }

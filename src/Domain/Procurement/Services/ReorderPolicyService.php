@@ -53,7 +53,7 @@ class ReorderPolicyService
 
             $skuStr = $policy->sku->getValue();
             $product = $productRepo->findBySku($policy->sku);
-            
+
             $currentQty = 0;
             if ($product) {
                 $locationIdObj = new \InventoryApp\Domain\Inventory\ValueObjects\LocationId($policy->locationId);
@@ -88,7 +88,7 @@ class ReorderPolicyService
                     $poNumber = 'AUTO-REORDER-' . $skuStr . '-' . strtoupper(base_convert((string)time(), 10, 36));
                     $poId = Uuid::uuid4()->toString();
                     $itemId = Uuid::uuid4()->toString();
-                    
+
                     $item = new PurchaseOrderItem(
                         $itemId,
                         $skuStr,
@@ -176,7 +176,7 @@ class ReorderPolicyService
                 $poNumber = 'AUTO-REORDER-' . $skuStr . '-' . strtoupper(base_convert((string)time(), 10, 36));
                 $poId = Uuid::uuid4()->toString();
                 $itemId = Uuid::uuid4()->toString();
-                
+
                 $item = new PurchaseOrderItem(
                     $itemId,
                     $skuStr,

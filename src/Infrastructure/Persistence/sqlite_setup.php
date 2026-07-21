@@ -19,6 +19,7 @@ class SqliteSetup
             self::getShippingQueries(),
             self::getComplianceQueries(),
             self::getWebhookQueries()
+            self::getComplianceQueries()
         );
 
         foreach ($queries as $q) {

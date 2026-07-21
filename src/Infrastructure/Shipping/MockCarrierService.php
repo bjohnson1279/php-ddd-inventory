@@ -12,7 +12,7 @@ class MockCarrierService implements CarrierServiceInterface
     {
         $org = strtoupper($origin);
         $dest = strtolower($destination);
-        
+
         $baseDist = 1000.0;
         if (str_contains($org, "EAST") && (str_contains($dest, "ny") || str_contains($dest, "new york") || str_contains($dest, "10001"))) {
             $baseDist = 100.0;
@@ -25,7 +25,7 @@ class MockCarrierService implements CarrierServiceInterface
         } elseif (str_contains($org, "WEST") && (str_contains($dest, "ny") || str_contains($dest, "new york") || str_contains($dest, "10001"))) {
             $baseDist = 4000.0;
         }
-        
+
         return $baseDist;
     }
 
@@ -64,7 +64,7 @@ class MockCarrierService implements CarrierServiceInterface
     public function generateLabel(string $sku, int $quantity, string $destinationAddress, string $carrier, ?string $originLocationId = null): LabelResult
     {
         $rates = $this->fetchRates($sku, $quantity, $destinationAddress, $originLocationId);
-        
+
         $selectedRate = null;
         foreach ($rates as $rate) {
             if (strcasecmp($rate->carrier, $carrier) === 0) {
@@ -72,7 +72,7 @@ class MockCarrierService implements CarrierServiceInterface
                 break;
             }
         }
-        
+
         if ($selectedRate === null) {
             $selectedRate = $rates[0];
         }

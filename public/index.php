@@ -122,6 +122,7 @@ $registerProductUseCase = new \InventoryApp\Application\Inventory\UseCases\Regis
     ServiceContainer::productRepo('system'),
     $dispatcher
 $createInventoryListener = new CreateInventoryItemOnVariantAdded($registerProductUseCase);
+$createInventoryListener = new CreateInventoryItemOnVariantAdded();
 $dispatcher->subscribe(VariantAddedToCatalog::class, [$createInventoryListener, 'handle']);
 
 // Register Realtime Notification Listener
@@ -427,6 +428,7 @@ if ($method === 'POST' && $uri === '/api/setup') {
     $response = $middleware->handle($request, function ($req) {
         $body = json_decode(file_get_contents('php://input'), true) ?: [];
         
+
         $orgName = $body['orgName'] ?? '';
         $tenantId = $body['tenantId'] ?? '';
         $adminName = $body['adminName'] ?? '';
@@ -437,6 +439,9 @@ if ($method === 'POST' && $uri === '/api/setup') {
             return new \InventoryApp\Infrastructure\Http\Response(['error' => 'All fields (orgName, tenantId, adminName, adminEmail, adminPassword) are required.'], 400);
         }
         
+
+        }
+
             $existingTenant = Capsule::table('tenants')->where('id', $tenantId)->first();
             if ($existingTenant) {
                 return new \InventoryApp\Infrastructure\Http\Response(['error' => 'Forbidden: Tenant already exists.'], 403);
@@ -490,6 +495,7 @@ if ($method === 'GET' && $uri === '/api/users') {
         $userModels = \InventoryApp\Infrastructure\Models\UserModel::with('userRoles')
             ->where('tenant_id', tenantId())
             
+
         $users = $userModels->map(function($model) {
             $roles = $model->userRoles->pluck('id')->all();
             $role = !empty($roles) ? $roles[0] : 'staff';
@@ -500,6 +506,7 @@ if ($method === 'GET' && $uri === '/api/users') {
             ];
         })->all();
         
+
         http_response_code(200);
         echo json_encode(['users' => $users]);
     } catch (\Exception $e) {
@@ -819,6 +826,7 @@ if ($method === 'GET' && $uri === '/api/catalog/products') {
         $products = Capsule::table('catalog_products')->get()->toArray();
         $variants = Capsule::table('catalog_variants')->get()->toArray();
         
+
         $productsMap = [];
         foreach ($products as $p) {
             $pData = (array)$p;
@@ -826,6 +834,7 @@ if ($method === 'GET' && $uri === '/api/catalog/products') {
             $productsMap[$p->id] = $pData;
         }
         
+
         foreach ($variants as $v) {
             $vData = (array)$v;
             $vData['attributes'] = json_decode($v->attributes, true) ?: [];
@@ -835,6 +844,7 @@ if ($method === 'GET' && $uri === '/api/catalog/products') {
             }
         }
         
+
         echo json_encode(['products' => array_values($productsMap)]);
         }
     }
@@ -1095,6 +1105,7 @@ if ($method === 'GET' && $uri === '/api/kits') {
         $kits = Capsule::table('kits')->get()->toArray();
         $components = Capsule::table('kit_components')->get()->toArray();
         
+
         $kitsMap = [];
         foreach ($kits as $k) {
             $kData = (array)$k;
@@ -1102,6 +1113,7 @@ if ($method === 'GET' && $uri === '/api/kits') {
             $kitsMap[$k->id] = $kData;
         }
         
+
         foreach ($components as $c) {
             $cData = (array)$c;
             if (isset($kitsMap[$c->kit_id])) {
@@ -1109,6 +1121,7 @@ if ($method === 'GET' && $uri === '/api/kits') {
             }
         }
         
+
         echo json_encode(['kits' => array_values($kitsMap)]);
         }
     }

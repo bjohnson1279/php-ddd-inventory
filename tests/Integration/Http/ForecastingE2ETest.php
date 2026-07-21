@@ -25,6 +25,7 @@ final class ForecastingE2ETest extends TestCase
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
         
+
         for ($i = 0; $i < 50; $i++) {
             $fp = @fsockopen('127.0.0.1', 8089, $errno, $errstr, 0.1);
             if ($fp) {
@@ -130,6 +131,7 @@ final class ForecastingE2ETest extends TestCase
         $this->assertEquals($locationId, $reportItem['locationId']);
         $this->assertEquals(50, $reportItem['currentStock']);
         
+
         // 30 units in 30 days -> ADS 30d should be exactly 1.0 (30 / 30)
         $this->assertEquals(1.0, $reportItem['averageDailySales30d']);
         // Days of cover = currentStock (50) / ADS 30d (1.0) = 50 days
@@ -146,6 +148,7 @@ final class ForecastingE2ETest extends TestCase
         $this->assertEquals(200, $forecastRes['status'], json_encode($forecastRes));
         $this->assertMatchesRegularExpression('/success/i', $forecastRes['body']['message']);
         
+
         $forecast = $forecastRes['body']['forecast'];
         $this->assertEquals($sku, $forecast['sku']);
         $this->assertEquals($locationId, $forecast['locationId']);
@@ -170,6 +173,8 @@ final class ForecastingE2ETest extends TestCase
         $nowStr = $now->format('Y-m-d H:i:s');
         
         $sameMonthLastYear = (new \DateTime())->modify('-365 days');
+
+        $sameMonthLastYear = (new \DateTime())->modify('-364 days');
         $sameMonthLastYearStr = $sameMonthLastYear->format('Y-m-d H:i:s');
 
         $diffMonthLastYear = (new \DateTime())->modify('-300 days');
@@ -189,6 +194,7 @@ final class ForecastingE2ETest extends TestCase
             'trendMultiplier' => 1.0
 
         
+
         $this->assertGreaterThan(10, $forecast['forecastedQuantity']);
         $this->assertEquals(0.90, $forecast['confidenceLevel']);
     }
@@ -211,6 +217,7 @@ final class ForecastingE2ETest extends TestCase
         $context = stream_context_create($options);
         $result = @file_get_contents($url, false, $context);
         
+
         $statusCode = 500;
         if (isset($http_response_header) && isset($http_response_header[0])) {
             preg_match('{HTTP\/\S*\s(\d{3})}', $http_response_header[0], $match);

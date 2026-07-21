@@ -17,4 +17,3 @@ enum ReasonCode: string
     case KitDisassembly  = 'kit_disassembly';
     case Dispatch        = 'dispatch';
 }
-

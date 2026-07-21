@@ -19,7 +19,7 @@ class InventoryCount
     {
         $this->id = $id;
         $this->status = $status;
-        
+
         foreach ($items as $item) {
             if ($item instanceof InventoryCountItem) {
                 $key = $item->getSku()->getValue() . '_' . $item->getLocationId()->getValue();
@@ -49,7 +49,7 @@ class InventoryCount
         if ($this->status->isCompleted()) {
             throw new Exception("Inventory count is already completed.");
         }
-        
+
         $this->status = CountStatus::completed();
     }
 

@@ -27,6 +27,8 @@ final class WarehouseLocationE2ETest extends TestCase
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
         
+
+
         // Wait for server to bind
         for ($i = 0; $i < 50; $i++) {
             $fp = @fsockopen('127.0.0.1', 8091, $errno, $errstr, 0.1);
@@ -51,6 +53,7 @@ final class WarehouseLocationE2ETest extends TestCase
         Capsule::table('users')->delete();
         Capsule::table('user_roles')->delete();
         Capsule::table('tenants')->where('id', '!=', 'test-tenant')->delete();
+        Capsule::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
         \Illuminate\Database\Capsule\Manager::table('tenants')->insertOrIgnore([['id' => 'test-tenant', 'name' => 'Test Tenant']]);
                 Capsule::table('catalog_variants')->delete();
         Capsule::table('catalog_products')->delete();
@@ -89,6 +92,7 @@ final class WarehouseLocationE2ETest extends TestCase
             'email' => "viewer-{$suffix}@example.com",
         ], $this->token);
         
+
         $this->assertEquals(201, $inviteRes['status'], json_encode($inviteRes));
         $viewerUserId = $inviteRes['body']['user_id'];
         $tempPassword = $inviteRes['body']['temporary_password'];
@@ -300,6 +304,7 @@ final class WarehouseLocationE2ETest extends TestCase
         $context = stream_context_create($options);
         $result = @file_get_contents($url, false, $context);
         
+
         $statusCode = 500;
         if (isset($http_response_header) && isset($http_response_header[0])) {
             preg_match('{HTTP\/\S*\s(\d{3})}', $http_response_header[0], $match);

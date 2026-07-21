@@ -26,6 +26,9 @@ final class ReportControllerTest extends TestCase
         
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
+
+
+        
         
         // Wait for server to bind
         for ($i = 0; $i < 50; $i++) {
@@ -129,6 +132,7 @@ final class ReportControllerTest extends TestCase
 
         // Asserts
         $this->assertEquals(15, $body['total_items_count']);
+
         
         // FIFO Valuation for remaining inventory:
         // Newest layers: Layer 2 has 10 units ($120). Layer 1 has 5 units remaining ($50).
@@ -164,6 +168,7 @@ final class ReportControllerTest extends TestCase
 
         $context = stream_context_create($options);
         $result = @file_get_contents($url, false, $context);
+
         
         $statusCode = 500;
         if (isset($http_response_header) && isset($http_response_header[0])) {

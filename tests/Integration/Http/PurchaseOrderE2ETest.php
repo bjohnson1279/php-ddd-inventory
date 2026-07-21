@@ -27,6 +27,8 @@ final class PurchaseOrderE2ETest extends TestCase
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
         
+
+
         // Wait for server to bind
         for ($i = 0; $i < 50; $i++) {
             $fp = @fsockopen('127.0.0.1', 8086, $errno, $errstr, 0.1);
@@ -56,6 +58,7 @@ final class PurchaseOrderE2ETest extends TestCase
         Capsule::table('users')->delete();
         Capsule::table('user_roles')->delete();
         Capsule::table('tenants')->where('id', '!=', 'test-tenant')->delete();
+        Capsule::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
         \Illuminate\Database\Capsule\Manager::table('tenants')->insertOrIgnore([['id' => 'test-tenant', 'name' => 'Test Tenant']]);
 
         $suffix = bin2hex(random_bytes(4));
@@ -193,6 +196,7 @@ final class PurchaseOrderE2ETest extends TestCase
         $inviteRes = $this->request('POST', '/api/users', [
             'email' => "staff-{$suffix}@example.com",
         
+
         $this->assertEquals(201, $inviteRes['status'], json_encode($inviteRes));
         $viewerUserId = $inviteRes['body']['user_id'];
         $tempPassword = $inviteRes['body']['temporary_password'];
@@ -244,6 +248,7 @@ final class PurchaseOrderE2ETest extends TestCase
         $context = stream_context_create($options);
         $result = @file_get_contents($url, false, $context);
         
+
         $statusCode = 500;
         if (isset($http_response_header) && isset($http_response_header[0])) {
             preg_match('{HTTP\/\S*\s(\d{3})}', $http_response_header[0], $match);

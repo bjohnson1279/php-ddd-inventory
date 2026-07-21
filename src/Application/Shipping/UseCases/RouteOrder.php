@@ -99,7 +99,7 @@ class RouteOrder
         for ($i = 0; $i < strlen($address); $i++) {
             $hash = ord($address[$i]) + (($hash << 5) - $hash);
         }
-        
+
         $lat = 25.0 + abs($hash % 24);
         $lon = -125.0 + abs($hash % 58);
         return new GeoLocation($lat, $lon);

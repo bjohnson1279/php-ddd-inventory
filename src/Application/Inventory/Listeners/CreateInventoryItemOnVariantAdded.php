@@ -11,6 +11,9 @@ class CreateInventoryItemOnVariantAdded
     private RegisterProduct $registerProductUseCase;
 
     public function __construct(RegisterProduct $registerProductUseCase)
+    private ?RegisterProduct $registerProductUseCase;
+
+    public function __construct(?RegisterProduct $registerProductUseCase = null)
     {
         $this->registerProductUseCase = $registerProductUseCase;
     }
@@ -51,5 +54,14 @@ class CreateInventoryItemOnVariantAdded
         }
 
         $useCase->execute(
+        // When a new variant is cataloged, we automatically register it in the inventory system
+        // with 0 stock, assigned to the default STOREFRONT location.
+            Uuid::uuid4()->toString(), // Generate a new UUID for the inventory item
+            $event->getSku()->getValue(),
+            $event->getProductName() . ' (' . $event->getSku()->getValue() . ')',
+            $event->getDepartment()->getValue(),
+            'LOC-STOREFRONT',
+            0 // Initial quantity
+        );
     }
 }

@@ -29,7 +29,6 @@ if ($driver === 'sqlite') {
         'prefix'   => '',
     ]);
 } else {
-    $capsule->addConnection([
         'driver'   => $driver,
         'host'     => getenv('DB_HOST') ?: 'db',
         'port'     => getenv('DB_PORT') ?: '5432',
@@ -37,18 +36,76 @@ if ($driver === 'sqlite') {
         'username' => getenv('DB_USERNAME') ?: 'ddd_user',
         'password' => getenv('DB_PASSWORD') ?: 'secret',
         'charset'  => 'utf8',
-        'prefix'   => '',
         'schema'   => 'public',
-    ]);
 }
 
 $capsule->setAsGlobal();
 $capsule->bootEloquent();
 
-if ($driver === 'sqlite') {
     require_once __DIR__ . '/sqlite_setup.php';
     \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
 }
 
 // Now Illuminate\Database facade and DB can be used in repositories
 return $capsule;
+
+
+}
+
+}
+
+if ($driver === 'pgsql') {
+    if (!extension_loaded('pdo_pgsql')) {
+        $driver = 'sqlite';
+    } else {
+        $pgHost = getenv('DB_HOST') ?: 'db';
+        $pgPort = (int)(getenv('DB_PORT') ?: 5432);
+        $fp = @fsockopen($pgHost, $pgPort, $errno, $errstr, 0.1);
+        if (!$fp) {
+            $driver = 'sqlite';
+        } else {
+            fclose($fp);
+        }
+    }
+}
+
+    putenv('DB_CONNECTION=sqlite');
+    $_ENV['DB_CONNECTION'] = 'sqlite';
+    $_SERVER['DB_CONNECTION'] = 'sqlite';
+}
+
+
+    }
+    if ($dbPath !== ':memory:') {
+        $dir = dirname($dbPath);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0777, true);
+        }
+        if (!file_exists($dbPath)) {
+            @touch($dbPath);
+        }
+    }
+        'password' => getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '',
+}
+
+
+    try {
+        $capsule->getConnection()->statement('PRAGMA journal_mode=WAL;');
+        $capsule->getConnection()->statement('PRAGMA busy_timeout=10000;');
+    } catch (\Exception $e) {}
+}
+
+
+
+}
+
+}
+
+
+
+    }
+}
+
+
+}
+

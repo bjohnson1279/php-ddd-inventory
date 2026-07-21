@@ -5,6 +5,7 @@ namespace InventoryApp\Application\Shipping\UseCases;
 use InventoryApp\Domain\Shipping\Repositories\ShipmentRepositoryInterface;
 use InventoryApp\Domain\Shared\Repositories\OutboxRepositoryInterface;
 use InventoryApp\Domain\Shipping\Enums\ShipmentStatus;
+use DateTimeImmutable;
 use Exception;
 
 class UpdateShipmentStatus

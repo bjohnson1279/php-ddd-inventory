@@ -33,6 +33,30 @@ class EloquentCostLayerRepository implements CostLayerRepositoryInterface
         return $models->map(fn($model) => $this->hydrate($model))->all();
     }
 
+    /**
+     * @param string[] $variantIds
+     * @return array<string, InventoryCostLayer[]>
+     */
+    public function getActiveLayersByVariantIds(array $variantIds, string $orderBy = 'received_at ASC'): array
+    {
+        if (empty($variantIds)) {
+            return [];
+        }
+
+
+            ->whereIn('variant_id', $variantIds)
+
+        }
+
+        $grouped = [];
+
+        foreach ($models as $model) {
+            $grouped[$model->variant_id][] = $this->hydrate($model);
+        }
+
+        return $grouped;
+    }
+
     public function save(InventoryCostLayer $layer): void
     {
         CostLayerModel::updateOrCreate(
@@ -120,6 +144,10 @@ class EloquentCostLayerRepository implements CostLayerRepositoryInterface
             ->get();
 
         return $models->map(fn($model) => $this->hydrate($model))->all();
+    {
+        }
+
+
     }
 
     private function hydrate(CostLayerModel $model): InventoryCostLayer
@@ -140,5 +168,43 @@ class EloquentCostLayerRepository implements CostLayerRepositoryInterface
         $layer->expirationDate = $model->expiration_date ? new DateTimeImmutable($model->expiration_date) : null;
 
         return $layer;
+    }
+}
+
+
+
+{
+
+    {
+
+
+        }
+
+
+    }
+
+    {
+    }
+
+    {
+        }
+
+        }
+
+    }
+
+    {
+
+    }
+
+    {
+        }
+
+
+    }
+
+    {
+
+
     }
 }

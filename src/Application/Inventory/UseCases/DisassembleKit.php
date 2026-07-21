@@ -71,7 +71,10 @@ class DisassembleKit
         $kitProduct->dispatchStockAt(new LocationId($locationId), new Quantity($quantity), $referenceId);
         $this->productRepository->save($kitProduct);
 
+        $ledgerEntriesToAppend = [];
+
         // 6. Write deduction ledger entry for kit variant
+        $ledgerEntriesToAppend[] = new LedgerEntry(
         $kitLedgerEntry = new LedgerEntry(
             id: Uuid::uuid4()->toString(),
             variantId: $kitProduct->getId(),
@@ -167,6 +170,9 @@ class DisassembleKit
             $this->productRepository->save($compProduct);
 
             // Add increment ledger entry for this component
+            $ledgerEntriesToAppend[] = new LedgerEntry(
+                id: Uuid::uuid4()->toString(),
+                variantId: $item['variantId'],
             $ledgerEntry = new LedgerEntry(
                 id: Uuid::uuid4()->toString(),
                 variantId: $item['variantId'],
@@ -177,6 +183,9 @@ class DisassembleKit
                 occurredAt: new \DateTimeImmutable(),
                 metadata: ['locationId' => $locationId]
             );
+        }
+
+        $this->ledgerRepository->appendAll($ledgerEntriesToAppend);
             $ledgerEntries[] = $ledgerEntry;
         }
 

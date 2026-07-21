@@ -45,6 +45,7 @@ final class ComplianceE2ETest extends TestCase
         $dbDb = getenv('DB_DATABASE') ?: '';
         $dbHost = getenv('DB_HOST') ?: '';
         $dbUser = getenv('DB_USERNAME') ?: '';
+        $dbPass = getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '';
         $dbPass = getenv('DB_PASSWORD') ?: '';
         $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8092 public/index.php > tests/Integration/Http/server_compliance.log 2>&1 & echo $!";
         
@@ -119,6 +120,7 @@ final class ComplianceE2ETest extends TestCase
             'description' => 'Test Desc',
             'department'  => 'Test Dept'
         ], $this->token);
+        $this->assertEquals(200, $prodRes['status']);
         $this->assertEquals(201, $prodRes['status']);
         $productId = $prodRes['body']['id'];
 
@@ -126,6 +128,7 @@ final class ComplianceE2ETest extends TestCase
             'sku'   => 'SKU-COMP-1',
             'price' => 1000,
             'attributes' => []
+        $this->assertEquals(200, $varRes['status']);
         $this->assertTrue(in_array($varRes['status'], [200, 201]));
 
         // Setup inventory product manually because queue workers might not run in this E2E env
@@ -276,6 +279,9 @@ final class ComplianceE2ETest extends TestCase
 
     {
 
+        $this->assertEquals(201, $prodRes['status']);
+
+        $this->assertEquals(201, $varRes['status']);
 
         $this->assertEquals(201, $varRes['status']);
 

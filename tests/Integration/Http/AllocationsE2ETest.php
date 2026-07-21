@@ -23,11 +23,18 @@ final class AllocationsE2ETest extends TestCase
     {
         // Start built-in PHP development server in the background on port 8087
         $output = [];
+        $dbConn = getenv('DB_CONNECTION') ?: 'pgsql';
+        $dbDb = getenv('DB_DATABASE') ?: '';
+        $dbHost = getenv('DB_HOST') ?: '';
+        $dbUser = getenv('DB_USERNAME') ?: '';
+        $dbPass = getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '';
+        $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8087 public/index.php > tests/Integration/Http/server_allocations.log 2>&1 & echo $!";
         $command = "php -S 127.0.0.1:8087 public/index.php > tests/Integration/Http/server_allocations.log 2>&1 & echo $!";
         
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
         
+        $command = "php -S 127.0.0.1:8087 public/index.php > tests/Integration/Http/server_allocations.log 2>&1 & echo $!";
 
 
         // Wait for server to bind
@@ -214,7 +221,6 @@ final class AllocationsE2ETest extends TestCase
         $url = 'http://127.0.0.1:8087' . $path;
         $options = [
             'http' => [
-                'header'        => "Content-Type: application/json\r\nConnection: close\r\n",
                 'header'        => "Content-Type: application/json\r\n",
                 'method'        => $method,
                 'content'       => json_encode($body),
@@ -342,7 +348,6 @@ final class AllocationsE2ETest extends TestCase
     }
 
     {
-                'header'        => "Content-Type: application/json\r\n",
 
         }
 
@@ -359,6 +364,7 @@ final class AllocationsE2ETest extends TestCase
 {
 
     {
+        $command = "php -S 127.0.0.1:8087 public/index.php > tests/Integration/Http/server_allocations.log 2>&1 & echo $!";
         
         
             }

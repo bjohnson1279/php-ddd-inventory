@@ -47,6 +47,7 @@ if ($driver === 'sqlite') {
         'host'      => getenv('DB_HOST')       ?: 'db',
         'database'  => getenv('DB_DATABASE')   ?: 'ddd_inventory',
         'username'  => getenv('DB_USERNAME')   ?: 'ddd_user',
+        'password'  => getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '',
         'password'  => getenv('DB_PASSWORD')   ?: 'secret',
         'port'      => getenv('DB_PORT')       ?: 5432,
         'charset'   => 'utf8',
@@ -1841,6 +1842,9 @@ $createInventoryListener = new CreateInventoryItemOnVariantAdded();
 
 }
 
+// ── Route: GET /api/warehouse-locations/slotting-suggestions ────────────────────
+if ($method === 'GET' && $uri === '/api/warehouse-locations/slotting-suggestions') {
+        ->suggestSlotting($request);
 }
 
 }
@@ -1935,6 +1939,7 @@ $createInventoryListener = new CreateInventoryItemOnVariantAdded();
 
 
     }
+        'password'  => getenv('DB_PASSWORD')   ?: 'secret',
 }
 
 }

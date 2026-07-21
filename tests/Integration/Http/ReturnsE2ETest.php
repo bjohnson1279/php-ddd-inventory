@@ -78,7 +78,6 @@ final class ReturnsE2ETest extends TestCase
             'tenant_id' => $this->tenantId,
             'email'     => $this->email,
             'password'  => $this->password,
-        ]);
 
         $this->assertEquals(200, $loginRes['status'], json_encode($loginRes));
         $this->assertNotEmpty($loginRes['body']['token']);
@@ -98,12 +97,8 @@ final class ReturnsE2ETest extends TestCase
         $tempPassword = $inviteRes['body']['temporary_password'];
 
         // 2. Login as viewer
-        $loginRes = $this->request('POST', '/api/auth/login', [
-            'tenant_id' => $this->tenantId,
             'email'     => "viewer-{$suffix}@example.com",
             'password'  => $tempPassword,
-        ]);
-        $this->assertEquals(200, $loginRes['status'], json_encode($loginRes));
         $viewerToken = $loginRes['body']['token'];
 
         // 3. Strip all roles from viewer so they have no permissions
@@ -123,12 +118,10 @@ final class ReturnsE2ETest extends TestCase
 
         $receiveRes = $this->request('POST', "/api/returns/rma/some-id/receive", [
             'items' => [['variantId' => 'VAR-A', 'quantityReceived' => 1, 'disposition' => 'RESTOCK']]
-        ], $viewerToken);
         $this->assertEquals(403, $receiveRes['status']);
 
         $resolveRes = $this->request('POST', "/api/returns/quarantine/some-id/resolve", [
             'resolution' => 'RESTOCK'
-        ], $viewerToken);
         $this->assertEquals(403, $resolveRes['status']);
 
         // 5. Try reading operations, should be allowed (will get 404 or 200, but not 403)
@@ -141,7 +134,6 @@ final class ReturnsE2ETest extends TestCase
 
     public function testCompleteReturnsAndQuarantineLifecycle(): void
     {
-        $suffix = bin2hex(random_bytes(4));
         $varX = uuidv4();
         $varY = uuidv4();
         $skuX = "VAR-X-{$suffix}";
@@ -151,7 +143,6 @@ final class ReturnsE2ETest extends TestCase
         // Seed locations first
         Capsule::table('locations')->insertOrIgnore([
             ['id' => 'LOC-INT-quarantine', 'name' => 'Integration Quarantine Location', 'type' => 'TEST']
-        ]);
 
         // Seed products and product locations
         Capsule::table('products')->insert([
@@ -165,59 +156,25 @@ final class ReturnsE2ETest extends TestCase
                 'created_at' => date('Y-m-d H:i:s'),
                 'updated_at' => date('Y-m-d H:i:s')
             ],
-            [
                 'id' => $varY,
-                'tenant_id' => $this->tenantId,
                 'sku' => $skuY,
                 'name' => 'Product Y',
-                'department' => 'GEN',
-                'reorder_threshold' => 10,
-                'created_at' => date('Y-m-d H:i:s'),
-                'updated_at' => date('Y-m-d H:i:s')
             ]
-        ]);
 
         Capsule::table('product_locations')->insert([
-            [
                 'product_id' => $varX,
                 'location_id' => 'LOC-INT',
                 'stock_quantity' => 0,
                 'open_box_quantity' => 0,
                 'damaged_quantity' => 0,
-                'updated_at' => date('Y-m-d H:i:s')
-            ],
-            [
-                'product_id' => $varX,
                 'location_id' => 'LOC-INT-quarantine',
-                'stock_quantity' => 0,
-                'open_box_quantity' => 0,
-                'damaged_quantity' => 0,
-                'updated_at' => date('Y-m-d H:i:s')
-            ],
-            [
                 'product_id' => $varY,
-                'location_id' => 'LOC-INT',
-                'stock_quantity' => 0,
-                'open_box_quantity' => 0,
-                'damaged_quantity' => 0,
-                'updated_at' => date('Y-m-d H:i:s')
-            ],
-            [
-                'product_id' => $varY,
-                'location_id' => 'LOC-INT-quarantine',
-                'stock_quantity' => 0,
-                'open_box_quantity' => 0,
-                'damaged_quantity' => 0,
-                'updated_at' => date('Y-m-d H:i:s')
-            ]
-        ]);
 
         // Register, receive, and sell a serialized item for VAR-X to verify status transitions
         $regSerialRes = $this->request('POST', '/api/serials', [
             'variant_id' => $varX,
             'serial_number' => $serialX,
             'location_id' => 'LOC-INT'
-        ], $this->token);
         $this->assertEquals(201, $regSerialRes['status'], json_encode($regSerialRes));
         $serialItemId = $regSerialRes['body']['id'];
 
@@ -225,12 +182,10 @@ final class ReturnsE2ETest extends TestCase
             'location_id' => 'LOC-INT',
             'purchase_order_id' => "PO-{$suffix}",
             'unit_cost_cents' => 1500
-        ], $this->token);
         $this->assertEquals(200, $recvSerialRes['status'], json_encode($recvSerialRes));
 
         $sellSerialRes = $this->request('POST', "/api/serials/{$serialItemId}/sell", [
             'sale_id' => "SALE-{$suffix}"
-        ], $this->token);
         $this->assertEquals(200, $sellSerialRes['status'], json_encode($sellSerialRes));
 
         // 1. Create RMA request
@@ -238,12 +193,9 @@ final class ReturnsE2ETest extends TestCase
         $createRmaRes = $this->request('POST', '/api/returns/rma', [
             'rmaNumber' => $rmaNumber,
             'customerId' => 'CUST-E2E',
-            'locationId' => 'LOC-INT',
             'items' => [
                 ['variantId' => $varX, 'quantity' => 1, 'unitCostCents' => 1500],
                 ['variantId' => $varY, 'quantity' => 2, 'unitCostCents' => 2500]
-            ]
-        ], $this->token);
 
         $this->assertEquals(201, $createRmaRes['status'], json_encode($createRmaRes));
         $rmaId = $createRmaRes['body']['id'];
@@ -260,20 +212,16 @@ final class ReturnsE2ETest extends TestCase
 
         // 3. Receive items (VAR-X restocked, VAR-Y quarantined)
         $recvRmaRes = $this->request('POST', "/api/returns/rma/{$rmaId}/receive", [
-            'items' => [
                 [
                     'variantId' => $varX,
                     'quantityReceived' => 1,
                     'disposition' => 'RESTOCK',
                     'serialNumbers' => [$serialX]
                 ],
-                [
                     'variantId' => $varY,
                     'quantityReceived' => 2,
                     'disposition' => 'QUARANTINE'
                 ]
-            ]
-        ], $this->token);
         $this->assertEquals(200, $recvRmaRes['status'], json_encode($recvRmaRes));
 
         // Verify stock adjustments
@@ -284,7 +232,6 @@ final class ReturnsE2ETest extends TestCase
         $stockYQ = (int)Capsule::table('product_locations')
             ->where('product_id', $varY)
             ->where('location_id', 'LOC-INT-quarantine')
-            ->value('stock_quantity');
         
         $this->assertEquals(1, $stockX);
         $this->assertEquals(2, $stockYQ);
@@ -302,7 +249,6 @@ final class ReturnsE2ETest extends TestCase
         foreach ($listQRes['body'] as $qItem) {
             if ($qItem['variantId'] === $varY) {
                 $targetQItem = $qItem;
-                break;
             }
         }
         $this->assertNotNull($targetQItem);
@@ -313,19 +259,11 @@ final class ReturnsE2ETest extends TestCase
 
         // 5. Resolve Quarantine item as RESTOCK
         $resolveRes = $this->request('POST', "/api/returns/quarantine/{$qItemId}/resolve", [
-            'resolution' => 'RESTOCK'
-        ], $this->token);
         $this->assertEquals(200, $resolveRes['status'], json_encode($resolveRes));
 
         // Verify stock is transferred to standard warehouse
         $stockY = (int)Capsule::table('product_locations')
-            ->where('product_id', $varY)
-            ->where('location_id', 'LOC-INT')
-            ->value('stock_quantity');
         $stockYQResolved = (int)Capsule::table('product_locations')
-            ->where('product_id', $varY)
-            ->where('location_id', 'LOC-INT-quarantine')
-            ->value('stock_quantity');
         
         $this->assertEquals(2, $stockY);
         $this->assertEquals(0, $stockYQResolved);
@@ -346,7 +284,6 @@ final class ReturnsE2ETest extends TestCase
                 'method'        => $method,
                 'content'       => json_encode($body),
                 'ignore_errors' => true,
-            ]
         ];
 
         if ($token) {
@@ -365,6 +302,121 @@ final class ReturnsE2ETest extends TestCase
         return [
             'status' => $statusCode,
             'body'   => json_decode((string)$result, true) ?: $result
-        ];
+    }
+}
+
+
+
+
+
+{
+    private static $serverProcess = null;
+
+        public static function setUpBeforeClass(): void
+    {
+        $baseDir = realpath(__DIR__ . '/../../..');
+        $dbPath = $baseDir . '/storage/data/test_returnse2etest.sqlite';
+        if (!file_exists($dbPath)) {
+            @mkdir(dirname($dbPath), 0777, true);
+            @touch($dbPath);
+        }
+        $extDir = 'C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext';
+        $phpExec = PHP_BINARY . ' -d extension_dir="C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext" -d extension=pdo -d extension=mbstring -d extension=pdo_sqlite';
+        $cmd = $phpExec . ' -S 127.0.0.1:8091 public/index.php';
+        
+        $descriptors = [
+            0 => ["pipe", "r"],
+            1 => ["file", __DIR__ . '/server_returnse2etest.log', "a"],
+            2 => ["file", __DIR__ . '/server_returnse2etest.log', "a"],
+        
+        $env = array_merge($_ENV, [
+            'DB_CONNECTION' => 'sqlite',
+            'DB_DATABASE' => $dbPath,
+            'APP_ENV' => 'testing',
+        
+                putenv("DB_DATABASE={$dbPath}");
+        $_ENV['DB_DATABASE'] = $dbPath;
+        $_SERVER['DB_DATABASE'] = $dbPath;
+        
+        $capsule = new \Illuminate\Database\Capsule\Manager();
+        $capsule->addConnection([
+            'driver'   => 'sqlite',
+            'database' => $dbPath,
+            'prefix'   => '',
+        $capsule->setAsGlobal();
+        $capsule->bootEloquent();
+        
+        require_once __DIR__ . '/../../../src/Infrastructure/Persistence/sqlite_setup.php';
+        \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
+
+        self::$serverProcess = proc_open($cmd, $descriptors, $pipes, $baseDir, $env);
+        
+            }
+        }
+    }
+
+        public static function tearDownAfterClass(): void
+    {
+        if (self::$serverProcess && is_resource(self::$serverProcess)) {
+            proc_terminate(self::$serverProcess);
+            proc_close(self::$serverProcess);
+            self::$serverProcess = null;
+        }
+    }
+
+    {
+        Capsule::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
+
+
+
+
+    }
+
+    {
+        
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+
+
+        
+
+
+        
+            }
+        }
+
+
+
+        
+
+    }
+
+    {
+        $url = 'http://127.0.0.1:8091' . $path;
+
+        }
+
+        
+        }
+
     }
 }

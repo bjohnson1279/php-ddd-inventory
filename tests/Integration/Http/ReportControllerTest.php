@@ -27,6 +27,7 @@ final class ReportControllerTest extends TestCase
         $dbUser = getenv('DB_USERNAME') ?: '';
         $dbPass = getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '';
         $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8089 public/index.php > tests/Integration/Http/server_report.log 2>&1 & echo $!";
+        $command = "php -S 127.0.0.1:8097 public/index.php > tests/Integration/Http/server_report.log 2>&1 & echo $!";
         
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
@@ -54,6 +55,7 @@ final class ReportControllerTest extends TestCase
         DB::table('users')->delete();
         DB::table('user_roles')->delete();
         DB::table('tenants')->where('id', '!=', 'test-tenant')->delete();
+        DB::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
         \Illuminate\Database\Capsule\Manager::table('tenants')->insertOrIgnore([['id' => 'test-tenant', 'name' => 'Test Tenant']]);
                 $suffix = bin2hex(random_bytes(4));
         $this->tenantId = 'tenant-' . $suffix;
@@ -152,6 +154,7 @@ final class ReportControllerTest extends TestCase
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
     {
         $url = 'http://127.0.0.1:8089' . $path;
+        $url = 'http://127.0.0.1:8097' . $path;
         $options = [
             'http' => [
                 'header'        => "Content-Type: application/json\r\n",
@@ -261,6 +264,7 @@ final class ReportControllerTest extends TestCase
     }
 
     {
+        $url = 'http://127.0.0.1:8089' . $path;
 
         }
 

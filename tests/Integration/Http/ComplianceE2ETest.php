@@ -26,6 +26,7 @@ final class ComplianceE2ETest extends TestCase
         $dbHost = getenv('DB_HOST') ?: '';
         $dbUser = getenv('DB_USERNAME') ?: '';
         $dbPass = getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '';
+        $dbPass = getenv('DB_PASSWORD') ?: '';
         $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8092 public/index.php > tests/Integration/Http/server_compliance.log 2>&1 & echo $!";
         
         exec($command, $output);
@@ -56,6 +57,7 @@ final class ComplianceE2ETest extends TestCase
         Capsule::table('users')->delete();
         Capsule::table('user_roles')->delete();
         Capsule::table('tenants')->where('id', '!=', 'test-tenant')->delete();
+        Capsule::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
         Capsule::table('catalog_variants')->delete();
         Capsule::table('catalog_products')->delete();
         Capsule::table('locations')->where('id', '!=', 'LOC-INT')->delete();
@@ -98,6 +100,7 @@ final class ComplianceE2ETest extends TestCase
             'department'  => 'Test Dept'
         ], $this->token);
         $this->assertEquals(200, $prodRes['status']);
+        $this->assertEquals(201, $prodRes['status']);
         $productId = $prodRes['body']['id'];
 
         $varRes = $this->request('POST', "/api/catalog/products/{$productId}/variants", [
@@ -105,6 +108,7 @@ final class ComplianceE2ETest extends TestCase
             'price' => 1000,
             'attributes' => []
         $this->assertEquals(200, $varRes['status']);
+        $this->assertEquals(201, $varRes['status']);
 
         // Setup location
         Capsule::table('locations')->insertOrIgnore([
@@ -242,6 +246,7 @@ final class ComplianceE2ETest extends TestCase
         $this->assertEquals(201, $prodRes['status']);
 
         $this->assertEquals(201, $varRes['status']);
+
 
 
 

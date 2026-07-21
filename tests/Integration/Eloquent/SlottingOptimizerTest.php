@@ -40,12 +40,17 @@ final class SlottingOptimizerTest extends TestCase
                 'name' => 'Close Location',
                 'type' => 'bin'
             ],
+            [
                 'id' => 'LOC-FAR',
                 'name' => 'Far Location',
+                'type' => 'bin'
             ]
+        ]);
 
         // 1. Seed two locations
         Capsule::table('warehouse_locations')->insert([
+            [
+                'id' => 'LOC-CLOSE',
                 'warehouse_id' => 'WH1',
                 'zone' => 'Z1',
                 'aisle' => 'A1',
@@ -56,15 +61,28 @@ final class SlottingOptimizerTest extends TestCase
                 'max_volume_cubic_meters' => 1.0,
                 'grid_x' => 1,
                 'grid_y' => 1,
+            ],
+            [
+                'id' => 'LOC-FAR',
+                'warehouse_id' => 'WH1',
+                'zone' => 'Z1',
                 'aisle' => 'A2',
+                'rack' => 'R1',
+                'shelf' => 'S1',
+                'bin' => 'B1',
+                'max_weight_grams' => 1000,
+                'max_volume_cubic_meters' => 1.0,
                 'grid_x' => 10,
                 'grid_y' => 10,
+            ]
+        ]);
 
         // 2. Seed products
         $prodId1 = uuidv4();
         $prodId2 = uuidv4();
 
         Capsule::table('products')->insert([
+            [
                 'id' => $prodId1,
                 'tenant_id' => $this->tenantId,
                 'sku' => 'SKU-HIGH',
@@ -72,24 +90,39 @@ final class SlottingOptimizerTest extends TestCase
                 'department' => 'GEN',
                 'reorder_threshold' => 10,
                 'version_id' => 1
+            ],
+            [
                 'id' => $prodId2,
+                'tenant_id' => $this->tenantId,
                 'sku' => 'SKU-LOW',
                 'name' => 'Low Velocity Product',
+                'department' => 'GEN',
+                'reorder_threshold' => 10,
+                'version_id' => 1
+            ]
+        ]);
 
         // 3. Map inventory locations
         // SKU-HIGH is currently far away, SKU-LOW is close
         Capsule::table('product_locations')->insert([
+            [
                 'product_id' => $prodId1,
                 'location_id' => 'LOC-FAR',
                 'stock_quantity' => 100,
+            ],
+            [
                 'product_id' => $prodId2,
                 'location_id' => 'LOC-CLOSE',
                 'stock_quantity' => 50,
+            ]
+        ]);
 
         // 4. Seed dispatches (ledger sales)
         $nowStr = date('Y-m-d H:i:s');
         Capsule::table('ledger_entries')->insert([
+            [
                 'id' => uuidv4(),
+                'tenant_id' => $this->tenantId,
                 'variant_id' => 'SKU-HIGH',
                 'quantity' => -80, // sale dispatch
                 'reason' => 'sale',
@@ -98,10 +131,20 @@ final class SlottingOptimizerTest extends TestCase
                 'occurred_at' => $nowStr,
                 'metadata' => json_encode(['locationId' => 'LOC-FAR']),
                 'created_at' => $nowStr,
+            ],
+            [
+                'id' => uuidv4(),
+                'tenant_id' => $this->tenantId,
                 'variant_id' => 'SKU-LOW',
                 'quantity' => -2,
+                'reason' => 'sale',
+                'actor_id' => 'system',
                 'reference_id' => 'sale-2',
+                'occurred_at' => $nowStr,
                 'metadata' => json_encode(['locationId' => 'LOC-CLOSE']),
+                'created_at' => $nowStr,
+            ]
+        ]);
 
         $optimizer = new SlottingOptimizer();
         $suggestions = $optimizer->generateSuggestions();

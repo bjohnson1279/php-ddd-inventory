@@ -33,30 +33,6 @@ class EloquentCostLayerRepository implements CostLayerRepositoryInterface
         return $models->map(fn($model) => $this->hydrate($model))->all();
     }
 
-    /**
-     * @param string[] $variantIds
-     * @return array<string, InventoryCostLayer[]>
-     */
-    public function getActiveLayersByVariantIds(array $variantIds, string $orderBy = 'received_at ASC'): array
-    {
-        if (empty($variantIds)) {
-            return [];
-        }
-
-
-            ->whereIn('variant_id', $variantIds)
-
-        }
-
-        $grouped = [];
-
-        foreach ($models as $model) {
-            $grouped[$model->variant_id][] = $this->hydrate($model);
-        }
-
-        return $grouped;
-    }
-
     public function save(InventoryCostLayer $layer): void
     {
         CostLayerModel::updateOrCreate(
@@ -87,12 +63,23 @@ class EloquentCostLayerRepository implements CostLayerRepositoryInterface
         foreach ($layers as $layer) {
             $values[] = [
                 'id'                 => $layer->id,
+                'tenant_id'          => $layer->tenantId,
+                'variant_id'         => $layer->variantId,
+                'original_quantity'  => $layer->originalQuantity,
+                'remaining_quantity' => $layer->remainingQuantity(),
+                'unit_cost_cents'    => $layer->unitCostCents,
+                'purchase_order_id'  => $layer->purchaseOrderId,
+                'received_at'        => $layer->receivedAt->format('Y-m-d H:i:s'),
+                'serial_number'      => $layer->serialNumber,
+                'lot_number'         => $layer->lotNumber,
+                'expiration_date'    => $layer->expirationDate?->format('Y-m-d H:i:s'),
             ];
         }
 
         CostLayerModel::upsert(
             $values,
             ['id'],
+            [
                 'tenant_id',
                 'variant_id',
                 'original_quantity',
@@ -103,28 +90,36 @@ class EloquentCostLayerRepository implements CostLayerRepositoryInterface
                 'serial_number',
                 'lot_number',
                 'expiration_date',
+            ]
+        );
     }
 
     public function findBySerial(string $variantId, string $serialNumber): ?InventoryCostLayer
     {
         $model = CostLayerModel::where('tenant_id', $this->tenantId)
+            ->where('variant_id', $variantId)
             ->where('serial_number', $serialNumber)
             ->first();
 
         return $model ? $this->hydrate($model) : null;
     }
 
+    /**
      * @param string[] $serialNumbers
      * @return InventoryCostLayer[]
+     */
     public function findBySerials(string $variantId, array $serialNumbers): array
     {
         if (empty($serialNumbers)) {
+            return [];
         }
 
         $models = CostLayerModel::where('tenant_id', $this->tenantId)
+            ->where('variant_id', $variantId)
             ->whereIn('serial_number', $serialNumbers)
             ->get();
 
+        return $models->map(fn($model) => $this->hydrate($model))->all();
     }
 
     private function hydrate(CostLayerModel $model): InventoryCostLayer
@@ -137,6 +132,7 @@ class EloquentCostLayerRepository implements CostLayerRepositoryInterface
             $model->unit_cost_cents,
             new DateTimeImmutable($model->received_at),
             $model->purchase_order_id
+        );
 
         $layer->setRemainingQuantity($model->remaining_quantity);
         $layer->serialNumber = $model->serial_number;
@@ -144,43 +140,5 @@ class EloquentCostLayerRepository implements CostLayerRepositoryInterface
         $layer->expirationDate = $model->expiration_date ? new DateTimeImmutable($model->expiration_date) : null;
 
         return $layer;
-    }
-}
-
-
-
-{
-
-    {
-
-
-        }
-
-
-    }
-
-    {
-    }
-
-    {
-        }
-
-        }
-
-    }
-
-    {
-
-    }
-
-    {
-        }
-
-
-    }
-
-    {
-
-
     }
 }

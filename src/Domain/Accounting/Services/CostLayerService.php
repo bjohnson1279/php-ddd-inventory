@@ -4,6 +4,7 @@ namespace InventoryApp\Domain\Accounting\Services;
 
 use InventoryApp\Domain\Accounting\Repositories\CostLayerRepositoryInterface;
 use InventoryApp\Domain\Accounting\ValueObjects\CostBreakdown;
+use InventoryApp\Domain\Accounting\Entities\InventoryCostLayer;
 use InventoryApp\Domain\Accounting\Enums\CostingMethod;
 use InventoryApp\Domain\Accounting\Strategies\CostingStrategyRegistry;
 use DomainException;
@@ -26,7 +27,11 @@ class CostLayerService
 
     public function consumeLayers(string $variantId, int $quantity, CostingMethod $method = CostingMethod::FIFO): CostBreakdown
     {
+        if ($method === CostingMethod::SpecificIdentification) {
+            throw new DomainException("SpecificIdentification requires serial numbers. Use a dedicated path.");
         }
+        $activeLayers = $this->layers->getActiveLayers($variantId);
+        $strategy = CostingStrategyRegistry::get($method);
         [$breakdown, $affectedLayers] = $strategy->consumeLayers($activeLayers, $quantity, $variantId);
 
         if (!empty($affectedLayers)) {
@@ -80,43 +85,5 @@ class CostLayerService
     public function calculateWeightedAverageCost(string $variantId, int $quantity): CostBreakdown
     {
         return $this->calculateCost($variantId, $quantity, CostingMethod::WeightedAverageCost);
-    }
-}
-
-
-use InventoryApp\Domain\Accounting\Entities\InventoryCostLayer;
-
-{
-
-    {
-        }
-    }
-
-    {
-        }
-
-        }
-
-    }
-
-    {
-    }
-
-    {
-    }
-
-    {
-
-        }
-
-            }
-            }
-
-        }
-
-
-    }
-
-    {
     }
 }

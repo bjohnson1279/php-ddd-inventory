@@ -12,55 +12,24 @@ require_once __DIR__ . '/../bootstrap.php';
 /** @group integration */
 final class ApiEndpointsTest extends TestCase
 {
-    private static $serverProcess = null;
+    private static ?int $pid = null;
     private string $tenantId;
     private string $email;
     private string $password;
     private ?string $token = null;
 
-        public static function setUpBeforeClass(): void
+    public static function setUpBeforeClass(): void
     {
-        $baseDir = realpath(__DIR__ . '/../../..');
-        $dbPath = $baseDir . '/storage/data/test_apiendpointstest.sqlite';
-        if (!file_exists($dbPath)) {
-            @mkdir(dirname($dbPath), 0777, true);
-            @touch($dbPath);
-        }
-        $extDir = 'C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext';
-        $phpExec = PHP_BINARY . ' -d extension_dir="C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext" -d extension=pdo -d extension=mbstring -d extension=pdo_sqlite';
-        $cmd = $phpExec . ' -S 127.0.0.1:8085 public/index.php';
-        
-        $descriptors = [
-            0 => ["pipe", "r"],
-            1 => ["file", __DIR__ . '/server_apiendpointstest.log', "a"],
-            2 => ["file", __DIR__ . '/server_apiendpointstest.log', "a"],
-        ];
-        
-        $env = array_merge($_ENV, [
-            'DB_CONNECTION' => 'sqlite',
-            'DB_DATABASE' => $dbPath,
-            'APP_ENV' => 'testing',
-            'SHOPIFY_WEBHOOK_SECRET' => 'test-secret-env',
-        ]);
-        
-                putenv("DB_DATABASE={$dbPath}");
-        $_ENV['DB_DATABASE'] = $dbPath;
-        $_SERVER['DB_DATABASE'] = $dbPath;
-        
-        $capsule = new \Illuminate\Database\Capsule\Manager();
-        $capsule->addConnection([
-            'driver'   => 'sqlite',
-            'database' => $dbPath,
-            'prefix'   => '',
-        ]);
-        $capsule->setAsGlobal();
-        $capsule->bootEloquent();
-        
-        require_once __DIR__ . '/../../../src/Infrastructure/Persistence/sqlite_setup.php';
-        \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
+        // Export environment variables for the test server
+        putenv('SHOPIFY_WEBHOOK_SECRET=test-secret-env');
 
-        self::$serverProcess = proc_open($cmd, $descriptors, $pipes, $baseDir, $env);
-        
+        // Start built-in PHP development server in the background on port 8085
+        $output = [];
+        $command = "php -S 127.0.0.1:8085 public/index.php > tests/Integration/Http/server_api.log 2>&1 & echo $!";
+
+        exec($command, $output);
+        self::$pid = (int)($output[0] ?? 0);
+
         // Wait for server to bind
         for ($i = 0; $i < 50; $i++) {
             $fp = @fsockopen('127.0.0.1', 8085, $errno, $errstr, 0.1);
@@ -72,12 +41,10 @@ final class ApiEndpointsTest extends TestCase
         }
     }
 
-        public static function tearDownAfterClass(): void
+    public static function tearDownAfterClass(): void
     {
-        if (self::$serverProcess && is_resource(self::$serverProcess)) {
-            proc_terminate(self::$serverProcess);
-            proc_close(self::$serverProcess);
-            self::$serverProcess = null;
+        if (self::$pid) {
+            exec("kill " . self::$pid . " > /dev/null 2>&1");
         }
     }
 
@@ -224,7 +191,7 @@ final class ApiEndpointsTest extends TestCase
         // 4. Query notifications stream mock (GET /api/notifications)
         $notifRes = $this->request('GET', '/api/notifications', [], $this->token);
         $this->assertEquals(200, $notifRes['status'], json_encode($notifRes));
-        
+
         $found = false;
         foreach ($notifRes['body']['notifications'] as $n) {
             if ($n['type'] === 'barcode_scanned') {
@@ -531,7 +498,7 @@ final class ApiEndpointsTest extends TestCase
         ]);
 
         // 3. Register Location mapping so webhook resolves LOC-INT
-        \Illuminate\Database\Capsule\Manager::table('shopify_location_mappings')->insertOrIgnore([
+        \Illuminate\Database\Capsule\Manager::table('shopify_location_mappings')->insert([
             'id'                  => uuidv4(),
             'our_location_id'     => 'LOC-INT',
             'shopify_location_id' => 'shopify-loc-1234',
@@ -566,7 +533,7 @@ final class ApiEndpointsTest extends TestCase
         $calculatedHmac = base64_encode(hash_hmac('sha256', $jsonPayload, $secret, true));
 
         $url = 'http://127.0.0.1:8085/api/webhooks/shopify?tenant_id=' . $this->tenantId;
-        
+
         $options = [
             'http' => [
                 'header' => "Content-Type: application/json\r\n" .
@@ -585,13 +552,13 @@ final class ApiEndpointsTest extends TestCase
         $statusCode = (int)$match[1];
 
         $this->assertEquals(200, $statusCode, $result);
-        
+
         // 5. Verify stock decreased from 50 to 45
         $stockQty = (int)\Illuminate\Database\Capsule\Manager::table('product_locations')
             ->where('product_id', $productId)
             ->where('location_id', 'LOC-INT')
             ->value('stock_quantity');
-        
+
         $this->assertEquals(45, $stockQty);
 
         // 6. Test cancellation webhook (orders/cancelled) to restock 5 items
@@ -620,7 +587,7 @@ final class ApiEndpointsTest extends TestCase
             ->where('product_id', $productId)
             ->where('location_id', 'LOC-INT')
             ->value('stock_quantity');
-        
+
         $this->assertEquals(50, $newStockQty);
     }
 
@@ -894,7 +861,7 @@ final class ApiEndpointsTest extends TestCase
 
         $context = stream_context_create($options);
         $result = @file_get_contents($url, false, $context);
-        
+
         $statusCode = 500;
         if (isset($http_response_header) && isset($http_response_header[0])) {
             preg_match('{HTTP\/\S*\s(\d{3})}', $http_response_header[0], $match);

@@ -4,31 +4,10 @@ use Illuminate\Database\Capsule\Manager as Capsule;
 
 require __DIR__ . '/../../vendor/autoload.php';
 
-$envDriver = getenv('DB_CONNECTION');
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../../');
 $dotenv->safeLoad();
 
 $driver = getenv('DB_CONNECTION') ?: 'pgsql';
-if ($driver === 'pgsql') {
-    if (!extension_loaded('pdo_pgsql')) {
-        $driver = 'sqlite';
-    } else {
-        $pgHost = getenv('DB_HOST') ?: 'db';
-        $pgPort = (int)(getenv('DB_PORT') ?: 5432);
-        $fp = @fsockopen($pgHost, $pgPort, $errno, $errstr, 0.1);
-        if (!$fp) {
-            $driver = 'sqlite';
-        } else {
-            fclose($fp);
-        }
-    }
-}
-
-if ($driver === 'sqlite') {
-    putenv('DB_CONNECTION=sqlite');
-    $_ENV['DB_CONNECTION'] = 'sqlite';
-    $_SERVER['DB_CONNECTION'] = 'sqlite';
-}
 
 $capsule = new Capsule;
 
@@ -36,15 +15,6 @@ if ($driver === 'sqlite') {
     $dbPath = getenv('DB_DATABASE') ?: 'storage/data/test.sqlite';
     if ($dbPath !== ':memory:' && !str_starts_with($dbPath, '/') && !str_contains($dbPath, ':')) {
         $dbPath = __DIR__ . '/../../' . $dbPath;
-    }
-    if ($dbPath !== ':memory:') {
-        $dir = dirname($dbPath);
-        if (!is_dir($dir)) {
-            @mkdir($dir, 0777, true);
-        }
-        if (!file_exists($dbPath)) {
-            @touch($dbPath);
-        }
     }
     $capsule->addConnection([
         'driver'   => 'sqlite',
@@ -57,7 +27,7 @@ if ($driver === 'sqlite') {
         'host'     => getenv('DB_HOST')       ?: 'localhost',
         'database' => getenv('DB_DATABASE')   ?: 'ddd_inventory',
         'username' => getenv('DB_USERNAME')   ?: 'ddd_user',
-        'password' => getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '',
+        'password' => getenv('DB_PASSWORD')   ?: 'secret',
         'port'     => getenv('DB_PORT')       ?: 5432,
         'charset'  => 'utf8',
         'prefix'   => '',
@@ -71,7 +41,6 @@ $connection = $capsule->getConnection();
 
 if ($driver === 'sqlite') {
     try {
-        $connection->statement('PRAGMA journal_mode=WAL;');
         $connection->statement('PRAGMA busy_timeout=10000;');
     } catch (\Exception $e) {}
 }
@@ -157,21 +126,6 @@ if ($driver !== 'sqlite') {
         ");
 
         $connection->statement("
-            CREATE TABLE IF NOT EXISTS compliance_ledgers (
-                id VARCHAR(50) PRIMARY KEY,
-                tenant_id VARCHAR(50) NOT NULL,
-                actor_id VARCHAR(50) NOT NULL,
-                event_type VARCHAR(100) NOT NULL,
-                sequence_number INTEGER NOT NULL,
-                previous_hash VARCHAR(64) NOT NULL,
-                current_hash VARCHAR(64) NOT NULL,
-                signature VARCHAR(64) NOT NULL,
-                payload TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ");
-
-        $connection->statement("
             CREATE TABLE IF NOT EXISTS outbox_events (
                 id VARCHAR(50) PRIMARY KEY,
                 event_name VARCHAR(255) NOT NULL,
@@ -181,34 +135,6 @@ if ($driver !== 'sqlite') {
                 attempts INTEGER NOT NULL DEFAULT 0,
                 last_error TEXT DEFAULT NULL,
                 next_attempt_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-            )
-        ");
-
-        $connection->statement("
-            CREATE TABLE IF NOT EXISTS webhook_subscriptions (
-                id VARCHAR(50) PRIMARY KEY,
-                tenant_id VARCHAR(50) NOT NULL,
-                target_url TEXT NOT NULL,
-                secret TEXT NOT NULL,
-                event_types TEXT NOT NULL,
-                is_active BOOLEAN NOT NULL DEFAULT TRUE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ");
-
-        $connection->statement("
-            CREATE TABLE IF NOT EXISTS webhook_deliveries (
-                id VARCHAR(50) PRIMARY KEY,
-                tenant_id VARCHAR(50) NOT NULL,
-                subscription_id VARCHAR(50) NOT NULL REFERENCES webhook_subscriptions(id) ON DELETE CASCADE,
-                event_type VARCHAR(255) NOT NULL,
-                payload TEXT NOT NULL,
-                status VARCHAR(50) NOT NULL,
-                attempts INTEGER NOT NULL DEFAULT 0,
-                last_error TEXT,
-                next_attempt_at TIMESTAMP,
-                processed_at TIMESTAMP,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ");
     } catch (\Exception $e) {
@@ -233,7 +159,6 @@ if ($driver === 'sqlite') {
         'stock_onboardings', 
         'journal_entries', 
         'api_tokens', 
-        'user_roles',
         'users', 
         'shopify_location_mappings',
         'shopify_sku_mappings',
@@ -246,6 +171,7 @@ if ($driver === 'sqlite') {
         'kits',
         'kit_components',
         'roles',
+        'user_roles',
         'role_permissions',
         'notifications',
         'inventory_cost_layers',
@@ -255,12 +181,14 @@ if ($driver === 'sqlite') {
         'reorder_policies',
         'demand_forecasts',
         'shipments',
-        'outbox_events', 'compliance_ledgers'
         'outbox_events',
-        'compliance_ledgers'
         'compliance_ledgers',
+        'webhook_subscriptions',
         'webhook_deliveries',
-        'webhook_subscriptions'
+        'audit_discrepancies',
+        'rmas',
+        'rma_items',
+        'quarantine_items'
     ];
     
     foreach ($tables as $t) {
@@ -270,11 +198,8 @@ if ($driver === 'sqlite') {
     $connection->table('tenants')->where('id', '!=', 'test-tenant')->delete();
 } else {
     $connection->statement('TRUNCATE TABLE
-        catalog_products,
-        catalog_variants,
         inventory_transactions, 
         product_locations, 
-        compliance_ledgers,
         products, 
         inventory_count_items, 
         inventory_counts, 
@@ -285,7 +210,6 @@ if ($driver === 'sqlite') {
         stock_onboardings, 
         journal_entries, 
         api_tokens, 
-        user_roles,
         users, 
         shopify_location_mappings,
         shopify_sku_mappings,
@@ -298,6 +222,7 @@ if ($driver === 'sqlite') {
         kits,
         kit_components,
         roles,
+        user_roles,
         role_permissions,
         notifications,
         inventory_cost_layers,
@@ -308,10 +233,13 @@ if ($driver === 'sqlite') {
         demand_forecasts,
         shipments,
         outbox_events,
-        compliance_ledgers
         compliance_ledgers,
+        webhook_subscriptions,
         webhook_deliveries,
-        webhook_subscriptions
+        audit_discrepancies,
+        rmas,
+        rma_items,
+        quarantine_items
     RESTART IDENTITY CASCADE');
 
     // Wipe all tenants except test-tenant

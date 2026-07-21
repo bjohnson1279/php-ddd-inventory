@@ -4,7 +4,7 @@ namespace InventoryApp\Infrastructure\Http;
 
 /**
  * Contract for HTTP request objects used in controllers.
- * 
+ *
  * Allows for easy testing and compatibility with various HTTP frameworks.
  */
 interface RequestInterface

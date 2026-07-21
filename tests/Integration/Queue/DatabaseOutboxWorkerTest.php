@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Queue;
 
+use Illuminate\Database\Capsule\Manager as Capsule;
+
 use PHPUnit\Framework\TestCase;
 use Illuminate\Database\Capsule\Manager as DB;
 use InventoryApp\Infrastructure\ServiceContainer;
@@ -16,6 +18,8 @@ final class DatabaseOutboxWorkerTest extends TestCase
 {
     protected function setUp(): void
     {
+        Capsule::table('queued_jobs')->delete();
+        Capsule::table('outbox_events')->delete();
         // Clean up outbox events to ensure run-to-run isolation
         if (getenv('DB_CONNECTION') === 'sqlite' || DB::connection()->getDriverName() === 'sqlite') {
             require_once __DIR__ . '/../../../src/Infrastructure/Persistence/sqlite_setup.php';
@@ -48,8 +52,16 @@ final class DatabaseOutboxWorkerTest extends TestCase
         // 3. Run outbox-worker.php CLI script with --once flag
         $output = [];
         $resultCode = -1;
-        $cmd = "php scripts/outbox-worker.php --once";
+        $baseDir = realpath(__DIR__ . "/../../..");
+                $extDir = ini_get('extension_dir') ?: 'C:\\Users\\johns\\AppData\\Local\\Microsoft\\WinGet\\Packages\\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\\ext';
+        $phpExec = PHP_BINARY . ' -d extension_dir=' . escapeshellarg($extDir) . ' -d extension=mbstring -d extension=pdo_sqlite';
+        $dbFile = getenv('DB_DATABASE') ?: ($baseDir . '/storage/data/test.sqlite');
+        $cmd = (PHP_OS_FAMILY === 'Windows')
+            ? "set DB_CONNECTION=sqlite&& set DB_DATABASE={$dbFile}&& " . $phpExec . " " . $baseDir . "/scripts/" . (str_contains(__FILE__, 'Outbox') ? "outbox-worker.php" : "queue-worker.php") . " --once"
+            : "DB_CONNECTION=sqlite DB_DATABASE=" . escapeshellarg($dbFile) . " " . $phpExec . " " . $baseDir . "/scripts/" . (str_contains(__FILE__, 'Outbox') ? "outbox-worker.php" : "queue-worker.php") . " --once";
+        DB::disconnect();
         exec($cmd, $output, $resultCode);
+        DB::reconnect();
 
         // 4. Verify script finished successfully
         $this->assertEquals(0, $resultCode, "outbox-worker.php exited with code {$resultCode}");

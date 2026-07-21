@@ -30,6 +30,7 @@ class InMemoryLedgerRepository implements LedgerRepositoryInterface
 
     public function append(LedgerEntry $entry): void
     {
+        $this->appendAll([$entry]);
         $rows = $this->read();
         $rows[] = [
             'id' => $entry->id,
@@ -49,8 +50,8 @@ class InMemoryLedgerRepository implements LedgerRepositoryInterface
         if (empty($entries)) {
             return;
         }
-
         $rows = $this->read();
+
 
         foreach ($entries as $entry) {
             $rows[] = [

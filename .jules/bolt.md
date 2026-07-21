@@ -65,10 +65,14 @@
 ## 2024-07-13 - Eliminate N+1 DB queries in bulk stock updates via SyncStockToShopify batching
 **Learning:** When processing bulk operations (like complete inventory counts, sales, or returns), dispatching domain events individually inside loops can trigger repetitive database lookups within listeners like `SyncStockToShopify`. Specifically, syncing stock to Shopify triggers queries on `shopify_sku_mappings` and `shopify_location_mappings` for every single event.
 **Action:** Always wrap event dispatch loops for bulk domain operations with `\InventoryApp\Application\Inventory\Listeners\SyncStockToShopify::beginBatch(...)` and `endBatch()` inside a `try...finally` block. This allows the listener to pre-fetch Shopify metadata mapping in a single query, eliminating the N+1 problem.
+## 2024-05-24 - Batch Fetching Cost Layers for Kit Components
+
+## 2024-07-26 - Updating PHPUnit mock closures for batch migrations
+**Learning:** When refactoring a single-entity insertion method (like `append(LedgerEntry)`) into a batch method (`appendAll(array)`), failing to update the closure signature in PHPUnit mock expectations (`$this->callback(function (LedgerEntry $entry) { ... })`) to accept an array (`function (array $entries)`) will cause `TypeError` test failures because the framework attempts to pass an array into a parameter expecting an object.
+**Action:** When updating PHPUnit mock expectations from a single entity to a batch array, ensure the `$this->callback()` closure signature is explicitly updated to accept an `array` parameter and iterate over the entries appropriately.
 ## 2026-07-18 - Optimize string hashing with crc32
 **Learning:** Replaced a manual character-by-character string hashing loop with PHP's native `crc32()` function. This yielded an enormous (~98%) performance improvement because native functions implemented in C are significantly faster than iterating over string characters in PHP userland.
 **Action:** When a deterministic numeric hash of a string is needed for arbitrary distribution (e.g., generating fallback coordinates) and the specific hash value isn't strictly mandated by an external contract, always prefer native PHP hashing functions like `crc32()` over manual implementations.
-## 2024-05-24 - Batch Fetching Cost Layers for Kit Components
 
 **Learning:** Replacing an N+1 query inside a kit component loop with a batch fetch method using `whereIn` grouped by `variant_id` drastically reduces database queries without breaking fallback functionality for active layers when handling expected domain exceptions.
 **Action:** Always inspect loops containing repository fetches for batch-fetching opportunities in application use cases. Ensure fallback states are preserved when utilizing the new batch queries.

@@ -234,6 +234,7 @@ if ($driver === 'sqlite') {
         'stock_onboardings', 
         'journal_entries', 
         'api_tokens', 
+        'user_roles',
         'users', 
         'shopify_location_mappings',
         'shopify_sku_mappings',
@@ -246,7 +247,6 @@ if ($driver === 'sqlite') {
         'kits',
         'kit_components',
         'roles',
-        'user_roles',
         'role_permissions',
         'notifications',
         'inventory_cost_layers',
@@ -256,7 +256,9 @@ if ($driver === 'sqlite') {
         'reorder_policies',
         'demand_forecasts',
         'shipments',
+        'outbox_events', 'compliance_ledgers'
         'outbox_events',
+        'compliance_ledgers'
         'compliance_ledgers',
         'webhook_deliveries',
         'webhook_subscriptions'
@@ -285,6 +287,7 @@ if ($driver === 'sqlite') {
         stock_onboardings, 
         journal_entries, 
         api_tokens, 
+        user_roles,
         users, 
         shopify_location_mappings,
         shopify_sku_mappings,
@@ -297,7 +300,6 @@ if ($driver === 'sqlite') {
         kits,
         kit_components,
         roles,
-        user_roles,
         role_permissions,
         notifications,
         inventory_cost_layers,
@@ -308,6 +310,7 @@ if ($driver === 'sqlite') {
         demand_forecasts,
         shipments,
         outbox_events,
+        compliance_ledgers
         compliance_ledgers,
         webhook_deliveries,
         webhook_subscriptions

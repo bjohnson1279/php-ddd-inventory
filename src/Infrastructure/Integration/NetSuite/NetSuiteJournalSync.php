@@ -134,3 +134,30 @@ class NetSuiteJournalSync
 
     }
 }
+
+
+{
+
+    {
+    }
+
+    {
+        }
+
+
+
+
+            }
+
+
+
+            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_CONNECTTIMEOUT => 10,
+
+
+        }
+
+        }
+
+    }
+}

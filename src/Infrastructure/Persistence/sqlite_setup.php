@@ -299,9 +299,21 @@ class SqliteSetup
               attempts INTEGER NOT NULL DEFAULT 0,
               last_error TEXT DEFAULT NULL,
               next_attempt_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-            "CREATE TABLE IF NOT EXISTS audit_discrepancies (
+            "CREATE TABLE IF NOT EXISTS webhook_subscriptions (
               id VARCHAR(255) PRIMARY KEY,
               tenant_id VARCHAR(255) NOT NULL,
+              target_url VARCHAR(500) NOT NULL,
+              secret VARCHAR(255) NOT NULL,
+              event_types TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+            "CREATE TABLE IF NOT EXISTS webhook_deliveries (
+              subscription_id VARCHAR(255) NOT NULL,
+              event_type VARCHAR(255) NOT NULL,
+              status VARCHAR(50) NOT NULL DEFAULT 'Pending',
+              last_error TEXT,
+              next_attempt_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              processed_at DATETIME,
+            "CREATE TABLE IF NOT EXISTS audit_discrepancies (
               type VARCHAR(255) NOT NULL,
               reference_id VARCHAR(255) NOT NULL,
               external_ref_id VARCHAR(255),
@@ -320,6 +332,82 @@ class SqliteSetup
               previous_hash VARCHAR(64) NOT NULL,
               current_hash VARCHAR(64) NOT NULL,
               signature VARCHAR(64) NOT NULL,
+            "CREATE TABLE IF NOT EXISTS webhook_subscriptions (
+              target_url VARCHAR(500) NOT NULL,
+              secret VARCHAR(255) NOT NULL,
+              event_types TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+            "CREATE TABLE IF NOT EXISTS webhook_deliveries (
+              subscription_id VARCHAR(255) NOT NULL,
+              event_type VARCHAR(255) NOT NULL,
+              status VARCHAR(50) NOT NULL DEFAULT 'Pending',
+              last_error TEXT,
+              next_attempt_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              processed_at DATETIME,
+    }
+}
+
+
+{
+    {
+            self::getComplianceQueries(),
+            self::getWebhookQueries()
+
+        }
+    }
+
+    {
+    }
+
+    {
+    }
+
+    {
+    }
+
+    {
+    }
+
+    {
+    }
+
+    {
+    }
+
+    {
+    }
+
+    {
+    }
+
+    {
+    }
+
+    {
+    }
+
+    {
+    }
+
+    private static function getWebhookQueries(): array
+    {
+                id VARCHAR(50) PRIMARY KEY,
+                tenant_id VARCHAR(50) NOT NULL,
+                target_url TEXT NOT NULL,
+                secret TEXT NOT NULL,
+                event_types TEXT NOT NULL,
+                is_active BOOLEAN NOT NULL DEFAULT 1,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                subscription_id VARCHAR(50) NOT NULL,
+                event_type VARCHAR(255) NOT NULL,
+                payload TEXT NOT NULL,
+                status VARCHAR(50) NOT NULL,
+                attempts INTEGER NOT NULL DEFAULT 0,
+                last_error TEXT,
+                next_attempt_at DATETIME,
+                processed_at DATETIME,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (subscription_id) REFERENCES webhook_subscriptions (id) ON DELETE CASCADE
     }
 }
 

@@ -15,6 +15,7 @@
 
 ## 2026-06-25 - TimescaleDB Setup and Database Parity Constraints
 **Learning:** In multi-variant backends (GraphQL, Express, Laravel), switching database engines (e.g., reverting the Express backend to SQLite or using mock local SQLite files) breaks TimescaleDB hypertable features and causes database drift. Additionally, database connection configuration must be securely validated.
+**Action:** 
 **Action:**
 - Maintain database engine parity across all service variants by strictly using PostgreSQL for physical datastores.
 - Do not run `prisma db push` during automated npm package installation (`postinstall`) in CI or production build environments, as it will fail due to the absence of a running database. Limit postinstall steps to `prisma generate` and execute migrations/pushes in dedicated pipeline steps or deployment startup phases.
@@ -66,6 +67,10 @@
 **Vulnerability:** Rate limit bypass via IP Spoofing (X-Forwarded-For).
 **Learning:** The rate limiter blindly trusted the `HTTP_X_FORWARDED_FOR` header or failed to properly walk the proxy chain from right to left to establish the true client IP against a list of trusted proxies.
 **Prevention:** Always validate `REMOTE_ADDR` against a trusted proxy list before parsing `HTTP_X_FORWARDED_FOR`, and traverse the list right-to-left to safely extract the untrusted client IP.
+## 2024-11-20 - Unbounded cURL Execution in Integration Clients
+**Vulnerability:** The Xero API integration client (`XeroJournalSync`) lacked explicit `CURLOPT_TIMEOUT` and `CURLOPT_CONNECTTIMEOUT` options, defaulting to infinite timeouts.
+**Learning:** Network clients without timeouts leave the application vulnerable to resource exhaustion (Denial of Service) if remote endpoints hang or become unresponsive.
+**Prevention:** Always explicitly configure execution and connection timeouts on external HTTP/API requests (cURL, Guzzle, etc.), ideally making them configurable via environment variables. Ensure the client handles connection failures safely without throwing generic type errors downstream.
 ## 2024-05-24 - DoS Risk via Unbounded External API Calls
 **Vulnerability:** External HTTP requests via cURL to NetSuite, Shopify, and Xero were lacking `CURLOPT_TIMEOUT` and `CURLOPT_CONNECTTIMEOUT` definitions.
 **Learning:** Default PHP cURL configurations can block indefinitely (or for system-level timeouts) if an external service stops responding, leading to thread exhaustion and complete application denial-of-service (DoS).
@@ -74,6 +79,23 @@
 
 
 **Action:** 
+
+
+
+
+
+
+
+## 2026-07-20 - Removed Hardcoded DB Password Fallback
+**Vulnerability:** The application used a hardcoded fallback value `'secret'` if the `DB_PASSWORD` environment variable was not found, which could lead to unauthorized access in misconfigured environments.
+**Prevention:** Avoid hardcoding default credentials. Use strict comparisons (`!== false`) when fetching critical environment variables, and fallback to an empty string instead of supplying a potentially guessable fallback like 'secret'.
+## 2024-05-24 - DoS Risk via Unbounded External API Calls
+**Vulnerability:** External HTTP requests via cURL to NetSuite, Shopify, and Xero were lacking `CURLOPT_TIMEOUT` and `CURLOPT_CONNECTTIMEOUT` definitions.
+**Learning:** Default PHP cURL configurations can block indefinitely (or for system-level timeouts) if an external service stops responding, leading to thread exhaustion and complete application denial-of-service (DoS).
+**Prevention:** Always mandate explicit connection and execution timeouts (e.g., 10s connection, 30s timeout) on all outbound network boundaries.
+
+
+
 
 
 

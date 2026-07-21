@@ -22,10 +22,10 @@ final class FefoRecallE2ETest extends TestCase
     {
         $output = [];
         $command = "php -S 127.0.0.1:8091 public/index.php > tests/Integration/Http/server_fefo.log 2>&1 & echo $!";
-        
+
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
-        
+
         // Wait for server to bind
         for ($i = 0; $i < 50; $i++) {
             $fp = @fsockopen('127.0.0.1', 8091, $errno, $errstr, 0.1);
@@ -189,7 +189,7 @@ final class FefoRecallE2ETest extends TestCase
 
         $context = stream_context_create($options);
         $result = @file_get_contents($url, false, $context);
-        
+
         $statusCode = 500;
         if (isset($http_response_header) && isset($http_response_header[0])) {
             preg_match('{HTTP\/\S*\s(\d{3})}', $http_response_header[0], $match);

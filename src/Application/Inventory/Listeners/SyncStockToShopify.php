@@ -186,11 +186,11 @@ class SyncStockToShopify implements QueuedListenerInterface
             $this->sync->setInventoryLevel($shopifyInventoryItemId, $shopifyLocationId, $currentQty);
         } catch (\Throwable $e) {
             error_log("Shopify sync failed for SKU {$sku}: " . $e->getMessage());
-            
-            $tenantId = method_exists($this->productRepository, 'getTenantId') 
-                ? $this->productRepository->getTenantId() 
+
+            $tenantId = method_exists($this->productRepository, 'getTenantId')
+                ? $this->productRepository->getTenantId()
                 : 'system';
-                
+
             try {
                 \Illuminate\Database\Capsule\Manager::table('shopify_sync_failures')->insert([
                     'id'          => \Ramsey\Uuid\Uuid::uuid4()->toString(),

@@ -17,7 +17,7 @@ class InventoryCountController
         try {
             // Generate a UUID for the new count session
             $countId = (string) Str::uuid();
-            
+
             $useCase->execute($countId);
 
             return new Response([

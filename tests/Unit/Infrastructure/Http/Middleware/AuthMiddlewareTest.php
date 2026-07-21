@@ -49,7 +49,7 @@ class AuthMiddlewareTest extends TestCase
             ->addMethods(['header', 'merge'])
             ->getMock();
         $request->method('header')->willReturn('Bearer valid-token');
-        
+
         $tokenData = (object)['user_id' => 'u1', 'tenant_id' => 't1'];
         $this->tokenService->method('validate')->with('valid-token')->willReturn($tokenData);
 

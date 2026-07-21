@@ -17,7 +17,7 @@ class ReceiveStockTest extends TestCase
     public function testExecuteReceivesStockAndSavesProduct()
     {
         $repositoryMock = $this->createMock(ProductRepositoryInterface::class);
-        
+
         $product = Product::create(
             'prod_123',
             new SKU('TSHIRT-L-RED'),

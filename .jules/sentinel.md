@@ -15,7 +15,7 @@
 
 ## 2026-06-25 - TimescaleDB Setup and Database Parity Constraints
 **Learning:** In multi-variant backends (GraphQL, Express, Laravel), switching database engines (e.g., reverting the Express backend to SQLite or using mock local SQLite files) breaks TimescaleDB hypertable features and causes database drift. Additionally, database connection configuration must be securely validated.
-**Action:** 
+**Action:**
 - Maintain database engine parity across all service variants by strictly using PostgreSQL for physical datastores.
 - Do not run `prisma db push` during automated npm package installation (`postinstall`) in CI or production build environments, as it will fail due to the absence of a running database. Limit postinstall steps to `prisma generate` and execute migrations/pushes in dedicated pipeline steps or deployment startup phases.
 - Ensure that any dynamic database connection strings (like `DATABASE_URL` built from separate components) are validated on server startup and fallback safely to trusted local defaults for development environments.
@@ -67,7 +67,3 @@
 **Vulnerability:** Rate limit bypass via IP Spoofing (X-Forwarded-For).
 **Learning:** The rate limiter blindly trusted the `HTTP_X_FORWARDED_FOR` header or failed to properly walk the proxy chain from right to left to establish the true client IP against a list of trusted proxies.
 **Prevention:** Always validate `REMOTE_ADDR` against a trusted proxy list before parsing `HTTP_X_FORWARDED_FOR`, and traverse the list right-to-left to safely extract the untrusted client IP.
-## 2026-07-20 - Removed Hardcoded DB Password Fallback
-**Vulnerability:** The application used a hardcoded fallback value `'secret'` if the `DB_PASSWORD` environment variable was not found, which could lead to unauthorized access in misconfigured environments.
-**Learning:** Default values used with getenv() fallback configurations can inadvertently introduce hardcoded credentials into production environments if variables are missing.
-**Prevention:** Avoid hardcoding default credentials. Use strict comparisons (`!== false`) when fetching critical environment variables, and fallback to an empty string instead of supplying a potentially guessable fallback like 'secret'.

@@ -29,7 +29,7 @@ final class AuditE2ETest extends TestCase
         $command = "php -S 127.0.0.1:8092 public/index.php > tests/Integration/Http/server_audit.log 2>&1 & echo $!";
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
-        
+
         for ($i = 0; $i < 50; $i++) {
             $fp = @fsockopen('127.0.0.1', 8092, $errno, $errstr, 0.1);
             if ($fp) {
@@ -214,7 +214,7 @@ final class AuditE2ETest extends TestCase
 
         $context = stream_context_create($options);
         $result = @file_get_contents($url, false, $context);
-        
+
         $statusCode = 500;
         if (isset($http_response_header) && isset($http_response_header[0])) {
             preg_match('{HTTP\/\S*\s(\d{3})}', $http_response_header[0], $match);

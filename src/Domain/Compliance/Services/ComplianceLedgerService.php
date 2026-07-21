@@ -13,6 +13,7 @@ class ComplianceLedgerService
     {
         $key = getenv('COMPLIANCE_PRIVATE_KEY');
         if (!$key || empty(trim($key))) {
+            throw new \RuntimeException('COMPLIANCE_PRIVATE_KEY environment variable is not set.');
             return 'compliance-fallback-secret-key-12345!@#';
         }
         return $key;
@@ -77,10 +78,10 @@ class ComplianceLedgerService
             } else {
                 $expectedPrevHash = str_repeat('0', 64);
                 if ($entry->getPreviousHash() !== $expectedPrevHash) {
+                        'reason' => "First block must have zeroed previous hash. Found: " . $entry->getPreviousHash()
                     return [
                         'isValid' => false,
                         'failedSequenceNumber' => $entry->getSequenceNumber(),
-                        'reason' => "First block must have zeroed previous hash. Found: " . $entry->getPreviousHash()
                     ];
                 }
             }
@@ -100,14 +101,47 @@ class ComplianceLedgerService
             // 3. Verify signature
             $expectedSignature = hash_hmac('sha256', $entry->getCurrentHash(), $privateKey);
             if ($entry->getSignature() !== $expectedSignature) {
+                    'reason' => "Cryptographic signature validation failed for sequence #" . $entry->getSequenceNumber()
                 return [
                     'isValid' => false,
                     'failedSequenceNumber' => $entry->getSequenceNumber(),
-                    'reason' => "Cryptographic signature validation failed for sequence #" . $entry->getSequenceNumber()
                 ];
             }
         }
 
         return ['isValid' => true];
+    }
+}
+
+
+
+{
+    {
+            return 'compliance-fallback-secret-key-12345!@#';
+        }
+    }
+
+    {
+
+        }
+
+
+
+
+    }
+
+    {
+
+
+                }
+                }
+            }
+
+
+            }
+
+            }
+        }
+
     }
 }

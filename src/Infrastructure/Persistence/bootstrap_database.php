@@ -14,6 +14,26 @@ if (class_exists(\Dotenv\Dotenv::class)) {
 }
 
 $driver = getenv('DB_CONNECTION') ?: 'pgsql';
+if ($driver === 'pgsql') {
+    if (!extension_loaded('pdo_pgsql')) {
+        $driver = 'sqlite';
+    } else {
+        $pgHost = getenv('DB_HOST') ?: 'db';
+        $pgPort = (int)(getenv('DB_PORT') ?: 5432);
+        $fp = @fsockopen($pgHost, $pgPort, $errno, $errstr, 0.1);
+        if (!$fp) {
+            $driver = 'sqlite';
+        } else {
+            fclose($fp);
+        }
+    }
+}
+
+if ($driver === 'sqlite') {
+    putenv('DB_CONNECTION=sqlite');
+    $_ENV['DB_CONNECTION'] = 'sqlite';
+    $_SERVER['DB_CONNECTION'] = 'sqlite';
+}
 
 $capsule = new Capsule();
 
@@ -22,6 +42,15 @@ if ($driver === 'sqlite') {
     // If it's a relative path, resolve it relative to the project root (4 levels up from this directory)
     if ($dbPath !== ':memory:' && !str_starts_with($dbPath, '/') && !str_contains($dbPath, ':')) {
         $dbPath = __DIR__ . '/../../../' . $dbPath;
+    }
+    if ($dbPath !== ':memory:') {
+        $dir = dirname($dbPath);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0777, true);
+        }
+        if (!file_exists($dbPath)) {
+            @touch($dbPath);
+        }
     }
     $capsule->addConnection([
         'driver'   => 'sqlite',
@@ -46,6 +75,10 @@ $capsule->setAsGlobal();
 $capsule->bootEloquent();
 
 if ($driver === 'sqlite') {
+    try {
+        $capsule->getConnection()->statement('PRAGMA journal_mode=WAL;');
+        $capsule->getConnection()->statement('PRAGMA busy_timeout=10000;');
+    } catch (\Exception $e) {}
     require_once __DIR__ . '/sqlite_setup.php';
     \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
 }

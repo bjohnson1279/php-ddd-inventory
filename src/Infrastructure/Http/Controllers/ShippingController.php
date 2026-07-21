@@ -41,7 +41,6 @@ class ShippingController
 
     public function purchaseLabel(RequestInterface $request, PurchaseShippingLabel $useCase)
     {
-        try {
             $body = json_decode(file_get_contents('php://input'), true) ?: [];
 
             $sku = $body['sku'] ?? null;
@@ -67,19 +66,12 @@ class ShippingController
             return new Response(array_merge([
                 'message' => 'Shipping label purchased successfully.'
             ], $result->toArray()), 201);
-        } catch (Exception $e) {
-            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
-                error_log('[ShippingController.php] ' . $e->getMessage());
-                return new Response(['error' => 'An internal server error occurred.'], 500);
             }
-            $type = (new \ReflectionClass($e))->getShortName();
-            return new Response(['error' => $e->getMessage(), 'type' => $type], 400);
         }
     }
 
     public function getShipments(RequestInterface $request, ShipmentRepositoryInterface $repo)
     {
-        try {
             $shipments = $repo->findAll();
 
             return new Response(array_map(fn($s) => [
@@ -95,10 +87,6 @@ class ShippingController
                 'createdAt' => $s->createdAt->format(\DateTimeInterface::ATOM),
                 'updatedAt' => $s->updatedAt ? $s->updatedAt->format(\DateTimeInterface::ATOM) : null,
             ], $shipments), 200);
-        } catch (Exception $e) {
-            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
-                error_log('[ShippingController.php] ' . $e->getMessage());
-                return new Response(['error' => 'An internal server error occurred.'], 500);
             }
             return new Response(['error' => $e->getMessage()], 400);
         }
@@ -106,8 +94,6 @@ class ShippingController
 
     public function trackShipment(RequestInterface $request, string $id, UpdateShipmentStatus $useCase)
     {
-        try {
-            $body = json_decode(file_get_contents('php://input'), true) ?: [];
             $statusStr = $body['status'] ?? null;
 
             if (empty($statusStr)) {
@@ -122,25 +108,15 @@ class ShippingController
                 'message' => 'Shipment status updated successfully.',
                 'status' => $status->value
             ], 200);
-        } catch (Exception $e) {
-            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
-                error_log('[ShippingController.php] ' . $e->getMessage());
-                return new Response(['error' => 'An internal server error occurred.'], 500);
             }
-            $type = (new \ReflectionClass($e))->getShortName();
-            return new Response(['error' => $e->getMessage(), 'type' => $type], 400);
         }
      }
 
     public function routeOrder(RequestInterface $request, RouteOrder $useCase)
     {
-        try {
-            $body = json_decode(file_get_contents('php://input'), true) ?: [];
 
-            $sku = $body['sku'] ?? null;
             $quantityVal = $body['quantity'] ?? null;
             $quantity = $quantityVal !== null ? (int)$quantityVal : null;
-            $destinationAddress = $body['destinationAddress'] ?? null;
             $strategyName = $body['strategyName'] ?? null;
 
             if (empty($sku) || $quantity === null || empty($destinationAddress)) {
@@ -154,20 +130,63 @@ class ShippingController
                 'quantity' => $a->quantity
             ], $plan->allocations);
 
-            return new Response([
                 'allocations' => $allocations,
                 'estimatedShippingCostCents' => $plan->estimatedShippingCostCents,
                 'totalDistanceKm' => $plan->totalDistanceKm,
                 'splitCount' => $plan->splitCount,
                 'score' => $plan->score
-            ], 200);
-        } catch (Exception $e) {
-            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
-                error_log('[ShippingController.php] ' . $e->getMessage());
-                return new Response(['error' => 'An internal server error occurred.'], 500);
             }
-            $type = (new \ReflectionClass($e))->getShortName();
-            return new Response(['error' => $e->getMessage(), 'type' => $type], 400);
+        }
+    }
+}
+
+
+
+{
+    {
+
+            }
+
+
+            }
+        }
+    }
+
+    {
+
+
+            }
+
+
+            }
+        }
+    }
+
+    {
+
+            }
+        }
+    }
+
+    {
+
+            }
+
+
+
+            }
+        }
+     }
+
+    {
+
+
+            }
+
+
+
+                return new Response(['error' => 'Failed to route order: ' . $e->getMessage()], 500);
+            }
         }
     }
 }

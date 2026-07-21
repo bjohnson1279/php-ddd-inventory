@@ -68,13 +68,6 @@ class ForecastingController
     }
 
     public function generateForecast(
-        RequestInterface $request,
-        ProductRepositoryInterface $productRepo,
-        LedgerRepositoryInterface $ledgerRepo,
-        ReorderPolicyRepositoryInterface $replenishmentRuleRepo,
-        DemandForecastRepositoryInterface $demandForecastRepo
-    ) {
-        try {
             $body = $request->validate([
                 'sku'             => 'required|string',
                 'locationId'      => 'string',
@@ -87,12 +80,6 @@ class ForecastingController
             $forecastDays = isset($body['forecastDays']) ? (int) $body['forecastDays'] : 30;
             $trendMultiplier = isset($body['trendMultiplier']) ? (float) $body['trendMultiplier'] : 1.0;
 
-            $forecaster = new DemandForecaster(
-                $productRepo,
-                $ledgerRepo,
-                $replenishmentRuleRepo,
-                $demandForecastRepo
-            );
 
             $forecast = $forecaster->generateDemandForecast($sku, $locationId, $forecastDays, $trendMultiplier);
 
@@ -109,18 +96,12 @@ class ForecastingController
                     'createdAt'          => $forecast->createdAt->format('Y-m-d\TH:i:s\Z'),
                 ]
             ], 200);
-        } catch (Exception $e) {
-            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
-                error_log('[ForecastingController.php] ' . $e->getMessage());
-                return new Response(['error' => 'An internal server error occurred.'], 500);
             }
-            return new Response(['error' => $e->getMessage()], 400);
         }
     }
 
     public function getStockVelocityReport(RequestInterface $request)
     {
-        try {
             $variantId = $request->query('variantId');
             if (!$variantId) {
                 return new Response(['error' => 'Missing required parameter: variantId'], 400);
@@ -134,12 +115,37 @@ class ForecastingController
             ", ['variant_id' => $variantId]);
 
             return new Response($results, 200);
-        } catch (Exception $e) {
-            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
-                error_log('[ForecastingController.php] ' . $e->getMessage());
-                return new Response(['error' => 'An internal server error occurred.'], 500);
             }
-            return new Response(['error' => $e->getMessage()], 400);
+        }
+    }
+}
+
+
+
+{
+
+
+
+            }
+
+            }
+        }
+    }
+
+
+
+
+
+            }
+        }
+    }
+
+    {
+            }
+
+
+            }
+            return new Response(['error' => 'Failed to fetch stock velocity: ' . $e->getMessage()], 500);
         }
     }
 }

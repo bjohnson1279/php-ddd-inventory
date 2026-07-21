@@ -55,7 +55,7 @@ class EloquentAuditDiscrepancyRepository implements AuditDiscrepancyRepositoryIn
             $query->where('status', $status);
         }
         $models = $query->orderBy('occurred_at', 'desc')->get();
-        
+
         $result = [];
         foreach ($models as $model) {
             $result[] = $this->toDomain($model);

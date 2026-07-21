@@ -33,7 +33,7 @@ class CompleteInventoryCountTest extends TestCase
     {
         $count = InventoryCount::start('c-1');
         $count->recordCount(new SKU('SKU-1'), new LocationId('LOC-STOREFRONT'), new Quantity(15));
-        
+
         $product = Product::create(
             'p-1', new SKU('SKU-1'), 'Test', new Department('D1'), new LocationId('LOC-STOREFRONT'), new Quantity(10)
         );
@@ -41,17 +41,17 @@ class CompleteInventoryCountTest extends TestCase
 
         $this->countRepo->method('findById')->willReturn($count);
         $this->productRepo->method('findBySkus')->willReturn(['SKU-1' => $product]);
-        
+
         $this->countRepo->expects($this->once())->method('save')
             ->with($this->callback(fn(InventoryCount $c) => $c->getStatus()->isCompleted()));
-        
+
         $this->productRepo->expects($this->once())->method('saveAll')
             ->with($this->callback(function (array $products) {
                 return count($products) === 1 && count($products[0]->getPendingTransactions()) === 1;
             }));
 
         (new CompleteInventoryCount($this->countRepo, $this->productRepo, $this->createStub(EventDispatcherInterface::class)))->execute('c-1');
-        
+
         $txns = $product->getPendingTransactions();
         $this->assertEquals(5, $txns[0]->getQuantityChange()); // 15 counted - 10 current = +5 adjustment
     }

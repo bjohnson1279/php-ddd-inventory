@@ -62,7 +62,7 @@ class ReportController
         }
         return $results->groupBy('product_id');
     }
- 
+
     private function fetchCostLayersMap(string $tenantId, array $productSkus): \Illuminate\Support\Collection
     {
         if (empty($productSkus)) {
@@ -80,7 +80,7 @@ class ReportController
         }
         return $results->groupBy('variant_id');
     }
- 
+
     private function fetchCatalogVariantsMap(array $productSkus): \Illuminate\Support\Collection
     {
         if (empty($productSkus)) {

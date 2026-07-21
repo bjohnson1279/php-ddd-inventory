@@ -7,7 +7,6 @@ namespace InventoryApp\Infrastructure\Integration\Xero;
  *
  * Triggered by our domain events (e.g. JournalEntryRecorded) to keep
  * the Xero chart of accounts in sync.
- *
  * @see https://developer.xero.com/documentation/api/accounting/manualjournals
  */
 class XeroJournalSync
@@ -42,7 +41,7 @@ class XeroJournalSync
         $xeroLines = array_map(function ($line) {
             $isCredit = strtolower($line['type']) === 'credit';
             $amount = (float)($line['amountCents'] / 100.0);
-            
+
             // Xero Manual Journals use positive for debits, negative for credits in general ledger lines
             $lineAmount = $isCredit ? -$amount : $amount;
 
@@ -68,15 +67,12 @@ class XeroJournalSync
             CURLOPT_POSTFIELDS     => $body,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
-            CURLOPT_TIMEOUT        => 30,
-            CURLOPT_CONNECTTIMEOUT => 10,
             CURLOPT_HTTPHEADER     => [
                 'Content-Type: application/json',
                 'Accept: application/json',
                 'Xero-tenant-id: ' . $this->tenantId,
                 'Authorization: Bearer ' . $this->accessToken,
             ],
-        ]);
 
         $response   = curl_exec($ch);
         $httpStatus = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -95,5 +91,30 @@ class XeroJournalSync
         }
 
         return (string)$xeroId;
+    }
+}
+
+
+{
+
+    {
+    }
+
+    {
+        }
+
+
+            
+
+
+
+            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_CONNECTTIMEOUT => 10,
+
+
+        }
+
+        }
+
     }
 }

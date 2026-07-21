@@ -7,7 +7,6 @@ namespace InventoryApp\Infrastructure\Integration\Shopify;
  *
  * Triggered by our domain events (e.g. StockReceived, SaleProcessed) to keep
  * the Shopify storefront stock count in sync with our system of record.
- *
  * @see https://shopify.dev/docs/api/admin-rest/inventory-level#set
  */
 class ShopifyInventorySync
@@ -44,13 +43,10 @@ class ShopifyInventorySync
             CURLOPT_POSTFIELDS     => $body,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
-            CURLOPT_TIMEOUT        => 30,
-            CURLOPT_CONNECTTIMEOUT => 10,
             CURLOPT_HTTPHEADER     => [
                 'Content-Type: application/json',
                 'X-Shopify-Access-Token: ' . $this->accessToken,
             ],
-        ]);
 
         $response   = curl_exec($ch);
         $httpStatus = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -64,15 +60,12 @@ class ShopifyInventorySync
         }
     }
 
-    /**
      * Create a product and return its details, including variant id and inventory item id.
-     *
      * @param string $title
      * @param string $sku
      * @param float  $price
      * @param string $productType
      * @return array
-     */
     public function createProduct(string $title, string $sku, float $price, string $productType): array
     {
         if (empty($this->shopDomain) || str_contains($this->shopDomain, 'example.com') || str_contains($this->shopDomain, 'token') || str_contains($this->shopDomain, 'mock')) {
@@ -84,7 +77,6 @@ class ShopifyInventorySync
         }
 
         $url  = "{$this->shopDomain}/admin/api/2024-01/products.json";
-        $body = json_encode([
             'product' => [
                 'title'        => $title,
                 'product_type' => $productType,
@@ -96,31 +88,11 @@ class ShopifyInventorySync
                     ]
                 ]
             ]
-        ]);
 
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => $body,
-            CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_SSL_VERIFYHOST => 2,
-            CURLOPT_TIMEOUT        => 30,
-            CURLOPT_CONNECTTIMEOUT => 10,
-            CURLOPT_HTTPHEADER     => [
-                'Content-Type: application/json',
-                'X-Shopify-Access-Token: ' . $this->accessToken,
-            ],
-        ]);
 
-        $response   = curl_exec($ch);
-        $httpStatus = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
 
         if ($httpStatus !== 201) {
-            throw new \RuntimeException(
                 "Shopify product creation failed (HTTP {$httpStatus}): {$response}"
-            );
         }
 
         $data = json_decode($response, true);
@@ -134,5 +106,33 @@ class ShopifyInventorySync
             'shopify_variant_id'        => (string)$variant['id'],
             'shopify_inventory_item_id' => (string)$variant['inventory_item_id']
         ];
+    }
+}
+
+
+{
+
+    {
+    }
+
+    {
+
+            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_CONNECTTIMEOUT => 10,
+
+
+        }
+    }
+
+    {
+        }
+
+
+
+
+        }
+
+        }
+
     }
 }

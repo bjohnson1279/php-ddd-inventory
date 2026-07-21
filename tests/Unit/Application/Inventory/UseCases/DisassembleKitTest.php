@@ -245,6 +245,7 @@ class DisassembleKitTest extends TestCase
                 return $entry->actorId === 'actor-1'
                     && $entry->referenceId === 'ref-1'
                     && $entry->metadata['locationId'] === 'LOC-1';
+            }));
 
         $this->journalService->expects($this->once())
             ->method('onKitDisassembly')

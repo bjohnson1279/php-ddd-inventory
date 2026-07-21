@@ -99,7 +99,7 @@ class PickingRouteOptimizer
       if ($num > 0) {
           return $num;
       }
-      
+
       $clean = preg_replace('/[^A-Z]/', '', strtoupper($aisle));
       $code = 0;
       for ($i = 0; $i < strlen($clean); $i++) {

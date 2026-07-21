@@ -22,9 +22,12 @@ final class FefoRecallE2ETest extends TestCase
     {
         $output = [];
         $command = "php -S 127.0.0.1:8091 public/index.php > tests/Integration/Http/server_fefo.log 2>&1 & echo $!";
-        
+
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
+
+        $command = "php -S 127.0.0.1:8096 public/index.php > tests/Integration/Http/server_fefo.log 2>&1 & echo $!";
+        
         
         // Wait for server to bind
         for ($i = 0; $i < 50; $i++) {
@@ -161,6 +164,7 @@ final class FefoRecallE2ETest extends TestCase
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
     {
         $url = 'http://127.0.0.1:8091' . $path;
+        $url = 'http://127.0.0.1:8096' . $path;
         $options = [
             'http' => [
                 'header'        => "Content-Type: application/json\r\n",
@@ -176,6 +180,7 @@ final class FefoRecallE2ETest extends TestCase
 
         $context = stream_context_create($options);
         $result = @file_get_contents($url, false, $context);
+
         
         $statusCode = 500;
         if (isset($http_response_header) && isset($http_response_header[0])) {
@@ -186,56 +191,6 @@ final class FefoRecallE2ETest extends TestCase
         return [
             'status' => $statusCode,
             'body'   => json_decode((string)$result, true) ?: $result
-    }
-}
-
-
-
-
-
-{
-
-    {
-        $command = "php -S 127.0.0.1:8096 public/index.php > tests/Integration/Http/server_fefo.log 2>&1 & echo $!";
-        
-        
-            }
-        }
-    }
-
-    {
-        }
-    }
-
-    {
-
-
-
-
-    }
-
-    {
-
-
-
-
-
-
-
-
-
-
-
-    }
-
-    {
-        $url = 'http://127.0.0.1:8096' . $path;
-
-        }
-
-        
-        }
-
     }
 }
 
@@ -321,6 +276,156 @@ final class FefoRecallE2ETest extends TestCase
 
     {
         $url = 'http://127.0.0.1:8093' . $path;
+
+        }
+
+        
+        }
+
+    }
+}
+
+
+
+
+
+{
+
+    {
+        
+        
+            }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+        }
+
+        
+        }
+
+    }
+}
+
+
+
+
+
+{
+
+    {
+        
+        
+            }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+        }
+
+        
+        }
+
+    }
+}
+
+
+
+
+
+{
+
+    {
+        }
+        
+        
+        
+        
+        
+
+        
+            }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+    {
 
         }
 

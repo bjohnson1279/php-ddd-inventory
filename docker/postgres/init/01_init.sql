@@ -182,7 +182,7 @@ CREATE INDEX IF NOT EXISTS idx_ledger_tenant ON ledger_entries(tenant_id);
 -- TimescaleDB Continuous Aggregate for Stock Velocity
 CREATE MATERIALIZED VIEW IF NOT EXISTS daily_stock_velocity
 WITH (timescaledb.continuous) AS
-SELECT 
+SELECT
   time_bucket('1 day', occurred_at) AS bucket,
   tenant_id,
   variant_id,

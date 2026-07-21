@@ -24,7 +24,7 @@ class InventoryCountControllerTest extends TestCase
     {
         $useCase = $this->createMock(StartInventoryCount::class);
         $useCase->expects($this->once())->method('execute');
-        
+
         $request = $this->createMock(RequestInterface::class);
 
         $response = $this->controller->start($request, $useCase);

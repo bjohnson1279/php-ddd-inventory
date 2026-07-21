@@ -21,7 +21,7 @@ class ComplianceLedgerServiceTest extends TestCase
         $this->savedEntries = [];
 
         $this->mockRepo = $this->createMock(ComplianceLedgerRepositoryInterface::class);
-        
+
         // Mock save
         $this->mockRepo->method('save')->willReturnCallback(function (ComplianceLedgerEntry $entry) {
             $this->savedEntries[] = $entry;
@@ -48,7 +48,7 @@ class ComplianceLedgerServiceTest extends TestCase
     public function testLogEventGeneratesValidBlockChain()
     {
         $payload = ['sku' => 'SKU-TEST-1', 'quantity' => 100];
-        
+
         // Log 1st event
         $entry1 = ComplianceLedgerService::logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
         $this->assertEquals(1, $entry1->getSequenceNumber());
@@ -69,7 +69,7 @@ class ComplianceLedgerServiceTest extends TestCase
     public function testValidationFailsIfChainingIsBroken()
     {
         $payload = ['sku' => 'SKU-TEST-1'];
-        
+
         $entry1 = ComplianceLedgerService::logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
         $entry2 = ComplianceLedgerService::logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
 

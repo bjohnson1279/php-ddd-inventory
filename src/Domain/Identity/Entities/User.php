@@ -51,6 +51,9 @@ class User extends AggregateRoot
     }
 
     public static function register(
+        string $id,
+        TenantId $tenantId,
+        string $email,
         string $plainPassword,
         string $name
     ): self {
@@ -71,6 +74,7 @@ class User extends AggregateRoot
                 (($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?? '') === 'testing' || ($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?? '') === 'local') ? PASSWORD_BCRYPT : PASSWORD_ARGON2ID,
                 (($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?? '') === 'testing' || ($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?? '') === 'local') ? ['cost' => 4] : []
             ),
+            password_hash($plainPassword, PASSWORD_ARGON2ID),
             trim($name),
             [Role::createDefault(Role::STAFF)] // default role
         );
@@ -127,6 +131,7 @@ class User extends AggregateRoot
     {
         $this->roles = array_values(
             array_filter($this->roles, fn(Role $r) => $r->getId() !== $roleId)
+        );
     }
 
     public function deactivate(): void
@@ -135,6 +140,8 @@ class User extends AggregateRoot
         $this->recordEvent(new UserDeactivated(
             userId:    $this->id,
             tenantId:  $this->tenantId,
+            occurredOn: new DateTimeImmutable(),
+        ));
     }
 
     public function reactivate(): void

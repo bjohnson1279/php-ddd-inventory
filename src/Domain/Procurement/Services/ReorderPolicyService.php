@@ -52,6 +52,7 @@ class ReorderPolicyService
                 try {
                     $newRop = $forecaster->forecastReorderPoint(
                         $skuStr,
+                        $policy->sku->getValue(),
                         $policy->locationId,
                         5, // default leadTimeDays
                         $policy->safetyStock,
@@ -59,6 +60,7 @@ class ReorderPolicyService
                         $tenantId,
                         $allPos,
                         $product
+                        $tenantId
                     );
                     $policy->updateReorderPoint($newRop);
                     $this->reorderPolicyRepository->save($policy);
@@ -68,6 +70,13 @@ class ReorderPolicyService
                 }
             }
             
+                    error_log("Error forecasting ROP for SKU {$policy->sku->getValue()}: " . $e->getMessage());
+                }
+            }
+
+            $skuStr = $policy->sku->getValue();
+            $product = $productRepo->findBySku($policy->sku);
+
             $currentQty = 0;
             if ($product) {
                 $locationIdObj = new \InventoryApp\Domain\Inventory\ValueObjects\LocationId($policy->locationId);
@@ -78,6 +87,7 @@ class ReorderPolicyService
             $reason = "";
 
             if ($policy->shouldReorder($currentQty)) {
+                $allPos = $this->poRepository->findAll();
                 $alreadyOrdered = false;
                 foreach ($allPos as $po) {
                     if ($po->tenantId !== $tenantId || $po->locationId !== $policy->locationId) {
@@ -108,6 +118,9 @@ class ReorderPolicyService
                         0,
                         0
 
+                        $skuStr,
+                    );
+
                     $po = new PurchaseOrder(
                         $poId,
                         $poNumber,
@@ -117,6 +130,10 @@ class ReorderPolicyService
 
                     $this->poRepository->save($po);
                     $allPos[] = $po; // Bolt optimization: Append new PO to avoid duplicate generation in subsequent iterations
+                        $tenantId,
+                        $policy->locationId,
+                    );
+
                     $triggered = true;
                 } else {
                     $reason = "Open purchase order already exists to prevent duplicate ordering";
@@ -186,6 +203,7 @@ class ReorderPolicyService
                 $poId = Uuid::uuid4()->toString();
                 $itemId = Uuid::uuid4()->toString();
                 
+
                 $item = new PurchaseOrderItem(
                     $itemId,
                     $skuStr,
@@ -202,6 +220,7 @@ class ReorderPolicyService
                     $locationId,
                     PurchaseOrderStatus::Draft,
                     [$item]
+                );
 
                 $this->poRepository->save($po);
             }

@@ -256,6 +256,7 @@ if ($driver === 'sqlite') {
         'demand_forecasts',
         'shipments',
         'outbox_events',
+        'compliance_ledgers'
         'compliance_ledgers',
         'webhook_deliveries',
         'webhook_subscriptions'
@@ -306,6 +307,7 @@ if ($driver === 'sqlite') {
         demand_forecasts,
         shipments,
         outbox_events,
+        compliance_ledgers
         compliance_ledgers,
         webhook_deliveries,
         webhook_subscriptions

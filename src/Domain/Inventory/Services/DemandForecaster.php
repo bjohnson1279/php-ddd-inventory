@@ -98,7 +98,8 @@ class DemandForecaster
         float $trendMultiplier = 1.0,
         ?Product $product = null
     ): DemandForecast {
-        $velocity = $this->calculateSalesVelocity($sku, $locationId, $product);
+        $entries = $this->ledgerRepo->entriesFor($sku->getValue(), $locationId->getValue());
+        $velocity = $this->calculateSalesVelocity($sku, $locationId, $product, $entries);
         $baseQuantity = $velocity['averageDailySales30d'] * $forecastDays;
 
         // --- Seasonal Multiplier Calculation ---
@@ -108,6 +109,8 @@ class DemandForecaster
             return $e->occurredAt >= $oneYearAgo &&
         $now = new DateTimeImmutable();
         $entries = $this->ledgerRepo->entriesFor($sku->getValue(), $locationId->getValue());
+        $velocity = $this->calculateSalesVelocity($sku, $locationId, $product);
+
 
                 $e->quantity < 0 &&
                 ($e->reason === ReasonCode::Sale || $e->reason === ReasonCode::KitSale);
@@ -141,6 +144,7 @@ class DemandForecaster
         $periodEnd = $periodStart->modify('+' . $forecastDays . ' days');
 
         $confidenceLevel = $velocity['averageDailySales30d'] > 0 ? (abs($seasonalMultiplier - 1.0) > 0.001 ? 0.90 : 0.85) : 0.5;
+        $confidenceLevel = $velocity['averageDailySales30d'] > 0 ? ($seasonalMultiplier != 1.0 ? 0.90 : 0.85) : 0.5;
         $confidenceLevel = $velocity['averageDailySales30d'] > 0 ? (abs($seasonalMultiplier - 1.0) > 1e-6 ? 0.90 : 0.85) : 0.5;
 
         $id = new DemandForecastId(\Ramsey\Uuid\Uuid::uuid4()->toString());
@@ -201,6 +205,10 @@ class DemandForecaster
         }
 
         $policies = $this->replenishmentRuleRepo->findBySkusAndLocation($skuObjects, $locationId->getValue());
+        $policyMap = [];
+        foreach ($policies as $p) {
+            $policyMap[$p->sku->getValue()] = $p;
+        }
 
         $reportItems = [];
         foreach ($skuStrings as $skuStr) {
@@ -215,6 +223,8 @@ class DemandForecaster
             $policy = $this->replenishmentRuleRepo->findBySkuAndLocation($sku, $locationId->getValue());
             // This leverages the existing $entriesBySku and $policies pre-fetched above.
             $velocity = $this->calculateSalesVelocity($sku, $locationId, $product, $entriesBySku[$skuStr] ?? []);
+            $policy = $policyMap[$skuStr] ?? null;
+            // This leverages the existing $entriesBySku and $policies pre-fetched above.
             $policy = $policies[$skuStr] ?? null;
 
             $reorderPoint = $policy ? $policy->reorderPoint : 10;
@@ -275,6 +285,7 @@ class DemandForecaster
 
 {
 
+    public function calculateSalesVelocity(SKU $sku, LocationId $locationId, ?Product $product = null): array
     {
         }
 
@@ -294,6 +305,7 @@ class DemandForecaster
 
     }
 
+        $velocity = $this->calculateSalesVelocity($sku, $locationId, $product);
 
 
 
@@ -318,6 +330,7 @@ class DemandForecaster
     {
 
 
+        $policies = $this->replenishmentRuleRepo->findAllByLocation($locationId->getValue());
         }
 
         }
@@ -325,6 +338,8 @@ class DemandForecaster
 
             }
 
+            $velocity = $this->calculateSalesVelocity($sku, $locationId, $product);
+            $policy = $this->replenishmentRuleRepo->findBySkuAndLocation($sku, $locationId->getValue());
 
 
 

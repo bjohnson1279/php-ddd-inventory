@@ -23,7 +23,9 @@ class CreateCostLayerListenerTest extends TestCase
 
     protected function setUp(): void
     {
-        // bootstrap.php already ran, so DB is available and truncated
+        DB::table('catalog_variants')->delete();
+        DB::table('catalog_products')->delete();
+        DB::table('inventory_cost_layers')->delete();
 
         // Ensure price cache is empty between tests
         $reflection = new \ReflectionClass(CreateCostLayerListener::class);

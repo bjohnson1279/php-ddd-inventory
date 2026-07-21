@@ -12,19 +12,53 @@ require_once __DIR__ . '/../bootstrap.php';
 /** @group integration */
 final class ComplianceE2ETest extends TestCase
 {
-    private static ?int $pid = null;
+    private static $serverProcess = null;
     private string $tenantId;
     private string $email;
     private string $password;
     private ?string $token = null;
 
-    public static function setUpBeforeClass(): void
+        public static function setUpBeforeClass(): void
     {
-        $output = [];
-        $command = "php -S 127.0.0.1:8092 public/index.php > tests/Integration/Http/server_compliance.log 2>&1 & echo $!";
+        $baseDir = realpath(__DIR__ . '/../../..');
+        $dbPath = $baseDir . '/storage/data/test_compliancee2etest.sqlite';
+        if (!file_exists($dbPath)) {
+            @mkdir(dirname($dbPath), 0777, true);
+            @touch($dbPath);
+        }
+        $extDir = 'C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext';
+        $phpExec = PHP_BINARY . ' -d extension_dir="C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext" -d extension=pdo -d extension=mbstring -d extension=pdo_sqlite';
+        $cmd = $phpExec . ' -S 127.0.0.1:8094 public/index.php';
         
-        exec($command, $output);
-        self::$pid = (int)($output[0] ?? 0);
+        $descriptors = [
+            0 => ["pipe", "r"],
+            1 => ["file", __DIR__ . '/server_compliancee2etest.log', "a"],
+            2 => ["file", __DIR__ . '/server_compliancee2etest.log', "a"],
+        ];
+        
+        $env = array_merge($_ENV, [
+            'DB_CONNECTION' => 'sqlite',
+            'DB_DATABASE' => $dbPath,
+            'APP_ENV' => 'testing',
+        ]);
+        
+                putenv("DB_DATABASE={$dbPath}");
+        $_ENV['DB_DATABASE'] = $dbPath;
+        $_SERVER['DB_DATABASE'] = $dbPath;
+        
+        $capsule = new \Illuminate\Database\Capsule\Manager();
+        $capsule->addConnection([
+            'driver'   => 'sqlite',
+            'database' => $dbPath,
+            'prefix'   => '',
+        ]);
+        $capsule->setAsGlobal();
+        $capsule->bootEloquent();
+        
+        require_once __DIR__ . '/../../../src/Infrastructure/Persistence/sqlite_setup.php';
+        \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
+
+        self::$serverProcess = proc_open($cmd, $descriptors, $pipes, $baseDir, $env);
         
         // Wait for server to bind
         for ($i = 0; $i < 50; $i++) {
@@ -33,14 +67,16 @@ final class ComplianceE2ETest extends TestCase
                 fclose($fp);
                 break;
             }
-            usleep(50000);
+            usleep(50000); // 50ms
         }
     }
 
-    public static function tearDownAfterClass(): void
+        public static function tearDownAfterClass(): void
     {
-        if (self::$pid) {
-            exec("kill " . self::$pid . " > /dev/null 2>&1");
+        if (self::$serverProcess && is_resource(self::$serverProcess)) {
+            proc_terminate(self::$serverProcess);
+            proc_close(self::$serverProcess);
+            self::$serverProcess = null;
         }
     }
 
@@ -51,8 +87,8 @@ final class ComplianceE2ETest extends TestCase
         Capsule::table('users')->delete();
         Capsule::table('user_roles')->delete();
         Capsule::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
-        Capsule::table('catalog_variants')->truncate();
-        Capsule::table('catalog_products')->truncate();
+        Capsule::table('catalog_variants')->delete();
+        Capsule::table('catalog_products')->delete();
         Capsule::table('locations')->where('id', '!=', 'LOC-INT')->delete();
 
         $suffix = bin2hex(random_bytes(4));
@@ -138,7 +174,7 @@ final class ComplianceE2ETest extends TestCase
 
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
     {
-        $url = 'http://127.0.0.1:8092' . $path;
+        $url = 'http://127.0.0.1:8094' . $path;
         $options = [
             'http' => [
                 'header'        => "Content-Type: application/json\r\n",

@@ -55,6 +55,8 @@ class DemandForecaster
 
         $history7d = array_filter($history30d, function ($e) use ($sevenDaysAgo) {
             return $e->occurredAt >= $sevenDaysAgo;
+        });
+
 
         $locationStock = $product->getStockAt($locationId);
         $currentStock = $locationStock->getStockQuantity()->getValue();
@@ -103,6 +105,13 @@ class DemandForecaster
 
         $dispatches = array_filter($entries, function ($e) use ($oneYearAgo) {
             return $e->occurredAt >= $oneYearAgo &&
+        $velocity = $this->calculateSalesVelocity($sku, $locationId, $product);
+
+        $now = new DateTimeImmutable();
+
+                $e->quantity < 0 &&
+                ($e->reason === ReasonCode::Sale || $e->reason === ReasonCode::KitSale);
+        });
 
         $seasonalMultiplier = 1.0;
         if (!empty($dispatches)) {
@@ -132,6 +141,7 @@ class DemandForecaster
         $periodEnd = $periodStart->modify('+' . $forecastDays . ' days');
 
         $confidenceLevel = $velocity['averageDailySales30d'] > 0 ? ($seasonalMultiplier != 1.0 ? 0.90 : 0.85) : 0.5;
+        $confidenceLevel = $velocity['averageDailySales30d'] > 0 ? (abs($seasonalMultiplier - 1.0) > 1e-6 ? 0.90 : 0.85) : 0.5;
 
         $id = new DemandForecastId(\Ramsey\Uuid\Uuid::uuid4()->toString());
 
@@ -177,6 +187,11 @@ class DemandForecaster
 
         $products = $this->productRepo->findBySkus($skuObjects);
         $forecasts = $this->demandForecastRepo->findAllForLocation($locationId);
+        $policies = $this->replenishmentRuleRepo->findAllByLocation($locationId->getValue());
+        $policyMap = [];
+        foreach ($policies as $p) {
+            $policyMap[$p->sku->getValue()] = $p;
+        }
 
         // Batched lookups to prevent N+1
         $allEntries = $this->ledgerRepo->entriesForSkusAndLocation($skuStrings, $locationId->getValue());
@@ -202,6 +217,8 @@ class DemandForecaster
             // ⚡ Bolt: Pass the pre-fetched $product to prevent N+1 query inside calculateSalesVelocity.
             $velocity = $this->calculateSalesVelocity($sku, $locationId, $product, $entriesBySku[$skuStr] ?? []);
             $policy = $policyMap[$skuStr] ?? null;
+            // This leverages the existing $entriesBySku and $policies pre-fetched above.
+            $policy = $policies[$skuStr] ?? null;
 
             $reorderPoint = $policy ? $policy->reorderPoint : 10;
             $reorderQuantity = $policy ? $policy->reorderQuantity : 20;

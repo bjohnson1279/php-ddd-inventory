@@ -73,6 +73,13 @@
 ## 2026-07-18 - Isolated HTTP Server Databases in Integration Tests
 **Learning:** When using `php -S` to spawn background servers for local integration tests, the spawned process executes in a completely separate memory space. If `DB_CONNECTION=sqlite` and `DB_DATABASE=:memory:` are used, the test process and the background server process will each create their own, totally isolated in-memory SQLite databases, causing HTTP requests to fail when looking for data seeded by the test's `setUp` method. Additionally, if the test runner doesn't explicitly pass the `DB_*` environment variables down to the `php -S` sub-process, the background server will fall back to its defaults (e.g., trying to connect to a default `pgsql` database).
 **Action:** When writing HTTP E2E integration tests that spawn a background `php -S` server, always explicitly export and pass the `DB_*` environment variables directly into the command string (e.g., `DB_CONNECTION={$dbConn} ... php -S ...`). When testing locally with SQLite, never use `:memory:`; instead, use a shared physical SQLite file (like `storage/data/test.sqlite`) so both processes can interact with the same database state.
+## 2026-07-16 - N+1 Query in DemandForecaster bulk evaluation
+**Learning:** In bulk reporting operations (like ), helper methods inside loops (like ) can trigger N+1 queries if they internally perform database lookups, even if the parent method pre-fetches the data into maps.
+**Action:** When a method is called in a loop and performs database lookups, modify its signature to accept optional pre-fetched arrays (e.g. ). In the loop, pass the pre-fetched mapped data downward instead of relying on the method's internal fallback lookups.
+
+## 2024-07-16 - N+1 Query in DemandForecaster bulk evaluation
+**Learning:** In bulk reporting operations (like DemandForecaster::getDemandPlanningReport), helper methods inside loops (like calculateSalesVelocity) can trigger N+1 queries if they internally perform database lookups, even if the parent method pre-fetches the data into maps. Also, looping over arrays that have already been queried (e.g. findAll) to look up specific entities (e.g. findBySkuAndLocation) triggers N+1.
+**Action:** When a method is called in a loop and performs database lookups, modify its signature to accept optional pre-fetched arrays (e.g. ?array $entries = null). In the loop, pass the pre-fetched mapped data downward instead of relying on the method's internal fallback lookups. For repositories returning maps, directly access array keys.
 
 
 

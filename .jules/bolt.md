@@ -73,3 +73,16 @@
 ## 2026-07-18 - Isolated HTTP Server Databases in Integration Tests
 **Learning:** When using `php -S` to spawn background servers for local integration tests, the spawned process executes in a completely separate memory space. If `DB_CONNECTION=sqlite` and `DB_DATABASE=:memory:` are used, the test process and the background server process will each create their own, totally isolated in-memory SQLite databases, causing HTTP requests to fail when looking for data seeded by the test's `setUp` method. Additionally, if the test runner doesn't explicitly pass the `DB_*` environment variables down to the `php -S` sub-process, the background server will fall back to its defaults (e.g., trying to connect to a default `pgsql` database).
 **Action:** When writing HTTP E2E integration tests that spawn a background `php -S` server, always explicitly export and pass the `DB_*` environment variables directly into the command string (e.g., `DB_CONNECTION={$dbConn} ... php -S ...`). When testing locally with SQLite, never use `:memory:`; instead, use a shared physical SQLite file (like `storage/data/test.sqlite`) so both processes can interact with the same database state.
+
+
+
+
+
+
+
+
+
+
+
+
+

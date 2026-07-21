@@ -41,7 +41,7 @@ class AccountingJournalServiceTest extends TestCase
         $this->assertNotNull($entry);
         $this->assertEquals(AccountingMethod::Accrual, $entry->method);
         $this->assertCount(2, $entry->lines());
-        
+
         $lines = $entry->lines();
         $this->assertEquals(AccountCode::inventory()->code, $lines[0]->account->code);
         $this->assertEquals(DebitCredit::Debit, $lines[0]->type);
@@ -79,7 +79,7 @@ class AccountingJournalServiceTest extends TestCase
 
         $this->assertNotNull($entry);
         $this->assertEquals(AccountingMethod::Cash, $entry->method);
-        
+
         $lines = $entry->lines();
         $this->assertEquals(AccountCode::inventoryExpense()->code, $lines[0]->account->code);
     }
@@ -99,7 +99,7 @@ class AccountingJournalServiceTest extends TestCase
 
         $this->assertNotNull($entry);
         $this->assertEquals(AccountingMethod::Accrual, $entry->method);
-        
+
         $lines = $entry->lines();
         $this->assertEquals(AccountCode::accountsPayable()->code, $lines[0]->account->code);
         $this->assertEquals(DebitCredit::Debit, $lines[0]->type);
@@ -119,11 +119,11 @@ class AccountingJournalServiceTest extends TestCase
 
         $this->assertNotNull($entry);
         $this->assertCount(4, $entry->lines()); // DR Cash, CR Revenue, DR COGS, CR Inventory
-        
+
         $lines = $entry->lines();
         $this->assertEquals(AccountCode::cash()->code, $lines[0]->account->code);
         $this->assertEquals(1000, $lines[0]->amountCents);
-        
+
         $this->assertEquals(AccountCode::costOfGoodsSold()->code, $lines[2]->account->code);
         $this->assertEquals(400, $lines[2]->amountCents);
     }

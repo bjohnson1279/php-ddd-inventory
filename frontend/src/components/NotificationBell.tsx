@@ -102,8 +102,8 @@ export default function NotificationBell() {
 
   return (
     <div className="notification-bell-container" ref={dropdownRef}>
-      <button 
-        className="btn-secondary notification-bell-button" 
+      <button
+        className="btn-secondary notification-bell-button"
         onClick={() => setIsOpen(!isOpen)}
         style={{ position: 'relative', padding: '0' }}
         aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications, no unread notifications'}
@@ -132,8 +132,8 @@ export default function NotificationBell() {
               notifications.map((n) => {
                 const style = getTypeStyle(n.type);
                 return (
-                  <div 
-                    key={n.id} 
+                  <div
+                    key={n.id}
                     className={`notification-item ${n.is_read ? 'read' : 'unread'}`}
                     onClick={() => !n.is_read && handleMarkAsRead(n.id)}
                     onKeyDown={n.is_read ? undefined : (e) => {
@@ -147,8 +147,8 @@ export default function NotificationBell() {
                     aria-label={n.is_read ? undefined : `${n.title}: ${n.message} at ${new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. Unread`}
                   >
                     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
-                      <span 
-                        className="notification-type-dot" 
+                      <span
+                        className="notification-type-dot"
                         style={{ backgroundColor: style.color }}
                       />
                       <div style={{ flex: 1 }}>

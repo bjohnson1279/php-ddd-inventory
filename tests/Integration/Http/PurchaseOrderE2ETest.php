@@ -23,10 +23,10 @@ final class PurchaseOrderE2ETest extends TestCase
         // Start built-in PHP development server in the background on port 8086
         $output = [];
         $command = "php -S 127.0.0.1:8086 public/index.php > tests/Integration/Http/server_po.log 2>&1 & echo $!";
-        
+
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
-        
+
         // Wait for server to bind
         for ($i = 0; $i < 50; $i++) {
             $fp = @fsockopen('127.0.0.1', 8086, $errno, $errstr, 0.1);
@@ -79,7 +79,6 @@ final class PurchaseOrderE2ETest extends TestCase
             'tenant_id' => $this->tenantId,
             'email'     => $this->email,
             'password'  => $this->password,
-        ]);
 
         $this->assertEquals(200, $loginRes['status'], json_encode($loginRes));
         $this->token = $loginRes['body']['token'];
@@ -87,13 +86,11 @@ final class PurchaseOrderE2ETest extends TestCase
         // Seed product
         Capsule::table('products')->insert([
             'id' => uuidv4(),
-            'tenant_id' => $this->tenantId,
             'sku' => 'CAT-SKU-1',
             'name' => 'Test Product',
             'department' => 'Test Department',
             'reorder_threshold' => 10,
             'version_id' => 1
-        ]);
     }
 
     public function testPurchaseOrderLifecycle(): void
@@ -131,28 +128,21 @@ final class PurchaseOrderE2ETest extends TestCase
         $approveRes = $this->request('POST', "/api/purchase-orders/{$poId}/approve", [], $this->token);
         $this->assertEquals(200, $approveRes['status'], json_encode($approveRes));
 
-        $getRes = $this->request('GET', "/api/purchase-orders/{$poId}", [], $this->token);
         $this->assertEquals('APPROVED', $getRes['body']['status']);
 
         // 4. Send the Purchase Order
         $sendRes = $this->request('POST', "/api/purchase-orders/{$poId}/send", [], $this->token);
         $this->assertEquals(200, $sendRes['status'], json_encode($sendRes));
 
-        $getRes = $this->request('GET', "/api/purchase-orders/{$poId}", [], $this->token);
         $this->assertEquals('SENT', $getRes['body']['status']);
 
         // 5. Receive partially (20 items)
         $receiveRes1 = $this->request('POST', "/api/purchase-orders/{$poId}/receive", [
             'items' => [
-                [
                     'variantId'        => 'CAT-SKU-1',
                     'quantityReceived' => 20
-                ]
-            ]
-        ], $this->token);
         $this->assertEquals(200, $receiveRes1['status'], json_encode($receiveRes1));
 
-        $getRes = $this->request('GET', "/api/purchase-orders/{$poId}", [], $this->token);
         $this->assertEquals('PARTIALLY_RECEIVED', $getRes['body']['status']);
         $this->assertEquals(20, $getRes['body']['items'][0]['receivedQuantity']);
 
@@ -164,10 +154,7 @@ final class PurchaseOrderE2ETest extends TestCase
         // The SKU corresponds to products in the DB, so we look up by sku
         $prod = Capsule::table('products')->where('sku', 'CAT-SKU-1')->where('tenant_id', $this->tenantId)->first();
         $this->assertNotNull($prod);
-        $stockLevel = Capsule::table('product_locations')
             ->where('product_id', $prod->id)
-            ->where('location_id', 'LOC-INT')
-            ->first();
         $this->assertEquals(20, $stockLevel->stock_quantity);
 
         // Assert cost layer was created
@@ -175,7 +162,6 @@ final class PurchaseOrderE2ETest extends TestCase
             ->where('tenant_id', $this->tenantId)
             ->where('variant_id', 'CAT-SKU-1')
             ->where('purchase_order_id', $poId)
-            ->first();
         $this->assertNotNull($costLayer);
         $this->assertEquals(20, $costLayer->original_quantity);
         $this->assertEquals(1000, $costLayer->unit_cost_cents);
@@ -183,31 +169,17 @@ final class PurchaseOrderE2ETest extends TestCase
 
         // 6. Receive remaining (30 items)
         $receiveRes2 = $this->request('POST', "/api/purchase-orders/{$poId}/receive", [
-            'items' => [
-                [
-                    'variantId'        => 'CAT-SKU-1',
                     'quantityReceived' => 30
-                ]
-            ]
-        ], $this->token);
         $this->assertEquals(200, $receiveRes2['status'], json_encode($receiveRes2));
 
-        $getRes = $this->request('GET', "/api/purchase-orders/{$poId}", [], $this->token);
         $this->assertEquals('RECEIVED', $getRes['body']['status']);
         $this->assertEquals(50, $getRes['body']['items'][0]['receivedQuantity']);
 
         // Assert stock has increased to 50
-        $stockLevel = Capsule::table('product_locations')
-            ->where('product_id', $prod->id)
-            ->where('location_id', 'LOC-INT')
-            ->first();
         $this->assertEquals(50, $stockLevel->stock_quantity);
 
         // Assert second cost layer was created
         $costLayers = Capsule::table('inventory_cost_layers')
-            ->where('tenant_id', $this->tenantId)
-            ->where('variant_id', 'CAT-SKU-1')
-            ->where('purchase_order_id', $poId)
             ->get();
         $this->assertCount(2, $costLayers);
         $quantities = $costLayers->pluck('original_quantity')->all();
@@ -217,23 +189,17 @@ final class PurchaseOrderE2ETest extends TestCase
 
     public function testPurchaseOrderRbacPermissions(): void
     {
-        $suffix = bin2hex(random_bytes(4));
         // 1. Invite new user
         $inviteRes = $this->request('POST', '/api/users', [
             'email' => "staff-{$suffix}@example.com",
-        ], $this->token);
-        
+
         $this->assertEquals(201, $inviteRes['status'], json_encode($inviteRes));
         $viewerUserId = $inviteRes['body']['user_id'];
         $tempPassword = $inviteRes['body']['temporary_password'];
 
         // 2. Login as staff
-        $loginRes = $this->request('POST', '/api/auth/login', [
-            'tenant_id' => $this->tenantId,
             'email'     => "staff-{$suffix}@example.com",
             'password'  => $tempPassword,
-        ]);
-        $this->assertEquals(200, $loginRes['status'], json_encode($loginRes));
         $staffToken = $loginRes['body']['token'];
 
         // Assign staff role explicitly to ensure clean RBAC state
@@ -241,39 +207,13 @@ final class PurchaseOrderE2ETest extends TestCase
         Capsule::table('user_roles')->insert([
             'user_id' => $viewerUserId,
             'role_id' => 'staff'
-        ]);
 
         // 3. Try to create PO as staff -> should fail (403)
-        $poNumber = 'PO-' . bin2hex(random_bytes(4));
-        $createRes = $this->request('POST', '/api/purchase-orders', [
-            'purchaseOrderNumber' => $poNumber,
-            'vendorId'            => 'VENDOR-123',
-            'tenantId'            => $this->tenantId,
-            'locationId'          => 'LOC-INT',
-            'items'               => [
-                [
-                    'variantId'     => 'CAT-SKU-1',
-                    'quantity'      => 50,
-                    'unitCostCents' => 1000
-                ]
-            ]
         ], $staffToken);
         $this->assertEquals(403, $createRes['status']);
 
         // Admin creates it
         $adminCreateRes = $this->request('POST', '/api/purchase-orders', [
-            'purchaseOrderNumber' => $poNumber,
-            'vendorId'            => 'VENDOR-123',
-            'tenantId'            => $this->tenantId,
-            'locationId'          => 'LOC-INT',
-            'items'               => [
-                [
-                    'variantId'     => 'CAT-SKU-1',
-                    'quantity'      => 50,
-                    'unitCostCents' => 1000
-                ]
-            ]
-        ], $this->token);
         $this->assertEquals(201, $adminCreateRes['status']);
         $poId = $adminCreateRes['body']['id'];
 
@@ -284,7 +224,6 @@ final class PurchaseOrderE2ETest extends TestCase
         // 5. Try to get PO as staff -> should succeed (200) since staff has read permission
         $getRes = $this->request('GET', "/api/purchase-orders/{$poId}", [], $staffToken);
         $this->assertEquals(200, $getRes['status']);
-        $this->assertEquals('DRAFT', $getRes['body']['status']);
     }
 
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
@@ -296,7 +235,6 @@ final class PurchaseOrderE2ETest extends TestCase
                 'method'        => $method,
                 'content'       => json_encode($body),
                 'ignore_errors' => true,
-            ]
         ];
 
         if ($token) {
@@ -305,7 +243,7 @@ final class PurchaseOrderE2ETest extends TestCase
 
         $context = stream_context_create($options);
         $result = @file_get_contents($url, false, $context);
-        
+
         $statusCode = 500;
         if (isset($http_response_header) && isset($http_response_header[0])) {
             preg_match('{HTTP\/\S*\s(\d{3})}', $http_response_header[0], $match);
@@ -316,6 +254,173 @@ final class PurchaseOrderE2ETest extends TestCase
         return [
             'status' => $statusCode,
             'body'   => (json_last_error() === JSON_ERROR_NONE) ? $decoded : $result
-        ];
+    }
+}
+
+
+
+
+
+{
+    private static $serverProcess = null;
+
+        public static function setUpBeforeClass(): void
+    {
+        $baseDir = realpath(__DIR__ . '/../../..');
+        $dbPath = $baseDir . '/storage/data/test_purchaseordere2etest.sqlite';
+        if (!file_exists($dbPath)) {
+            @mkdir(dirname($dbPath), 0777, true);
+            @touch($dbPath);
+        }
+        $extDir = 'C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext';
+        $phpExec = PHP_BINARY . ' -d extension_dir="C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext" -d extension=pdo -d extension=mbstring -d extension=pdo_sqlite';
+        $cmd = $phpExec . ' -S 127.0.0.1:8086 public/index.php';
+        
+        $descriptors = [
+            0 => ["pipe", "r"],
+            1 => ["file", __DIR__ . '/server_purchaseordere2etest.log', "a"],
+            2 => ["file", __DIR__ . '/server_purchaseordere2etest.log', "a"],
+        
+        $env = array_merge($_ENV, [
+            'DB_CONNECTION' => 'sqlite',
+            'DB_DATABASE' => $dbPath,
+            'APP_ENV' => 'testing',
+        
+                putenv("DB_DATABASE={$dbPath}");
+        $_ENV['DB_DATABASE'] = $dbPath;
+        $_SERVER['DB_DATABASE'] = $dbPath;
+        
+        $capsule = new \Illuminate\Database\Capsule\Manager();
+        $capsule->addConnection([
+            'driver'   => 'sqlite',
+            'database' => $dbPath,
+            'prefix'   => '',
+        $capsule->setAsGlobal();
+        $capsule->bootEloquent();
+        
+        require_once __DIR__ . '/../../../src/Infrastructure/Persistence/sqlite_setup.php';
+        \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
+
+        self::$serverProcess = proc_open($cmd, $descriptors, $pipes, $baseDir, $env);
+        
+            }
+        }
+    }
+
+        public static function tearDownAfterClass(): void
+    {
+        if (self::$serverProcess && is_resource(self::$serverProcess)) {
+            proc_terminate(self::$serverProcess);
+            proc_close(self::$serverProcess);
+            self::$serverProcess = null;
+        }
+    }
+
+    {
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+    {
+        
+
+
+
+
+
+
+    }
+
+    {
+
+        }
+
+        
+        }
+
+    }
+}
+
+
+
+
+
+{
+
+    {
+        
+        
+            }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+    {
+        
+
+
+
+
+
+
+    }
+
+    {
+
+        }
+
+        
+        }
+
     }
 }

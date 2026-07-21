@@ -183,5 +183,3 @@ Run the compliance verification pipeline to check the integrity of block hashes 
 *   **Method**: `POST`
 *   **Query**: `?tenantId=tenant-1` (Optional)
 *   **Response**: `200 OK` with `{ "isValid": true }` or a detailed error structure.
-
-

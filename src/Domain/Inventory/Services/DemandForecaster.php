@@ -23,6 +23,7 @@ class DemandForecaster
         private readonly DemandForecastRepositoryInterface $demandForecastRepo
     ) {}
 
+    public function calculateSalesVelocity(SKU $sku, LocationId $locationId, ?Product $product = null): array
     public function calculateSalesVelocity(SKU $sku, LocationId $locationId, ?Product $product = null, ?array $entries = null): array
     {
         // ⚡ Bolt: Use injected product if provided to prevent N+1 redundant queries.
@@ -31,6 +32,7 @@ class DemandForecaster
             throw new \Exception("Product not found for SKU: " . $sku->getValue());
         }
 
+        $entries = $this->ledgerRepo->entriesFor($sku->getValue(), $locationId->getValue());
         $entries = $entries ?? $this->ledgerRepo->entriesFor($sku->getValue(), $locationId->getValue());
 
         return $this->calculateSalesVelocityFromData($product, $locationId, $entries);
@@ -215,6 +217,9 @@ class DemandForecaster
             }
 
             // ⚡ Bolt: Pass the pre-fetched $product to prevent N+1 query inside calculateSalesVelocity.
+            $velocity = $this->calculateSalesVelocity($sku, $locationId, $product);
+            $policy = $this->replenishmentRuleRepo->findBySkuAndLocation($sku, $locationId->getValue());
+            // This leverages the existing $entriesBySku and $policies pre-fetched above.
             $velocity = $this->calculateSalesVelocity($sku, $locationId, $product, $entriesBySku[$skuStr] ?? []);
             $policy = $policyMap[$skuStr] ?? null;
             // This leverages the existing $entriesBySku and $policies pre-fetched above.

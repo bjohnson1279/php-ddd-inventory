@@ -22,11 +22,11 @@ class KafkaMessageBroker
         try {
             $conf = new \RdKafka\Conf();
             $conf->set('metadata.broker.list', $this->brokerUrl);
-            
+
             $producer = new \RdKafka\Producer($conf);
             $topic = $producer->newTopic($topicName);
 
-            $occurredAt = method_exists($event, 'occurredOn') 
+            $occurredAt = method_exists($event, 'occurredOn')
                 ? $event->occurredOn()->format(\DateTimeInterface::ATOM)
                 : date('c');
 

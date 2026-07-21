@@ -23,7 +23,7 @@ do {
                 ->orderBy('available_at', 'asc')
                 ->lockForUpdate()
                 ->first();
-                
+
             if ($job) {
                 $job->attempts = $job->attempts + 1;
                 DB::table('queued_jobs')
@@ -59,7 +59,7 @@ do {
 
         // Reconstruct event object from serialized data
         $event = unserialize(base64_decode($job->event_data));
-        
+
         // Resolve listener dependencies (e.g. SyncStockToShopify, NotificationListener)
         $listener = resolveListener($job->listener_class, $job->tenant_id);
 

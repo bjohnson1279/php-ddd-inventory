@@ -20,52 +20,70 @@ class EloquentLedgerRepository implements LedgerRepositoryInterface
 
     public function append(LedgerEntry $entry): void
     {
-        LedgerEntryModel::create([
-            'id'           => $entry->id ?: Uuid::uuid4()->toString(),
-            'tenant_id'    => $this->tenantId,
-            'variant_id'   => $entry->variantId,
-            'quantity'     => $entry->quantity,
-            'reason'       => $entry->reason->value,
-            'actor_id'     => $entry->actorId,
-            'reference_id' => $entry->referenceId,
-            'occurred_at'  => $entry->occurredAt->format('Y-m-d H:i:s'),
-            'metadata'     => $entry->metadata,
-            'created_at'   => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
-        ]);
+        $this->appendAll([$entry]);
+    }
 
-        try {
-            \InventoryApp\Domain\Compliance\Services\ComplianceLedgerService::logEvent(
-                $this->tenantId,
-                $entry->actorId ?: 'system',
-                'STOCK_ADJUSTED',
-                [
-                    'variant_id'   => $entry->variantId,
-                    'quantity'     => $entry->quantity,
-                    'reason'       => $entry->reason->value,
-                    'reference_id' => $entry->referenceId,
-                    'occurred_at'  => $entry->occurredAt->format('Y-m-d H:i:s')
-                ]
-            );
-        } catch (\Throwable $e) {
-            error_log('Failed to log event to compliance ledger: ' . $e->getMessage());
+    public function appendAll(array $entries): void
+    {
+        if (empty($entries)) {
+            return;
         }
 
-        try {
-            $metadata = is_string($entry->metadata) ? json_decode($entry->metadata, true) : $entry->metadata;
-            $locId = $metadata['locationId'] ?? 'unknown';
+        $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        $insertData = [];
 
-            (new \InventoryApp\Application\Notification\Services\NotificationService())->createNotification(
-                $this->tenantId,
-                "Stock Level Updated",
-                json_encode([
-                    'sku'        => $entry->variantId,
-                    'locationId' => $locId,
-                    'quantity'   => (int) $entry->quantity
-                ]),
-                'stock_changed'
-            );
-        } catch (\Throwable $e) {
-            error_log('Failed to create stock_changed notification: ' . $e->getMessage());
+        foreach ($entries as $entry) {
+            $insertData[] = [
+                'id'           => $entry->id ?: Uuid::uuid4()->toString(),
+                'tenant_id'    => $this->tenantId,
+                'variant_id'   => $entry->variantId,
+                'quantity'     => $entry->quantity,
+                'reason'       => $entry->reason->value,
+                'actor_id'     => $entry->actorId,
+                'reference_id' => $entry->referenceId,
+                'occurred_at'  => $entry->occurredAt->format('Y-m-d H:i:s'),
+                'metadata'     => json_encode($entry->metadata),
+                'created_at'   => $now,
+            ];
+        }
+
+        LedgerEntryModel::insert($insertData);
+
+        foreach ($entries as $entry) {
+            try {
+                \InventoryApp\Domain\Compliance\Services\ComplianceLedgerService::logEvent(
+                    $this->tenantId,
+                    $entry->actorId ?: 'system',
+                    'STOCK_ADJUSTED',
+                    [
+                        'variant_id'   => $entry->variantId,
+                        'quantity'     => $entry->quantity,
+                        'reason'       => $entry->reason->value,
+                        'reference_id' => $entry->referenceId,
+                        'occurred_at'  => $entry->occurredAt->format('Y-m-d H:i:s')
+                    ]
+                );
+            } catch (\Throwable $e) {
+                error_log('Failed to log event to compliance ledger: ' . $e->getMessage());
+            }
+
+            try {
+                $metadata = is_string($entry->metadata) ? json_decode($entry->metadata, true) : $entry->metadata;
+                $locId = $metadata['locationId'] ?? 'unknown';
+
+                (new \InventoryApp\Application\Notification\Services\NotificationService())->createNotification(
+                    $this->tenantId,
+                    "Stock Level Updated",
+                    json_encode([
+                        'sku'        => $entry->variantId,
+                        'locationId' => $locId,
+                        'quantity'   => (int) $entry->quantity
+                    ]),
+                    'stock_changed'
+                );
+            } catch (\Throwable $e) {
+                error_log('Failed to create stock_changed notification: ' . $e->getMessage());
+            }
         }
     }
 

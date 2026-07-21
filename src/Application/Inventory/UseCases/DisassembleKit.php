@@ -70,8 +70,10 @@ class DisassembleKit
         $kitProduct->dispatchStockAt(new LocationId($locationId), new Quantity($quantity), $referenceId);
         $this->productRepository->save($kitProduct);
 
+        $ledgerEntriesToAppend = [];
+
         // 6. Write deduction ledger entry for kit variant
-        $kitLedgerEntry = new LedgerEntry(
+        $ledgerEntriesToAppend[] = new LedgerEntry(
             id: Uuid::uuid4()->toString(),
             variantId: $kitProduct->getId(),
             quantity: -$quantity,
@@ -81,7 +83,6 @@ class DisassembleKit
             occurredAt: new \DateTimeImmutable(),
             metadata: ['locationId' => $locationId]
         );
-        $this->ledgerRepository->append($kitLedgerEntry);
 
         // 7. Estimate components average cost and distribute cost proportionally
         $totalEstimatedComponentsCost = 0;
@@ -146,7 +147,7 @@ class DisassembleKit
             $this->productRepository->save($compProduct);
 
             // Add increment ledger entry for this component
-            $ledgerEntry = new LedgerEntry(
+            $ledgerEntriesToAppend[] = new LedgerEntry(
                 id: Uuid::uuid4()->toString(),
                 variantId: $item['variantId'],
                 quantity: $item['quantity'],
@@ -156,8 +157,9 @@ class DisassembleKit
                 occurredAt: new \DateTimeImmutable(),
                 metadata: ['locationId' => $locationId]
             );
-            $this->ledgerRepository->append($ledgerEntry);
         }
+
+        $this->ledgerRepository->appendAll($ledgerEntriesToAppend);
 
         // 9. Post journal entries if Accrual
         $this->journalService->onKitDisassembly(

@@ -135,6 +135,8 @@ final class WebhookSubscriptionTest extends TestCase
         // Run the CLI worker script with --once flag
         $worker = new \InventoryApp\Application\Webhooks\Workers\WebhookDeliveryWorker();
         $worker->run(true);
+        $resultCode = -1;
+        exec("php scripts/webhook-worker.php --once", $output, $resultCode);
 
         // It should try to send, fail (since internet domain target_url or mock), and increment attempt
         $delivery = Capsule::table('webhook_deliveries')->where('id', $deliveryId)->first();

@@ -70,7 +70,6 @@ final class FefoRecallE2ETest extends TestCase
             'tenant_id' => $this->tenantId,
             'email'     => $this->email,
             'password'  => $this->password,
-        ]);
 
         $this->assertEquals(200, $loginRes['status']);
         $this->token = $loginRes['body']['token'];
@@ -89,7 +88,6 @@ final class FefoRecallE2ETest extends TestCase
             'description' => 'Test',
             'department' => 'GEN',
             'created_at' => date('Y-m-d H:i:s'),
-        ]);
 
         DB::table('catalog_variants')->insert([
             'id' => $productId, // in this app variant ID is often product ID or similar, but SKU is unique
@@ -97,8 +95,6 @@ final class FefoRecallE2ETest extends TestCase
             'sku' => $sku,
             'attributes' => '[]',
             'price' => 15.0,
-            'created_at' => date('Y-m-d H:i:s'),
-        ]);
 
         // Seed domain product and location
         DB::table('products')->insert([
@@ -110,7 +106,6 @@ final class FefoRecallE2ETest extends TestCase
             'reorder_threshold' => 5,
             'created_at'        => date('Y-m-d H:i:s'),
             'updated_at'        => date('Y-m-d H:i:s')
-        ]);
 
         DB::table('product_locations')->insert([
             'product_id'        => $productId,
@@ -118,8 +113,6 @@ final class FefoRecallE2ETest extends TestCase
             'stock_quantity'    => 0,
             'open_box_quantity' => 0,
             'damaged_quantity'  => 0,
-            'updated_at'        => date('Y-m-d H:i:s')
-        ]);
 
         // 2. Receive Stock for Lot 1 (Expires later)
         $receiveLot1 = $this->request('POST', '/api/inventory/receive', [
@@ -134,13 +127,10 @@ final class FefoRecallE2ETest extends TestCase
 
         // 3. Receive Stock for Lot 2 (Expires earlier)
         $receiveLot2 = $this->request('POST', '/api/inventory/receive', [
-            'sku'         => $sku,
             'quantity'    => 20,
-            'location_id' => 'LOC-INT',
             'lot_number'  => 'LOT-EARLY-02',
             'expiration_date' => '2026-06-30 23:59:59',
             'unit_cost_cents' => 1200
-        ], $this->token);
         $this->assertEquals(200, $receiveLot2['status'], json_encode($receiveLot2));
 
         // 4. Request FEFO picking suggestions
@@ -156,11 +146,8 @@ final class FefoRecallE2ETest extends TestCase
 
         // 5. Dispatch Stock from Lot 2 (LOT-EARLY-02)
         $dispatchRes = $this->request('POST', '/api/inventory/dispatch', [
-            'sku'         => $sku,
             'quantity'    => 15,
-            'location_id' => 'LOC-INT',
             'lot_number'  => 'LOT-EARLY-02'
-        ], $this->token);
         $this->assertEquals(200, $dispatchRes['status'], json_encode($dispatchRes));
 
         // 6. Trace Product Recall for LOT-EARLY-02
@@ -204,7 +191,6 @@ final class FefoRecallE2ETest extends TestCase
         return [
             'status' => $statusCode,
             'body'   => json_decode((string)$result, true) ?: $result
-        ];
     }
 }
 
@@ -290,6 +276,156 @@ final class FefoRecallE2ETest extends TestCase
 
     {
         $url = 'http://127.0.0.1:8093' . $path;
+
+        }
+
+        
+        }
+
+    }
+}
+
+
+
+
+
+{
+
+    {
+        
+        
+            }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+        }
+
+        
+        }
+
+    }
+}
+
+
+
+
+
+{
+
+    {
+        
+        
+            }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+        }
+
+        
+        }
+
+    }
+}
+
+
+
+
+
+{
+
+    {
+        }
+        
+        
+        
+        
+        
+
+        
+            }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+    {
 
         }
 

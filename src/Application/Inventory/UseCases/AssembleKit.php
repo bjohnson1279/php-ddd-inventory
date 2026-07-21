@@ -87,6 +87,7 @@ class AssembleKit
         // 3. Consume FIFO costing layers for components and calculate total components cost
         $totalCostCents = 0;
         $modifiedProducts = [];
+        $ledgerEntries = [];
         foreach ($componentsToConsume as $comp) {
             $breakdown = $this->costLayerService->consumeFifoLayers($comp['variantId'], $comp['needed']);
             $totalCostCents += $breakdown->totalCostCents;
@@ -108,6 +109,7 @@ class AssembleKit
                 metadata: ['locationId' => $locationId]
             );
             $this->ledgerRepository->append($ledgerEntry);
+            $ledgerEntries[] = $ledgerEntry;
         }
 
         // Save all modified products collectively (Optimized write)
@@ -147,6 +149,8 @@ class AssembleKit
             metadata: ['locationId' => $locationId]
         );
         $this->ledgerRepository->append($kitLedgerEntry);
+        $ledgerEntries[] = $kitLedgerEntry;
+        $this->ledgerRepository->appendAll($ledgerEntries);
 
         // 8. Write balanced double-entry Journal Entry
         $this->journalService->onKitAssembly(

@@ -76,14 +76,12 @@ final class AuditE2ETest extends TestCase
             'adminName'     => 'Admin User',
             'adminEmail'    => $this->email,
             'adminPassword' => $this->password,
-        ]);
         $this->assertEquals(200, $setupRes['status'], json_encode($setupRes));
 
         $loginRes = $this->request('POST', '/api/auth/login', [
             'tenant_id' => $this->tenantId,
             'email'     => $this->email,
             'password'  => $this->password,
-        ]);
         $this->assertEquals(200, $loginRes['status']);
         $this->token = $loginRes['body']['token'];
 
@@ -94,7 +92,6 @@ final class AuditE2ETest extends TestCase
             'name' => 'iPhone 15 Catalog',
             'description' => 'Test Description',
             'department' => 'Electronics'
-        ]);
 
         $catalogVariantId = uuidv4();
         Capsule::table('catalog_variants')->insert([
@@ -103,41 +100,33 @@ final class AuditE2ETest extends TestCase
             'sku' => 'SKU-DIFF',
             'attributes' => '{}',
             'price' => 999.00
-        ]);
 
         // Seed product with a valid UUID
         $productId = uuidv4();
         Capsule::table('products')->insert([
             'id' => $productId,
-            'tenant_id' => $this->tenantId,
             'sku' => 'SKU-DIFF', // ends with -DIFF to mock Shopify mismatch
             'name' => 'iPhone 15',
             'department' => 'Electronics',
             'reorder_threshold' => 10,
             'version_id' => 1
-        ]);
 
         // Seed shopify mappings
         Capsule::table('shopify_sku_mappings')->insert([
             'id' => uuidv4(),
-            'sku' => 'SKU-DIFF',
             'shopify_inventory_item_id' => 'inv-item-123'
-        ]);
 
         // Ensure 'default' location exists
-        Capsule::table('locations')->insertOrIgnore([
             'id' => 'default',
             'name' => 'Default Location',
             'type' => 'warehouse'
 
         Capsule::table('shopify_location_mappings')->insert([
-            'id' => uuidv4(),
             'our_location_id' => 'LOC-STOREFRONT',
             'shopify_location_id' => 'gid://shopify/Location/12345'
 
         // Seed ledger entry with quantity
         Capsule::table('ledger_entries')->insert([
-            'tenant_id' => $this->tenantId,
 
 
 
@@ -148,19 +137,14 @@ final class AuditE2ETest extends TestCase
             'metadata' => json_encode(['locationId' => 'default']),
             'occurred_at' => date('Y-m-d H:i:s'),
             'created_at' => date('Y-m-d H:i:s')
-        ]);
 
         // Seed journal entry without mapping
         Capsule::table('journal_entries')->insert([
-            'id' => uuidv4(),
-            'tenant_id' => $this->tenantId,
 
             'entry_date' => date('Y-m-d'),
             'description' => 'Test unmapped journal',
             'method' => 'accrual',
             'lines' => '[]',
-            'created_at' => date('Y-m-d H:i:s')
-        ]);
     }
 
     public function testAuditLifecycle(): void
@@ -230,7 +214,6 @@ final class AuditE2ETest extends TestCase
         return [
             'status' => $statusCode,
             'body'   => (json_last_error() === JSON_ERROR_NONE) ? $decoded : $result
-        ];
     }
 }
 
@@ -331,6 +314,166 @@ final class AuditE2ETest extends TestCase
 
     {
         $url = 'http://127.0.0.1:8095' . $path;
+
+        }
+
+        
+        }
+
+    }
+}
+
+
+
+
+
+{
+
+    {
+
+        
+            }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+            }
+        }
+
+
+    }
+
+    {
+
+        }
+
+        
+        }
+
+    }
+}
+
+
+
+
+
+{
+
+    {
+
+        
+            }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+            }
+        }
+
+
+    }
+
+    {
+
+        }
+
+        
+        }
+
+    }
+}
+
+
+
+
+
+{
+
+    {
+        }
+        
+        
+
+        
+        
+        
+
+        
+            }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+            }
+        }
+
+
+    }
+
+    {
 
         }
 

@@ -76,7 +76,6 @@ final class ApiEndpointsTest extends TestCase
             'tenant_id' => $this->tenantId,
             'email'     => $this->email,
             'password'  => $this->password,
-        ]);
 
         $this->assertEquals(200, $loginRes['status'], json_encode($loginRes));
         $this->assertNotEmpty($loginRes['body']['token']);
@@ -115,7 +114,6 @@ final class ApiEndpointsTest extends TestCase
     public function testBarcodeScanningSSE(): void
     {
         $suffix = strtoupper(bin2hex(random_bytes(4)));
-        $variantId = uuidv4();
         $sku = 'SKU-SCAN-' . $suffix;
         $barcodeValue = '979' . strval(rand(1000000000, 9999999999));
 
@@ -125,24 +123,18 @@ final class ApiEndpointsTest extends TestCase
             'name' => 'Scan Location 1',
             'type' => 'TEST',
             'created_at' => date('Y-m-d H:i:s'),
-        ]);
 
         \Illuminate\Database\Capsule\Manager::table('catalog_products')->insert([
             'id' => $variantId,
             'name' => 'Scan Test Product',
             'description' => 'Test',
             'department' => 'GEN',
-            'created_at' => date('Y-m-d H:i:s'),
-        ]);
 
         \Illuminate\Database\Capsule\Manager::table('catalog_variants')->insert([
-            'id' => $variantId,
             'product_id' => $variantId,
             'sku' => $sku,
             'attributes' => '[]',
             'price' => 10.0,
-            'created_at' => date('Y-m-d H:i:s'),
-        ]);
 
         \Illuminate\Database\Capsule\Manager::table('products')->insert([
             'id'                => $variantId,
@@ -153,7 +145,6 @@ final class ApiEndpointsTest extends TestCase
             'reorder_threshold' => 10,
             'created_at'        => date('Y-m-d H:i:s'),
             'updated_at'        => date('Y-m-d H:i:s')
-        ]);
 
         \Illuminate\Database\Capsule\Manager::table('product_locations')->insert([
             'product_id'        => $variantId,
@@ -161,18 +152,8 @@ final class ApiEndpointsTest extends TestCase
             'stock_quantity'    => 0,
             'open_box_quantity' => 0,
             'damaged_quantity'  => 0,
-            'updated_at'        => date('Y-m-d H:i:s')
-        ]);
 
         // 2. Assign Barcode
-        $assignRes = $this->request('POST', '/api/barcodes/assign', [
-            'variant_id' => $variantId,
-            'value'      => $barcodeValue,
-            'symbology'  => 'ean_13',
-            'source'     => 'internal',
-            'is_primary' => true,
-        ], $this->token);
-        $this->assertEquals(201, $assignRes['status'], json_encode($assignRes));
 
         // 3. Dispatch Barcode Scan via HTTP endpoint
         $scanRes = $this->request('POST', '/api/barcodes/scan', [
@@ -182,7 +163,6 @@ final class ApiEndpointsTest extends TestCase
                 'location_id' => 'LOC-SCAN-1',
                 'amount' => 5
             ]
-        ], $this->token);
 
         $this->assertEquals(200, $scanRes['status'], json_encode($scanRes));
         $this->assertEquals('Scan processed.', $scanRes['body']['message']);
@@ -209,7 +189,6 @@ final class ApiEndpointsTest extends TestCase
 
     public function testSerialNumberEndpoints(): void
     {
-        $variantId = uuidv4();
         $serial = 'SN-HTTP-TEST-999';
 
         // 1. Register Serial
@@ -217,7 +196,6 @@ final class ApiEndpointsTest extends TestCase
             'variant_id'    => $variantId,
             'serial_number' => $serial,
             'location_id'   => 'LOC-INT',
-        ], $this->token);
 
         $this->assertEquals(201, $regRes['status'], json_encode($regRes));
         $itemId = $regRes['body']['id'];
@@ -225,7 +203,6 @@ final class ApiEndpointsTest extends TestCase
 
         // 2. Lookup Serial
         $lookupRes = $this->request('GET', "/api/serials/lookup?serial_number={$serial}", [], $this->token);
-        $this->assertEquals(200, $lookupRes['status'], json_encode($lookupRes));
         $this->assertEquals('pending', $lookupRes['body']['status']);
 
         // 3. Receive Serial
@@ -233,7 +210,6 @@ final class ApiEndpointsTest extends TestCase
             'location_id'       => 'LOC-INT',
             'purchase_order_id' => 'PO-HTTP-100',
             'unit_cost_cents'   => 2500,
-        ], $this->token);
         $this->assertEquals(200, $receiveRes['status'], json_encode($receiveRes));
 
         // 4. Lookup again (should be in_stock)
@@ -243,26 +219,22 @@ final class ApiEndpointsTest extends TestCase
         // 5. Sell Serial
         $sellRes = $this->request('POST', "/api/serials/{$itemId}/sell", [
             'sale_id' => 'SALE-HTTP-200',
-        ], $this->token);
         $this->assertEquals(200, $sellRes['status'], json_encode($sellRes));
 
         // 6. Accept Return
         $returnRes = $this->request('POST', "/api/serials/{$itemId}/return", [
             'return_id' => 'RET-HTTP-300',
-        ], $this->token);
         $this->assertEquals(200, $returnRes['status'], json_encode($returnRes));
 
         // 7. Restock
         $restockRes = $this->request('POST', "/api/serials/{$itemId}/restock", [
             'return_id'                 => 'RET-HTTP-300',
             'restocked_unit_cost_cents' => 2400,
-        ], $this->token);
         $this->assertEquals(200, $restockRes['status'], json_encode($restockRes));
 
         // 8. Write Off
         $writeOffRes = $this->request('POST', "/api/serials/{$itemId}/write-off", [
             'reason' => 'Damaged in store inspection',
-        ], $this->token);
         $this->assertEquals(200, $writeOffRes['status'], json_encode($writeOffRes));
 
         // 9. List by variant
@@ -282,18 +254,15 @@ final class ApiEndpointsTest extends TestCase
         $createRes = $this->request('POST', '/api/onboardings', [
             'location_id' => 'LOC-INT',
             'as_of_date'  => '2026-05-29',
-        ], $this->token);
 
         $this->assertEquals(201, $createRes['status'], json_encode($createRes));
         $onboardingId = $createRes['body']['id'];
 
         // 2. Set item
-        $variantId = uuidv4();
         $setItemRes = $this->request('POST', "/api/onboardings/{$onboardingId}/items", [
             'variant_id'      => $variantId,
             'quantity'        => 50,
             'unit_cost_cents' => 1250,
-        ], $this->token);
         $this->assertEquals(200, $setItemRes['status'], json_encode($setItemRes));
 
         // 3. Show details
@@ -323,7 +292,6 @@ final class ApiEndpointsTest extends TestCase
                 ['account' => '1200', 'amount' => 50000, 'type' => 'debit', 'memo' => 'DR inventory'],
                 ['account' => '1000', 'amount' => 50000, 'type' => 'credit', 'memo' => 'CR cash'],
             ],
-        ], $this->token);
 
         $this->assertEquals(201, $recordRes['status'], json_encode($recordRes));
         $entryId = $recordRes['body']['id'];
@@ -331,25 +299,19 @@ final class ApiEndpointsTest extends TestCase
 
         // 2. List Journal Entries
         $listRes = $this->request('GET', '/api/journal/entries', [], $this->token);
-        $this->assertEquals(200, $listRes['status'], json_encode($listRes));
         $this->assertGreaterThanOrEqual(1, count($listRes['body']['entries']));
     }
 
     public function testUomEndpoints(): void
     {
-        $variantId = uuidv4();
 
         // 1. Create Product UoM Configuration
         $createRes = $this->request('POST', '/api/uom/configurations', [
-            'variant_id' => $variantId,
             'base_unit'  => [
                 'name'         => 'Each',
                 'abbreviation' => 'ea',
                 'category'     => 'discrete',
-            ],
-        ], $this->token);
 
-        $this->assertEquals(201, $createRes['status'], json_encode($createRes));
         $configId = $createRes['body']['id'];
         $this->assertNotEmpty($configId);
 
@@ -358,31 +320,18 @@ final class ApiEndpointsTest extends TestCase
             'unit' => [
                 'name'         => 'Case',
                 'abbreviation' => 'cs',
-                'category'     => 'discrete',
-            ],
             'factor_to_base' => 24.0,
             'label'          => 'Case of 24',
-        ], $this->token);
         $this->assertEquals(200, $ruleRes['status'], json_encode($ruleRes));
 
         // 3. Set Purchase and Sale Units
         $unitRes = $this->request('POST', "/api/uom/configurations/{$configId}/units", [
             'purchase_unit' => [
-                'name'         => 'Case',
-                'abbreviation' => 'cs',
-                'category'     => 'discrete',
-            ],
             'sale_unit' => [
-                'name'         => 'Each',
-                'abbreviation' => 'ea',
-                'category'     => 'discrete',
-            ],
-        ], $this->token);
         $this->assertEquals(200, $unitRes['status'], json_encode($unitRes));
 
         // 4. Show Details by Variant
         $showRes = $this->request('GET', "/api/uom/configurations/variants/{$variantId}", [], $this->token);
-        $this->assertEquals(200, $showRes['status'], json_encode($showRes));
         $this->assertEquals($configId, $showRes['body']['id']);
         $this->assertEquals('Case', $showRes['body']['purchase_unit']['name']);
         $this->assertEquals('Each', $showRes['body']['sale_unit']['name']);
@@ -395,12 +344,6 @@ final class ApiEndpointsTest extends TestCase
 
         // 6. Remove Conversion Rule
         $removeRes = $this->request('DELETE', "/api/uom/configurations/{$configId}/rules", [
-            'unit' => [
-                'name'         => 'Case',
-                'abbreviation' => 'cs',
-                'category'     => 'discrete',
-            ],
-        ], $this->token);
         $this->assertEquals(200, $removeRes['status'], json_encode($removeRes));
 
         // 7. Show Details again
@@ -415,9 +358,7 @@ final class ApiEndpointsTest extends TestCase
         $createRes = $this->request('POST', '/api/kits', [
             'sku'  => $sku,
             'name' => 'Test Bundle Kit',
-        ], $this->token);
 
-        $this->assertEquals(201, $createRes['status'], json_encode($createRes));
         $kitId = $createRes['body']['id'];
         $this->assertNotEmpty($kitId);
 
@@ -426,12 +367,10 @@ final class ApiEndpointsTest extends TestCase
         $compRes = $this->request('POST', "/api/kits/{$kitId}/components", [
             'variant_id' => $variantId1,
             'quantity'   => 3,
-        ], $this->token);
         $this->assertEquals(200, $compRes['status'], json_encode($compRes));
 
         // 3. Show Details by ID
         $showRes = $this->request('GET', "/api/kits/{$kitId}", [], $this->token);
-        $this->assertEquals(200, $showRes['status'], json_encode($showRes));
         $this->assertEquals($sku, $showRes['body']['sku']);
         $this->assertCount(1, $showRes['body']['components']);
         $this->assertEquals($variantId1, $showRes['body']['components'][0]['variant_id']);
@@ -453,13 +392,10 @@ final class ApiEndpointsTest extends TestCase
             'reason'      => 'purchase_receipt',
             'actor_id'    => 'system',
             'occurred_at' => date('Y-m-d H:i:s'),
-        ]);
 
         $sellRes = $this->request('POST', "/api/kits/{$kitId}/sell", [
             'quantity' => 2,
             'sale_id'  => 'SALE-KIT-E2E-100',
-        ], $this->token);
-        $this->assertEquals(200, $sellRes['status'], json_encode($sellRes));
 
         // Verify ledger was decremented: variant1 component quantity 3 * 2 kit sales = 6 decremented.
         // Starting with 10 base units, remaining should be 4.
@@ -476,26 +412,13 @@ final class ApiEndpointsTest extends TestCase
         $sku = 'SHPFY-SKU-100';
 
         // 1. Seed Product
-        \Illuminate\Database\Capsule\Manager::table('products')->insert([
             'id'                => $productId,
-            'tenant_id'         => $this->tenantId,
-            'sku'               => $sku,
             'name'              => 'Shopify Webhook Test Product',
             'department'        => 'APP',
-            'reorder_threshold' => 10,
-            'created_at'        => date('Y-m-d H:i:s'),
-            'updated_at'        => date('Y-m-d H:i:s')
-        ]);
 
         // 2. Seed Location Stock
-        \Illuminate\Database\Capsule\Manager::table('product_locations')->insert([
             'product_id'        => $productId,
-            'location_id'       => 'LOC-INT',
             'stock_quantity'    => 50,
-            'open_box_quantity' => 0,
-            'damaged_quantity'  => 0,
-            'updated_at'        => date('Y-m-d H:i:s')
-        ]);
 
         // 3. Register Location mapping so webhook resolves LOC-INT
         \Illuminate\Database\Capsule\Manager::table('shopify_location_mappings')->insert([
@@ -503,7 +426,6 @@ final class ApiEndpointsTest extends TestCase
             'our_location_id'     => 'LOC-INT',
             'shopify_location_id' => 'shopify-loc-1234',
             'created_at'          => date('Y-m-d H:i:s')
-        ]);
 
         // 4. Send orders/create Webhook Request (without Bearer token)
         $payload = [
@@ -513,7 +435,6 @@ final class ApiEndpointsTest extends TestCase
                     'sku' => $sku,
                     'quantity' => 5
                 ]
-            ]
         ];
 
         $jsonPayload = json_encode($payload);
@@ -542,8 +463,6 @@ final class ApiEndpointsTest extends TestCase
                 'method' => 'POST',
                 'content' => $jsonPayload,
                 'ignore_errors' => true
-            ]
-        ];
 
         $context = stream_context_create($options);
         $result = file_get_contents($url, false, $context);
@@ -564,29 +483,18 @@ final class ApiEndpointsTest extends TestCase
         // 6. Test cancellation webhook (orders/cancelled) to restock 5 items
         $cancelHmac = base64_encode(hash_hmac('sha256', $jsonPayload, $secret, true));
         $cancelOptions = [
-            'http' => [
-                'header' => "Content-Type: application/json\r\n" .
                             "X-Shopify-Topic: orders/cancelled\r\n" .
                             "X-Shopify-Hmac-Sha256: {$cancelHmac}\r\n",
-                'method' => 'POST',
-                'content' => $jsonPayload,
-                'ignore_errors' => true
-            ]
-        ];
 
         $cancelContext = stream_context_create($cancelOptions);
         $cancelResult = file_get_contents($url, false, $cancelContext);
 
-        preg_match('{HTTP\/\S*\s(\d{3})}', $http_response_header[0], $match);
         $cancelStatusCode = (int)$match[1];
 
         $this->assertEquals(200, $cancelStatusCode, $cancelResult);
 
         // Verify stock restocked back to 50
         $newStockQty = (int)\Illuminate\Database\Capsule\Manager::table('product_locations')
-            ->where('product_id', $productId)
-            ->where('location_id', 'LOC-INT')
-            ->value('stock_quantity');
 
         $this->assertEquals(50, $newStockQty);
     }
@@ -599,36 +507,14 @@ final class ApiEndpointsTest extends TestCase
         $this->assertEmpty($listRes['body']['notifications']);
 
         // 2. Trigger an event that creates a notification (e.g. Receive stock)
-        $productId = uuidv4();
         $sku = 'SKU-' . strtoupper(bin2hex(random_bytes(4)));
 
-        \Illuminate\Database\Capsule\Manager::table('products')->insert([
-            'id'                => $productId,
-            'tenant_id'         => $this->tenantId,
-            'sku'               => $sku,
             'name'              => 'Notif Prod',
-            'department'        => 'GEN',
-            'reorder_threshold' => 10,
-            'created_at'        => date('Y-m-d H:i:s'),
-            'updated_at'        => date('Y-m-d H:i:s')
-        ]);
 
-        \Illuminate\Database\Capsule\Manager::table('product_locations')->insert([
-            'product_id'        => $productId,
-            'location_id'       => 'LOC-INT',
-            'stock_quantity'    => 0,
-            'open_box_quantity' => 0,
-            'damaged_quantity'  => 0,
-            'updated_at'        => date('Y-m-d H:i:s')
-        ]);
 
         // Receive stock
         $receiveRes = $this->request('POST', '/api/inventory/receive', [
             'sku'         => $sku,
-            'quantity'    => 10,
-            'location_id' => 'LOC-INT',
-        ], $this->token);
-        $this->assertEquals(200, $receiveRes['status'], json_encode($receiveRes));
 
         // 3. Check notifications now has 1 item
         $listRes2 = $this->request('GET', '/api/notifications', [], $this->token);
@@ -655,7 +541,6 @@ final class ApiEndpointsTest extends TestCase
 
         // Check is_read is true
         $listRes3 = $this->request('GET', '/api/notifications', [], $this->token);
-        $found = false;
         foreach ($listRes3['body']['notifications'] as $n) {
             if ($n['id'] === $notif['id']) {
                 $this->assertTrue((bool)$n['is_read']);
@@ -671,7 +556,6 @@ final class ApiEndpointsTest extends TestCase
 
     public function testKitAssemblyAndDisassembly(): void
     {
-        $suffix = strtoupper(bin2hex(random_bytes(4)));
         $compAId = uuidv4();
         $compBId = uuidv4();
         $kitProductId = uuidv4();
@@ -681,36 +565,28 @@ final class ApiEndpointsTest extends TestCase
         $locationId = "LOC-INT";
 
         // Seed products
-        \Illuminate\Database\Capsule\Manager::table('products')->insert([
             ['id' => $compAId, 'tenant_id' => $this->tenantId, 'sku' => $compASku, 'name' => 'Component A', 'department' => 'APP', 'reorder_threshold' => 10, 'created_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s')],
             ['id' => $compBId, 'tenant_id' => $this->tenantId, 'sku' => $compBSku, 'name' => 'Component B', 'department' => 'APP', 'reorder_threshold' => 10, 'created_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s')],
             ['id' => $kitProductId, 'tenant_id' => $this->tenantId, 'sku' => $kitSku, 'name' => 'Kit Bundle', 'department' => 'APP', 'reorder_threshold' => 10, 'created_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s')]
-        ]);
 
         // Seed product locations
-        \Illuminate\Database\Capsule\Manager::table('product_locations')->insert([
             ['product_id' => $compAId, 'location_id' => $locationId, 'stock_quantity' => 10, 'open_box_quantity' => 0, 'damaged_quantity' => 0, 'updated_at' => date('Y-m-d H:i:s')],
             ['product_id' => $compBId, 'location_id' => $locationId, 'stock_quantity' => 20, 'open_box_quantity' => 0, 'damaged_quantity' => 0, 'updated_at' => date('Y-m-d H:i:s')],
             ['product_id' => $kitProductId, 'location_id' => $locationId, 'stock_quantity' => 0, 'open_box_quantity' => 0, 'damaged_quantity' => 0, 'updated_at' => date('Y-m-d H:i:s')]
-        ]);
 
         // Seed ledger entries for component stocks
-        \Illuminate\Database\Capsule\Manager::table('ledger_entries')->insert([
             ['id' => uuidv4(), 'tenant_id' => $this->tenantId, 'variant_id' => $compAId, 'quantity' => 10, 'reason' => 'purchase_receipt', 'actor_id' => 'system', 'occurred_at' => date('Y-m-d H:i:s')],
             ['id' => uuidv4(), 'tenant_id' => $this->tenantId, 'variant_id' => $compBId, 'quantity' => 20, 'reason' => 'purchase_receipt', 'actor_id' => 'system', 'occurred_at' => date('Y-m-d H:i:s')]
-        ]);
 
         // Seed costing layers for COMP-A (unit cost 100) and COMP-B (unit cost 200)
         \Illuminate\Database\Capsule\Manager::table('inventory_cost_layers')->insert([
             ['id' => uuidv4(), 'variant_id' => $compAId, 'tenant_id' => $this->tenantId, 'original_quantity' => 10, 'remaining_quantity' => 10, 'unit_cost_cents' => 100, 'received_at' => date('Y-m-d H:i:s'), 'purchase_order_id' => 'PO-1'],
             ['id' => uuidv4(), 'variant_id' => $compBId, 'tenant_id' => $this->tenantId, 'original_quantity' => 20, 'remaining_quantity' => 20, 'unit_cost_cents' => 200, 'received_at' => date('Y-m-d H:i:s'), 'purchase_order_id' => 'PO-2']
-        ]);
 
         // Create Kit formula
         $kitRes = $this->request('POST', '/api/kits', [
             'sku'  => $kitSku,
             'name' => 'Kit Bundle Formula',
-        ], $this->token);
         $this->assertEquals(201, $kitRes['status']);
         $kitId = $kitRes['body']['id'];
 
@@ -720,16 +596,12 @@ final class ApiEndpointsTest extends TestCase
         // Invite staff/viewer user to test RBAC
         $inviteRes = $this->request('POST', '/api/users', [
             'email' => "viewer-{$suffix}@example.com",
-        ], $this->token);
         $this->assertEquals(201, $inviteRes['status']);
         $viewerUserId = $inviteRes['body']['user_id'];
         $tempPassword = $inviteRes['body']['temporary_password'];
 
-        $loginRes = $this->request('POST', '/api/auth/login', [
-            'tenant_id' => $this->tenantId,
             'email'     => "viewer-{$suffix}@example.com",
             'password'  => $tempPassword,
-        ]);
         $viewerToken = $loginRes['body']['token'];
 
         // Strip roles
@@ -738,28 +610,19 @@ final class ApiEndpointsTest extends TestCase
         // 3. Test RBAC denial on assemble/disassemble (no role/permission)
         $unauthRes1 = $this->request('POST', '/api/kits/assemble', [
             'kitSku' => $kitSku,
-            'quantity' => 2,
             'locationId' => $locationId,
             'referenceId' => 'REF-ASM-TEST'
         ], $viewerToken);
         $this->assertEquals(403, $unauthRes1['status']);
 
         $unauthRes2 = $this->request('POST', '/api/kits/disassemble', [
-            'kitSku' => $kitSku,
-            'quantity' => 2,
-            'locationId' => $locationId,
             'referenceId' => 'REF-DIS-TEST'
-        ], $viewerToken);
         $this->assertEquals(403, $unauthRes2['status']);
 
         // 4. Assemble Kit (2 units) via admin token
         // Needs 2 * 2 = 4 units of COMP-A (cost 4 * 100 = 400) and 2 * 1 = 2 units of COMP-B (cost 2 * 200 = 400). Total cost = 800.
         $assembleRes = $this->request('POST', '/api/kits/assemble', [
-            'kitSku' => $kitSku,
-            'quantity' => 2,
-            'locationId' => $locationId,
             'referenceId' => 'REF-ASM-1'
-        ], $this->token);
         $this->assertEquals(200, $assembleRes['status'], json_encode($assembleRes));
 
         // Verify product location stocks: COMP-A: 6, COMP-B: 18, KIT: 2
@@ -774,7 +637,6 @@ final class ApiEndpointsTest extends TestCase
 
         // Verify kit costing layer unit cost is 400 (800 / 2)
         $kitLayerVal = \Illuminate\Database\Capsule\Manager::table('inventory_cost_layers')
-            ->where('tenant_id', $this->tenantId)
             ->where('variant_id', $kitProductId)
             ->first();
         $this->assertNotNull($kitLayerVal);
@@ -783,9 +645,7 @@ final class ApiEndpointsTest extends TestCase
 
         // Verify Journal entries are balanced (Debit 1200, Credit 1210 for 800)
         $journal = \Illuminate\Database\Capsule\Manager::table('journal_entries')
-            ->where('tenant_id', $this->tenantId)
             ->where('reference_id', 'REF-ASM-1')
-            ->first();
         $this->assertNotNull($journal);
         $lines = json_decode($journal->lines, true);
         $this->assertCount(2, $lines);
@@ -804,11 +664,7 @@ final class ApiEndpointsTest extends TestCase
 
         // 5. Disassemble Kit (2 units)
         $disassembleRes = $this->request('POST', '/api/kits/disassemble', [
-            'kitSku' => $kitSku,
-            'quantity' => 2,
-            'locationId' => $locationId,
             'referenceId' => 'REF-DIS-1'
-        ], $this->token);
         $this->assertEquals(200, $disassembleRes['status'], json_encode($disassembleRes));
 
         // Verify product location stocks: COMP-A: 10, COMP-B: 20, KIT: 0
@@ -823,9 +679,7 @@ final class ApiEndpointsTest extends TestCase
 
         // Verify disassembly Journal entries are balanced (Debit 1210, Credit 1200 for 800)
         $disJournal = \Illuminate\Database\Capsule\Manager::table('journal_entries')
-            ->where('tenant_id', $this->tenantId)
             ->where('reference_id', 'REF-DIS-1')
-            ->first();
         $this->assertNotNull($disJournal);
         $disLines = json_decode($disJournal->lines, true);
         $this->assertCount(2, $disLines);
@@ -846,20 +700,15 @@ final class ApiEndpointsTest extends TestCase
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
     {
         $url = 'http://127.0.0.1:8085' . $path;
-        $options = [
-            'http' => [
                 'header'        => "Content-Type: application/json\r\n",
                 'method'        => $method,
                 'content'       => json_encode($body),
                 'ignore_errors' => true,
-            ]
-        ];
 
         if ($token) {
             $options['http']['header'] .= "Authorization: Bearer {$token}\r\n";
         }
 
-        $context = stream_context_create($options);
         $result = @file_get_contents($url, false, $context);
 
         $statusCode = 500;
@@ -871,6 +720,171 @@ final class ApiEndpointsTest extends TestCase
         return [
             'status' => $statusCode,
             'body'   => json_decode((string)$result, true) ?: $result
-        ];
+    }
+}
+
+
+
+
+
+{
+
+    {
+
+
+        
+            }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+
+
+
+
+    }
+
+    {
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+        
+                }
+            }
+        }
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+    }
+
+    {
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+        
+
+
+
+        
+        
+
+
+
+
+
+        
+    }
+
+    {
+
+
+
+
+
+
+
+
+            }
+        }
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+
+        }
+    }
+
+    {
+
+        }
+
+        
+        }
+
     }
 }

@@ -76,7 +76,6 @@ final class AllocationsE2ETest extends TestCase
             'tenant_id' => $this->tenantId,
             'email'     => $this->email,
             'password'  => $this->password,
-        ]);
 
         $this->assertEquals(200, $loginRes['status'], json_encode($loginRes));
         $this->token = $loginRes['body']['token'];
@@ -84,7 +83,6 @@ final class AllocationsE2ETest extends TestCase
 
     public function testRbacRoleConstraints(): void
     {
-        $suffix = bin2hex(random_bytes(4));
         // 1. Invite new user (default staff/viewer role)
         $inviteRes = $this->request('POST', '/api/users', [
             'email' => "viewer-{$suffix}@example.com",
@@ -95,12 +93,8 @@ final class AllocationsE2ETest extends TestCase
         $tempPassword = $inviteRes['body']['temporary_password'];
 
         // 2. Login as viewer
-        $loginRes = $this->request('POST', '/api/auth/login', [
-            'tenant_id' => $this->tenantId,
             'email'     => "viewer-{$suffix}@example.com",
             'password'  => $tempPassword,
-        ]);
-        $this->assertEquals(200, $loginRes['status'], json_encode($loginRes));
         $viewerToken = $loginRes['body']['token'];
 
         // 3. Strip all roles from viewer so they have no permissions
@@ -126,7 +120,6 @@ final class AllocationsE2ETest extends TestCase
         Capsule::table('tenants')->insertOrIgnore([
             'id' => $this->tenantId,
             'name' => 'Test Org'
-        ]);
 
         Capsule::table('products')->insert([
             'id'                => $productId,
@@ -138,7 +131,6 @@ final class AllocationsE2ETest extends TestCase
             'version_id'        => 1,
             'created_at'        => date('Y-m-d H:i:s'),
             'updated_at'        => date('Y-m-d H:i:s')
-        ]);
 
         Capsule::table('product_locations')->insert([
             'product_id'         => $productId,
@@ -147,14 +139,11 @@ final class AllocationsE2ETest extends TestCase
             'allocated_quantity' => 0,
             'in_transit_quantity'=> 0,
             'updated_at'         => date('Y-m-d H:i:s')
-        ]);
 
         // 2. Allocate 8 units
-        $allocRes = $this->request('POST', '/api/inventory/allocate', [
             'sku' => $skuStr,
             'amount' => 8,
             'location_id' => $locationId,
-        ], $this->token);
         $this->assertEquals(200, $allocRes['status'], json_encode($allocRes));
 
         // 3. Verify counts via GET /api/inventory/{sku}
@@ -166,10 +155,7 @@ final class AllocationsE2ETest extends TestCase
 
         // 4. Release 3 units of allocation
         $releaseRes = $this->request('POST', '/api/inventory/release-allocation', [
-            'sku' => $skuStr,
             'amount' => 3,
-            'location_id' => $locationId,
-        ], $this->token);
         $this->assertEquals(200, $releaseRes['status'], json_encode($releaseRes));
 
         $getRes2 = $this->request('GET', "/api/inventory/{$skuStr}?location_id={$locationId}", [], $this->token);
@@ -178,10 +164,6 @@ final class AllocationsE2ETest extends TestCase
 
         // 5. Fulfill 5 units of allocation (decreases both quantity and allocation)
         $fulfillRes = $this->request('POST', '/api/inventory/fulfill-allocation', [
-            'sku' => $skuStr,
-            'amount' => 5,
-            'location_id' => $locationId,
-        ], $this->token);
         $this->assertEquals(200, $fulfillRes['status'], json_encode($fulfillRes));
 
         $getRes3 = $this->request('GET', "/api/inventory/{$skuStr}?location_id={$locationId}", [], $this->token);
@@ -191,10 +173,7 @@ final class AllocationsE2ETest extends TestCase
 
         // 6. Requesting more than available stock should return 400 with InsufficientAvailableStockException
         $allocOverRes = $this->request('POST', '/api/inventory/allocate', [
-            'sku' => $skuStr,
             'amount' => 16, // available is 15
-            'location_id' => $locationId,
-        ], $this->token);
         $this->assertEquals(400, $allocOverRes['status']);
         $this->assertEquals('InsufficientAvailableStockException', $allocOverRes['body']['type'] ?? null);
     }
@@ -202,58 +181,25 @@ final class AllocationsE2ETest extends TestCase
     public function testInTransitEndpointsFlow(): void
     {
         $skuStr = 'TEST-SKU-TRANSIT';
-        $locationId = 'LOC-INT';
 
-        // 1. Setup product catalog directly in DB
-        $productId = uuidv4();
-        // make sure tenant exists for Postgres constraint
-        Capsule::table('tenants')->insertOrIgnore([
-            'id' => $this->tenantId,
-            'name' => 'Test Org'
-        ]);
 
-        Capsule::table('products')->insert([
-            'id'                => $productId,
-            'tenant_id'         => $this->tenantId,
-            'sku'               => $skuStr,
             'name'              => 'Test Transit Product',
-            'department'        => 'electronics',
-            'reorder_threshold' => 5,
-            'version_id'        => 1,
-            'created_at'        => date('Y-m-d H:i:s'),
-            'updated_at'        => date('Y-m-d H:i:s')
-        ]);
 
-        Capsule::table('product_locations')->insert([
-            'product_id'         => $productId,
-            'location_id'        => $locationId,
             'stock_quantity'     => 10,
-            'allocated_quantity' => 0,
-            'in_transit_quantity'=> 0,
-            'updated_at'         => date('Y-m-d H:i:s')
-        ]);
 
         // 2. Create in-transit stock of 10
         $transitRes = $this->request('POST', '/api/inventory/create-in-transit', [
-            'sku' => $skuStr,
             'amount' => 10,
-            'location_id' => $locationId,
-        ], $this->token);
         $this->assertEquals(200, $transitRes['status'], json_encode($transitRes));
 
-        $getRes1 = $this->request('GET', "/api/inventory/{$skuStr}?location_id={$locationId}", [], $this->token);
         $this->assertEquals(10, $getRes1['body']['inTransit']);
         $this->assertEquals(20, $getRes1['body']['available']);
 
         // 3. Receive 6 units from in-transit (increases quantity, decreases inTransit)
         $receiveRes = $this->request('POST', '/api/inventory/receive-in-transit', [
-            'sku' => $skuStr,
             'amount' => 6,
-            'location_id' => $locationId,
-        ], $this->token);
         $this->assertEquals(200, $receiveRes['status'], json_encode($receiveRes));
 
-        $getRes2 = $this->request('GET', "/api/inventory/{$skuStr}?location_id={$locationId}", [], $this->token);
         $this->assertEquals(16, $getRes2['body']['quantity']);
         $this->assertEquals(4, $getRes2['body']['inTransit']);
         $this->assertEquals(20, $getRes2['body']['available']);
@@ -288,6 +234,70 @@ final class AllocationsE2ETest extends TestCase
         return [
             'status' => $statusCode,
             'body'   => (json_last_error() === JSON_ERROR_NONE) ? $decoded : $result
-        ];
+    }
+}
+
+
+
+
+
+{
+
+    {
+        
+        
+            }
+        }
+    }
+
+    {
+        }
+    }
+
+    {
+
+
+
+
+
+    }
+
+    {
+        
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+    }
+
+    {
+
+        }
+
+        
+        }
+
     }
 }

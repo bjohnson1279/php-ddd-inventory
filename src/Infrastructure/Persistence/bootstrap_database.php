@@ -29,7 +29,6 @@ if ($driver === 'sqlite') {
         'prefix'   => '',
     ]);
 } else {
-    $capsule->addConnection([
         'driver'   => $driver,
         'host'     => getenv('DB_HOST') ?: 'db',
         'port'     => getenv('DB_PORT') ?: '5432',
@@ -37,18 +36,29 @@ if ($driver === 'sqlite') {
         'username' => getenv('DB_USERNAME') ?: 'ddd_user',
         'password' => getenv('DB_PASSWORD') ?: 'secret',
         'charset'  => 'utf8',
-        'prefix'   => '',
         'schema'   => 'public',
-    ]);
 }
 
 $capsule->setAsGlobal();
 $capsule->bootEloquent();
 
-if ($driver === 'sqlite') {
     require_once __DIR__ . '/sqlite_setup.php';
     \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
 }
 
 // Now Illuminate\Database facade and DB can be used in repositories
 return $capsule;
+
+
+}
+
+}
+
+
+
+    }
+}
+
+
+}
+

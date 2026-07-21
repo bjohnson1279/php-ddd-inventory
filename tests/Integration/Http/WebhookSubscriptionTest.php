@@ -181,6 +181,109 @@ final class WebhookSubscriptionTest extends TestCase
 
 
 {
+    private static $serverProcess = null;
+
+        public static function setUpBeforeClass(): void
+    {
+        $baseDir = realpath(__DIR__ . '/../../..');
+        $dbPath = $baseDir . '/storage/data/test_webhooksubscriptiontest.sqlite';
+        if (!file_exists($dbPath)) {
+            @mkdir(dirname($dbPath), 0777, true);
+            @touch($dbPath);
+        }
+        $extDir = 'C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext';
+        $phpExec = PHP_BINARY . ' -d extension_dir="C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext" -d extension=pdo -d extension=mbstring -d extension=pdo_sqlite';
+        $cmd = $phpExec . ' -S 127.0.0.1:8097 public/index.php';
+        
+        $descriptors = [
+            0 => ["pipe", "r"],
+            1 => ["file", __DIR__ . '/server_webhooksubscriptiontest.log', "a"],
+            2 => ["file", __DIR__ . '/server_webhooksubscriptiontest.log', "a"],
+        
+        $env = array_merge($_ENV, [
+            'DB_CONNECTION' => 'sqlite',
+            'DB_DATABASE' => $dbPath,
+            'APP_ENV' => 'testing',
+        
+                putenv("DB_DATABASE={$dbPath}");
+        $_ENV['DB_DATABASE'] = $dbPath;
+        $_SERVER['DB_DATABASE'] = $dbPath;
+        
+        $capsule = new \Illuminate\Database\Capsule\Manager();
+        $capsule->addConnection([
+            'driver'   => 'sqlite',
+            'database' => $dbPath,
+            'prefix'   => '',
+        $capsule->setAsGlobal();
+        $capsule->bootEloquent();
+        
+        require_once __DIR__ . '/../../../src/Infrastructure/Persistence/sqlite_setup.php';
+        \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
+
+        self::$serverProcess = proc_open($cmd, $descriptors, $pipes, $baseDir, $env);
+        
+        // Wait for server to bind
+            }
+            usleep(50000); // 50ms
+        }
+    }
+
+        public static function tearDownAfterClass(): void
+    {
+        if (self::$serverProcess && is_resource(self::$serverProcess)) {
+            proc_terminate(self::$serverProcess);
+            proc_close(self::$serverProcess);
+            self::$serverProcess = null;
+        }
+    }
+
+    {
+
+
+
+    }
+
+    {
+
+
+
+
+
+    }
+
+    {
+
+            'next_attempt_at' => (new \DateTime('-10 minutes'))->format('Y-m-d H:i:s'),
+
+        $phpBin = PHP_BINARY;
+        $dbPath = __DIR__ . '/../../../storage/data/test_webhooksubscriptiontest.sqlite';
+
+        if (PHP_OS_FAMILY === 'Windows') {
+            $cmd = "set DB_CONNECTION=sqlite&& set DB_DATABASE={$dbPath}&& \"{$phpBin}\" -d extension_dir=\"{$extDir}\" -d extension=mbstring -d extension=pdo_sqlite scripts/webhook-worker.php --once";
+        } else {
+            $cmd = "DB_CONNECTION=sqlite DB_DATABASE=" . escapeshellarg($dbPath) . " php scripts/webhook-worker.php --once";
+        }
+
+        exec($cmd, $output, $resultCode);
+
+    }
+
+    {
+        $url = 'http://127.0.0.1:8097' . $path;
+
+        }
+
+        
+        }
+
+    }
+}
+
+
+
+
+
+{
 
     {
         

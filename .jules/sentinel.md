@@ -16,6 +16,7 @@
 ## 2026-06-25 - TimescaleDB Setup and Database Parity Constraints
 **Learning:** In multi-variant backends (GraphQL, Express, Laravel), switching database engines (e.g., reverting the Express backend to SQLite or using mock local SQLite files) breaks TimescaleDB hypertable features and causes database drift. Additionally, database connection configuration must be securely validated.
 **Action:** 
+**Action:**
 - Maintain database engine parity across all service variants by strictly using PostgreSQL for physical datastores.
 - Do not run `prisma db push` during automated npm package installation (`postinstall`) in CI or production build environments, as it will fail due to the absence of a running database. Limit postinstall steps to `prisma generate` and execute migrations/pushes in dedicated pipeline steps or deployment startup phases.
 - Ensure that any dynamic database connection strings (like `DATABASE_URL` built from separate components) are validated on server startup and fallback safely to trusted local defaults for development environments.
@@ -77,6 +78,7 @@
 
 
 
+**Action:** 
 
 
 

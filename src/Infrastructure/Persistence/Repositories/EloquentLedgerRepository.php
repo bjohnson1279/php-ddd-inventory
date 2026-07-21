@@ -177,6 +177,50 @@ class EloquentLedgerRepository implements LedgerRepositoryInterface
 
     {
 
+            $query->where('metadata->locationId', $locationId);
+        }
+
+    }
+
+    {
+        }
+
+            ->where('metadata->locationId', $locationId)
+    }
+
+    {
+    }
+
+    {
+
+    }
+}
+
+
+
+{
+
+    {
+
+        }
+
+
+        }
+    }
+
+    {
+    }
+
+    {
+        }
+
+
+        }
+        }
+    }
+
+    {
+
         }
 
     }

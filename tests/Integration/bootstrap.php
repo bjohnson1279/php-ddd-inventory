@@ -255,6 +255,7 @@ if ($driver === 'sqlite') {
         'reorder_policies',
         'demand_forecasts',
         'shipments',
+        'outbox_events', 'compliance_ledgers'
         'outbox_events',
         'compliance_ledgers'
         'compliance_ledgers',

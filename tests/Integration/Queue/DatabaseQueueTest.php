@@ -1,8 +1,9 @@
 <?php
+
 declare(strict_types=1);
+
 namespace Tests\Integration\Queue;
 
-use Illuminate\Database\Capsule\Manager as Capsule;
 use PHPUnit\Framework\TestCase;
 use Illuminate\Database\Capsule\Manager as DB;
 use InventoryApp\Domain\Inventory\Events\StockReceived;
@@ -10,14 +11,14 @@ use InventoryApp\Domain\Inventory\ValueObjects\SKU;
 use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
 use InventoryApp\Infrastructure\ServiceContainer;
 use DateTimeImmutable;
+
 require_once __DIR__ . '/../bootstrap.php';
+
 /** @group integration */
 final class DatabaseQueueTest extends TestCase
 {
     protected function setUp(): void
     {
-        Capsule::table('queued_jobs')->delete();
-        Capsule::table('outbox_events')->delete();
         // Clean up queued jobs and mapping/catalog tables to ensure run-to-run isolation
         if (getenv('DB_CONNECTION') === 'sqlite' || DB::connection()->getDriverName() === 'sqlite') {
             require_once __DIR__ . '/../../../src/Infrastructure/Persistence/sqlite_setup.php';
@@ -28,6 +29,7 @@ final class DatabaseQueueTest extends TestCase
             DB::table('queued_jobs')->truncate();
             DB::table('shopify_sync_failures')->truncate();
         }
+
         DB::table('shopify_sku_mappings')->delete();
         DB::table('catalog_variants')->delete();
         DB::table('catalog_products')->delete();
@@ -35,19 +37,23 @@ final class DatabaseQueueTest extends TestCase
         DB::table('xero_journal_mappings')->delete();
         DB::table('netsuite_journal_mappings')->delete();
         DB::table('journal_entries')->delete();
+
         DB::table('tenants')->insertOrIgnore([
             ['id' => 'test-tenant', 'name' => 'Test Tenant']
         ]);
         DB::table('locations')->insertOrIgnore([
             ['id' => 'LOC-INT', 'name' => 'Integration Location', 'type' => 'TEST']
         ]);
+
         ServiceContainer::resetDispatcher();
     }
+
     public function testEventDispatchQueuesListenerAndWorkerProcessesIt(): void
     {
         $tenantId = 'test-tenant';
         $skuStr = 'QUEUE-TEST-SKU';
         $locationStr = 'LOC-INT';
+
         // 1. Seed Product
         DB::table('tenants')->insertOrIgnore(['id' => 'test-tenant', 'name' => 'Test Tenant']);
         DB::table('products')->insertOrIgnore([
@@ -60,6 +66,7 @@ final class DatabaseQueueTest extends TestCase
             'created_at'        => date('Y-m-d H:i:s'),
             'updated_at'        => date('Y-m-d H:i:s')
         ]);
+
         // Seed product location stock (10 units)
         DB::table('product_locations')->insertOrIgnore([
             'product_id'        => DB::table('products')->where('sku', $skuStr)->value('id'),
@@ -69,6 +76,7 @@ final class DatabaseQueueTest extends TestCase
             'damaged_quantity'  => 0,
             'updated_at'        => date('Y-m-d H:i:s')
         ]);
+
         // Seed catalog product & variant to satisfy foreign key constraint on shopify_sku_mappings
         $catalogProductId = uuidv4();
         DB::table('catalog_products')->insertOrIgnore([
@@ -85,6 +93,7 @@ final class DatabaseQueueTest extends TestCase
             'attributes'  => '{}',
             'created_at'  => date('Y-m-d H:i:s')
         ]);
+
         // 2. Seed Shopify mappings so the Shopify sync listener tries to execute (otherwise it returns early)
         DB::table('shopify_sku_mappings')->insertOrIgnore([
             'id'                        => uuidv4(),
@@ -92,14 +101,17 @@ final class DatabaseQueueTest extends TestCase
             'shopify_inventory_item_id' => 'shp-inv-123',
             'created_at'                => date('Y-m-d H:i:s')
         ]);
+
         DB::table('shopify_location_mappings')->insertOrIgnore([
             'id'                  => uuidv4(),
             'our_location_id'     => $locationStr,
             'shopify_location_id' => 'shp-loc-456',
             'created_at'          => date('Y-m-d H:i:s')
         ]);
+
         // Verify queue is empty
         $this->assertEquals(0, DB::table('queued_jobs')->count());
+
         // 3. Register the queued listener on the dispatcher
         $syncClient = new \InventoryApp\Infrastructure\Integration\Shopify\ShopifyInventorySync(
             'example.myshopify.com',
@@ -111,8 +123,10 @@ final class DatabaseQueueTest extends TestCase
             $mappingRepo,
             ServiceContainer::productRepo($tenantId)
         );
+
         $dispatcher = ServiceContainer::dispatcher();
         $dispatcher->subscribe(StockReceived::class, [$shopifyListener, 'handle']);
+
         $event = new StockReceived(
             new SKU($skuStr),
             new LocationId($locationStr),
@@ -120,38 +134,39 @@ final class DatabaseQueueTest extends TestCase
             'PO-QUEUE',
             new DateTimeImmutable()
         );
+
         $dispatcher->dispatch($event);
+
         // 4. Verify job is queued in the database table
         $this->assertEquals(1, DB::table('queued_jobs')->count());
         $job = DB::table('queued_jobs')->first();
         $this->assertEquals('InventoryApp\Application\Inventory\Listeners\SyncStockToShopify', $job->listener_class);
         $this->assertNotNull($job->event_data);
+
         // 5. Run the queue worker CLI script with --once flag via PHP exec to verify it works as a process
         $output = [];
         $resultCode = -1;
+
         // Run CLI command using the local php installation
-        $baseDir = __DIR__ . "/../../..";
-                $extDir = ini_get('extension_dir') ?: 'C:\\Users\\johns\\AppData\\Local\\Microsoft\\WinGet\\Packages\\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\\ext';
-        $phpExec = PHP_BINARY . ' -d extension_dir=' . escapeshellarg($extDir) . ' -d extension=mbstring -d extension=pdo_sqlite';
-        $dbFile = getenv('DB_DATABASE') ?: ($baseDir . '/storage/data/test.sqlite');
-        $cmd = (PHP_OS_FAMILY === 'Windows')
-            ? "set DB_CONNECTION=sqlite&& set DB_DATABASE={$dbFile}&& " . $phpExec . " " . $baseDir . "/scripts/" . (str_contains(__FILE__, 'Outbox') ? "outbox-worker.php" : "queue-worker.php") . " --once"
-            : "DB_CONNECTION=sqlite DB_DATABASE=" . escapeshellarg($dbFile) . " " . $phpExec . " " . $baseDir . "/scripts/" . (str_contains(__FILE__, 'Outbox') ? "outbox-worker.php" : "queue-worker.php") . " --once";
-        DB::disconnect();
+        $cmd = "php scripts/queue-worker.php --once";
         exec($cmd, $output, $resultCode);
-        DB::reconnect();
+
         // 6. Verify worker exited with status code 0 and processed the job
         $this->assertEquals(0, $resultCode, implode("\n", $output));
+
         // Verify job was removed from queue on completion/failure processing
         $this->assertEquals(0, DB::table('queued_jobs')->count());
+
         $logString = implode("\n", $output);
         $this->assertStringContainsString("Processing Job ID", $logString);
         $this->assertStringContainsString("SyncStockToShopify", $logString);
     }
+
     public function testCatalogVariantAddedQueuesShopifyCatalogSync(): void
     {
         $productId = uuidv4();
         $skuStr = 'CAT-QUEUE-SKU';
+
         // Seed catalog product
         DB::table('catalog_products')->insert([
             'id'          => $productId,
@@ -160,6 +175,7 @@ final class DatabaseQueueTest extends TestCase
             'department'  => 'GEN',
             'created_at'  => date('Y-m-d H:i:s')
         ]);
+
         // Register SyncCatalogToShopify listener on the dispatcher
         $syncClient = new \InventoryApp\Infrastructure\Integration\Shopify\ShopifyInventorySync(
             'mock.shopify.com',
@@ -167,13 +183,17 @@ final class DatabaseQueueTest extends TestCase
         );
         $mappingRepo = new \InventoryApp\Infrastructure\Integration\Shopify\ShopifyMappingRepository();
         $catalogSyncListener = new \InventoryApp\Application\Catalog\Listeners\SyncCatalogToShopify($syncClient, $mappingRepo);
+
         $dispatcher = ServiceContainer::dispatcher();
         $dispatcher->subscribe(\InventoryApp\Domain\Catalog\Events\VariantAddedToCatalog::class, [$catalogSyncListener, 'handle']);
+
         // Verify queue is empty
         $this->assertEquals(0, DB::table('queued_jobs')->count());
+
         // Execute AddVariant usecase to trigger event
         $catalogProductRepo = ServiceContainer::catalogProductRepo();
         $addVariantUseCase = new \InventoryApp\Application\Catalog\UseCases\AddVariant($catalogProductRepo, $dispatcher);
+
         $addVariantUseCase->execute(
             $productId,
             uuidv4(),
@@ -181,33 +201,31 @@ final class DatabaseQueueTest extends TestCase
             ['color' => 'blue'],
             25.50
         );
+
         // Verify job is queued in the database table
         $this->assertEquals(1, DB::table('queued_jobs')->count());
         $job = DB::table('queued_jobs')->first();
         $this->assertEquals('InventoryApp\Application\Catalog\Listeners\SyncCatalogToShopify', $job->listener_class);
+
         // Run the queue worker to process the job
         $output = [];
         $resultCode = -1;
-        $baseDir = __DIR__ . "/../../..";
-                $extDir = ini_get('extension_dir') ?: 'C:\\Users\\johns\\AppData\\Local\\Microsoft\\WinGet\\Packages\\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\\ext';
-        $phpExec = PHP_BINARY . ' -d extension_dir=' . escapeshellarg($extDir) . ' -d extension=mbstring -d extension=pdo_sqlite';
-        $dbFile = getenv('DB_DATABASE') ?: ($baseDir . '/storage/data/test.sqlite');
-        $cmd = (PHP_OS_FAMILY === 'Windows')
-            ? "set DB_CONNECTION=sqlite&& set DB_DATABASE={$dbFile}&& " . $phpExec . " " . $baseDir . "/scripts/" . (str_contains(__FILE__, 'Outbox') ? "outbox-worker.php" : "queue-worker.php") . " --once"
-            : "DB_CONNECTION=sqlite DB_DATABASE=" . escapeshellarg($dbFile) . " " . $phpExec . " " . $baseDir . "/scripts/" . (str_contains(__FILE__, 'Outbox') ? "outbox-worker.php" : "queue-worker.php") . " --once";
-        DB::disconnect();
+        $cmd = "php scripts/queue-worker.php --once";
         exec($cmd, $output, $resultCode);
-        DB::reconnect();
+
         // Verify worker completed successfully and job is deleted from queue
         $this->assertEquals(0, $resultCode, implode("\n", $output));
         $this->assertEquals(0, DB::table('queued_jobs')->count());
+
         // Verify the mapping was successfully created in the database mapping table!
         $this->assertEquals('mock-inv-item-' . $skuStr, $mappingRepo->findShopifyInventoryItemId($skuStr));
     }
+
     public function testJournalEntryRecordedQueuesQuickBooksSync(): void
     {
         $entryId = uuidv4();
         $tenantId = 'test-tenant';
+
         // 1. Register SyncJournalToQuickBooks listener on the dispatcher
         $syncClient = new \InventoryApp\Infrastructure\Integration\QuickBooks\QuickBooksJournalSync(
             'mock-company',
@@ -215,10 +233,13 @@ final class DatabaseQueueTest extends TestCase
         );
         $mappingRepo = new \InventoryApp\Infrastructure\Integration\QuickBooks\QuickBooksMappingRepository();
         $qboSyncListener = new \InventoryApp\Application\Accounting\Listeners\SyncJournalToQuickBooks($syncClient, $mappingRepo);
+
         $dispatcher = ServiceContainer::dispatcher();
         $dispatcher->subscribe(\InventoryApp\Domain\Accounting\Events\JournalEntryRecorded::class, [$qboSyncListener, 'handle']);
+
         // Verify queue is empty
         $this->assertEquals(0, DB::table('queued_jobs')->count());
+
         // 2. Instantiate and save a journal entry using the repository to trigger the event
         DB::table('tenants')->insertOrIgnore(['id' => 'test-tenant', 'name' => 'Test Tenant']);
         $journalRepo = ServiceContainer::journalRepo();
@@ -233,45 +254,47 @@ final class DatabaseQueueTest extends TestCase
         $entry->addLine(\InventoryApp\Domain\Accounting\ValueObjects\AccountCode::cash(), 5000, \InventoryApp\Domain\Accounting\Enums\DebitCredit::Debit, 'Deposit');
         $entry->addLine(\InventoryApp\Domain\Accounting\ValueObjects\AccountCode::salesRevenue(), 5000, \InventoryApp\Domain\Accounting\Enums\DebitCredit::Credit, 'Revenue');
         $entry->assertBalanced();
+
         $journalRepo->save($entry);
+
         // 3. Verify job is queued in the database table
         $this->assertEquals(1, DB::table('queued_jobs')->count());
         $job = DB::table('queued_jobs')->first();
         $this->assertEquals('InventoryApp\Application\Accounting\Listeners\SyncJournalToQuickBooks', $job->listener_class);
+
         // 4. Run the queue worker to process the job
         $output = [];
         $resultCode = -1;
-        $baseDir = __DIR__ . "/../../..";
-                $extDir = ini_get('extension_dir') ?: 'C:\\Users\\johns\\AppData\\Local\\Microsoft\\WinGet\\Packages\\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\\ext';
-        $phpExec = PHP_BINARY . ' -d extension_dir=' . escapeshellarg($extDir) . ' -d extension=mbstring -d extension=pdo_sqlite';
-        $dbFile = getenv('DB_DATABASE') ?: ($baseDir . '/storage/data/test.sqlite');
-        $cmd = (PHP_OS_FAMILY === 'Windows')
-            ? "set DB_CONNECTION=sqlite&& set DB_DATABASE={$dbFile}&& " . $phpExec . " " . $baseDir . "/scripts/" . (str_contains(__FILE__, 'Outbox') ? "outbox-worker.php" : "queue-worker.php") . " --once"
-            : "DB_CONNECTION=sqlite DB_DATABASE=" . escapeshellarg($dbFile) . " " . $phpExec . " " . $baseDir . "/scripts/" . (str_contains(__FILE__, 'Outbox') ? "outbox-worker.php" : "queue-worker.php") . " --once";
-        DB::disconnect();
+        $cmd = "php scripts/queue-worker.php --once";
         exec($cmd, $output, $resultCode);
-        DB::reconnect();
+
         // Verify worker completed successfully and job is deleted from queue
         $this->assertEquals(0, $resultCode, implode("\n", $output));
         $this->assertEquals(0, DB::table('queued_jobs')->count());
+
         // 5. Verify the mapping was successfully created in the mapping table
         $this->assertNotNull($mappingRepo->findQuickBooksJournalId($entryId));
         $this->assertStringContainsString('mock-qbo-journal-', $mappingRepo->findQuickBooksJournalId($entryId));
     }
+
     public function testJournalEntryRecordedQueuesXeroSync(): void
     {
         $entryId = uuidv4();
         $tenantId = 'test-tenant';
+
         $syncClient = new \InventoryApp\Infrastructure\Integration\Xero\XeroJournalSync(
             'mock-tenant',
             'token'
         );
         $mappingRepo = new \InventoryApp\Infrastructure\Integration\Xero\XeroMappingRepository();
         $xeroSyncListener = new \InventoryApp\Application\Accounting\Listeners\SyncJournalToXero($syncClient, $mappingRepo);
+
         $dispatcher = ServiceContainer::dispatcher();
         $dispatcher->subscribe(\InventoryApp\Domain\Accounting\Events\JournalEntryRecorded::class, [$xeroSyncListener, 'handle']);
+
         // Verify queue is empty
         $this->assertEquals(0, DB::table('queued_jobs')->count());
+
         DB::table('tenants')->insertOrIgnore(['id' => 'test-tenant', 'name' => 'Test Tenant']);
         $journalRepo = ServiceContainer::journalRepo();
         $entry = new \InventoryApp\Domain\Accounting\Aggregates\JournalEntry(
@@ -285,41 +308,43 @@ final class DatabaseQueueTest extends TestCase
         $entry->addLine(\InventoryApp\Domain\Accounting\ValueObjects\AccountCode::cash(), 3000, \InventoryApp\Domain\Accounting\Enums\DebitCredit::Debit, 'Deposit');
         $entry->addLine(\InventoryApp\Domain\Accounting\ValueObjects\AccountCode::salesRevenue(), 3000, \InventoryApp\Domain\Accounting\Enums\DebitCredit::Credit, 'Revenue');
         $entry->assertBalanced();
+
         $journalRepo->save($entry);
+
         $this->assertEquals(1, DB::table('queued_jobs')->count());
         $job = DB::table('queued_jobs')->first();
         $this->assertEquals('InventoryApp\Application\Accounting\Listeners\SyncJournalToXero', $job->listener_class);
+
         $output = [];
         $resultCode = -1;
-        $baseDir = __DIR__ . "/../../..";
-                $extDir = ini_get('extension_dir') ?: 'C:\\Users\\johns\\AppData\\Local\\Microsoft\\WinGet\\Packages\\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\\ext';
-        $phpExec = PHP_BINARY . ' -d extension_dir=' . escapeshellarg($extDir) . ' -d extension=mbstring -d extension=pdo_sqlite';
-        $dbFile = getenv('DB_DATABASE') ?: ($baseDir . '/storage/data/test.sqlite');
-        $cmd = (PHP_OS_FAMILY === 'Windows')
-            ? "set DB_CONNECTION=sqlite&& set DB_DATABASE={$dbFile}&& " . $phpExec . " " . $baseDir . "/scripts/" . (str_contains(__FILE__, 'Outbox') ? "outbox-worker.php" : "queue-worker.php") . " --once"
-            : "DB_CONNECTION=sqlite DB_DATABASE=" . escapeshellarg($dbFile) . " " . $phpExec . " " . $baseDir . "/scripts/" . (str_contains(__FILE__, 'Outbox') ? "outbox-worker.php" : "queue-worker.php") . " --once";
-        DB::disconnect();
+        $cmd = "php scripts/queue-worker.php --once";
         exec($cmd, $output, $resultCode);
-        DB::reconnect();
+
         $this->assertEquals(0, $resultCode, implode("\n", $output));
         $this->assertEquals(0, DB::table('queued_jobs')->count());
+
         $this->assertNotNull($mappingRepo->findXeroJournalId($entryId));
         $this->assertStringContainsString('mock-xero-journal-', $mappingRepo->findXeroJournalId($entryId));
     }
+
     public function testJournalEntryRecordedQueuesNetSuiteSync(): void
     {
         $entryId = uuidv4();
         $tenantId = 'test-tenant';
+
         $syncClient = new \InventoryApp\Infrastructure\Integration\NetSuite\NetSuiteJournalSync(
             'mock-account',
             'token'
         );
         $mappingRepo = new \InventoryApp\Infrastructure\Integration\NetSuite\NetSuiteMappingRepository();
         $nsSyncListener = new \InventoryApp\Application\Accounting\Listeners\SyncJournalToNetSuite($syncClient, $mappingRepo);
+
         $dispatcher = ServiceContainer::dispatcher();
         $dispatcher->subscribe(\InventoryApp\Domain\Accounting\Events\JournalEntryRecorded::class, [$nsSyncListener, 'handle']);
+
         // Verify queue is empty
         $this->assertEquals(0, DB::table('queued_jobs')->count());
+
         DB::table('tenants')->insertOrIgnore(['id' => 'test-tenant', 'name' => 'Test Tenant']);
         $journalRepo = ServiceContainer::journalRepo();
         $entry = new \InventoryApp\Domain\Accounting\Aggregates\JournalEntry(
@@ -333,30 +358,29 @@ final class DatabaseQueueTest extends TestCase
         $entry->addLine(\InventoryApp\Domain\Accounting\ValueObjects\AccountCode::cash(), 4500, \InventoryApp\Domain\Accounting\Enums\DebitCredit::Debit, 'Deposit');
         $entry->addLine(\InventoryApp\Domain\Accounting\ValueObjects\AccountCode::salesRevenue(), 4500, \InventoryApp\Domain\Accounting\Enums\DebitCredit::Credit, 'Revenue');
         $entry->assertBalanced();
+
         $journalRepo->save($entry);
+
         $this->assertEquals(1, DB::table('queued_jobs')->count());
         $job = DB::table('queued_jobs')->first();
         $this->assertEquals('InventoryApp\Application\Accounting\Listeners\SyncJournalToNetSuite', $job->listener_class);
+
         $output = [];
         $resultCode = -1;
-        $baseDir = __DIR__ . "/../../..";
-                $extDir = ini_get('extension_dir') ?: 'C:\\Users\\johns\\AppData\\Local\\Microsoft\\WinGet\\Packages\\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\\ext';
-        $phpExec = PHP_BINARY . ' -d extension_dir=' . escapeshellarg($extDir) . ' -d extension=mbstring -d extension=pdo_sqlite';
-        $dbFile = getenv('DB_DATABASE') ?: ($baseDir . '/storage/data/test.sqlite');
-        $cmd = (PHP_OS_FAMILY === 'Windows')
-            ? "set DB_CONNECTION=sqlite&& set DB_DATABASE={$dbFile}&& " . $phpExec . " " . $baseDir . "/scripts/" . (str_contains(__FILE__, 'Outbox') ? "outbox-worker.php" : "queue-worker.php") . " --once"
-            : "DB_CONNECTION=sqlite DB_DATABASE=" . escapeshellarg($dbFile) . " " . $phpExec . " " . $baseDir . "/scripts/" . (str_contains(__FILE__, 'Outbox') ? "outbox-worker.php" : "queue-worker.php") . " --once";
-        DB::disconnect();
+        $cmd = "php scripts/queue-worker.php --once";
         exec($cmd, $output, $resultCode);
-        DB::reconnect();
+
         $this->assertEquals(0, $resultCode, implode("\n", $output));
         $this->assertEquals(0, DB::table('queued_jobs')->count());
+
         $this->assertNotNull($mappingRepo->findNetSuiteJournalId($entryId));
         $this->assertStringContainsString('mock-netsuite-journal-', $mappingRepo->findNetSuiteJournalId($entryId));
     }
+
     public function testQueueWorkerHandlesFailureAndBackoff(): void
     {
         $jobId = uuidv4();
+
         // 1. Insert a job that will fail to resolve
         DB::table('queued_jobs')->insert([
             'id'             => $jobId,
@@ -368,43 +392,42 @@ final class DatabaseQueueTest extends TestCase
             'available_at'   => date('Y-m-d H:i:s'),
             'created_at'     => date('Y-m-d H:i:s')
         ]);
+
         $this->assertEquals(1, DB::table('queued_jobs')->count());
+
         // 2. Run queue worker
         $output = [];
         $resultCode = -1;
-        $baseDir = __DIR__ . "/../../..";
-                $extDir = ini_get('extension_dir') ?: 'C:\\Users\\johns\\AppData\\Local\\Microsoft\\WinGet\\Packages\\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\\ext';
-        $phpExec = PHP_BINARY . ' -d extension_dir=' . escapeshellarg($extDir) . ' -d extension=mbstring -d extension=pdo_sqlite';
-        $dbFile = getenv('DB_DATABASE') ?: ($baseDir . '/storage/data/test.sqlite');
-        $cmd = (PHP_OS_FAMILY === 'Windows')
-            ? "set DB_CONNECTION=sqlite&& set DB_DATABASE={$dbFile}&& " . $phpExec . " " . $baseDir . "/scripts/" . (str_contains(__FILE__, 'Outbox') ? "outbox-worker.php" : "queue-worker.php") . " --once"
-            : "DB_CONNECTION=sqlite DB_DATABASE=" . escapeshellarg($dbFile) . " " . $phpExec . " " . $baseDir . "/scripts/" . (str_contains(__FILE__, 'Outbox') ? "outbox-worker.php" : "queue-worker.php") . " --once";
-        DB::disconnect();
+        $cmd = "php scripts/queue-worker.php --once";
         exec($cmd, $output, $resultCode);
-        DB::reconnect();
+
         // Verify exit code is 0 (failures are caught and job is released/deleted)
         $this->assertEquals(0, $resultCode, implode("\n", $output));
+
         // The job should still exist in the queue but with attempts incremented and reserved_at nullified
         $this->assertEquals(1, DB::table('queued_jobs')->count());
         $job = DB::table('queued_jobs')->where('id', $jobId)->first();
         $this->assertEquals(1, $job->attempts);
         $this->assertNull($job->reserved_at);
+
         // Check that available_at is set in the future (retry delay is 30 * attempts = 30 seconds)
         $availableAt = new \DateTime($job->available_at);
         $now = new \DateTime();
         $diff = $availableAt->getTimestamp() - $now->getTimestamp();
         $this->assertGreaterThanOrEqual(25, $diff); // Allow slight timing variations
+
         // 3. Now test that max attempts deleting works (set attempts to 5)
         DB::table('queued_jobs')->where('id', $jobId)->update([
             'attempts'     => 5,
             'available_at' => date('Y-m-d H:i:s') // Make it available again
         ]);
+
         $output = [];
         $resultCode = -1;
-        DB::disconnect();
         exec($cmd, $output, $resultCode);
-        DB::reconnect();
+
         $this->assertEquals(0, $resultCode, implode("\n", $output));
+
         // Job should now be deleted because attempts reached 5
         $this->assertEquals(0, DB::table('queued_jobs')->where('id', $jobId)->count());
     }

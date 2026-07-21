@@ -36,6 +36,12 @@ final class ComplianceE2ETest extends TestCase
         $envVars = "DB_CONNECTION={$dbConnection} DB_HOST={$dbHost} DB_PORT={$dbPort} DB_DATABASE={$dbDatabase} DB_USERNAME={$dbUsername} DB_PASSWORD={$dbPassword}";
 
         $command = "{$envVars} php -S 127.0.0.1:8092 public/index.php > tests/Integration/Http/server_compliance.log 2>&1 & echo $!";
+        $dbConn = getenv('DB_CONNECTION') ?: 'pgsql';
+        $dbDb = getenv('DB_DATABASE') ?: '';
+        $dbHost = getenv('DB_HOST') ?: '';
+        $dbUser = getenv('DB_USERNAME') ?: '';
+        $dbPass = getenv('DB_PASSWORD') ?: '';
+        $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8092 public/index.php > tests/Integration/Http/server_compliance.log 2>&1 & echo $!";
         
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
@@ -122,12 +128,14 @@ final class ComplianceE2ETest extends TestCase
             'name' => 'Test Product',
             'department' => 'Test Dept',
             'version_id' => 1
+        $this->assertEquals(201, $varRes['status']);
 
         // Setup location
         Capsule::table('locations')->insertOrIgnore([
             'id'   => 'LOC-COMP-1',
             'name' => 'LOC-COMP-1',
             'type' => 'WAREHOUSE'
+            'type' => 'WAREHOUSE',
 
         // Receive stock
         $receiveRes = $this->request('POST', '/api/inventory/receive', [
@@ -258,6 +266,7 @@ final class ComplianceE2ETest extends TestCase
         $this->assertEquals(201, $varRes['status']);
 
             'type' => 'WAREHOUSE',
+
 
 
 

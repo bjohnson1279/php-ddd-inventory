@@ -138,3 +138,31 @@ class ShopifyInventorySync
 
     }
 }
+
+
+{
+
+    {
+    }
+
+    {
+
+            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_CONNECTTIMEOUT => 10,
+
+
+        }
+    }
+
+    {
+        }
+
+
+
+
+        }
+
+        }
+
+    }
+}

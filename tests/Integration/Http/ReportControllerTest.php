@@ -12,53 +12,19 @@ require_once __DIR__ . '/../bootstrap.php';
 /** @group integration */
 final class ReportControllerTest extends TestCase
 {
-    private static $serverProcess = null;
+    private static ?int $pid = null;
     private string $tenantId;
     private string $email;
     private string $password;
     private ?string $token = null;
 
-        public static function setUpBeforeClass(): void
+    public static function setUpBeforeClass(): void
     {
-        $baseDir = realpath(__DIR__ . '/../../..');
-        $dbPath = $baseDir . '/storage/data/test_reportcontrollertest.sqlite';
-        if (!file_exists($dbPath)) {
-            @mkdir(dirname($dbPath), 0777, true);
-            @touch($dbPath);
-        }
-        $extDir = 'C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext';
-        $phpExec = PHP_BINARY . ' -d extension_dir="C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext" -d extension=pdo -d extension=mbstring -d extension=pdo_sqlite';
-        $cmd = $phpExec . ' -S 127.0.0.1:8089 public/index.php';
+        $output = [];
+        $command = "php -S 127.0.0.1:8097 public/index.php > tests/Integration/Http/server_report.log 2>&1 & echo $!";
         
-        $descriptors = [
-            0 => ["pipe", "r"],
-            1 => ["file", __DIR__ . '/server_reportcontrollertest.log', "a"],
-            2 => ["file", __DIR__ . '/server_reportcontrollertest.log', "a"],
-        ];
-        
-        $env = array_merge($_ENV, [
-            'DB_CONNECTION' => 'sqlite',
-            'DB_DATABASE' => $dbPath,
-            'APP_ENV' => 'testing',
-        ]);
-        
-                putenv("DB_DATABASE={$dbPath}");
-        $_ENV['DB_DATABASE'] = $dbPath;
-        $_SERVER['DB_DATABASE'] = $dbPath;
-        
-        $capsule = new \Illuminate\Database\Capsule\Manager();
-        $capsule->addConnection([
-            'driver'   => 'sqlite',
-            'database' => $dbPath,
-            'prefix'   => '',
-        ]);
-        $capsule->setAsGlobal();
-        $capsule->bootEloquent();
-        
-        require_once __DIR__ . '/../../../src/Infrastructure/Persistence/sqlite_setup.php';
-        \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
-
-        self::$serverProcess = proc_open($cmd, $descriptors, $pipes, $baseDir, $env);
+        exec($command, $output);
+        self::$pid = (int)($output[0] ?? 0);
         
         // Wait for server to bind
         for ($i = 0; $i < 50; $i++) {
@@ -71,12 +37,10 @@ final class ReportControllerTest extends TestCase
         }
     }
 
-        public static function tearDownAfterClass(): void
+    public static function tearDownAfterClass(): void
     {
-        if (self::$serverProcess && is_resource(self::$serverProcess)) {
-            proc_terminate(self::$serverProcess);
-            proc_close(self::$serverProcess);
-            self::$serverProcess = null;
+        if (self::$pid) {
+            exec("kill " . self::$pid . " > /dev/null 2>&1");
         }
     }
 
@@ -108,7 +72,6 @@ final class ReportControllerTest extends TestCase
             'tenant_id' => $this->tenantId,
             'email'     => $this->email,
             'password'  => $this->password,
-        ]);
 
         $this->assertEquals(200, $loginRes['status']);
         $this->token = $loginRes['body']['token'];
@@ -129,7 +92,6 @@ final class ReportControllerTest extends TestCase
             'reorder_threshold' => 5,
             'created_at'        => date('Y-m-d H:i:s'),
             'updated_at'        => date('Y-m-d H:i:s')
-        ]);
 
         // 2. Seed Location Stock (15 units)
         DB::table('product_locations')->insert([
@@ -138,8 +100,6 @@ final class ReportControllerTest extends TestCase
             'stock_quantity'    => 15,
             'open_box_quantity' => 0,
             'damaged_quantity'  => 0,
-            'updated_at'        => date('Y-m-d H:i:s')
-        ]);
 
         // 3. Seed Cost Layers
         DB::table('inventory_cost_layers')->insert([
@@ -153,17 +113,10 @@ final class ReportControllerTest extends TestCase
                 'purchase_order_id'  => 'PO-1',
                 'received_at'        => '2026-01-01 00:00:00'
             ],
-            [
-                'id'                 => uuidv4(),
-                'tenant_id'          => $this->tenantId,
-                'variant_id'         => $sku,
-                'original_quantity'  => 10,
-                'remaining_quantity' => 10,
                 'unit_cost_cents'    => 1200,
                 'purchase_order_id'  => 'PO-2',
                 'received_at'        => '2026-02-01 00:00:00'
             ]
-        ]);
 
         // 4. Request valuation report
         $res = $this->request('GET', '/api/reports/valuation', [], $this->token);
@@ -193,14 +146,13 @@ final class ReportControllerTest extends TestCase
 
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
     {
-        $url = 'http://127.0.0.1:8089' . $path;
+        $url = 'http://127.0.0.1:8097' . $path;
         $options = [
             'http' => [
                 'header'        => "Content-Type: application/json\r\n",
                 'method'        => $method,
                 'content'       => json_encode($body),
                 'ignore_errors' => true,
-            ]
         ];
 
         if ($token) {
@@ -219,6 +171,96 @@ final class ReportControllerTest extends TestCase
         return [
             'status' => $statusCode,
             'body'   => json_decode((string)$result, true) ?: $result
-        ];
+    }
+}
+
+
+
+
+
+{
+    private static $serverProcess = null;
+
+        public static function setUpBeforeClass(): void
+    {
+        $baseDir = realpath(__DIR__ . '/../../..');
+        $dbPath = $baseDir . '/storage/data/test_reportcontrollertest.sqlite';
+        if (!file_exists($dbPath)) {
+            @mkdir(dirname($dbPath), 0777, true);
+            @touch($dbPath);
+        }
+        $extDir = 'C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext';
+        $phpExec = PHP_BINARY . ' -d extension_dir="C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext" -d extension=pdo -d extension=mbstring -d extension=pdo_sqlite';
+        $cmd = $phpExec . ' -S 127.0.0.1:8089 public/index.php';
+        
+        $descriptors = [
+            0 => ["pipe", "r"],
+            1 => ["file", __DIR__ . '/server_reportcontrollertest.log', "a"],
+            2 => ["file", __DIR__ . '/server_reportcontrollertest.log', "a"],
+        
+        $env = array_merge($_ENV, [
+            'DB_CONNECTION' => 'sqlite',
+            'DB_DATABASE' => $dbPath,
+            'APP_ENV' => 'testing',
+        
+                putenv("DB_DATABASE={$dbPath}");
+        $_ENV['DB_DATABASE'] = $dbPath;
+        $_SERVER['DB_DATABASE'] = $dbPath;
+        
+        $capsule = new \Illuminate\Database\Capsule\Manager();
+        $capsule->addConnection([
+            'driver'   => 'sqlite',
+            'database' => $dbPath,
+            'prefix'   => '',
+        $capsule->setAsGlobal();
+        $capsule->bootEloquent();
+        
+        require_once __DIR__ . '/../../../src/Infrastructure/Persistence/sqlite_setup.php';
+        \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
+
+        self::$serverProcess = proc_open($cmd, $descriptors, $pipes, $baseDir, $env);
+        
+            }
+        }
+    }
+
+        public static function tearDownAfterClass(): void
+    {
+        if (self::$serverProcess && is_resource(self::$serverProcess)) {
+            proc_terminate(self::$serverProcess);
+            proc_close(self::$serverProcess);
+            self::$serverProcess = null;
+        }
+    }
+
+    {
+
+
+
+
+
+    }
+
+    {
+
+
+
+
+
+
+
+        
+
+
+    }
+
+    {
+        $url = 'http://127.0.0.1:8089' . $path;
+
+        }
+
+        
+        }
+
     }
 }

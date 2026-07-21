@@ -2,8 +2,6 @@
 
 namespace InventoryApp\Domain\Inventory\Exceptions;
 
-use Exception;
-
 class CapacityExceededException extends \DomainException
 {
     private string $locationId;
@@ -25,4 +23,15 @@ class CapacityExceededException extends \DomainException
     public function getLimitType(): string { return $this->limitType; }
     public function getLimit(): float { return $this->limit; }
     public function getProspective(): float { return $this->prospective; }
+}
+
+
+use Exception;
+
+{
+
+    {
+
+    }
+
 }

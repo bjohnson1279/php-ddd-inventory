@@ -74,14 +74,12 @@ final class AuditE2ETest extends TestCase
             'adminName'     => 'Admin User',
             'adminEmail'    => $this->email,
             'adminPassword' => $this->password,
-        ]);
         $this->assertEquals(200, $setupRes['status'], json_encode($setupRes));
 
         $loginRes = $this->request('POST', '/api/auth/login', [
             'tenant_id' => $this->tenantId,
             'email'     => $this->email,
             'password'  => $this->password,
-        ]);
         $this->assertEquals(200, $loginRes['status']);
         $this->token = $loginRes['body']['token'];
 
@@ -92,7 +90,6 @@ final class AuditE2ETest extends TestCase
             'name' => 'iPhone 15 Catalog',
             'description' => 'Test Description',
             'department' => 'Electronics'
-        ]);
 
         $catalogVariantId = uuidv4();
         Capsule::table('catalog_variants')->insert([
@@ -101,44 +98,33 @@ final class AuditE2ETest extends TestCase
             'sku' => 'SKU-DIFF',
             'attributes' => '{}',
             'price' => 999.00
-        ]);
 
         // Seed product with a valid UUID
         $productId = uuidv4();
         Capsule::table('products')->insert([
             'id' => $productId,
-            'tenant_id' => $this->tenantId,
             'sku' => 'SKU-DIFF', // ends with -DIFF to mock Shopify mismatch
             'name' => 'iPhone 15',
             'department' => 'Electronics',
             'reorder_threshold' => 10,
             'version_id' => 1
-        ]);
 
         // Seed shopify mappings
         Capsule::table('shopify_sku_mappings')->insert([
             'id' => uuidv4(),
-            'sku' => 'SKU-DIFF',
             'shopify_inventory_item_id' => 'inv-item-123'
-        ]);
 
         // Ensure 'default' location exists
-        Capsule::table('locations')->insertOrIgnore([
             'id' => 'default',
             'name' => 'Default Location',
             'type' => 'warehouse'
-        ]);
 
         Capsule::table('shopify_location_mappings')->insert([
-            'id' => uuidv4(),
             'our_location_id' => 'LOC-STOREFRONT',
             'shopify_location_id' => 'gid://shopify/Location/12345'
-        ]);
 
         // Seed ledger entry with quantity
         Capsule::table('ledger_entries')->insert([
-            'id' => uuidv4(),
-            'tenant_id' => $this->tenantId,
             'variant_id' => $productId,
             'quantity' => 10,
             'reason' => 'opening_balance',
@@ -146,18 +132,13 @@ final class AuditE2ETest extends TestCase
             'metadata' => json_encode(['locationId' => 'default']),
             'occurred_at' => date('Y-m-d H:i:s'),
             'created_at' => date('Y-m-d H:i:s')
-        ]);
 
         // Seed journal entry without mapping
         Capsule::table('journal_entries')->insert([
-            'id' => uuidv4(),
-            'tenant_id' => $this->tenantId,
             'entry_date' => date('Y-m-d'),
             'description' => 'Test unmapped journal',
             'method' => 'accrual',
             'lines' => '[]',
-            'created_at' => date('Y-m-d H:i:s')
-        ]);
     }
 
     public function testAuditLifecycle(): void
@@ -225,6 +206,111 @@ final class AuditE2ETest extends TestCase
         return [
             'status' => $statusCode,
             'body'   => (json_last_error() === JSON_ERROR_NONE) ? $decoded : $result
-        ];
+    }
+}
+
+
+
+
+
+{
+    private static $serverProcess = null;
+
+        public static function setUpBeforeClass(): void
+    {
+        $baseDir = realpath(__DIR__ . '/../../..');
+        $dbPath = $baseDir . '/storage/data/test_audite2etest.sqlite';
+        if (!file_exists($dbPath)) {
+            @mkdir(dirname($dbPath), 0777, true);
+            @touch($dbPath);
+        }
+        $extDir = 'C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext';
+        $phpExec = PHP_BINARY . ' -d extension_dir="C:\Users\johns\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.1_Microsoft.Winget.Source_8wekyb3d8bbwe\ext" -d extension=pdo -d extension=mbstring -d extension=pdo_sqlite';
+        $cmd = $phpExec . ' -S 127.0.0.1:8095 public/index.php';
+        
+        $descriptors = [
+            0 => ["pipe", "r"],
+            1 => ["file", __DIR__ . '/server_audite2etest.log', "a"],
+            2 => ["file", __DIR__ . '/server_audite2etest.log', "a"],
+        
+        putenv('SHOPIFY_SHOP_URL=mock-store.myshopify.com');
+        putenv('SHOPIFY_ACCESS_TOKEN=mock-token');
+        putenv('QUICKBOOKS_ACCESS_TOKEN=mock-token');
+        $_ENV['SHOPIFY_SHOP_URL'] = 'mock-store.myshopify.com';
+        $_ENV['SHOPIFY_ACCESS_TOKEN'] = 'mock-token';
+        $_ENV['QUICKBOOKS_ACCESS_TOKEN'] = 'mock-token';
+
+        $env = array_merge($_ENV, [
+            'DB_CONNECTION' => 'sqlite',
+            'DB_DATABASE' => $dbPath,
+            'APP_ENV' => 'testing',
+        
+                putenv("DB_DATABASE={$dbPath}");
+        $_ENV['DB_DATABASE'] = $dbPath;
+        $_SERVER['DB_DATABASE'] = $dbPath;
+        
+        $capsule = new \Illuminate\Database\Capsule\Manager();
+        $capsule->addConnection([
+            'driver'   => 'sqlite',
+            'database' => $dbPath,
+            'prefix'   => '',
+        $capsule->setAsGlobal();
+        $capsule->bootEloquent();
+        
+        require_once __DIR__ . '/../../../src/Infrastructure/Persistence/sqlite_setup.php';
+        \InventoryApp\Infrastructure\Persistence\SqliteSetup::createSchema($capsule->getConnection());
+
+        self::$serverProcess = proc_open($cmd, $descriptors, $pipes, $baseDir, $env);
+        
+        // Wait for server to bind
+            }
+            usleep(50000); // 50ms
+        }
+    }
+
+        public static function tearDownAfterClass(): void
+    {
+        if (self::$serverProcess && is_resource(self::$serverProcess)) {
+            proc_terminate(self::$serverProcess);
+            proc_close(self::$serverProcess);
+            self::$serverProcess = null;
+        }
+    }
+
+    {
+        Capsule::table('catalog_variants')->delete();
+        Capsule::table('catalog_products')->delete();
+                Capsule::table('audit_discrepancies')->delete();
+
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+    {
+
+
+            }
+        }
+
+
+    }
+
+    {
+        $url = 'http://127.0.0.1:8095' . $path;
+
+        }
+
+        
+        }
+
     }
 }

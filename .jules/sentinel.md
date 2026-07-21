@@ -29,7 +29,6 @@
 **Vulnerability:** Controller classes in `src/Infrastructure/Http/Controllers/` caught generic `Exception` objects and directly exposed their `$e->getMessage()` payload back to clients in a 400 Bad Request response. This exposes backend internals and database exceptions.
 **Learning:** Returning `$e->getMessage()` unconditionally directly exposes backend system internals (stack traces, SQL errors, logic paths) to users, enabling reconnaissance. When patching this, be mindful that simply changing `catch (Exception $e)` to specific exception types may break existing unit tests that expect `Exception` to be caught by the general catch block, thus failing the test due to 500 error instead of 400 or 404, because the underlying service actually throws `Exception` (or unit tests mock generic `Exception`).
 **Prevention:** Instead of replacing the `catch` block completely and breaking the structure (and thus test assertions and status codes), it is safer to inject an `if` check inside the existing `catch (Exception $e)` block that validates if `$e` is an instance of a safe exception (`InvalidArgumentException`, `ValidationException`, `DomainException`). If not safe, log it and return 500. This preserves the original logic flow for safe exceptions while protecting against leaks for generic ones.
-## 2024-05-24 - [Fix Information Leakage in Controller Catch Blocks]
 **Vulnerability:** Controller classes in src/Infrastructure/Http/Controllers/ caught generic Exception objects and directly exposed their $e->getMessage() payload back to clients in a 400 Bad Request response. This exposes backend internals and database exceptions.
 **Learning:** Returning $e->getMessage() unconditionally directly exposes backend system internals (stack traces, SQL errors, logic paths) to users, enabling reconnaissance. When patching this, be mindful that simply changing catch (Exception $e) to specific exception types may break existing unit tests that expect Exception to be caught by the general catch block, thus failing the test due to 500 error instead of 400 or 404, because the underlying service actually throws Exception (or unit tests mock generic Exception).
 **Prevention:** Instead of replacing the catch block completely and breaking the structure (and thus test assertions and status codes), it is safer to inject an if check inside the existing catch (Exception $e) block that validates if $e is an instance of a safe exception (InvalidArgumentException, ValidationException, DomainException). If not safe, log it and return 500. This preserves the original logic flow for safe exceptions while protecting against leaks for generic ones.
@@ -72,6 +71,17 @@
 **Learning:** Returning $e->getMessage() directly to the client on unexpected 500 server errors can expose internal stack traces, DB schema details, or system states (CWE-209). Domain exceptions should be gracefully handled as 400 Bad Requests, while unexpected server errors should return generic messages while logging the actual issue.
 **Prevention:** Standardize error handling in all controllers to explicitly log unexpected exceptions internally via error_log() and return generic sanitised messages (e.g., 'An internal server error occurred.') for 500 responses, only allowing specific domain exception messages for 400 responses.
 ## 2026-07-19 - Prevent Exception Message Leakage
-**Vulnerability:** Raw exception messages were leaked in 500 error responses in ForecastingController, WebhookSubscriptionController, and ShippingController.
-**Learning:** Returning $e->getMessage() directly to the client on unexpected 500 server errors can expose internal stack traces, DB schema details, or system states (CWE-209). Domain exceptions should be gracefully handled as 400 Bad Requests, while unexpected server errors should return generic messages while logging the actual issue.
-**Prevention:** Standardize error handling in all controllers to explicitly log unexpected exceptions internally via error_log() and return generic sanitised messages (e.g., 'An internal server error occurred.') for 500 responses, only allowing specific domain exception messages for 400 responses.
+
+
+
+**Action:** 
+
+
+
+
+
+
+
+## 2026-07-20 - Removed Hardcoded DB Password Fallback
+**Vulnerability:** The application used a hardcoded fallback value `'secret'` if the `DB_PASSWORD` environment variable was not found, which could lead to unauthorized access in misconfigured environments.
+**Prevention:** Avoid hardcoding default credentials. Use strict comparisons (`!== false`) when fetching critical environment variables, and fallback to an empty string instead of supplying a potentially guessable fallback like 'secret'.

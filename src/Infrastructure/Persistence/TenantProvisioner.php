@@ -26,11 +26,11 @@ class TenantProvisioner
     {
         $entry = $this->registry->registerTenant($tenantId);
         $dbName = $entry->dbName;
+        $conn = $this->capsule->getConnection();
 
         try {
-            // Create the tenant's dedicated database.
-            // Since CREATE DATABASE cannot run inside a transaction, we run it on the control connection.
-            $this->capsule->getConnection()->statement("CREATE DATABASE \"{$dbName}\"");
+            // Create the tenant's dedicated database
+            $conn->statement("CREATE DATABASE \"{$dbName}\"");
 
             // Connect to the new database and run migrations
             $this->runMigrationsOnTenantDb($entry);
@@ -47,7 +47,7 @@ class TenantProvisioner
         } catch (\Throwable $e) {
             // Cleanup on failure
             try {
-                $this->capsule->getConnection()->statement("DROP DATABASE IF EXISTS \"{$dbName}\"");
+                $conn->statement("DROP DATABASE IF EXISTS \"{$dbName}\"");
             } catch (\Throwable $_) {}
 
             $this->registry->updateStatus($tenantId, 'DEPROVISIONED');
@@ -65,9 +65,11 @@ class TenantProvisioner
             throw new \RuntimeException("Tenant \"{$tenantId}\" not found in registry.");
         }
 
+        $conn = $this->capsule->getConnection();
+
         // Terminate active connections to the tenant database
         try {
-            $this->capsule->getConnection()->statement("
+            $conn->statement("
                 SELECT pg_terminate_backend(pg_stat_activity.pid)
                 FROM pg_stat_activity
                 WHERE pg_stat_activity.datname = '{$entry->dbName}'
@@ -75,18 +77,15 @@ class TenantProvisioner
             ");
         } catch (\Throwable $_) {}
 
-        $this->capsule->getConnection()->statement("DROP DATABASE IF EXISTS \"{$entry->dbName}\"");
+        $conn->statement("DROP DATABASE IF EXISTS \"{$entry->dbName}\"");
         $this->registry->deprovisionTenant($tenantId);
     }
 
     // ──────────────────────────────────────────────
 
-    /**
-     * Create database connection for a tenant's database.
-     * Can be overridden or mocked in test suites to avoid hitting network DB.
-     */
-    protected function getTenantConnection(TenantRegistryEntry $entry): \Illuminate\Database\Connection
+    private function runMigrationsOnTenantDb(TenantRegistryEntry $entry): void
     {
+        // Create a temporary Capsule connection to the tenant database
         $tenantCapsule = new Capsule();
         $tenantCapsule->addConnection([
             'driver' => 'pgsql',
@@ -99,12 +98,8 @@ class TenantProvisioner
             'prefix' => '',
             'schema' => 'public',
         ]);
-        return $tenantCapsule->getConnection();
-    }
 
-    private function runMigrationsOnTenantDb(TenantRegistryEntry $entry): void
-    {
-        $conn = $this->getTenantConnection($entry);
+        $conn = $tenantCapsule->getConnection();
 
         try {
             // Core tables — no schema prefix needed (each tenant has own database)

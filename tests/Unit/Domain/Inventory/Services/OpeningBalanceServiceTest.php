@@ -38,7 +38,6 @@ class OpeningBalanceServiceTest extends TestCase
 
         // pre-seed an entry for variant-z at same location
         $ledger->append(new \InventoryApp\Domain\Inventory\Entities\LedgerEntry(bin2hex(random_bytes(4)), 'variant-z', 1, \InventoryApp\Domain\Inventory\Enums\ReasonCode::PurchaseReceipt, 'actor', null, new \DateTimeImmutable(), ['locationId' => 'loc-9']));
-        $ledger->appendAll([new \InventoryApp\Domain\Inventory\Entities\LedgerEntry(bin2hex(random_bytes(4)), 'variant-z', 1, \InventoryApp\Domain\Inventory\Enums\ReasonCode::PurchaseReceipt, 'actor', null, new \DateTimeImmutable(), ['locationId' => 'loc-9'])]);
 
         $service = new OpeningBalanceService($ledger, $events);
 

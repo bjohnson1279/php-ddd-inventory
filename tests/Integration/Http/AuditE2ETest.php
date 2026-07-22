@@ -30,8 +30,6 @@ final class AuditE2ETest extends TestCase
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
 
-        $command = "php -S 127.0.0.1:8094 public/index.php > tests/Integration/Http/server_audit.log 2>&1 & echo $!";
-        
         for ($i = 0; $i < 50; $i++) {
             $fp = @fsockopen('127.0.0.1', 8092, $errno, $errstr, 0.1);
             if ($fp) {
@@ -141,9 +139,6 @@ final class AuditE2ETest extends TestCase
         Capsule::table('ledger_entries')->insert([
             'id' => uuidv4(),
             'tenant_id' => $this->tenantId,
-
-
-
             'variant_id' => $productId,
             'quantity' => 10,
             'reason' => 'opening_balance',
@@ -157,7 +152,6 @@ final class AuditE2ETest extends TestCase
         Capsule::table('journal_entries')->insert([
             'id' => uuidv4(),
             'tenant_id' => $this->tenantId,
-
             'entry_date' => date('Y-m-d'),
             'description' => 'Test unmapped journal',
             'method' => 'accrual',
@@ -205,7 +199,6 @@ final class AuditE2ETest extends TestCase
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
     {
         $url = 'http://127.0.0.1:8092' . $path;
-        $url = 'http://127.0.0.1:8094' . $path;
         $options = [
             'http' => [
                 'header'        => "Content-Type: application/json\r\n",
@@ -222,7 +215,6 @@ final class AuditE2ETest extends TestCase
         $context = stream_context_create($options);
         $result = @file_get_contents($url, false, $context);
 
-        
         $statusCode = 500;
         if (isset($http_response_header) && isset($http_response_header[0])) {
             preg_match('{HTTP\/\S*\s(\d{3})}', $http_response_header[0], $match);
@@ -234,165 +226,5 @@ final class AuditE2ETest extends TestCase
             'status' => $statusCode,
             'body'   => (json_last_error() === JSON_ERROR_NONE) ? $decoded : $result
         ];
-    }
-}
-
-
-
-
-
-{
-
-    {
-
-        
-            }
-        }
-    }
-
-    {
-        }
-    }
-
-    {
-
-
-
-
-
-
-
-
-
-
-
-
-    }
-
-    {
-
-
-            }
-        }
-
-
-    }
-
-    {
-
-        }
-
-        
-        }
-
-    }
-}
-
-
-
-
-
-{
-
-    {
-
-        
-            }
-        }
-    }
-
-    {
-        }
-    }
-
-    {
-
-
-
-
-
-
-
-
-
-
-
-
-    }
-
-    {
-
-
-            }
-        }
-
-
-    }
-
-    {
-
-        }
-
-        
-        }
-
-    }
-}
-
-
-
-
-
-{
-
-    {
-        }
-        
-        
-
-        
-        
-        
-
-        
-            }
-        }
-    }
-
-    {
-        }
-    }
-
-    {
-
-
-
-
-
-
-
-
-
-
-
-
-    }
-
-    {
-
-
-            }
-        }
-
-
-    }
-
-    {
-
-        }
-
-        
-        }
-
     }
 }

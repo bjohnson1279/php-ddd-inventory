@@ -212,14 +212,6 @@ class AssembleKitTest extends TestCase
             return in_array($entry->variantId, ['comp-var-1', 'kit-var-1']) &&
                    $entry->reason === ReasonCode::KitAssembly &&
                    $entry->metadata['locationId'] === 'LOC-1';
-        $this->ledgerRepositoryMock->expects($this->once())->method('appendAll')->with($this->callback(function(array $entries) {
-            if (count($entries) !== 2) return false;
-            foreach ($entries as $entry) {
-                if (!in_array($entry->variantId, ['comp-var-1', 'kit-var-1'])) return false;
-                if ($entry->reason !== ReasonCode::KitAssembly) return false;
-                if ($entry->metadata['locationId'] !== 'LOC-1') return false;
-            }
-            return true;
         }));
 
         // Kit product increment
@@ -293,9 +285,6 @@ class AssembleKitTest extends TestCase
 
         // Ledger entries (2 for components deduction, 1 for kit increment)
         $this->ledgerRepositoryMock->expects($this->exactly(3))->method('append');
-        $this->ledgerRepositoryMock->expects($this->once())->method('appendAll')->with($this->callback(function(array $entries) {
-            return count($entries) === 3;
-        }));
 
         // Total cost = $20 + $60 = $80. Quantity = 2. Unit cost = $40.
         $this->costLayerRepositoryMock->expects($this->any())->method('save')

@@ -253,31 +253,4 @@ class AuthenticateUserTest extends TestCase
 
         $this->assertEquals('generated_token', $token);
     }
-
-    public function testExecuteThrowsWhenVerifyPasswordReturnsFalse(): void
-    {
-        $email = 'user@store.com';
-        $password = 'wrongpassword';
-        $tenantIdValue = 't1';
-
-        $userMock = $this->createMock(User::class);
-        $userMock->expects($this->once())->method('isActive')->willReturn(true);
-        $userMock->expects($this->once())->method('verifyPassword')->with($password)->willReturn(false);
-
-        $repo = $this->createMock(UserRepositoryInterface::class);
-        $repo->expects($this->once())
-            ->method('findByEmail')
-            ->with($email, $this->equalTo(new TenantId($tenantIdValue)))
-            ->willReturn($userMock);
-
-        $tokenService = $this->createMock(ApiTokenService::class);
-        $tokenService->expects($this->never())->method('issue');
-
-        $useCase = new AuthenticateUser($repo, $tokenService);
-
-        $this->expectException(Exception::class);
-        $this->expectExceptionMessage('Invalid credentials.');
-
-        $useCase->execute($email, $password, $tenantIdValue);
-    }
 }

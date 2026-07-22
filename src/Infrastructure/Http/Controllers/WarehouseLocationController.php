@@ -139,9 +139,6 @@ class WarehouseLocationController
 
         if ($path) {
             $parts = explode('-', $path);
-            if (count($parts) < 6) {
-                throw new \InvalidArgumentException('Invalid path format. Expected format: warehouseId-zone-aisle-rack-shelf-bin');
-            }
             return new WarehouseLocation(
                 new LocationId($path),
                 $parts[0],

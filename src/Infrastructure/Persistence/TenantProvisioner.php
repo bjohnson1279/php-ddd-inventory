@@ -7,8 +7,8 @@ use Illuminate\Database\Capsule\Manager as Capsule;
 /**
  * TenantProvisioner for the PHP backend.
  *
- * Provisions isolated PostgreSQL schemas per tenant, running DDL migrations
- * and seeding default data using the Eloquent schema builder.
+ * Provisions isolated PostgreSQL databases per tenant, running DDL
+ * migrations and seeding default data.
  *
  * Part of Roadmap 6.1: Dynamic Multi-Database Tenant Provisioning.
  */
@@ -20,34 +20,34 @@ class TenantProvisioner
     ) {}
 
     /**
-     * Provision a new tenant: create schema, run migrations, seed data.
+     * Provision a new tenant: create database, run migrations, seed data.
      */
     public function provisionTenant(string $tenantId): string
     {
         $entry = $this->registry->registerTenant($tenantId);
-        $schemaName = $entry->schemaName;
+        $dbName = $entry->dbName;
         $conn = $this->capsule->getConnection();
 
         try {
-            // Create schema
-            $conn->statement("CREATE SCHEMA IF NOT EXISTS \"{$schemaName}\"");
+            // Create the tenant's dedicated database
+            $conn->statement("CREATE DATABASE \"{$dbName}\"");
 
-            // Run migrations
-            $this->runMigrations($conn, $schemaName);
+            // Connect to the new database and run migrations
+            $this->runMigrationsOnTenantDb($entry);
 
             // Seed defaults
-            $this->seedDefaults($conn, $schemaName, $tenantId);
+            $this->seedDefaults($entry, $tenantId);
 
             // Mark active
             $this->registry->updateStatus($tenantId, 'ACTIVE');
             $this->registry->updateMigratedVersion($tenantId, '1');
 
-            return $schemaName;
+            return $dbName;
 
         } catch (\Throwable $e) {
             // Cleanup on failure
             try {
-                $conn->statement("DROP SCHEMA IF EXISTS \"{$schemaName}\" CASCADE");
+                $conn->statement("DROP DATABASE IF EXISTS \"{$dbName}\"");
             } catch (\Throwable $_) {}
 
             $this->registry->updateStatus($tenantId, 'DEPROVISIONED');
@@ -56,7 +56,7 @@ class TenantProvisioner
     }
 
     /**
-     * Deprovision a tenant: drop schema and mark as deprovisioned.
+     * Deprovision a tenant: drop database and mark as deprovisioned.
      */
     public function deprovisionTenant(string $tenantId): void
     {
@@ -65,22 +65,46 @@ class TenantProvisioner
             throw new \RuntimeException("Tenant \"{$tenantId}\" not found in registry.");
         }
 
-        $this->capsule->getConnection()->statement(
-            "DROP SCHEMA IF EXISTS \"{$entry->schemaName}\" CASCADE"
-        );
+        $conn = $this->capsule->getConnection();
 
+        // Terminate active connections to the tenant database
+        try {
+            $conn->statement("
+                SELECT pg_terminate_backend(pg_stat_activity.pid)
+                FROM pg_stat_activity
+                WHERE pg_stat_activity.datname = '{$entry->dbName}'
+                  AND pid <> pg_backend_pid()
+            ");
+        } catch (\Throwable $_) {}
+
+        $conn->statement("DROP DATABASE IF EXISTS \"{$entry->dbName}\"");
         $this->registry->deprovisionTenant($tenantId);
     }
 
     // ──────────────────────────────────────────────
 
-    private function runMigrations(\Illuminate\Database\Connection $conn, string $schemaName): void
+    private function runMigrationsOnTenantDb(TenantRegistryEntry $entry): void
     {
-        $conn->statement("SET search_path TO \"{$schemaName}\"");
+        // Create a temporary Capsule connection to the tenant database
+        $tenantCapsule = new Capsule();
+        $tenantCapsule->addConnection([
+            'driver' => 'pgsql',
+            'host' => $entry->dbHost,
+            'port' => $entry->dbPort,
+            'database' => $entry->dbName,
+            'username' => $entry->dbUser,
+            'password' => $entry->dbPassword,
+            'charset' => 'utf8',
+            'prefix' => '',
+            'schema' => 'public',
+        ]);
+
+        $conn = $tenantCapsule->getConnection();
 
         try {
+            // Core tables — no schema prefix needed (each tenant has own database)
             $conn->statement("
-                CREATE TABLE IF NOT EXISTS \"{$schemaName}\".inventory_items (
+                CREATE TABLE IF NOT EXISTS inventory_items (
                     id TEXT PRIMARY KEY,
                     sku TEXT NOT NULL,
                     location_id TEXT NOT NULL,
@@ -93,7 +117,7 @@ class TenantProvisioner
             ");
 
             $conn->statement("
-                CREATE TABLE IF NOT EXISTS \"{$schemaName}\".products (
+                CREATE TABLE IF NOT EXISTS products (
                     id UUID PRIMARY KEY,
                     name TEXT NOT NULL,
                     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -101,9 +125,9 @@ class TenantProvisioner
             ");
 
             $conn->statement("
-                CREATE TABLE IF NOT EXISTS \"{$schemaName}\".product_variants (
+                CREATE TABLE IF NOT EXISTS product_variants (
                     id UUID PRIMARY KEY,
-                    product_id UUID NOT NULL REFERENCES \"{$schemaName}\".products(id) ON DELETE CASCADE,
+                    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
                     sku TEXT NOT NULL UNIQUE,
                     tracking_mode TEXT NOT NULL DEFAULT 'quantity',
                     costing_method TEXT NOT NULL DEFAULT 'fifo',
@@ -113,7 +137,7 @@ class TenantProvisioner
             ");
 
             $conn->statement("
-                CREATE TABLE IF NOT EXISTS \"{$schemaName}\".ledger_entries (
+                CREATE TABLE IF NOT EXISTS ledger_entries (
                     id UUID NOT NULL,
                     tenant_id TEXT NOT NULL,
                     location_id TEXT NOT NULL,
@@ -130,7 +154,7 @@ class TenantProvisioner
             ");
 
             $conn->statement("
-                CREATE TABLE IF NOT EXISTS \"{$schemaName}\".kits (
+                CREATE TABLE IF NOT EXISTS kits (
                     id UUID PRIMARY KEY,
                     sku TEXT NOT NULL UNIQUE,
                     name TEXT NOT NULL,
@@ -139,9 +163,9 @@ class TenantProvisioner
             ");
 
             $conn->statement("
-                CREATE TABLE IF NOT EXISTS \"{$schemaName}\".kit_components (
+                CREATE TABLE IF NOT EXISTS kit_components (
                     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                    kit_id UUID NOT NULL REFERENCES \"{$schemaName}\".kits(id) ON DELETE CASCADE,
+                    kit_id UUID NOT NULL REFERENCES kits(id) ON DELETE CASCADE,
                     variant_id UUID NOT NULL,
                     quantity INTEGER NOT NULL,
                     UNIQUE(kit_id, variant_id)
@@ -149,7 +173,7 @@ class TenantProvisioner
             ");
 
             $conn->statement("
-                CREATE TABLE IF NOT EXISTS \"{$schemaName}\".warehouse_locations (
+                CREATE TABLE IF NOT EXISTS warehouse_locations (
                     id TEXT PRIMARY KEY,
                     warehouse_id TEXT NOT NULL,
                     zone TEXT NOT NULL,
@@ -168,12 +192,26 @@ class TenantProvisioner
                 )
             ");
 
+            $conn->statement("
+                CREATE TABLE IF NOT EXISTS outbox_events (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    event_type TEXT NOT NULL,
+                    payload TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'Pending',
+                    attempts INTEGER NOT NULL DEFAULT 0,
+                    last_error TEXT,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    processed_at TIMESTAMPTZ,
+                    next_attempt_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+            ");
+
         } finally {
-            $conn->statement("SET search_path TO \"public\"");
+            $conn->disconnect();
         }
     }
 
-    private function seedDefaults(\Illuminate\Database\Connection $conn, string $schemaName, string $tenantId): void
+    private function seedDefaults(TenantRegistryEntry $entry, string $tenantId): void
     {
         // Seed is intentionally minimal — additional data added via application setup flows
     }

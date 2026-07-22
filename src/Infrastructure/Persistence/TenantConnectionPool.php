@@ -8,8 +8,8 @@ use Illuminate\Database\Capsule\Manager as Capsule;
  * TenantConnectionPool for the PHP backend.
  *
  * Manages a cache of Eloquent database connections keyed by tenant ID.
- * Each tenant gets a separate Capsule connection pointing at its
- * isolated PostgreSQL schema.
+ * Each tenant has its own PostgreSQL database, and the pool creates
+ * a Capsule connection to the tenant's database on cache miss.
  *
  * Part of Roadmap 6.1: Dynamic Multi-Database Tenant Provisioning.
  */
@@ -25,17 +25,15 @@ class TenantConnectionPool
     ) {}
 
     /**
-     * Get an Eloquent connection for the given tenant.
+     * Get an Eloquent connection for the given tenant's database.
      */
     public function getConnection(string $tenantId): \Illuminate\Database\Connection
     {
-        // Cache hit
         if (isset($this->cache[$tenantId])) {
             $this->cache[$tenantId]['lastAccessed'] = time();
             return $this->cache[$tenantId]['capsule']->getConnection('tenant');
         }
 
-        // Cache miss — look up tenant
         $entry = $this->registry->lookupTenant($tenantId);
         if (!$entry) {
             throw new \RuntimeException("Tenant \"{$tenantId}\" not found in registry.");
@@ -44,12 +42,10 @@ class TenantConnectionPool
             throw new \RuntimeException("Tenant \"{$tenantId}\" is not active (status: \"{$entry->status}\").");
         }
 
-        // Evict if at capacity
         if (count($this->cache) >= $this->maxSize) {
             $this->evictLRU();
         }
 
-        // Create new connection
         $capsule = $this->createConnection($entry);
         $this->cache[$tenantId] = [
             'capsule' => $capsule,
@@ -59,17 +55,11 @@ class TenantConnectionPool
         return $capsule->getConnection('tenant');
     }
 
-    /**
-     * Check if a tenant has a cached connection.
-     */
     public function has(string $tenantId): bool
     {
         return isset($this->cache[$tenantId]);
     }
 
-    /**
-     * Evict a specific tenant.
-     */
     public function evict(string $tenantId): void
     {
         if (isset($this->cache[$tenantId])) {
@@ -78,9 +68,6 @@ class TenantConnectionPool
         }
     }
 
-    /**
-     * Evict all idle connections.
-     */
     public function evictIdle(): int
     {
         $now = time();
@@ -96,9 +83,6 @@ class TenantConnectionPool
         return $evicted;
     }
 
-    /**
-     * Get pool statistics.
-     */
     public function getStats(): array
     {
         return [
@@ -108,9 +92,6 @@ class TenantConnectionPool
         ];
     }
 
-    /**
-     * Shut down all connections.
-     */
     public function shutdown(): void
     {
         foreach (array_keys($this->cache) as $tenantId) {
@@ -118,22 +99,21 @@ class TenantConnectionPool
         }
     }
 
-    // ──────────────────────────────────────────────
-
     private function createConnection(TenantRegistryEntry $entry): Capsule
     {
         $capsule = new Capsule();
 
+        // Connect to the tenant's dedicated database on the public schema
         $capsule->addConnection([
             'driver' => 'pgsql',
             'host' => $entry->dbHost,
             'port' => $entry->dbPort,
             'database' => $entry->dbName,
-            'username' => getenv('DB_USERNAME') ?: 'ddd_user',
-            'password' => getenv('DB_PASSWORD') ?: 'secret',
+            'username' => $entry->dbUser,
+            'password' => $entry->dbPassword,
             'charset' => 'utf8',
             'prefix' => '',
-            'schema' => $entry->schemaName,
+            'schema' => 'public',
         ], 'tenant');
 
         return $capsule;

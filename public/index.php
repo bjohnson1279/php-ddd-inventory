@@ -49,7 +49,7 @@ if ($driver === 'sqlite') {
         'host'      => getenv('DB_HOST')       ?: 'db',
         'database'  => getenv('DB_DATABASE')   ?: 'ddd_inventory',
         'username'  => getenv('DB_USERNAME')   ?: 'ddd_user',
-        'password'  => getenv('DB_PASSWORD')   ?: 'secret',
+        'password'  => getenv('DB_PASSWORD') !== false && getenv('DB_PASSWORD') !== '' ? getenv('DB_PASSWORD') : 'secret',
         'port'      => getenv('DB_PORT')       ?: 5432,
         'charset'   => 'utf8',
         'collation' => 'utf8_unicode_ci',
@@ -69,11 +69,16 @@ if ($driver === 'sqlite') {
     $conn->table('tenants')->insertOrIgnore([
         ['id' => 'test-tenant', 'name' => 'Test Tenant']
     ]);
-    $conn->table('roles')->insertOrIgnore([
+}
+
+try {
+    $capsule->getConnection()->table('roles')->insertOrIgnore([
         ['id' => 'admin',   'name' => 'Administrator'],
         ['id' => 'manager', 'name' => 'Manager'],
         ['id' => 'staff',   'name' => 'Staff']
     ]);
+} catch (\Throwable $e) {
+    // Ignore if table does not exist yet
 }
 
 // ── Event listeners ──────────────────────────────────────────────────────────

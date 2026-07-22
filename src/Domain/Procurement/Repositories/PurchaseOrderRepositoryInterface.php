@@ -9,6 +9,5 @@ interface PurchaseOrderRepositoryInterface
     public function findById(string $id): ?PurchaseOrder;
     public function findByNumber(string $poNumber): ?PurchaseOrder;
     public function findAll(): array;
-    public function findByTenantAndStatus(string $tenantId, \InventoryApp\Domain\Procurement\Enums\PurchaseOrderStatus $status): array;
     public function save(PurchaseOrder $po): void;
 }

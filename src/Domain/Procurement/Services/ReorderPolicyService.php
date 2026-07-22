@@ -30,7 +30,6 @@ class ReorderPolicyService
     ): array {
         $policies = $this->reorderPolicyRepository->findAll();
         $results = [];
-        $allPos = $this->poRepository->findAll();
 
         foreach ($policies as $policy) {
             $rop = $policy->reorderPoint;
@@ -65,6 +64,7 @@ class ReorderPolicyService
             $reason = "";
 
             if ($policy->shouldReorder($currentQty)) {
+                $allPos = $this->poRepository->findAll();
                 $alreadyOrdered = false;
                 foreach ($allPos as $po) {
                     if ($po->tenantId !== $tenantId || $po->locationId !== $policy->locationId) {
@@ -108,7 +108,6 @@ class ReorderPolicyService
                     );
 
                     $this->poRepository->save($po);
-                    $allPos[] = $po;
                     $triggered = true;
                 } else {
                     $reason = "Open purchase order already exists to prevent duplicate ordering";

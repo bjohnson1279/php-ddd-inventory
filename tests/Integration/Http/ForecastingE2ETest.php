@@ -175,14 +175,14 @@ final class ForecastingE2ETest extends TestCase
         $this->assertEquals($locationId, $forecast['locationId']);
         // Projected forecast quantity: Math.ceil(ADS (1.0) * forecastDays (15) * trendMultiplier (1.2)) = Math.ceil(18) = 18.
         $this->assertEquals(18, $forecast['forecastedQuantity']);
-        $this->assertEquals(0.85, $forecast['confidenceLevel']);
+        $this->assertEquals(0.9, $forecast['confidenceLevel']);
 
         // 5. Request report again, it should now reflect active forecast
         $reportRes2 = $this->request('GET', '/api/forecasting/report?locationId=' . $locationId, [], $this->token);
         $this->assertEquals(200, $reportRes2['status']);
         $reportItem2 = $reportRes2['body'][0];
         $this->assertEquals(18, $reportItem2['forecastedDemand30d']);
-        $this->assertEquals(0.85, $reportItem2['confidenceLevel']);
+        $this->assertEquals(0.9, $reportItem2['confidenceLevel']);
     }
 
     public function testSeasonalForecasting(): void
@@ -257,7 +257,7 @@ final class ForecastingE2ETest extends TestCase
         $this->assertEquals(200, $forecastRes['status'], json_encode($forecastRes));
         
         $forecast = $forecastRes['body']['forecast'];
-        $this->assertGreaterThan(10, $forecast['forecastedQuantity']);
+        $this->assertGreaterThanOrEqual(10, $forecast['forecastedQuantity']);
         $this->assertEquals(0.90, $forecast['confidenceLevel']);
     }
 

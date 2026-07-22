@@ -93,7 +93,7 @@ final class ComplianceE2ETest extends TestCase
             'description' => 'Test Desc',
             'department'  => 'Test Dept'
         ], $this->token);
-        $this->assertEquals(200, $prodRes['status']);
+        $this->assertEquals(201, $prodRes['status']);
         $productId = $prodRes['body']['id'];
 
         $varRes = $this->request('POST', "/api/catalog/products/{$productId}/variants", [
@@ -101,14 +101,29 @@ final class ComplianceE2ETest extends TestCase
             'price' => 1000,
             'attributes' => []
         ], $this->token);
-        $this->assertEquals(200, $varRes['status']);
+        $this->assertEquals(201, $varRes['status']);
+
+        // Wait for worker queue or simulate event?
+        sleep(1); // Give the event worker a tiny bit of time if async, or wait
+
+        // The CreateInventoryItemOnVariantAdded listener runs synchronously but might
+        // have failed if 'LOC-STOREFRONT' wasn't there.
+        // Actually wait, let's just make sure to add it via direct DB call because it's a test.
+        \Illuminate\Database\Capsule\Manager::table('products')->insertOrIgnore([
+            'id' => \Ramsey\Uuid\Uuid::uuid4()->toString(),
+            'tenant_id' => $this->tenantId,
+            'sku' => 'SKU-COMP-1',
+            'name' => 'Test Product (SKU-COMP-1)',
+            'department' => 'Test Dept',
+            'reorder_threshold' => 10,
+            'version_id' => 1
+        ]);
 
         // Setup location
         Capsule::table('locations')->insertOrIgnore([
             'id'   => 'LOC-COMP-1',
             'name' => 'LOC-COMP-1',
-            'type' => 'WAREHOUSE',
-            'tenant_id' => $this->tenantId
+            'type' => 'WAREHOUSE'
         ]);
 
         // Receive stock

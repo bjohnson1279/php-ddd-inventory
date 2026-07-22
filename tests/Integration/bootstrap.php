@@ -225,7 +225,10 @@ if ($driver === 'sqlite') {
         reorder_policies,
         demand_forecasts,
         shipments,
-        outbox_events
+        outbox_events,
+        compliance_ledgers,
+        webhook_subscriptions,
+        webhook_deliveries
     RESTART IDENTITY CASCADE');
 
     // Wipe all tenants except test-tenant
@@ -250,6 +253,38 @@ $connection->table('roles')->insertOrIgnore([
     ['id' => 'manager', 'name' => 'Manager'],
     ['id' => 'staff',   'name' => 'Staff']
 ]);
+
+if ($driver === 'sqlite') {
+    // Need permissions too
+    $connection->table('role_permissions')->insertOrIgnore([
+        ['role_id' => 'admin',   'permission' => 'inventory:receive'],
+        ['role_id' => 'admin',   'permission' => 'inventory:dispatch'],
+        ['role_id' => 'admin',   'permission' => 'inventory:transfer'],
+        ['role_id' => 'admin',   'permission' => 'inventory:reconcile'],
+        ['role_id' => 'admin',   'permission' => 'inventory:read'],
+        ['role_id' => 'admin',   'permission' => 'sales:process'],
+        ['role_id' => 'admin',   'permission' => 'returns:process'],
+        ['role_id' => 'admin',   'permission' => 'catalog:manage'],
+        ['role_id' => 'admin',   'permission' => 'catalog:read'],
+        ['role_id' => 'admin',   'permission' => 'reports:view'],
+        ['role_id' => 'admin',   'permission' => 'integrations:manage'],
+        ['role_id' => 'admin',   'permission' => 'users:manage'],
+        ['role_id' => 'manager', 'permission' => 'inventory:receive'],
+        ['role_id' => 'manager', 'permission' => 'inventory:dispatch'],
+        ['role_id' => 'manager', 'permission' => 'inventory:transfer'],
+        ['role_id' => 'manager', 'permission' => 'inventory:reconcile'],
+        ['role_id' => 'manager', 'permission' => 'inventory:read'],
+        ['role_id' => 'manager', 'permission' => 'sales:process'],
+        ['role_id' => 'manager', 'permission' => 'returns:process'],
+        ['role_id' => 'manager', 'permission' => 'catalog:manage'],
+        ['role_id' => 'manager', 'permission' => 'catalog:read'],
+        ['role_id' => 'manager', 'permission' => 'reports:view'],
+        ['role_id' => 'staff',   'permission' => 'inventory:read'],
+        ['role_id' => 'staff',   'permission' => 'sales:process'],
+        ['role_id' => 'staff',   'permission' => 'returns:process'],
+        ['role_id' => 'staff',   'permission' => 'catalog:read']
+    ]);
+}
 
 function uuidv4(): string {
     return \Ramsey\Uuid\Uuid::uuid4()->toString();

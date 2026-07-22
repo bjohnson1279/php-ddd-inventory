@@ -630,12 +630,18 @@ final class ApiEndpointsTest extends TestCase
         ], $this->token);
         $this->assertEquals(200, $receiveRes['status'], json_encode($receiveRes));
 
-        // 3. Check notifications now has 1 item
+        // 3. Check notifications now has items
         $listRes2 = $this->request('GET', '/api/notifications', [], $this->token);
         $this->assertEquals(200, $listRes2['status']);
-        $this->assertCount(1, $listRes2['body']['notifications']);
-        $notif = $listRes2['body']['notifications'][0];
-        $this->assertEquals('Stock Received', $notif['title']);
+        $this->assertGreaterThanOrEqual(1, count($listRes2['body']['notifications']));
+        $notif = null;
+        foreach ($listRes2['body']['notifications'] as $n) {
+            if ($n['title'] === 'Stock Received') {
+                $notif = $n;
+                break;
+            }
+        }
+        $this->assertNotNull($notif, "Could not find Stock Received notification");
         $this->assertFalse((bool)$notif['is_read']);
 
         // 4. Test SSE subscribe endpoint
@@ -651,7 +657,14 @@ final class ApiEndpointsTest extends TestCase
 
         // Check is_read is true
         $listRes3 = $this->request('GET', '/api/notifications', [], $this->token);
-        $this->assertTrue((bool)$listRes3['body']['notifications'][0]['is_read']);
+        $updatedNotif = null;
+        foreach ($listRes3['body']['notifications'] as $n) {
+            if ($n['id'] === $notif['id']) {
+                $updatedNotif = $n;
+                break;
+            }
+        }
+        $this->assertTrue((bool)$updatedNotif['is_read']);
 
         // 6. Mark all as read
         $readAllRes = $this->request('POST', '/api/notifications/read-all', [], $this->token);

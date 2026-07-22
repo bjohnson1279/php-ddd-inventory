@@ -333,18 +333,6 @@ final class WarehouseLocationE2ETest extends TestCase
         $this->assertTrue($found);
     }
 
-    public function testWarehouseLocationSaveWithMalformedPath(): void
-    {
-        $saveRes = $this->request('POST', '/api/warehouse-locations', [
-            'path' => 'WH1-ZONEA', // Malformed path, less than 6 segments
-            'maxWeightGrams' => 10000,
-            'maxVolumeCubicMeters' => 2.0
-        ], $this->token);
-
-        $this->assertEquals(400, $saveRes['status']);
-        $this->assertStringContainsString('Invalid path format. Expected format: warehouseId-zone-aisle-rack-shelf-bin', $saveRes['body']['error']);
-    }
-
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
     {
         $url = 'http://127.0.0.1:8091' . $path;

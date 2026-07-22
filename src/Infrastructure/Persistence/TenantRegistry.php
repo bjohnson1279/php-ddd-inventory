@@ -74,14 +74,10 @@ class TenantRegistry
 
     public function lookupTenant(string $tenantId): ?TenantRegistryEntry
     {
-        try {
-            $row = $this->capsule->getConnection()->selectOne(
-                "SELECT * FROM tenant_registry WHERE tenant_id = ?",
-                [$tenantId]
-            );
-        } catch (\Throwable $e) {
-            return null;
-        }
+        $row = $this->capsule->getConnection()->selectOne(
+            "SELECT * FROM tenant_registry WHERE tenant_id = ?",
+            [$tenantId]
+        );
 
         if (!$row) return null;
 

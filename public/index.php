@@ -58,6 +58,7 @@ if ($driver === 'sqlite') {
 }
 $capsule->setAsGlobal();
 $capsule->bootEloquent();
+ServiceContainer::getInstance()->instance(Capsule::class, $capsule);
 
 if ($driver === 'sqlite') {
     require_once __DIR__ . '/../src/Infrastructure/Persistence/sqlite_setup.php';

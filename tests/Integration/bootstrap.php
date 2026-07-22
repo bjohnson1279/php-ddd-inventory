@@ -36,6 +36,7 @@ if ($driver === 'sqlite') {
 
 $capsule->setAsGlobal();
 $capsule->bootEloquent();
+\InventoryApp\Infrastructure\ServiceContainer::getInstance()->instance(Capsule::class, $capsule);
 
 $connection = $capsule->getConnection();
 

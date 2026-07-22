@@ -18,6 +18,10 @@ class TraceMiddleware
             $traceId = $headers['X-Trace-Id'] ?? $headers['traceparent'] ?? null;
         }
 
+        if ($traceId !== null && !preg_match('/^[a-zA-Z0-9\-_]{1,255}$/', $traceId)) {
+            $traceId = null;
+        }
+
         if (!$traceId) {
             $traceId = TraceContext::generateTraceId();
         }

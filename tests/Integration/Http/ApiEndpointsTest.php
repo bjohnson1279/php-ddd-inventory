@@ -628,7 +628,7 @@ final class ApiEndpointsTest extends TestCase
             'quantity'    => 10,
             'location_id' => 'LOC-INT',
         ], $this->token);
-        $this->assertEquals(200, $receiveRes['status'], json_encode($receiveRes));
+        $this->assertEquals(201, $receiveRes['status'], json_encode($receiveRes));
 
         // 3. Check notifications now has 1 item
         $listRes2 = $this->request('GET', '/api/notifications', [], $this->token);

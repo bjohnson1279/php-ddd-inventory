@@ -56,7 +56,7 @@ class InventoryControllerTest extends TestCase
         $response = $this->controller->receive($requestMock, $this->receiveStockMock);
 
         $this->assertInstanceOf(Response::class, $response);
-        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertEquals(201, $response->getStatusCode());
         $this->assertStringContainsString('Stock received successfully', $response->getContent());
     }
 

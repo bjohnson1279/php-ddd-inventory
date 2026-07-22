@@ -127,7 +127,7 @@ final class FefoRecallE2ETest extends TestCase
             'expiration_date' => '2026-12-31 23:59:59',
             'unit_cost_cents' => 1000
         ], $this->token);
-        $this->assertEquals(200, $receiveLot1['status'], json_encode($receiveLot1));
+        $this->assertEquals(201, $receiveLot1['status'], json_encode($receiveLot1));
 
         // 3. Receive Stock for Lot 2 (Expires earlier)
         $receiveLot2 = $this->request('POST', '/api/inventory/receive', [
@@ -138,7 +138,7 @@ final class FefoRecallE2ETest extends TestCase
             'expiration_date' => '2026-06-30 23:59:59',
             'unit_cost_cents' => 1200
         ], $this->token);
-        $this->assertEquals(200, $receiveLot2['status'], json_encode($receiveLot2));
+        $this->assertEquals(201, $receiveLot2['status'], json_encode($receiveLot2));
 
         // 4. Request FEFO picking suggestions
         $suggestRes = $this->request('GET', "/api/inventory/fefo-pick?sku={$sku}&quantity=15", [], $this->token);

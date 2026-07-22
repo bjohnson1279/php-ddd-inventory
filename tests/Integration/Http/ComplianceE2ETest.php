@@ -130,7 +130,7 @@ final class ComplianceE2ETest extends TestCase
             'quantity'    => 50,
             'location_id' => 'LOC-COMP-1'
         ], $this->token);
-        $this->assertEquals(200, $receiveRes['status'], json_encode($receiveRes));
+        $this->assertEquals(201, $receiveRes['status'], json_encode($receiveRes));
 
         // 3. Verify ledger entry was created
         $ledgerRes2 = $this->request('GET', '/api/compliance/ledger?tenantId=' . $this->tenantId, [], $this->token);

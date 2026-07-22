@@ -95,7 +95,7 @@ final class ForecastingE2ETest extends TestCase
             'quantity'    => 50,
             'location_id' => $locationId
         ], $this->token);
-        $this->assertEquals(200, $receiveRes['status'], json_encode($receiveRes));
+        $this->assertEquals(201, $receiveRes['status'], json_encode($receiveRes));
 
         // 2. Add historic ledger entries for sale (simulating dispatches)
         // 3 dispatches of size 10 in the last 30 days
@@ -195,7 +195,7 @@ final class ForecastingE2ETest extends TestCase
             'quantity'    => 50,
             'location_id' => $locationId
         ], $this->token);
-        $this->assertEquals(200, $receiveRes['status']);
+        $this->assertEquals(201, $receiveRes['status']);
 
         $now = new \DateTime();
         $nowStr = $now->format('Y-m-d H:i:s');

@@ -21,6 +21,12 @@ final class ComplianceE2ETest extends TestCase
     public static function setUpBeforeClass(): void
     {
         $output = [];
+        $dbConn = escapeshellarg(getenv('DB_CONNECTION') ?: 'pgsql');
+        $dbDb = escapeshellarg(getenv('DB_DATABASE') ?: '');
+        $dbHost = escapeshellarg(getenv('DB_HOST') ?: '');
+        $dbUser = escapeshellarg(getenv('DB_USERNAME') ?: '');
+        $dbPass = escapeshellarg(getenv('DB_PASSWORD') ?: '');
+        $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8099 public/index.php > tests/Integration/Http/server_compliance.log 2>&1 & echo $!";
         $dbConn = getenv('DB_CONNECTION') ?: 'sqlite';
         $dbDb = getenv('DB_DATABASE') ?: 'testing';
         $dbDb   = getenv('DB_DATABASE') ?: __DIR__ . '/../../../database.sqlite';
@@ -30,7 +36,6 @@ final class ComplianceE2ETest extends TestCase
 
         $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8096 public/index.php > tests/Integration/Http/server_compliance.log 2>&1 & echo $!";
         // Assign a unique non-overlapping port number for this test file
-        $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8099 public/index.php > tests/Integration/Http/server_compliance.log 2>&1 & echo $!";
         $command = "php -S 127.0.0.1:8100 public/index.php > tests/Integration/Http/server_compliance.log 2>&1 & echo $!";
 
         exec($command, $output);

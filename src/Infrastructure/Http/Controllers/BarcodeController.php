@@ -117,36 +117,10 @@ class BarcodeController
             $payload = json_decode(file_get_contents('php://input'), true) ?: [];
             $scanPayload = $payload['payload'] ?? [];
 
-            $events = \InventoryApp\Infrastructure\ServiceContainer::dispatcher();
-            $productRepo = \InventoryApp\Infrastructure\ServiceContainer::productRepo($tenantId);
-            $countRepo = \InventoryApp\Infrastructure\ServiceContainer::inventoryCountRepo($tenantId);
-
-            $dispatchStock = new \InventoryApp\Application\Inventory\UseCases\DispatchStock($productRepo, $events);
-            $receiveStock = new \InventoryApp\Application\Inventory\UseCases\ReceiveStock($productRepo, $events);
-            $recordCountItem = new \InventoryApp\Application\Inventory\UseCases\RecordCountItem($countRepo);
-
-            $dispatcher = new BarcodeScanDispatcher($repo);
-            $dispatcher->register(ScanContext::PointOfSale, new POSScanHandler($dispatchStock));
-            $dispatcher->register(ScanContext::Receiving, new ReceivingScanHandler($receiveStock));
-            $dispatcher->register(ScanContext::CycleCount, new CycleCountScanHandler($recordCountItem));
-
+            $dispatcher = $this->buildDispatcher($repo, $tenantId);
             $sku = $dispatcher->dispatch($validated['rawScan'], $validated['context'], $scanPayload);
 
-            $notificationService = new \InventoryApp\Application\Notification\Services\NotificationService();
-            $notificationService->createNotification(
-                $tenantId,
-                'Barcode Scanned',
-                json_encode([
-                    'scanValue' => $validated['rawScan'],
-                    'symbology' => 'unknown',
-                    'context' => $validated['context'],
-                    'status' => 'success',
-                    'time' => date('Y-m-d H:i:s'),
-                    'payload' => json_encode($scanPayload),
-                    'sku' => $sku
-                ]),
-                'barcode_scanned'
-            );
+            $this->logScanNotification($tenantId, $validated['rawScan'], $validated['context'], $scanPayload, $sku);
 
             return new Response([
                 'message' => 'Scan processed.',
@@ -161,5 +135,42 @@ class BarcodeController
             }
             return new Response(['error' => $e->getMessage()], 400);
         }
+    }
+
+    private function buildDispatcher(BarcodeRepositoryInterface $repo, string $tenantId): BarcodeScanDispatcher
+    {
+        $events = \InventoryApp\Infrastructure\ServiceContainer::dispatcher();
+        $productRepo = \InventoryApp\Infrastructure\ServiceContainer::productRepo($tenantId);
+        $countRepo = \InventoryApp\Infrastructure\ServiceContainer::inventoryCountRepo($tenantId);
+
+        $dispatchStock = new \InventoryApp\Application\Inventory\UseCases\DispatchStock($productRepo, $events);
+        $receiveStock = new \InventoryApp\Application\Inventory\UseCases\ReceiveStock($productRepo, $events);
+        $recordCountItem = new \InventoryApp\Application\Inventory\UseCases\RecordCountItem($countRepo);
+
+        $dispatcher = new BarcodeScanDispatcher($repo);
+        $dispatcher->register(ScanContext::PointOfSale, new POSScanHandler($dispatchStock));
+        $dispatcher->register(ScanContext::Receiving, new ReceivingScanHandler($receiveStock));
+        $dispatcher->register(ScanContext::CycleCount, new CycleCountScanHandler($recordCountItem));
+
+        return $dispatcher;
+    }
+
+    private function logScanNotification(string $tenantId, string $rawScan, string $context, array $scanPayload, string $sku): void
+    {
+        $notificationService = new \InventoryApp\Application\Notification\Services\NotificationService();
+        $notificationService->createNotification(
+            $tenantId,
+            'Barcode Scanned',
+            json_encode([
+                'scanValue' => $rawScan,
+                'symbology' => 'unknown',
+                'context' => $context,
+                'status' => 'success',
+                'time' => date('Y-m-d H:i:s'),
+                'payload' => json_encode($scanPayload),
+                'sku' => $sku
+            ]),
+            'barcode_scanned'
+        );
     }
 }

@@ -18,6 +18,8 @@ use InventoryApp\Domain\Barcode\Repositories\BarcodeRepositoryInterface;
 use InventoryApp\Domain\Accounting\Repositories\JournalRepositoryInterface;
 use InventoryApp\Domain\Accounting\Repositories\CostLayerRepositoryInterface;
 use InventoryApp\Domain\Inventory\Repositories\StockOnboardingRepositoryInterface;
+use InventoryApp\Domain\Inventory\Repositories\ProductRepositoryInterface;
+use InventoryApp\Domain\Inventory\Repositories\InventoryCountRepositoryInterface;
 use InventoryApp\Infrastructure\Persistence\Repositories\EloquentProductRepository;
 use InventoryApp\Infrastructure\Persistence\Repositories\EloquentInventoryCountRepository;
 use InventoryApp\Infrastructure\Persistence\Repositories\EloquentCatalogProductRepository;
@@ -38,10 +40,6 @@ use InventoryApp\Infrastructure\Persistence\Repositories\EloquentShipmentReposit
 use InventoryApp\Application\Ports\CarrierServiceInterface;
 use InventoryApp\Infrastructure\Shipping\MockCarrierService;
 use Illuminate\Container\Container;
-use Illuminate\Database\Capsule\Manager as Capsule;
-use InventoryApp\Infrastructure\Persistence\TenantRegistry;
-use InventoryApp\Infrastructure\Persistence\TenantConnectionPool;
-use InventoryApp\Infrastructure\Persistence\TenantProvisioner;
 
 class ServiceContainer
 {
@@ -60,19 +58,6 @@ class ServiceContainer
 
     private static function bindInterfaces(Container $container): void
     {
-        // Tenant database routing singletons (Roadmap 6.1)
-        $container->singleton(TenantRegistry::class, function ($c) {
-            return new TenantRegistry($c->make(Capsule::class));
-        });
-
-        $container->singleton(TenantConnectionPool::class, function ($c) {
-            return new TenantConnectionPool($c->make(Capsule::class), $c->make(TenantRegistry::class));
-        });
-
-        $container->singleton(TenantProvisioner::class, function ($c) {
-            return new TenantProvisioner($c->make(Capsule::class), $c->make(TenantRegistry::class));
-        });
-
         // Singleton mappings
         $container->singleton(UserRepositoryInterface::class, EloquentUserRepository::class);
         $container->singleton(SerializedItemRepositoryInterface::class, EloquentSerializedItemRepository::class);
@@ -110,31 +95,26 @@ class ServiceContainer
         // Tenant-scoped factory mappings (requires tenantId)
         $container->bind(LedgerRepositoryInterface::class, function ($app, $parameters) {
             $tenantId = $parameters['tenantId'] ?? (function_exists('tenantId') ? tenantId() : 'system');
-            self::switchTenantConnection($app, $tenantId);
             return new EloquentLedgerRepository($tenantId);
         });
 
         $container->bind(ProductRepositoryInterface::class, function ($app, $parameters) {
             $tenantId = $parameters['tenantId'] ?? (function_exists('tenantId') ? tenantId() : 'system');
-            self::switchTenantConnection($app, $tenantId);
             return new EloquentProductRepository($tenantId);
         });
 
         $container->bind(CostLayerRepositoryInterface::class, function ($app, $parameters) {
             $tenantId = $parameters['tenantId'] ?? (function_exists('tenantId') ? tenantId() : 'system');
-            self::switchTenantConnection($app, $tenantId);
             return new EloquentCostLayerRepository($tenantId);
         });
 
         $container->bind(InventoryCountRepositoryInterface::class, function ($app, $parameters) {
             $tenantId = $parameters['tenantId'] ?? (function_exists('tenantId') ? tenantId() : 'system');
-            self::switchTenantConnection($app, $tenantId);
             return new EloquentInventoryCountRepository($tenantId);
         });
 
         $container->bind(\InventoryApp\Application\Inventory\Queries\StockQueryServiceInterface::class, function ($app, $parameters) {
             $tenantId = $parameters['tenantId'] ?? (function_exists('tenantId') ? tenantId() : 'system');
-            self::switchTenantConnection($app, $tenantId);
             return new \InventoryApp\Infrastructure\Persistence\Queries\EloquentStockQueryService($tenantId);
         });
     }
@@ -220,15 +200,6 @@ class ServiceContainer
     public static function kitRepo(): KitRepositoryInterface
     {
         return self::getInstance()->make(KitRepositoryInterface::class);
-    }
-
-    private static function switchTenantConnection(Container $container, string $tenantId): void
-    {
-        if (getenv('MULTI_TENANT_MODE') === 'database' && $tenantId !== 'system') {
-            $pool = $container->make(TenantConnectionPool::class);
-            $pool->getConnection($tenantId);
-            Capsule::getDatabaseManager()->setDefaultConnection('tenant_' . $tenantId);
-        }
     }
 
     public static function rmaRepo(): \InventoryApp\Domain\Returns\Repositories\RMARepositoryInterface

@@ -34,14 +34,10 @@ class ReorderPointForecaster
             $sku = new SKU($skuStr);
             $product = $this->productRepo->findBySku($sku);
             if ($product) {
-                $allPos = $this->poRepo->findAll();
+                $statusPos = $this->poRepo->findByTenantAndStatus($tenantId, PurchaseOrderStatus::Received);
                 $receivedPos = [];
 
-                foreach ($allPos as $po) {
-                    if ($po->tenantId !== $tenantId || $po->getStatus() !== PurchaseOrderStatus::Received) {
-                        continue;
-                    }
-
+                foreach ($statusPos as $po) {
                     $getLocIdStr = fn($loc) => is_string($loc) ? $loc : ($loc ? $loc->getValue() : '');
                     $ruleLocIdStr = $getLocIdStr($locationId);
                     $poLocIdStr = $getLocIdStr($po->locationId);
@@ -60,11 +56,7 @@ class ReorderPointForecaster
                 }
 
                 if (empty($receivedPos)) {
-                    foreach ($allPos as $po) {
-                        if ($po->tenantId !== $tenantId || $po->getStatus() !== PurchaseOrderStatus::Received) {
-                            continue;
-                        }
-
+                    foreach ($statusPos as $po) {
                         $hasItem = false;
                         foreach ($po->getItems() as $item) {
                             if ($item->variantId === $product->getId()) {

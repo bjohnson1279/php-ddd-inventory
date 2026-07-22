@@ -8,17 +8,18 @@ use Illuminate\Database\Capsule\Manager as Capsule;
  * TenantConnectionPool for the PHP backend.
  *
  * Manages a cache of Eloquent database connections keyed by tenant ID.
- * Each tenant has its own PostgreSQL database, and the pool creates
- * a Capsule connection to the tenant's database on cache miss.
+ * On cache miss, adds a database connection dynamically to the global
+ * Capsule manager pointing to the tenant's dedicated database.
  *
  * Part of Roadmap 6.1: Dynamic Multi-Database Tenant Provisioning.
  */
 class TenantConnectionPool
 {
-    /** @var array<string, array{capsule: Capsule, lastAccessed: int}> */
+    /** @var array<string, array{connectionName: string, lastAccessed: int}> */
     private array $cache = [];
 
     public function __construct(
+        private readonly Capsule $capsule,
         private readonly TenantRegistry $registry,
         private readonly int $maxSize = 50,
         private readonly int $maxIdleSeconds = 300
@@ -29,9 +30,11 @@ class TenantConnectionPool
      */
     public function getConnection(string $tenantId): \Illuminate\Database\Connection
     {
+        $connectionName = 'tenant_' . $tenantId;
+
         if (isset($this->cache[$tenantId])) {
             $this->cache[$tenantId]['lastAccessed'] = time();
-            return $this->cache[$tenantId]['capsule']->getConnection('tenant');
+            return $this->capsule->getConnection($connectionName);
         }
 
         $entry = $this->registry->lookupTenant($tenantId);
@@ -46,13 +49,13 @@ class TenantConnectionPool
             $this->evictLRU();
         }
 
-        $capsule = $this->createConnection($entry);
+        $this->createConnection($entry, $connectionName);
         $this->cache[$tenantId] = [
-            'capsule' => $capsule,
+            'connectionName' => $connectionName,
             'lastAccessed' => time(),
         ];
 
-        return $capsule->getConnection('tenant');
+        return $this->capsule->getConnection($connectionName);
     }
 
     public function has(string $tenantId): bool
@@ -63,7 +66,10 @@ class TenantConnectionPool
     public function evict(string $tenantId): void
     {
         if (isset($this->cache[$tenantId])) {
-            $this->cache[$tenantId]['capsule']->getConnection('tenant')->disconnect();
+            $connectionName = 'tenant_' . $tenantId;
+            try {
+                $this->capsule->getConnection($connectionName)->disconnect();
+            } catch (\Throwable $_) {}
             unset($this->cache[$tenantId]);
         }
     }
@@ -99,12 +105,10 @@ class TenantConnectionPool
         }
     }
 
-    private function createConnection(TenantRegistryEntry $entry): Capsule
+    private function createConnection(TenantRegistryEntry $entry, string $connectionName): void
     {
-        $capsule = new Capsule();
-
-        // Connect to the tenant's dedicated database on the public schema
-        $capsule->addConnection([
+        // Add the connection dynamically using the Capsule instance
+        $this->capsule->addConnection([
             'driver' => 'pgsql',
             'host' => $entry->dbHost,
             'port' => $entry->dbPort,
@@ -114,9 +118,7 @@ class TenantConnectionPool
             'charset' => 'utf8',
             'prefix' => '',
             'schema' => 'public',
-        ], 'tenant');
-
-        return $capsule;
+        ], $connectionName);
     }
 
     private function evictLRU(): void

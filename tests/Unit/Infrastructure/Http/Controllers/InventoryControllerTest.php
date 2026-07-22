@@ -8,8 +8,10 @@ use InventoryApp\Infrastructure\Http\Response;
 use InventoryApp\Infrastructure\Http\RequestInterface;
 use InventoryApp\Application\Inventory\UseCases\ReceiveStock;
 use InventoryApp\Application\Inventory\UseCases\DispatchStock;
+use InventoryApp\Application\Inventory\UseCases\TransferStock;
 use InventoryApp\Application\Inventory\UseCases\GetStockLevel;
 use InventoryApp\Application\Inventory\UseCases\ReleaseAllocation;
+use InventoryApp\Application\Inventory\UseCases\AllocateStock;
 use Exception;
 
 class InventoryControllerTest extends TestCase
@@ -17,14 +19,17 @@ class InventoryControllerTest extends TestCase
     private InventoryController $controller;
     private $receiveStockMock;
     private $dispatchStockMock;
+    private $transferStockMock;
     private $getStockLevelMock;
     private $releaseAllocationMock;
+    private $allocateStockMock;
 
     protected function setUp(): void
     {
         $this->controller = new InventoryController();
         $this->receiveStockMock = $this->createMock(ReceiveStock::class);
         $this->dispatchStockMock = $this->createMock(DispatchStock::class);
+        $this->transferStockMock = $this->createMock(TransferStock::class);
         $this->getStockLevelMock = $this->createMock(\InventoryApp\Application\Inventory\Queries\StockQueryServiceInterface::class);
         $this->releaseAllocationMock = $this->createMock(ReleaseAllocation::class);
     }
@@ -63,71 +68,37 @@ class InventoryControllerTest extends TestCase
         $this->assertStringContainsString('Allocation released successfully', $response->getContent());
     }
 
-    /**
      * Test: releaseAllocation() returns 400 when validation fails
-     */
     public function testReleaseAllocationWithInvalidData(): void
     {
-        $requestMock = $this->createMock(RequestInterface::class);
-        $requestMock->expects($this->once())
-            ->method('validate')
             ->willThrowException(new \DomainException('Validation failed: Missing sku'));
 
-        $response = $this->controller->releaseAllocation($requestMock, $this->releaseAllocationMock);
 
-        $this->assertInstanceOf(Response::class, $response);
         $this->assertEquals(400, $response->getStatusCode());
         $this->assertStringContainsString('Validation failed', $response->getContent());
     }
 
-    /**
      * Test: releaseAllocation() returns 400 when use case throws exception
-     */
     public function testReleaseAllocationWhenUseCaseThrowsException(): void
     {
-        $requestMock = $this->createMock(RequestInterface::class);
-        $requestMock->expects($this->once())
-            ->method('validate')
-            ->willReturn([
                 'sku'         => 'NONEXISTENT-SKU',
-                'amount'      => 5,
-                'location_id' => 'LOC-1'
-            ]);
 
-        $this->releaseAllocationMock->expects($this->once())
-            ->method('execute')
             ->willThrowException(new \DomainException('Product not found with SKU: NONEXISTENT-SKU'));
 
-        $response = $this->controller->releaseAllocation($requestMock, $this->releaseAllocationMock);
 
-        $this->assertInstanceOf(Response::class, $response);
-        $this->assertEquals(400, $response->getStatusCode());
         $this->assertStringContainsString('Product not found', $response->getContent());
     }
 
-    /**
      * Test: releaseAllocation() returns 500 when unknown exception occurs
-     */
     public function testReleaseAllocationWhenGenericExceptionThrown(): void
     {
-        $requestMock = $this->createMock(RequestInterface::class);
-        $requestMock->expects($this->once())
-            ->method('validate')
-            ->willReturn([
-                'sku'         => 'TEST-SKU',
-                'amount'      => 5,
-                'location_id' => 'LOC-1'
-            ]);
 
-        $this->releaseAllocationMock->expects($this->once())
-            ->method('execute')
             ->willThrowException(new \Exception('Database connection failed'));
 
-        $response = $this->controller->releaseAllocation($requestMock, $this->releaseAllocationMock);
 
-        $this->assertInstanceOf(Response::class, $response);
         $this->assertEquals(500, $response->getStatusCode());
         $this->assertStringContainsString('internal server error', $response->getContent());
+        $this->allocateStockMock = $this->createMock(AllocateStock::class);
     }
 
     /**
@@ -300,6 +271,86 @@ class InventoryControllerTest extends TestCase
     }
 
     /**
+     * Test: transfer() successfully processes a valid transfer stock request
+     */
+    public function testTransferStockWithValidRequest(): void
+    {
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->once())
+            ->method('validate')
+            ->with([
+                'sku'             => 'required|string',
+                'from_location'   => 'required|string',
+                'to_location'     => 'required|string',
+                'quantity'        => 'required|integer|min:1',
+            ])
+            ->willReturn([
+                'sku' => 'WIDGET-002',
+                'from_location' => 'LOC-BACKROOM',
+                'to_location' => 'LOC-STOREFRONT',
+                'quantity' => 5
+            ]);
+
+        $this->transferStockMock->expects($this->once())
+            ->method('execute')
+            ->with(
+                $this->callback(fn($sku) => $sku instanceof \InventoryApp\Domain\Inventory\ValueObjects\SKU && $sku->getValue() === 'WIDGET-002'),
+                $this->callback(fn($from) => $from instanceof \InventoryApp\Domain\Inventory\ValueObjects\LocationId && $from->getValue() === 'LOC-BACKROOM'),
+                $this->callback(fn($to) => $to instanceof \InventoryApp\Domain\Inventory\ValueObjects\LocationId && $to->getValue() === 'LOC-STOREFRONT'),
+                $this->callback(fn($qty) => $qty instanceof \InventoryApp\Domain\Inventory\ValueObjects\Quantity && $qty->getValue() === 5)
+            );
+
+        $response = $this->controller->transfer($requestMock, $this->transferStockMock);
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertStringContainsString('Stock transferred successfully', $response->getContent());
+    }
+
+    /**
+     * Test: transfer() returns 400 when validation fails
+     */
+    public function testTransferStockWithMissingRequiredFields(): void
+    {
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->once())
+            ->method('validate')
+            ->willThrowException(new \DomainException('Validation failed: Missing to_location'));
+
+        $response = $this->controller->transfer($requestMock, $this->transferStockMock);
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(400, $response->getStatusCode());
+        $this->assertStringContainsString('Validation failed', $response->getContent());
+    }
+
+    /**
+     * Test: transfer() returns 400 when domain exception is thrown
+     */
+    public function testTransferStockWithDomainException(): void
+    {
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->once())
+            ->method('validate')
+            ->willReturn([
+                'sku' => 'ITEM-101',
+                'from_location' => 'LOC-A',
+                'to_location' => 'LOC-B',
+                'quantity' => 10
+            ]);
+
+        $this->transferStockMock->expects($this->once())
+            ->method('execute')
+            ->willThrowException(new \DomainException('Insufficient stock to transfer'));
+
+        $response = $this->controller->transfer($requestMock, $this->transferStockMock);
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(400, $response->getStatusCode());
+        $this->assertStringContainsString('Insufficient stock to transfer', $response->getContent());
+    }
+
+    /**
      * Test: stockLevel() returns total stock when no location is specified
      */
     public function testGetStockLevelForAllLocations(): void
@@ -416,5 +467,78 @@ class InventoryControllerTest extends TestCase
         $this->assertInstanceOf(Response::class, $response);
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertStringContainsString('0', $response->getContent());
+    }
+    /**
+     * Test: allocate() successfully processes a valid allocate stock request
+     */
+    public function testAllocateStockWithValidRequest(): void
+    {
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->once())
+            ->method('validate')
+            ->with([
+                'sku'         => 'required|string',
+                'amount'      => 'required|integer',
+                'location_id' => 'string'
+            ])
+            ->willReturn([
+                'sku'         => 'WIDGET-200',
+                'amount'      => 5,
+                'location_id' => 'LOC-BACKROOM'
+            ]);
+
+        $this->allocateStockMock->expects($this->once())
+            ->method('execute')
+            ->with(
+                $this->callback(fn($sku) => $sku instanceof \InventoryApp\Domain\Inventory\ValueObjects\SKU && $sku->getValue() === 'WIDGET-200'),
+                $this->callback(fn($qty) => $qty instanceof \InventoryApp\Domain\Inventory\ValueObjects\Quantity && $qty->getValue() === 5),
+                $this->callback(fn($loc) => $loc instanceof \InventoryApp\Domain\Inventory\ValueObjects\LocationId && $loc->getValue() === 'LOC-BACKROOM')
+            );
+
+        $response = $this->controller->allocate($requestMock, $this->allocateStockMock);
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertStringContainsString('Stock allocated successfully', $response->getContent());
+    }
+    /**
+     * Test: allocate() returns 400 when validation fails
+     */
+    public function testAllocateStockWithMissingRequiredFields(): void
+    {
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->once())
+            ->method('validate')
+            ->willThrowException(new \DomainException('Validation failed: Missing required field'));
+
+        $response = $this->controller->allocate($requestMock, $this->allocateStockMock);
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(400, $response->getStatusCode());
+        $this->assertStringContainsString('Validation failed', $response->getContent());
+    }
+    /**
+     * Test: allocate() returns 400 when use case throws exception
+     */
+    public function testAllocateStockWhenUseCaseThrowsException(): void
+    {
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->once())
+            ->method('validate')
+            ->willReturn([
+                'sku'         => 'NONEXISTENT-SKU',
+                'amount'      => 5,
+                'location_id' => 'LOC-STOREFRONT'
+            ]);
+
+        $this->allocateStockMock->expects($this->once())
+            ->method('execute')
+            ->willThrowException(new \DomainException('Product not found with SKU: NONEXISTENT-SKU'));
+
+        $response = $this->controller->allocate($requestMock, $this->allocateStockMock);
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(400, $response->getStatusCode());
+        $this->assertStringContainsString('Product not found', $response->getContent());
     }
 }

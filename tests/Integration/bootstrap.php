@@ -27,7 +27,7 @@ if ($driver === 'sqlite') {
         'host'     => getenv('DB_HOST')       ?: 'localhost',
         'database' => getenv('DB_DATABASE')   ?: 'ddd_inventory',
         'username' => getenv('DB_USERNAME')   ?: 'ddd_user',
-        'password' => getenv('DB_PASSWORD')   ?: 'secret',
+        'password' => getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '',
         'port'     => getenv('DB_PORT')       ?: 5432,
         'charset'  => 'utf8',
         'prefix'   => '',
@@ -158,7 +158,9 @@ if ($driver === 'sqlite') {
         'reorder_policies',
         'demand_forecasts',
         'shipments',
-        'outbox_events'
+        'outbox_events',
+        'webhook_subscriptions',
+        'webhook_deliveries'
     ];
     
     foreach ($tables as $t) {
@@ -202,7 +204,9 @@ if ($driver === 'sqlite') {
         reorder_policies,
         demand_forecasts,
         shipments,
-        outbox_events
+        outbox_events,
+        webhook_subscriptions,
+        webhook_deliveries
     RESTART IDENTITY CASCADE');
 
     // Wipe all tenants except test-tenant

@@ -51,7 +51,7 @@ class InventoryController
                 function_exists('tenantId') ? tenantId() : 'system'
             );
 
-            return new Response(['message' => 'Stock received successfully'], 200);
+            return new Response(['message' => 'Stock received successfully'], 201);
         } catch (Exception $e) {
             if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
                 error_log('[InventoryController.php] ' . $e->getMessage());

@@ -67,7 +67,6 @@ class ShippingController
             return new Response(array_merge([
                 'message' => 'Shipping label purchased successfully.'
             ], $result->toArray()), 201);
-            }
         } catch (Exception $e) {
             if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
                 error_log('[ShippingController.php] ' . $e->getMessage());
@@ -123,7 +122,6 @@ class ShippingController
                 'message' => 'Shipment status updated successfully.',
                 'status' => $status->value
             ], 200);
-            }
         } catch (Exception $e) {
             if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
                 error_log('[ShippingController.php] ' . $e->getMessage());
@@ -136,9 +134,6 @@ class ShippingController
 
     public function routeOrder(RequestInterface $request, RouteOrder $useCase)
     {
-
-            $quantityVal = $body['quantity'] ?? null;
-            $quantity = $quantityVal !== null ? (int)$quantityVal : null;
         try {
             $body = json_decode(file_get_contents('php://input'), true) ?: [];
 
@@ -165,63 +160,10 @@ class ShippingController
                 'totalDistanceKm' => $plan->totalDistanceKm,
                 'splitCount' => $plan->splitCount,
                 'score' => $plan->score
-            }
-        }
-    }
-}
-
-
-
-{
-    {
-
-            }
-
-
-            }
-        }
-    }
-
-    {
-
-
-            }
-
-
-            }
-        }
-    }
-
-    {
-
-            }
-        }
-    }
-
-    {
-
-            }
-
-
-
-            }
-        }
-     }
-
-    {
-
-
-            }
-
-
-
-                return new Response(['error' => 'Failed to route order: ' . $e->getMessage()], 500);
-            }
             ], 200);
         } catch (Exception $e) {
             if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
                 error_log('[ShippingController.php] ' . $e->getMessage());
-                return new Response(['error' => 'An internal server error occurred.'], 500);
                 return new Response(['error' => 'Failed to route order: ' . $e->getMessage()], 500);
             }
             $type = (new \ReflectionClass($e))->getShortName();

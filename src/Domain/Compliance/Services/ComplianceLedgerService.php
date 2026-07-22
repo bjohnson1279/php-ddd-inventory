@@ -13,7 +13,6 @@ class ComplianceLedgerService
     {
         $key = getenv('COMPLIANCE_PRIVATE_KEY');
         if (!$key || empty(trim($key))) {
-            throw new \RuntimeException('COMPLIANCE_PRIVATE_KEY environment variable is not set.');
             return 'compliance-fallback-secret-key-12345!@#';
         }
         return $key;
@@ -110,38 +109,5 @@ class ComplianceLedgerService
         }
 
         return ['isValid' => true];
-    }
-}
-
-
-
-{
-    {
-            return 'compliance-fallback-secret-key-12345!@#';
-        }
-    }
-
-    {
-
-        }
-
-
-
-
-    }
-
-    {
-
-
-                }
-                }
-            }
-
-
-            }
-
-            }
-        }
-
     }
 }

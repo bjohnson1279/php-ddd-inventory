@@ -20,65 +20,6 @@ class EloquentLedgerRepository implements LedgerRepositoryInterface
 
     public function append(LedgerEntry $entry): void
     {
-        $this->appendAll([$entry]);
-    }
-
-    public function appendAll(array $entries): void
-    {
-        if (empty($entries)) {
-            return;
-        }
-
-        $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
-        $insertData = [];
-
-        foreach ($entries as $entry) {
-            $insertData[] = [
-                'id'           => $entry->id ?: Uuid::uuid4()->toString(),
-                'tenant_id'    => $this->tenantId,
-                'variant_id'   => $entry->variantId,
-                'quantity'     => $entry->quantity,
-                'reason'       => $entry->reason->value,
-                'actor_id'     => $entry->actorId,
-                'reference_id' => $entry->referenceId,
-                'occurred_at'  => $entry->occurredAt->format('Y-m-d H:i:s'),
-                'metadata'     => json_encode($entry->metadata),
-                'created_at'   => $now,
-            ];
-        }
-
-        LedgerEntryModel::insert($insertData);
-
-            try {
-                \InventoryApp\Domain\Compliance\Services\ComplianceLedgerService::logEvent(
-                    $this->tenantId,
-                    $entry->actorId ?: 'system',
-                    'STOCK_ADJUSTED',
-                    [
-                        'variant_id'   => $entry->variantId,
-                        'quantity'     => $entry->quantity,
-                        'reason'       => $entry->reason->value,
-                        'reference_id' => $entry->referenceId,
-                        'occurred_at'  => $entry->occurredAt->format('Y-m-d H:i:s')
-                    ]
-                );
-            } catch (\Throwable $e) {
-                error_log('Failed to log event to compliance ledger: ' . $e->getMessage());
-            }
-
-                $metadata = is_string($entry->metadata) ? json_decode($entry->metadata, true) : $entry->metadata;
-                $locId = $metadata['locationId'] ?? 'unknown';
-
-                (new \InventoryApp\Application\Notification\Services\NotificationService())->createNotification(
-                    "Stock Level Updated",
-                    json_encode([
-                        'sku'        => $entry->variantId,
-                        'locationId' => $locId,
-                        'quantity'   => (int) $entry->quantity
-                    ]),
-                    'stock_changed'
-                error_log('Failed to create stock_changed notification: ' . $e->getMessage());
-            }
         LedgerEntryModel::create([
             'id'           => $entry->id ?: Uuid::uuid4()->toString(),
             'tenant_id'    => $this->tenantId,
@@ -204,8 +145,6 @@ class EloquentLedgerRepository implements LedgerRepositoryInterface
                 metadata:    $row->metadata ?? [],
             ))
             ->all();
-        }
-
     }
 
     public function hasAnyEntries(string $variantId, string $locationId): bool
@@ -217,8 +156,6 @@ class EloquentLedgerRepository implements LedgerRepositoryInterface
     }
 
     /** @return LedgerEntry[] */
-    }
-
     public function findRecallEntries(string $lotNumber): array
     {
         $rows = LedgerEntryModel::where('tenant_id', $this->tenantId)
@@ -236,133 +173,5 @@ class EloquentLedgerRepository implements LedgerRepositoryInterface
             occurredAt:  new \DateTimeImmutable($row->occurred_at),
             metadata:    $row->metadata ?? [],
         ))->all();
-    }
-}
-
-
-
-{
-
-    {
-        LedgerEntryModel::create([
-            'id'           => $entry->id ?: Uuid::uuid4()->toString(),
-            'tenant_id'    => $this->tenantId,
-            'variant_id'   => $entry->variantId,
-            'quantity'     => $entry->quantity,
-            'reason'       => $entry->reason->value,
-            'actor_id'     => $entry->actorId,
-            'reference_id' => $entry->referenceId,
-            'occurred_at'  => $entry->occurredAt->format('Y-m-d H:i:s'),
-            'metadata'     => $entry->metadata,
-            'created_at'   => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
-        ]);
-
-        try {
-            \InventoryApp\Domain\Compliance\Services\ComplianceLedgerService::logEvent(
-                $this->tenantId,
-                $entry->actorId ?: 'system',
-                'STOCK_ADJUSTED',
-                [
-                    'variant_id'   => $entry->variantId,
-                    'quantity'     => $entry->quantity,
-                    'reason'       => $entry->reason->value,
-                    'reference_id' => $entry->referenceId,
-                    'occurred_at'  => $entry->occurredAt->format('Y-m-d H:i:s')
-                ]
-            );
-        } catch (\Throwable $e) {
-            error_log('Failed to log event to compliance ledger: ' . $e->getMessage());
-        }
-
-            $metadata = is_string($entry->metadata) ? json_decode($entry->metadata, true) : $entry->metadata;
-            $locId = $metadata['locationId'] ?? 'unknown';
-
-            (new \InventoryApp\Application\Notification\Services\NotificationService())->createNotification(
-                "Stock Level Updated",
-                json_encode([
-                    'sku'        => $entry->variantId,
-                    'locationId' => $locId,
-                    'quantity'   => (int) $entry->quantity
-                ]),
-                'stock_changed'
-            error_log('Failed to create stock_changed notification: ' . $e->getMessage());
-
-        }
-
-
-        }
-    }
-
-    {
-    }
-
-    {
-        }
-
-
-        }
-        }
-    }
-
-    {
-
-            $query->where('metadata->locationId', $locationId);
-        }
-
-    }
-
-    {
-        }
-
-            ->where('metadata->locationId', $locationId)
-    }
-
-    {
-    }
-
-    {
-
-    }
-}
-
-
-
-{
-
-    {
-
-        }
-
-
-        }
-    }
-
-    {
-    }
-
-    {
-        }
-
-
-        }
-        }
-    }
-
-    {
-
-        }
-
-    }
-
-    {
-        }
-
-    }
-
-    {
-    }
-
-    {
-
     }
 }

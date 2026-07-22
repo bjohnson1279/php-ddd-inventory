@@ -33,15 +33,3 @@ class UpdateShipmentStatus
         ));
     }
 }
-
-
-use DateTimeImmutable;
-
-{
-
-    {
-        }
-
-
-    }
-}

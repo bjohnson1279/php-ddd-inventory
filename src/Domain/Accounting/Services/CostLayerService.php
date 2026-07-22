@@ -32,9 +32,6 @@ class CostLayerService
         }
         $activeLayers = $this->layers->getActiveLayers($variantId);
         $strategy = CostingStrategyRegistry::get($method);
-        }
-        $activeLayers = $this->layers->getActiveLayers($variantId);
-        $strategy = CostingStrategyRegistry::get($method);
         [$breakdown, $affectedLayers] = $strategy->consumeLayers($activeLayers, $quantity, $variantId);
 
         if (!empty($affectedLayers)) {

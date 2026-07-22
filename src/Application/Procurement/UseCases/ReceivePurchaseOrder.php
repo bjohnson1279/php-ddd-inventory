@@ -6,7 +6,6 @@ use InventoryApp\Domain\Procurement\Repositories\PurchaseOrderRepositoryInterfac
 use InventoryApp\Domain\Inventory\Repositories\ProductRepositoryInterface;
 use InventoryApp\Domain\Accounting\Repositories\CostLayerRepositoryInterface;
 use InventoryApp\Application\Inventory\UseCases\ReceiveStock;
-use InventoryApp\Application\Inventory\Factories\ReceiveStockFactoryInterface;
 use InventoryApp\Domain\Accounting\Entities\InventoryCostLayer;
 use InventoryApp\Domain\Inventory\ValueObjects\SKU;
 use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
@@ -23,7 +22,6 @@ class ReceivePurchaseOrder
         private readonly ProductRepositoryInterface       $productRepository,
         private readonly CostLayerRepositoryInterface     $costLayerRepository,
         private readonly EventDispatcherInterface         $events
-        private readonly ReceiveStockFactoryInterface     $receiveStockFactory
     ) {}
 
     public function execute(array $data): void
@@ -34,7 +32,6 @@ class ReceivePurchaseOrder
         }
 
         $receiveStock = new ReceiveStock($this->productRepository, $this->events);
-        $receiveStock = $this->receiveStockFactory->create();
         $costLayers = [];
 
         foreach ($data['items'] as $item) {

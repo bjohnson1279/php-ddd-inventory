@@ -17,7 +17,6 @@ class CalculateShippingRates
     public function execute(string $sku, int $quantity, string $destinationAddress): array
     {
         if (empty($sku) || empty($destinationAddress)) {
-        if (trim($sku) === '' || trim($destinationAddress) === '') {
             throw new InvalidArgumentException("Missing required rate fields: sku and destinationAddress.");
         }
 

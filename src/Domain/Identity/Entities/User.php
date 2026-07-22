@@ -69,11 +69,6 @@ class User extends AggregateRoot
             $id,
             $tenantId,
             strtolower(trim($email)),
-            password_hash(
-                $plainPassword,
-                (($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?? '') === 'testing' || ($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?? '') === 'local') ? PASSWORD_BCRYPT : PASSWORD_ARGON2ID,
-                (($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?? '') === 'testing' || ($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?? '') === 'local') ? ['cost' => 4] : []
-            ),
             password_hash($plainPassword, PASSWORD_ARGON2ID),
             trim($name),
             [Role::createDefault(Role::STAFF)] // default role
@@ -147,43 +142,5 @@ class User extends AggregateRoot
     public function reactivate(): void
     {
         $this->active = true;
-    }
-}
-
-
-
-{
-
-    }
-
-        }
-        }
-
-            password_hash($plainPassword, PASSWORD_ARGON2ID),
-
-
-    }
-
-
-    {
-    }
-
-    {
-            }
-        }
-    }
-
-    {
-            }
-        }
-    }
-
-    {
-    }
-
-    {
-    }
-
-    {
     }
 }

@@ -40,7 +40,6 @@ if ($driver === 'sqlite') {
         'prefix'   => '',
         'schema'   => 'public',
     ]);
-        'password' => getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '',
 }
 
 $capsule->setAsGlobal();
@@ -53,65 +52,3 @@ if ($driver === 'sqlite') {
 
 // Now Illuminate\Database facade and DB can be used in repositories
 return $capsule;
-
-
-}
-
-}
-
-if ($driver === 'pgsql') {
-    if (!extension_loaded('pdo_pgsql')) {
-        $driver = 'sqlite';
-    } else {
-        $pgHost = getenv('DB_HOST') ?: 'db';
-        $pgPort = (int)(getenv('DB_PORT') ?: 5432);
-        $fp = @fsockopen($pgHost, $pgPort, $errno, $errstr, 0.1);
-        if (!$fp) {
-            $driver = 'sqlite';
-        } else {
-            fclose($fp);
-        }
-    }
-}
-
-    putenv('DB_CONNECTION=sqlite');
-    $_ENV['DB_CONNECTION'] = 'sqlite';
-    $_SERVER['DB_CONNECTION'] = 'sqlite';
-}
-
-
-    }
-    if ($dbPath !== ':memory:') {
-        $dir = dirname($dbPath);
-        if (!is_dir($dir)) {
-            @mkdir($dir, 0777, true);
-        }
-        if (!file_exists($dbPath)) {
-            @touch($dbPath);
-        }
-    }
-        'password' => getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '',
-}
-
-
-    try {
-        $capsule->getConnection()->statement('PRAGMA journal_mode=WAL;');
-        $capsule->getConnection()->statement('PRAGMA busy_timeout=10000;');
-    } catch (\Exception $e) {}
-}
-
-
-
-}
-
-}
-
-
-
-    }
-        'password' => getenv('DB_PASSWORD') ?: 'secret',
-}
-
-
-}
-

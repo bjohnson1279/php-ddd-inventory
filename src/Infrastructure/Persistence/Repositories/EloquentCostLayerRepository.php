@@ -120,10 +120,6 @@ class EloquentCostLayerRepository implements CostLayerRepositoryInterface
             ->get();
 
         return $models->map(fn($model) => $this->hydrate($model))->all();
-    {
-        }
-
-
     }
 
     private function hydrate(CostLayerModel $model): InventoryCostLayer

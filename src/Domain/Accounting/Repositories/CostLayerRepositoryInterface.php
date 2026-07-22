@@ -24,20 +24,3 @@ interface CostLayerRepositoryInterface
      */
     public function findBySerials(string $variantId, array $serialNumbers): array;
 }
-     * @param string[] $variantIds
-     * @return array<string, InventoryCostLayer[]>
-    public function getActiveLayersByVariantIds(array $variantIds, string $orderBy = 'received_at ASC'): array;
-    
-
-    
-
-}
-
-
-
-{
-    
-
-    
-
-}

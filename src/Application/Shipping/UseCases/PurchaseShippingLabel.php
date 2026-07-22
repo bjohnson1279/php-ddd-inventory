@@ -45,7 +45,6 @@ class PurchaseShippingLabel
         string $locationId,
         string $tenantId
     ): PurchaseShippingLabelResult {
-        if (trim($sku) === '' || $quantity <= 0 || trim($destinationAddress) === '' || trim($carrier) === '' || trim($locationId) === '' || trim($tenantId) === '') {
         if (empty($sku) || $quantity <= 0 || empty($destinationAddress) || empty($carrier) || empty($locationId) || empty($tenantId)) {
             throw new Exception("Missing required parameters for shipping label purchase.");
         }
@@ -159,37 +158,6 @@ class PurchaseShippingLabel
             $labelResult->trackingNumber,
             $labelResult->labelUrl,
             $labelResult->rateCents
-    }
-}
-
-
-
-
-
-{
-
-        if (empty($sku) || $quantity <= 0 || empty($destinationAddress) || empty($carrier) || empty($locationId) || empty($tenantId)) {
-        }
-
-
-        }
-
-        }
-
-
-
-
-                }
-            }
-            }
-        }
-
-
-
-
-
-
-
         );
     }
 }

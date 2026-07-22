@@ -32,44 +32,21 @@ class ReorderPolicyService
         $results = [];
 
         foreach ($policies as $policy) {
-        // Bolt optimization: Extract database queries out of the loop
-        $allPos = $this->poRepository->findAll();
-
-        $skus = array_unique(array_map(fn($p) => $p->sku->getValue(), $policies));
-        $skuObjects = array_map(fn($s) => new \InventoryApp\Domain\Inventory\ValueObjects\SKU($s), $skus);
-        $products = [];
-
-        // This leverages the existing findBySkus method in ProductRepositoryInterface and EloquentProductRepository
-        foreach ($productRepo->findBySkus($skuObjects) as $p) {
-            $products[$p->getSku()->getValue()] = $p;
-        }
-
-            $skuStr = $policy->sku->getValue();
-            $product = $products[$skuStr] ?? null;
-
             $rop = $policy->reorderPoint;
             if ($policy->dynamicRopEnabled) {
                 try {
                     $newRop = $forecaster->forecastReorderPoint(
-                        $skuStr,
                         $policy->sku->getValue(),
                         $policy->locationId,
                         5, // default leadTimeDays
                         $policy->safetyStock,
                         $windowDays,
-                        $tenantId,
-                        $allPos,
-                        $product
                         $tenantId
                     );
                     $policy->updateReorderPoint($newRop);
                     $this->reorderPolicyRepository->save($policy);
                     $rop = $newRop;
                 } catch (\Exception $e) {
-                    error_log("Error forecasting ROP for SKU {$skuStr}: " . $e->getMessage());
-                }
-            }
-            
                     error_log("Error forecasting ROP for SKU {$policy->sku->getValue()}: " . $e->getMessage());
                 }
             }
@@ -118,8 +95,6 @@ class ReorderPolicyService
                         $policy->reorderQuantity,
                         0,
                         0
-                    
-
                     );
 
                     $po = new PurchaseOrder(
@@ -133,9 +108,6 @@ class ReorderPolicyService
                     );
 
                     $this->poRepository->save($po);
-
-                    $allPos[] = $po; // Bolt optimization: Append new PO to avoid duplicate generation in subsequent iterations
-
                     $triggered = true;
                 } else {
                     $reason = "Open purchase order already exists to prevent duplicate ordering";
@@ -204,7 +176,6 @@ class ReorderPolicyService
                 $poNumber = 'AUTO-REORDER-' . $skuStr . '-' . strtoupper(base_convert((string)time(), 10, 36));
                 $poId = Uuid::uuid4()->toString();
                 $itemId = Uuid::uuid4()->toString();
-                
 
                 $item = new PurchaseOrderItem(
                     $itemId,
@@ -225,56 +196,6 @@ class ReorderPolicyService
                 );
 
                 $this->poRepository->save($po);
-            }
-        }
-    }
-}
-
-
-
-{
-
-
-                        $policy->sku->getValue(),
-                        $tenantId
-                    error_log("Error forecasting ROP for SKU {$policy->sku->getValue()}: " . $e->getMessage());
-                }
-            }
-
-            $product = $productRepo->findBySku($policy->sku);
-            
-            }
-
-
-                $allPos = $this->poRepository->findAll();
-                    }
-                            }
-                        }
-                    }
-                }
-
-                    
-
-
-                }
-            }
-
-        }
-
-    }
-
-        }
-
-
-                }
-                        }
-                    }
-                }
-            }
-
-                
-
-
             }
         }
     }

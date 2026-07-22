@@ -43,7 +43,6 @@ class XeroJournalSync
             $isCredit = strtolower($line['type']) === 'credit';
             $amount = (float)($line['amountCents'] / 100.0);
             
-
             // Xero Manual Journals use positive for debits, negative for credits in general ledger lines
             $lineAmount = $isCredit ? -$amount : $amount;
 
@@ -90,7 +89,6 @@ class XeroJournalSync
             throw new \RuntimeException("Xero manual journal creation failed (cURL error): {$error}");
         }
 
-        $response   = curl_exec($ch);
         $httpStatus = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
@@ -107,31 +105,5 @@ class XeroJournalSync
         }
 
         return (string)$xeroId;
-    }
-}
-
-
-{
-
-    {
-    }
-
-    {
-        }
-
-
-            
-
-
-
-            CURLOPT_TIMEOUT        => 30,
-            CURLOPT_CONNECTTIMEOUT => 10,
-
-        $response   = curl_exec($ch);
-
-        }
-
-        }
-
     }
 }

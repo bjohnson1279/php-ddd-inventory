@@ -15,8 +15,6 @@ class CalculateShippingRatesTest extends TestCase
     /** @var CarrierServiceInterface&\PHPUnit\Framework\MockObject\MockObject */
     private CarrierServiceInterface $carrierServiceMock;
 
-{
-
     protected function setUp(): void
     {
         parent::setUp();

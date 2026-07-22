@@ -197,7 +197,7 @@ final class WarehouseLocationE2ETest extends TestCase
             'quantity' => 30,
             'location_id' => 'WH1-ZONEA-A01-R01-S01-B01'
         ], $this->token);
-        $this->assertEquals(200, $receiveRes1['status'], json_encode($receiveRes1));
+        $this->assertEquals(201, $receiveRes1['status'], json_encode($receiveRes1));
 
         // 4. Receive stock that exceeds weight limit (150 * 100g = 15000g > 10000g)
         $receiveRes2 = $this->request('POST', '/api/inventory/receive', [

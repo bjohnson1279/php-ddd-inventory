@@ -101,7 +101,7 @@ final class ShippingCarrierE2ETest extends TestCase
             'quantity'    => 25,
             'location_id' => $locationId
         ], $this->token);
-        $this->assertEquals(200, $receiveRes['status'], json_encode($receiveRes));
+        $this->assertEquals(201, $receiveRes['status'], json_encode($receiveRes));
 
         // 2. Fetch rates
         $ratesRes = $this->request('GET', "/api/shipping/rates?sku={$sku}&quantity=3&address=1600+Amphitheatre+Pkwy,+Mountain+View,+CA", [], $this->token);
@@ -213,7 +213,7 @@ final class ShippingCarrierE2ETest extends TestCase
             'quantity'    => 5,
             'location_id' => 'LOC-EAST'
         ], $this->token);
-        $this->assertEquals(200, $resEast['status'], json_encode($resEast));
+        $this->assertEquals(201, $resEast['status'], json_encode($resEast));
 
         // WH-WEST: 5 units
         $resWest = $this->request('POST', '/api/inventory/receive', [
@@ -221,7 +221,7 @@ final class ShippingCarrierE2ETest extends TestCase
             'quantity'    => 5,
             'location_id' => 'LOC-WEST'
         ], $this->token);
-        $this->assertEquals(200, $resWest['status'], json_encode($resWest));
+        $this->assertEquals(201, $resWest['status'], json_encode($resWest));
 
         // WH-CENTRAL: 10 units
         $resCentral = $this->request('POST', '/api/inventory/receive', [
@@ -229,7 +229,7 @@ final class ShippingCarrierE2ETest extends TestCase
             'quantity'    => 10,
             'location_id' => 'LOC-CENTRAL'
         ], $this->token);
-        $this->assertEquals(200, $resCentral['status'], json_encode($resCentral));
+        $this->assertEquals(201, $resCentral['status'], json_encode($resCentral));
 
         // Route with MINIMIZE_SPLITS for quantity 8 (should select WH-CENTRAL, splitCount = 0)
         $resSplits = $this->request('POST', '/api/shipping/route', [

@@ -123,7 +123,7 @@ final class ReorderPolicyE2ETest extends TestCase
             'quantity'    => 20,
             'location_id' => 'LOC-INT'
         ], $this->token);
-        $this->assertEquals(200, $receiveRes['status'], json_encode($receiveRes));
+        $this->assertEquals(201, $receiveRes['status'], json_encode($receiveRes));
 
         // 4. Dispatch stock (5 items) -> stock becomes 15 (still > 10) -> no auto-reorder PO created
         $dispatchRes1 = $this->request('POST', '/api/inventory/dispatch', [

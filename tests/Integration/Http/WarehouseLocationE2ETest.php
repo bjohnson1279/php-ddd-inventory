@@ -22,14 +22,14 @@ final class WarehouseLocationE2ETest extends TestCase
     {
         // Start built-in PHP development server in the background on port 8086
         $output = [];
-        $command = "php -S 127.0.0.1:8091 public/index.php > tests/Integration/Http/server_warehouse.log 2>&1 & echo $!";
+        $command = "php -S 127.0.0.1:8099 public/index.php > tests/Integration/Http/server_warehouse.log 2>&1 & echo $!";
 
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
 
         // Wait for server to bind
         for ($i = 0; $i < 50; $i++) {
-            $fp = @fsockopen('127.0.0.1', 8091, $errno, $errstr, 0.1);
+            $fp = @fsockopen('127.0.0.1', 8099, $errno, $errstr, 0.1);
             if ($fp) {
                 fclose($fp);
                 break;
@@ -335,7 +335,7 @@ final class WarehouseLocationE2ETest extends TestCase
 
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
     {
-        $url = 'http://127.0.0.1:8091' . $path;
+        $url = 'http://127.0.0.1:8099' . $path;
         $options = [
             'http' => [
                 'header'        => "Content-Type: application/json\r\n",

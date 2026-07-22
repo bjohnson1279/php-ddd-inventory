@@ -181,3 +181,7 @@
 
 
 
+
+## 2024-07-28 - Collection Concat Performance in Loops
+**Learning:** Using `$collection->concat()` inside a loop (e.g., `foreach (array_chunk...) { $results = $results->concat(...) }`) is highly inefficient. Each iteration creates a new `Collection` instance and copies all previous elements, resulting in $O(N^2)$ memory complexity and significant object creation overhead.
+**Action:** When building up a large list inside a loop, always collect elements using native PHP arrays (e.g., `array_push($array, ...$items)`) and only convert the final array to a `Collection` (using `collect($array)`) after the loop completes.

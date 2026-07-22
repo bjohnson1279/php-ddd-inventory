@@ -28,11 +28,13 @@ final class ComplianceE2ETest extends TestCase
         $dbPass = escapeshellarg(getenv('DB_PASSWORD') ?: '');
         $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8099 public/index.php > tests/Integration/Http/server_compliance.log 2>&1 & echo $!";
         $dbConn = getenv('DB_CONNECTION') ?: 'sqlite';
+        $dbDb = getenv('DB_DATABASE') ?: 'testing';
         $dbDb   = getenv('DB_DATABASE') ?: __DIR__ . '/../../../database.sqlite';
         $dbHost = getenv('DB_HOST') ?: '127.0.0.1';
         $dbUser = getenv('DB_USERNAME') ?: 'root';
         $dbPass = getenv('DB_PASSWORD') ?: '';
 
+        $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8096 public/index.php > tests/Integration/Http/server_compliance.log 2>&1 & echo $!";
         // Assign a unique non-overlapping port number for this test file
         $command = "php -S 127.0.0.1:8100 public/index.php > tests/Integration/Http/server_compliance.log 2>&1 & echo $!";
 
@@ -41,6 +43,7 @@ final class ComplianceE2ETest extends TestCase
 
         // Wait for server to bind
         for ($i = 0; $i < 50; $i++) {
+            $fp = @fsockopen('127.0.0.1', 8096, $errno, $errstr, 0.1);
             $fp = @fsockopen('127.0.0.1', 8099, $errno, $errstr, 0.1);
             $fp = @fsockopen('127.0.0.1', 8100, $errno, $errstr, 0.1);
             if ($fp) {
@@ -152,6 +155,7 @@ final class ComplianceE2ETest extends TestCase
 
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
     {
+        $url = 'http://127.0.0.1:8096' . $path;
         $url = 'http://127.0.0.1:8099' . $path;
         $url = 'http://127.0.0.1:8100' . $path;
         $options = [

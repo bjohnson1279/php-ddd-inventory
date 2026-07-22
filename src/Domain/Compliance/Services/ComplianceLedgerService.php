@@ -5,7 +5,6 @@ namespace InventoryApp\Domain\Compliance\Services;
 use InventoryApp\Domain\Compliance\Entities\ComplianceLedgerEntry;
 use InventoryApp\Infrastructure\ServiceContainer;
 use DateTime;
-use Exception;
 
 class ComplianceLedgerService
 {

@@ -21,14 +21,14 @@ final class ReportControllerTest extends TestCase
     public static function setUpBeforeClass(): void
     {
         $output = [];
-        $command = "php -S 127.0.0.1:8094 public/index.php > tests/Integration/Http/server_report.log 2>&1 & echo $!";
+        $command = "php -S 127.0.0.1:8089 public/index.php > tests/Integration/Http/server_report.log 2>&1 & echo $!";
 
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
 
         // Wait for server to bind
         for ($i = 0; $i < 50; $i++) {
-            $fp = @fsockopen('127.0.0.1', 8094, $errno, $errstr, 0.1);
+            $fp = @fsockopen('127.0.0.1', 8089, $errno, $errstr, 0.1);
             if ($fp) {
                 fclose($fp);
                 break;
@@ -157,7 +157,7 @@ final class ReportControllerTest extends TestCase
 
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
     {
-        $url = 'http://127.0.0.1:8094' . $path;
+        $url = 'http://127.0.0.1:8089' . $path;
         $options = [
             'http' => [
                 'header'        => "Content-Type: application/json\r\n",

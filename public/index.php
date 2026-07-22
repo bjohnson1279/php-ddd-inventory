@@ -69,16 +69,11 @@ if ($driver === 'sqlite') {
     $conn->table('tenants')->insertOrIgnore([
         ['id' => 'test-tenant', 'name' => 'Test Tenant']
     ]);
-}
-
-try {
-    $capsule->getConnection()->table('roles')->insertOrIgnore([
+    $conn->table('roles')->insertOrIgnore([
         ['id' => 'admin',   'name' => 'Administrator'],
         ['id' => 'manager', 'name' => 'Manager'],
         ['id' => 'staff',   'name' => 'Staff']
     ]);
-} catch (\Throwable $e) {
-    // Ignore if table does not exist yet
 }
 
 // ── Event listeners ──────────────────────────────────────────────────────────

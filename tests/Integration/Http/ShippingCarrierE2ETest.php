@@ -26,12 +26,12 @@ final class ShippingCarrierE2ETest extends TestCase
         $dbHost = getenv('DB_HOST') ?: '';
         $dbUser = getenv('DB_USERNAME') ?: '';
         $dbPass = getenv('DB_PASSWORD') ?: '';
-        $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8092 public/index.php > tests/Integration/Http/server_shipping.log 2>&1 & echo $!";
+        $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8097 public/index.php > tests/Integration/Http/server_shipping.log 2>&1 & echo $!";
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
 
         for ($i = 0; $i < 50; $i++) {
-            $fp = @fsockopen('127.0.0.1', 8092, $errno, $errstr, 0.1);
+            $fp = @fsockopen('127.0.0.1', 8097, $errno, $errstr, 0.1);
             if ($fp) {
                 fclose($fp);
                 break;
@@ -275,7 +275,7 @@ final class ShippingCarrierE2ETest extends TestCase
 
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
     {
-        $url = 'http://127.0.0.1:8092' . $path;
+        $url = 'http://127.0.0.1:8097' . $path;
         $options = [
             'http' => [
                 'header'        => "Content-Type: application/json\r\n",

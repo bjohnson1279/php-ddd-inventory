@@ -52,15 +52,15 @@ class ReportController
         if (empty($productIds)) {
             return collect([]);
         }
-        $results = collect();
+        $results = [];
         foreach (array_chunk($productIds, 500) as $chunk) {
-            $results = $results->concat(
-                DB::table('product_locations')
-                    ->whereIn('product_id', $chunk)
-                    ->get(['product_id', 'location_id', 'stock_quantity'])
-            );
+            $chunkResults = DB::table('product_locations')
+                ->whereIn('product_id', $chunk)
+                ->get(['product_id', 'location_id', 'stock_quantity'])
+                ->all();
+            array_push($results, ...$chunkResults);
         }
-        return $results->groupBy('product_id');
+        return collect($results)->groupBy('product_id');
     }
 
     private function fetchCostLayersMap(string $tenantId, array $productSkus): \Illuminate\Support\Collection
@@ -68,17 +68,17 @@ class ReportController
         if (empty($productSkus)) {
             return collect([]);
         }
-        $results = collect();
+        $results = [];
         foreach (array_chunk($productSkus, 500) as $chunk) {
-            $results = $results->concat(
-                DB::table('inventory_cost_layers')
-                    ->where('tenant_id', $tenantId)
-                    ->whereIn('variant_id', $chunk)
-                    ->where('remaining_quantity', '>', 0)
-                    ->get(['variant_id', 'remaining_quantity', 'unit_cost_cents', 'received_at'])
-            );
+            $chunkResults = DB::table('inventory_cost_layers')
+                ->where('tenant_id', $tenantId)
+                ->whereIn('variant_id', $chunk)
+                ->where('remaining_quantity', '>', 0)
+                ->get(['variant_id', 'remaining_quantity', 'unit_cost_cents', 'received_at'])
+                ->all();
+            array_push($results, ...$chunkResults);
         }
-        return $results->groupBy('variant_id');
+        return collect($results)->groupBy('variant_id');
     }
 
     private function fetchCatalogVariantsMap(array $productSkus): \Illuminate\Support\Collection
@@ -86,15 +86,15 @@ class ReportController
         if (empty($productSkus)) {
             return collect([]);
         }
-        $results = collect();
+        $results = [];
         foreach (array_chunk($productSkus, 500) as $chunk) {
-            $results = $results->concat(
-                DB::table('catalog_variants')
-                    ->whereIn('sku', $chunk)
-                    ->get(['sku', 'price'])
-            );
+            $chunkResults = DB::table('catalog_variants')
+                ->whereIn('sku', $chunk)
+                ->get(['sku', 'price'])
+                ->all();
+            array_push($results, ...$chunkResults);
         }
-        return $results->keyBy('sku');
+        return collect($results)->keyBy('sku');
     }
 
     private function buildReportData(

@@ -8,6 +8,7 @@ use InventoryApp\Infrastructure\Http\Response;
 use InventoryApp\Infrastructure\Http\RequestInterface;
 use InventoryApp\Application\Inventory\UseCases\ReceiveStock;
 use InventoryApp\Application\Inventory\UseCases\DispatchStock;
+use InventoryApp\Application\Inventory\UseCases\TransferStock;
 use InventoryApp\Application\Inventory\UseCases\GetStockLevel;
 use Exception;
 
@@ -16,6 +17,7 @@ class InventoryControllerTest extends TestCase
     private InventoryController $controller;
     private $receiveStockMock;
     private $dispatchStockMock;
+    private $transferStockMock;
     private $getStockLevelMock;
 
     protected function setUp(): void
@@ -23,6 +25,7 @@ class InventoryControllerTest extends TestCase
         $this->controller = new InventoryController();
         $this->receiveStockMock = $this->createMock(ReceiveStock::class);
         $this->dispatchStockMock = $this->createMock(DispatchStock::class);
+        $this->transferStockMock = $this->createMock(TransferStock::class);
         $this->getStockLevelMock = $this->createMock(\InventoryApp\Application\Inventory\Queries\StockQueryServiceInterface::class);
     }
 
@@ -193,6 +196,86 @@ class InventoryControllerTest extends TestCase
         $this->assertInstanceOf(Response::class, $response);
         $this->assertEquals(400, $response->getStatusCode());
         $this->assertStringContainsString('Insufficient stock', $response->getContent());
+    }
+
+    /**
+     * Test: transfer() successfully processes a valid transfer stock request
+     */
+    public function testTransferStockWithValidRequest(): void
+    {
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->once())
+            ->method('validate')
+            ->with([
+                'sku'             => 'required|string',
+                'from_location'   => 'required|string',
+                'to_location'     => 'required|string',
+                'quantity'        => 'required|integer|min:1',
+            ])
+            ->willReturn([
+                'sku' => 'WIDGET-002',
+                'from_location' => 'LOC-BACKROOM',
+                'to_location' => 'LOC-STOREFRONT',
+                'quantity' => 5
+            ]);
+
+        $this->transferStockMock->expects($this->once())
+            ->method('execute')
+            ->with(
+                $this->callback(fn($sku) => $sku instanceof \InventoryApp\Domain\Inventory\ValueObjects\SKU && $sku->getValue() === 'WIDGET-002'),
+                $this->callback(fn($from) => $from instanceof \InventoryApp\Domain\Inventory\ValueObjects\LocationId && $from->getValue() === 'LOC-BACKROOM'),
+                $this->callback(fn($to) => $to instanceof \InventoryApp\Domain\Inventory\ValueObjects\LocationId && $to->getValue() === 'LOC-STOREFRONT'),
+                $this->callback(fn($qty) => $qty instanceof \InventoryApp\Domain\Inventory\ValueObjects\Quantity && $qty->getValue() === 5)
+            );
+
+        $response = $this->controller->transfer($requestMock, $this->transferStockMock);
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertStringContainsString('Stock transferred successfully', $response->getContent());
+    }
+
+    /**
+     * Test: transfer() returns 400 when validation fails
+     */
+    public function testTransferStockWithMissingRequiredFields(): void
+    {
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->once())
+            ->method('validate')
+            ->willThrowException(new \DomainException('Validation failed: Missing to_location'));
+
+        $response = $this->controller->transfer($requestMock, $this->transferStockMock);
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(400, $response->getStatusCode());
+        $this->assertStringContainsString('Validation failed', $response->getContent());
+    }
+
+    /**
+     * Test: transfer() returns 400 when domain exception is thrown
+     */
+    public function testTransferStockWithDomainException(): void
+    {
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->once())
+            ->method('validate')
+            ->willReturn([
+                'sku' => 'ITEM-101',
+                'from_location' => 'LOC-A',
+                'to_location' => 'LOC-B',
+                'quantity' => 10
+            ]);
+
+        $this->transferStockMock->expects($this->once())
+            ->method('execute')
+            ->willThrowException(new \DomainException('Insufficient stock to transfer'));
+
+        $response = $this->controller->transfer($requestMock, $this->transferStockMock);
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(400, $response->getStatusCode());
+        $this->assertStringContainsString('Insufficient stock to transfer', $response->getContent());
     }
 
     /**

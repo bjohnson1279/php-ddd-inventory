@@ -58,6 +58,19 @@ class ServiceContainer
 
     private static function bindInterfaces(Container $container): void
     {
+        // Tenant database routing singletons (Roadmap 6.1)
+        $container->singleton(TenantRegistry::class, function ($c) {
+            return new TenantRegistry($c->make(Capsule::class));
+        });
+
+        $container->singleton(TenantConnectionPool::class, function ($c) {
+            return new TenantConnectionPool($c->make(Capsule::class), $c->make(TenantRegistry::class));
+        });
+
+        $container->singleton(TenantProvisioner::class, function ($c) {
+            return new TenantProvisioner($c->make(Capsule::class), $c->make(TenantRegistry::class));
+        });
+
         // Singleton mappings
         $container->singleton(UserRepositoryInterface::class, EloquentUserRepository::class);
         $container->singleton(SerializedItemRepositoryInterface::class, EloquentSerializedItemRepository::class);

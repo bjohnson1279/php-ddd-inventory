@@ -122,6 +122,17 @@ services:
     networks:
       - ddd-network
 
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: ddd_inventory_mqtt
+    ports:
+      - "1885:1883"
+      - "9003:9001"
+    volumes:
+      - ./infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    networks:
+      - ddd-network
+
 networks:
   ddd-network:
     driver: bridge

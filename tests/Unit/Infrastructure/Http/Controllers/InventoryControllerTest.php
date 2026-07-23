@@ -130,6 +130,7 @@ class InventoryControllerTest extends TestCase
         $this->assertStringContainsString('internal server error', $response->getContent());
     }
 
+
     /**
      * Test: receive() successfully processes a valid receive stock request
      */

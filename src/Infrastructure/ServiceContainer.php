@@ -58,6 +58,19 @@ class ServiceContainer
 
     private static function bindInterfaces(Container $container): void
     {
+        // Tenant database routing singletons (Roadmap 6.1)
+        $container->singleton(TenantRegistry::class, function ($c) {
+            return new TenantRegistry($c->make(Capsule::class));
+        });
+
+        $container->singleton(TenantConnectionPool::class, function ($c) {
+            return new TenantConnectionPool($c->make(Capsule::class), $c->make(TenantRegistry::class));
+        });
+
+        $container->singleton(TenantProvisioner::class, function ($c) {
+            return new TenantProvisioner($c->make(Capsule::class), $c->make(TenantRegistry::class));
+        });
+
         // Singleton mappings
         $container->singleton(UserRepositoryInterface::class, EloquentUserRepository::class);
         $container->singleton(SerializedItemRepositoryInterface::class, EloquentSerializedItemRepository::class);
@@ -73,6 +86,7 @@ class ServiceContainer
         $container->singleton(ShipmentRepositoryInterface::class, EloquentShipmentRepository::class);
         $container->singleton(OutboxRepositoryInterface::class, EloquentOutboxRepository::class);
         $container->singleton(CarrierServiceInterface::class, MockCarrierService::class);
+        $container->singleton(\InventoryApp\Domain\Rfid\RfidTagRepositoryInterface::class, \InventoryApp\Infrastructure\Persistence\Repositories\EloquentRfidTagRepository::class);
         $container->singleton(\InventoryApp\Domain\Returns\Repositories\RMARepositoryInterface::class, \InventoryApp\Infrastructure\Persistence\Repositories\EloquentRMARepository::class);
         $container->singleton(\InventoryApp\Domain\Returns\Repositories\QuarantineRepositoryInterface::class, \InventoryApp\Infrastructure\Persistence\Repositories\EloquentQuarantineRepository::class);
         $container->singleton(\InventoryApp\Domain\Procurement\Repositories\PurchaseOrderRepositoryInterface::class, \InventoryApp\Infrastructure\Persistence\Repositories\EloquentPurchaseOrderRepository::class);
@@ -166,7 +180,7 @@ class ServiceContainer
     /**
      * Returns a tenant-scoped product repository (fresh instance per call).
      */
-    public static function productRepo(string $tenantId): ProductRepositoryInterface
+    public static function productRepo(string $tenantId): \InventoryApp\Domain\Inventory\Repositories\ProductRepositoryInterface
     {
         return self::getInstance()->make(ProductRepositoryInterface::class, ['tenantId' => $tenantId]);
     }

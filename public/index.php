@@ -58,6 +58,7 @@ if ($driver === 'sqlite') {
 }
 $capsule->setAsGlobal();
 $capsule->bootEloquent();
+ServiceContainer::getInstance()->instance(Capsule::class, $capsule);
 
 if ($driver === 'sqlite') {
     require_once __DIR__ . '/../src/Infrastructure/Persistence/sqlite_setup.php';
@@ -148,6 +149,7 @@ $dispatcher->subscribe(\InventoryApp\Domain\Inventory\Events\StockReceived::clas
 $dispatcher->subscribe(\InventoryApp\Domain\Inventory\Events\StockOnboardingSubmitted::class, [$notificationListener, 'handleOnboardingSubmitted']);
 $dispatcher->subscribe(\InventoryApp\Domain\Inventory\Events\StockReconciled::class, [$notificationListener, 'handleStockReconciled']);
 $dispatcher->subscribe(\InventoryApp\Domain\Inventory\Events\OpeningBalancePosted::class, [$notificationListener, 'handleOpeningBalancePosted']);
+$dispatcher->subscribe(\InventoryApp\Domain\Rfid\RfidScanProcessedEvent::class, [$notificationListener, 'handleRfidScanProcessed']);
 
 // Register Cost Layer Creation Listener
 $costLayerListener = new \InventoryApp\Application\Inventory\Listeners\CreateCostLayerListener();
@@ -395,6 +397,31 @@ if ($method === 'POST' && preg_match('#^/api/notifications/([^/]+)/read$#', $uri
     requireAuth();
     $id = urldecode($m[1]);
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\NotificationController())->read($request, tenantId(), $id);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── RFID Ingestion Routes ────────────────────────────────────────────────────
+if ($method === 'GET' && $uri === '/api/rfid/tags') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\RfidController())->list($request, tenantId());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+if ($method === 'POST' && $uri === '/api/rfid/assign') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\RfidController())->assign($request, tenantId());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+if ($method === 'POST' && $uri === '/api/rfid/simulate-scan') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\RfidController())->simulateScan($request, tenantId());
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;

@@ -70,4 +70,23 @@ class NotificationListener
             'success'
         );
     }
+
+    public function handleRfidScanProcessed(\InventoryApp\Domain\Rfid\RfidScanProcessedEvent $event): void
+    {
+        $this->notificationService->createNotification(
+            $event->tenantId,
+            "RFID Scan Batch Processed",
+            json_encode([
+                'id' => $event->id,
+                'tenantId' => $event->tenantId,
+                'locationId' => $event->locationId,
+                'totalCount' => $event->totalCount,
+                'matchedCount' => $event->matchedCount,
+                'unmatchedCount' => $event->unmatchedCount,
+                'unmatchedEpcs' => $event->unmatchedEpcs,
+                'time' => date('Y-m-d H:i:s')
+            ]),
+            'rfid_scan_processed'
+        );
+    }
 }

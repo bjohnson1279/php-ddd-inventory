@@ -30,20 +30,6 @@ class SlottingOptimizer
             ->where('quantity', '<', 0)
             ->get();
 
-        $velocities = [];
-        foreach ($entries as $e) {
-            $metadata = json_decode($e->metadata ?? '{}', true);
-            if (is_string($e->metadata)) {
-                $metadata = json_decode($e->metadata, true) ?? [];
-            } else if (is_array($e->metadata)) {
-                $metadata = $e->metadata;
-            }
-            $locationId = $metadata['locationId'] ?? 'default';
-            $sku = $e->variant_id; // variant_id holds the SKU string directly in php-ddd-inventory
-            $key = $sku . '_' . $locationId;
-            $velocities[$key] = ($velocities[$key] ?? 0) + abs((int) $e->quantity);
-        }
-
         // 3. Fetch current inventory allocations
         $items = Capsule::table('product_locations')
             ->join('products', 'product_locations.product_id', '=', 'products.id')
@@ -52,6 +38,95 @@ class SlottingOptimizer
 
         if ($items->isEmpty()) {
             return [];
+        }
+
+        $sidecarUrl = getenv('PYTHON_SIDECAR_URL') ?: 'http://python-sidecar:5000/optimize';
+
+        // Prepare sidecar data
+        $sidecarLocations = [];
+        foreach ($locations as $loc) {
+            $sidecarLocations[] = [
+                'id' => $loc->id,
+                'grid_x' => (int)($loc->grid_x ?? 0),
+                'grid_y' => (int)($loc->grid_y ?? 0)
+            ];
+        }
+
+        $sidecarInventory = [];
+        foreach ($items as $item) {
+            $sidecarInventory[] = [
+                'sku' => $item->sku,
+                'location_id' => $item->location_id
+            ];
+        }
+
+        $sidecarDispatches = [];
+        foreach ($entries as $e) {
+            $metadata = [];
+            if (is_string($e->metadata)) {
+                $metadata = json_decode($e->metadata, true) ?? [];
+            } else if (is_array($e->metadata)) {
+                $metadata = $e->metadata;
+            }
+            $locationId = $metadata['locationId'] ?? 'default';
+            $sku = $e->variant_id; // variant_id holds the SKU string directly in php-ddd-inventory
+            
+            try {
+                $d = new \DateTime($e->occurred_at);
+                $isoDate = $d->format(\DateTime::ATOM);
+            } catch (\Throwable $_) {
+                $isoDate = (new \DateTime())->format(\DateTime::ATOM);
+            }
+
+            $sidecarDispatches[] = [
+                'sku' => $sku,
+                'location_id' => $locationId,
+                'quantity' => (int)$e->quantity,
+                'date' => $isoDate
+            ];
+        }
+
+        // Call Python sidecar
+        try {
+            $ch = curl_init($sidecarUrl);
+            $payload = json_encode([
+                'locations' => $sidecarLocations,
+                'inventory' => $sidecarInventory,
+                'dispatches' => $sidecarDispatches
+            ]);
+            
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+            
+            $result = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode === 200 && $result !== false) {
+                $decoded = json_decode($result, true);
+                if (is_array($decoded)) {
+                    return $decoded;
+                }
+            }
+        } catch (\Throwable $err) {
+            error_log('[PHP SlottingOptimizer] Python sidecar down. Fallback to basic: ' . $err->getMessage());
+        }
+
+        // Fallback local heuristic
+        $velocities = [];
+        foreach ($entries as $e) {
+            $metadata = [];
+            if (is_string($e->metadata)) {
+                $metadata = json_decode($e->metadata, true) ?? [];
+            } else if (is_array($e->metadata)) {
+                $metadata = $e->metadata;
+            }
+            $locationId = $metadata['locationId'] ?? 'default';
+            $sku = $e->variant_id;
+            $key = $sku . '_' . $locationId;
+            $velocities[$key] = ($velocities[$key] ?? 0) + abs((int) $e->quantity);
         }
 
         // Map current items with their velocities and distances

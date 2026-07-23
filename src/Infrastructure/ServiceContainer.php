@@ -179,7 +179,7 @@ class ServiceContainer
     /**
      * Returns a tenant-scoped product repository (fresh instance per call).
      */
-    public static function productRepo(string $tenantId): ProductRepositoryInterface
+    public static function productRepo(string $tenantId): \InventoryApp\Domain\Inventory\Repositories\ProductRepositoryInterface
     {
         return self::getInstance()->make(ProductRepositoryInterface::class, ['tenantId' => $tenantId]);
     }

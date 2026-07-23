@@ -132,7 +132,7 @@ final class RfidBulkScanTest extends TestCase
 
         // 2. Seed Serialized Items
         $serialA = new SerializedItem(
-            id: 'serial-item-a',
+            id: '11111111-1111-1111-1111-111111111111',
             variantId: 'variant-a',
             serialNumber: new SerialNumber('SN-A101'),
             tenantId: 'test-tenant',
@@ -140,7 +140,7 @@ final class RfidBulkScanTest extends TestCase
             initialStatus: SerializedItemStatus::InStock
         );
         $serialB = new SerializedItem(
-            id: 'serial-item-b',
+            id: '22222222-2222-2222-2222-222222222222',
             variantId: 'variant-a',
             serialNumber: new SerialNumber('SN-A102'),
             tenantId: 'test-tenant',

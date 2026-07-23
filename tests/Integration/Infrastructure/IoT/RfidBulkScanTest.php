@@ -152,7 +152,7 @@ final class RfidBulkScanTest extends TestCase
 
         // 3. Seed Products and LocationStocks
         $product = Product::create(
-            id: 'product-a',
+            id: '33333333-3333-3333-3333-333333333333',
             sku: new SKU('SKU-A'),
             name: 'SKU A Product',
             department: new Department('GEN'),

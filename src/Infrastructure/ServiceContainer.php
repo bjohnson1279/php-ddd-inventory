@@ -86,6 +86,7 @@ class ServiceContainer
         $container->singleton(ShipmentRepositoryInterface::class, EloquentShipmentRepository::class);
         $container->singleton(OutboxRepositoryInterface::class, EloquentOutboxRepository::class);
         $container->singleton(CarrierServiceInterface::class, MockCarrierService::class);
+        $container->singleton(\InventoryApp\Domain\Rfid\RfidTagRepositoryInterface::class, \InventoryApp\Infrastructure\Persistence\Repositories\EloquentRfidTagRepository::class);
         $container->singleton(\InventoryApp\Domain\Returns\Repositories\RMARepositoryInterface::class, \InventoryApp\Infrastructure\Persistence\Repositories\EloquentRMARepository::class);
         $container->singleton(\InventoryApp\Domain\Returns\Repositories\QuarantineRepositoryInterface::class, \InventoryApp\Infrastructure\Persistence\Repositories\EloquentQuarantineRepository::class);
         $container->singleton(\InventoryApp\Domain\Procurement\Repositories\PurchaseOrderRepositoryInterface::class, \InventoryApp\Infrastructure\Persistence\Repositories\EloquentPurchaseOrderRepository::class);

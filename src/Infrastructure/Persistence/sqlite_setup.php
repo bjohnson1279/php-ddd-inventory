@@ -383,6 +383,15 @@ class SqliteSetup
               reserved_at   DATETIME DEFAULT NULL,
               available_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
               created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS rfid_tags (
+              epc           TEXT PRIMARY KEY,
+              sku           TEXT NOT NULL,
+              serial_number TEXT NOT NULL,
+              status        TEXT NOT NULL DEFAULT 'ACTIVE',
+              last_seen_at  DATETIME,
+              last_location TEXT,
+              created_at    DATETIME DEFAULT CURRENT_TIMESTAMP
             )"
         ];
     }

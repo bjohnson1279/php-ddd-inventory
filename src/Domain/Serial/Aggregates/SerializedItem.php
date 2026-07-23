@@ -66,6 +66,20 @@ class SerializedItem
         $this->transitionTo(SerializedItemStatus::Quarantined, $reason, $actorId, $referenceId);
     }
 
+    public function scanCheckIn(string $location, string $actorId): void
+    {
+        $this->locationId = $location;
+        $now = new \DateTimeImmutable();
+        $this->history[] = new StatusTransition(
+            $this->status,
+            $this->status,
+            "Relocated via RFID scan check-in",
+            $actorId,
+            null,
+            $now
+        );
+    }
+
     public function status(): SerializedItemStatus     { return $this->status; }
     public function locationId(): string               { return $this->locationId; }
     public function isAvailable(): bool                { return $this->status === SerializedItemStatus::InStock; }

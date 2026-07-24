@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Domain\CRDT;
+namespace InventoryApp\Domain\CRDT;
 
 class CRDTStockResolver
 {

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Application\Autonomous;
+namespace InventoryApp\Application\Autonomous;
 
 class AutonomousInventoryEngine
 {
@@ -8,7 +8,7 @@ class AutonomousInventoryEngine
 
     public function __construct(string $mode = 'HUMAN_IN_THE_LOOP')
     {
-        $this->mode = mode;
+        $this->mode = $mode;
     }
 
     public function evaluateStockLevels(array $items): array

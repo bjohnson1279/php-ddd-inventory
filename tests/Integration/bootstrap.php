@@ -187,6 +187,7 @@ if ($driver === 'sqlite') {
         'webhook_subscriptions',
         'webhook_deliveries',
         'audit_discrepancies',
+        'rfid_tags',
         'rmas',
         'rma_items',
         'quarantine_items'
@@ -238,6 +239,7 @@ if ($driver === 'sqlite') {
         webhook_subscriptions,
         webhook_deliveries,
         audit_discrepancies,
+        rfid_tags,
         rmas,
         rma_items,
         quarantine_items

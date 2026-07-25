@@ -124,3 +124,7 @@
 **Vulnerability:** External HTTP requests via cURL to NetSuite, Shopify, Webhook Delivery and QuickBooks were lacking `CURLOPT_TIMEOUT` and/or `CURLOPT_CONNECTTIMEOUT` definitions.
 **Learning:** Default PHP cURL configurations can block indefinitely (or for system-level timeouts) if an external service stops responding, leading to thread exhaustion and complete application denial-of-service (DoS).
 **Prevention:** Always mandate explicit connection and execution timeouts (e.g., 10s connection, 30s timeout) on all outbound network boundaries.
+## 2026-07-20 - Removed Hardcoded COMPLIANCE_PRIVATE_KEY Fallback
+**Vulnerability:** A hardcoded string `'compliance-fallback-secret-key-12345!@#'` was used as a fallback if the `COMPLIANCE_PRIVATE_KEY` environment variable was missing or empty. This exposes cryptographic signatures on the compliance ledger to being forged or compromised using a publicly known key.
+**Learning:** Hardcoding default secrets in code bypasses the requirement for operators to properly manage sensitive keys in their deployment environments.
+**Prevention:** Instead of falling back to a dummy secret, critical cryptographic keys should fail-fast by throwing a `\RuntimeException` during application initialization or service instantiation, explicitly instructing operators to configure the environment variable.

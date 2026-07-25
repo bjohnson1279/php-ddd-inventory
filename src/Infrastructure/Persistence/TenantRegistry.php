@@ -41,7 +41,7 @@ class TenantRegistry
         ?string $dbPassword = null
     ): TenantRegistryEntry {
         $safeName = preg_replace('/[^a-zA-Z0-9_]/', '_', $tenantId);
-        $host = $dbHost ?? (getenv('DB_HOST') ?: 'db');
+        $host = $dbHost ?? (getenv('DB_HOST') ?: 'localhost');
         $port = $dbPort ?? (int)(getenv('DB_PORT') ?: 5432);
         $name = $dbName ?? "inventory_tenant_{$safeName}";
         $user = $dbUser ?? (getenv('DB_USERNAME') ?: 'ddd_user');

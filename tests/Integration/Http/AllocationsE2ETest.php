@@ -283,11 +283,6 @@ final class AllocationsE2ETest extends TestCase
 
         $context = stream_context_create($options);
         $result = @file_get_contents($url, false, $context);
-        if ($result === false) {
-            $lastErr = error_get_last();
-            $logContent = file_exists('tests/Integration/Http/server_allocations.log') ? file_get_contents('tests/Integration/Http/server_allocations.log') : '';
-            $result = 'STREAM_ERROR: ' . ($lastErr['message'] ?? 'Connection failed') . ' | LOG: ' . $logContent;
-        }
 
         $statusCode = 500;
         if (isset($http_response_header) && isset($http_response_header[0])) {
@@ -296,9 +291,22 @@ final class AllocationsE2ETest extends TestCase
         }
 
         $decoded = json_decode((string)$result, true);
+
+        if ($statusCode >= 500 || $result === false || $result === '' || $decoded === null) {
+            $logContent = file_exists('tests/Integration/Http/server_allocations.log') ? file_get_contents('tests/Integration/Http/server_allocations.log') : 'No log file';
+            return [
+                'status' => $statusCode,
+                'body'   => [
+                    'error'      => 'Server error or invalid response',
+                    'raw'        => $result,
+                    'server_log' => $logContent
+                ]
+            ];
+        }
+
         return [
             'status' => $statusCode,
-            'body'   => (json_last_error() === JSON_ERROR_NONE) ? $decoded : $result
+            'body'   => $decoded
         ];
     }
 }

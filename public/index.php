@@ -46,7 +46,7 @@ if ($driver === 'sqlite') {
 } else {
     $capsule->addConnection([
         'driver'    => $driver,
-        'host'      => getenv('DB_HOST')       ?: 'db',
+        'host'      => getenv('DB_HOST')       ?: 'localhost',
         'database'  => getenv('DB_DATABASE')   ?: 'ddd_inventory',
         'username'  => getenv('DB_USERNAME')   ?: 'ddd_user',
         'password'  => getenv('DB_PASSWORD') !== false && getenv('DB_PASSWORD') !== '' ? getenv('DB_PASSWORD') : 'secret',

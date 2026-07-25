@@ -375,36 +375,4 @@ final class WarehouseLocationE2ETest extends TestCase
         }
         $this->assertTrue($found);
     }
-
-    private function request(string $method, string $path, array $body = [], ?string $token = null): array
-    {
-        $url = 'http://127.0.0.1:8091' . $path;
-        $options = [
-            'http' => [
-                'header'        => "Content-Type: application/json\r\n",
-                'method'        => $method,
-                'content'       => json_encode($body),
-                'ignore_errors' => true,
-            ]
-        ];
-
-        if ($token) {
-            $options['http']['header'] .= "Authorization: Bearer {$token}\r\n";
-        }
-
-        $context = stream_context_create($options);
-        $result = @file_get_contents($url, false, $context);
-
-        $statusCode = 500;
-        if (isset($http_response_header) && isset($http_response_header[0])) {
-            preg_match('{HTTP\/\S*\s(\d{3})}', $http_response_header[0], $match);
-            $statusCode = (int)$match[1];
-        }
-
-        $decoded = json_decode((string)$result, true);
-        return [
-            'status' => $statusCode,
-            'body'   => (json_last_error() === JSON_ERROR_NONE) ? $decoded : $result
-        ];
-    }
 }

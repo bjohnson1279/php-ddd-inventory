@@ -28,13 +28,19 @@ final class WarehouseLocationE2ETest extends TestCase
         self::$pid = (int)($output[0] ?? 0);
 
         // Wait for server to bind
+        $bound = false;
         for ($i = 0; $i < 50; $i++) {
             $fp = @fsockopen('127.0.0.1', 8091, $errno, $errstr, 0.1);
             if ($fp) {
                 fclose($fp);
+                $bound = true;
                 break;
             }
             usleep(50000); // 50ms
+        }
+        if (!$bound) {
+            $logContent = file_exists('tests/Integration/Http/server_warehouse.log') ? file_get_contents('tests/Integration/Http/server_warehouse.log') : 'No log file';
+            throw new \RuntimeException("Failed to bind PHP test server on port 8091. Log: " . $logContent);
         }
     }
 
@@ -81,6 +87,43 @@ final class WarehouseLocationE2ETest extends TestCase
 
         $this->assertEquals(200, $loginRes['status'], json_encode($loginRes));
         $this->token = $loginRes['body']['token'];
+    }
+
+    private function request(string $method, string $path, array $body = [], ?string $token = null): array
+    {
+        $url = 'http://127.0.0.1:8091' . $path;
+        $options = [
+            'http' => [
+                'header'        => "Content-Type: application/json\r\n",
+                'method'        => $method,
+                'content'       => json_encode($body),
+                'ignore_errors' => true,
+            ]
+        ];
+
+        if ($token) {
+            $options['http']['header'] .= "Authorization: Bearer {$token}\r\n";
+        }
+
+        $context = stream_context_create($options);
+        $result = @file_get_contents($url, false, $context);
+        if ($result === false) {
+            $lastErr = error_get_last();
+            $logContent = file_exists('tests/Integration/Http/server_warehouse.log') ? file_get_contents('tests/Integration/Http/server_warehouse.log') : '';
+            $result = 'STREAM_ERROR: ' . ($lastErr['message'] ?? 'Connection failed') . ' | LOG: ' . $logContent;
+        }
+
+        $statusCode = 500;
+        if (isset($http_response_header) && isset($http_response_header[0])) {
+            preg_match('{HTTP\/\S*\s(\d{3})}', $http_response_header[0], $match);
+            $statusCode = (int)$match[1];
+        }
+
+        $decoded = json_decode((string)$result, true);
+        return [
+            'status' => $statusCode,
+            'body'   => (json_last_error() === JSON_ERROR_NONE) ? $decoded : $result
+        ];
     }
 
     public function testWarehouseLocationsRbacPermissions(): void
@@ -331,37 +374,5 @@ final class WarehouseLocationE2ETest extends TestCase
             }
         }
         $this->assertTrue($found);
-    }
-
-    private function request(string $method, string $path, array $body = [], ?string $token = null): array
-    {
-        $url = 'http://127.0.0.1:8091' . $path;
-        $options = [
-            'http' => [
-                'header'        => "Content-Type: application/json\r\n",
-                'method'        => $method,
-                'content'       => json_encode($body),
-                'ignore_errors' => true,
-            ]
-        ];
-
-        if ($token) {
-            $options['http']['header'] .= "Authorization: Bearer {$token}\r\n";
-        }
-
-        $context = stream_context_create($options);
-        $result = @file_get_contents($url, false, $context);
-
-        $statusCode = 500;
-        if (isset($http_response_header) && isset($http_response_header[0])) {
-            preg_match('{HTTP\/\S*\s(\d{3})}', $http_response_header[0], $match);
-            $statusCode = (int)$match[1];
-        }
-
-        $decoded = json_decode((string)$result, true);
-        return [
-            'status' => $statusCode,
-            'body'   => (json_last_error() === JSON_ERROR_NONE) ? $decoded : $result
-        ];
     }
 }

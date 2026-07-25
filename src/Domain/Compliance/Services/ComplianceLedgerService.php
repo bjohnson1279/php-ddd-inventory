@@ -11,8 +11,8 @@ class ComplianceLedgerService
     private static function getPrivateKey(): string
     {
         $key = getenv('COMPLIANCE_PRIVATE_KEY');
-        if (!$key || empty(trim($key))) {
-            return 'compliance-fallback-secret-key-12345!@#';
+        if ($key === false || empty(trim($key))) {
+            throw new \RuntimeException('COMPLIANCE_PRIVATE_KEY environment variable is not set or empty.');
         }
         return $key;
     }

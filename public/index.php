@@ -24,6 +24,7 @@ set_error_handler(function (int $errno, string $errstr, string $errfile, int $er
 });
 
 use Illuminate\Database\Capsule\Manager as Capsule;
+use InventoryApp\Infrastructure\ServiceContainer;
 
 // ── Environment ──────────────────────────────────────────────────────────────
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../');

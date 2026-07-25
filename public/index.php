@@ -12,7 +12,7 @@ set_exception_handler(function (Throwable $e): void {
     }
     error_log('[UNHANDLED] ' . get_class($e) . ': ' . $e->getMessage()
         . ' in ' . $e->getFile() . ':' . $e->getLine());
-    echo json_encode(['error' => 'Internal server error']);
+    echo json_encode(['error' => 'Internal server error', 'message' => $e->getMessage()]);
     exit;
 });
 
@@ -604,7 +604,7 @@ if ($method === 'POST' && $uri === '/api/setup') {
                 return new \InventoryApp\Infrastructure\Http\Response(['error' => $e->getMessage()], 400);
             } else {
                 error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
-                return new \InventoryApp\Infrastructure\Http\Response(['error' => 'An internal server error occurred.'], 500);
+                return new \InventoryApp\Infrastructure\Http\Response(['error' => 'An internal server error occurred.', 'message' => $e->getMessage()], 500);
             }
         }
     });

@@ -868,9 +868,16 @@ final class ApiEndpointsTest extends TestCase
             $statusCode = (int)$match[1];
         }
 
+        if ($result === false) {
+            $lastErr = error_get_last();
+            $logContent = file_exists('tests/Integration/Http/server_api.log') ? file_get_contents('tests/Integration/Http/server_api.log') : '';
+            $result = 'STREAM_ERROR: ' . ($lastErr['message'] ?? 'Connection failed') . ' | LOG: ' . $logContent;
+        }
+
+        $decoded = json_decode((string)$result, true);
         return [
             'status' => $statusCode,
-            'body'   => json_decode((string)$result, true) ?: $result
+            'body'   => ($decoded !== null || $result === 'null') ? $decoded : $result
         ];
     }
 }

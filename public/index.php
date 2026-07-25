@@ -92,7 +92,6 @@ try {
 }
 
 // ── Event listeners ──────────────────────────────────────────────────────────
-use InventoryApp\Infrastructure\ServiceContainer;
 use InventoryApp\Application\Inventory\Listeners\SyncStockToShopify;
 use InventoryApp\Application\Inventory\Listeners\CreateInventoryItemOnVariantAdded;
 use InventoryApp\Application\Catalog\Listeners\SyncCatalogToShopify;

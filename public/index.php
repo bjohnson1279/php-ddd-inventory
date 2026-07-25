@@ -6,6 +6,7 @@ require __DIR__ . '/../vendor/autoload.php';
 // Must be registered before anything else can throw so that all unhandled
 // exceptions return JSON instead of an HTML error page.
 set_exception_handler(function (Throwable $e): void {
+    restore_error_handler();
     if (!headers_sent()) {
         http_response_code(500);
         header('Content-Type: application/json');
@@ -600,7 +601,7 @@ if ($method === 'POST' && $uri === '/api/setup') {
             }
 
             return new \InventoryApp\Infrastructure\Http\Response(['message' => 'Organization and admin account set up successfully.'], 200);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
                 return new \InventoryApp\Infrastructure\Http\Response(['error' => $e->getMessage()], 400);
             } else {

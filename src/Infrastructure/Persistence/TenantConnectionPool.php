@@ -39,6 +39,7 @@ class TenantConnectionPool
 
         $entry = $this->registry->lookupTenant($tenantId);
         if (!$entry) {
+            throw new \RuntimeException("Tenant \"{$tenantId}\" not found in registry.");
             $dbHost = getenv('DB_HOST') ?: 'localhost';
             $dbPort = (int)(getenv('DB_PORT') ?: 5432);
             $dbName = getenv('DB_DATABASE') ?: 'ddd_inventory';

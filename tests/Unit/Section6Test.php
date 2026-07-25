@@ -3,10 +3,10 @@
 namespace Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
-use App\Infrastructure\Tenant\TenantConnectionManager;
-use App\Domain\CRDT\CRDTStockResolver;
-use App\Application\IoT\RFIDBulkScanIngestionService;
-use App\Application\Autonomous\AutonomousInventoryEngine;
+use InventoryApp\Infrastructure\Tenant\TenantConnectionManager;
+use InventoryApp\Domain\CRDT\CRDTStockResolver;
+use InventoryApp\Application\IoT\RFIDBulkScanIngestionService;
+use InventoryApp\Application\Autonomous\AutonomousInventoryEngine;
 
 class Section6Test extends TestCase
 {

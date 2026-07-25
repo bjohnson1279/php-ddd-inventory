@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Application\IoT;
+namespace InventoryApp\Application\IoT;
 
 class RFIDBulkScanIngestionService
 {

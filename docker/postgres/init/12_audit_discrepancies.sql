@@ -1,4 +1,4 @@
-CREATE TABLE audit_discrepancies (
+CREATE TABLE IF NOT EXISTS audit_discrepancies (
     id VARCHAR(255) PRIMARY KEY,
     tenant_id VARCHAR(255) NOT NULL,
     type VARCHAR(255) NOT NULL,

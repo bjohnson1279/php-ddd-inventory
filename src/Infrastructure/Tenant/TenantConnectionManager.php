@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Infrastructure\Tenant;
+namespace InventoryApp\Infrastructure\Tenant;
 
 use Illuminate\Database\Capsule\Manager as DB;
 

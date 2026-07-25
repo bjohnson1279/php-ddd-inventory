@@ -39,7 +39,7 @@ class TenantConnectionPool
 
         $entry = $this->registry->lookupTenant($tenantId);
         if (!$entry) {
-            $dbHost = getenv('DB_HOST') ?: '127.0.0.1';
+            $dbHost = getenv('DB_HOST') ?: 'localhost';
             $dbPort = (int)(getenv('DB_PORT') ?: 5432);
             $dbName = getenv('DB_DATABASE') ?: 'ddd_inventory';
             $dbUser = getenv('DB_USERNAME') ?: 'ddd_user';

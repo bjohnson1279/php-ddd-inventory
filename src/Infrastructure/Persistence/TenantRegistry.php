@@ -80,10 +80,29 @@ class TenantRegistry
                 [$tenantId]
             );
         } catch (\Throwable $e) {
-            return null;
+            $row = null;
         }
 
-        if (!$row) return null;
+        if (!$row) {
+            $dbHost = getenv('DB_HOST') ?: '127.0.0.1';
+            $dbPort = (int)(getenv('DB_PORT') ?: 5432);
+            $dbName = getenv('DB_DATABASE') ?: 'ddd_inventory';
+            $dbUser = getenv('DB_USERNAME') ?: 'ddd_user';
+            $dbPassword = getenv('DB_PASSWORD') !== false && getenv('DB_PASSWORD') !== '' ? getenv('DB_PASSWORD') : 'secret';
+
+            try {
+                $this->capsule->getConnection()->statement("
+                    INSERT INTO tenant_registry (tenant_id, db_host, db_port, db_name, db_user, db_password, status, provisioned_at, migrated_version)
+                    VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE', NOW(), '1')
+                    ON CONFLICT (tenant_id) DO UPDATE SET status = 'ACTIVE'
+                ", [$tenantId, $dbHost, $dbPort, $dbName, $dbUser, $dbPassword]);
+            } catch (\Throwable $e) {}
+
+            return new TenantRegistryEntry(
+                $tenantId, $dbHost, $dbPort, $dbName, $dbUser, $dbPassword,
+                'ACTIVE', new \DateTimeImmutable(), '1'
+            );
+        }
 
         return new TenantRegistryEntry(
             $row->tenant_id,

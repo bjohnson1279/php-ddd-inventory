@@ -13,7 +13,14 @@ set_exception_handler(function (Throwable $e): void {
     }
     error_log('[UNHANDLED] ' . get_class($e) . ': ' . $e->getMessage()
         . ' in ' . $e->getFile() . ':' . $e->getLine());
-    echo json_encode(['error' => 'Internal server error', 'message' => $e->getMessage()]);
+    $payload = [
+        'error' => 'Internal server error',
+        'message' => $e->getMessage(),
+        'file' => $e->getFile() . ':' . $e->getLine(),
+        'exception' => get_class($e),
+        'trace' => explode("\n", $e->getTraceAsString())
+    ];
+    echo json_encode($payload, JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR);
     exit;
 });
 

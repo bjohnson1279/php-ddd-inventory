@@ -189,7 +189,8 @@ if ($driver === 'sqlite') {
         'audit_discrepancies',
         'rmas',
         'rma_items',
-        'quarantine_items'
+        'quarantine_items',
+        'rfid_tags'
     ];
     
     foreach ($tables as $t) {
@@ -240,7 +241,8 @@ if ($driver === 'sqlite') {
         audit_discrepancies,
         rmas,
         rma_items,
-        quarantine_items
+        quarantine_items,
+        rfid_tags
     RESTART IDENTITY CASCADE');
 
     // Wipe all tenants except test-tenant

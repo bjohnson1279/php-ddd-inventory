@@ -18,6 +18,10 @@ class WebhookSubscriptionController
                 'eventTypes' => 'required|array'
             ]);
 
+            if (!filter_var($validated['targetUrl'], FILTER_VALIDATE_URL)) {
+                throw new \InvalidArgumentException("Invalid targetUrl provided.");
+            }
+
             $id = Uuid::uuid4()->toString();
             $sub = WebhookSubscriptionModel::create([
                 'id' => $id,
@@ -79,6 +83,9 @@ class WebhookSubscriptionController
             $body = $request->validate([]); // trigger validator parsing
 
             if (isset($body['targetUrl'])) {
+                if (!filter_var($body['targetUrl'], FILTER_VALIDATE_URL)) {
+                    throw new \InvalidArgumentException("Invalid targetUrl provided.");
+                }
                 $sub->target_url = $body['targetUrl'];
             }
             if (isset($body['secret'])) {

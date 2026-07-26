@@ -49,8 +49,24 @@ class WebhookDeliveryWorker
                     // Calculate HMAC-SHA256 signature
                     $signature = hash_hmac('sha256', $delivery->payload, $subscription->secret);
 
+                    $targetUrl = $subscription->target_url;
+                    $parsedUrl = parse_url($targetUrl);
+                    if (!$parsedUrl || !isset($parsedUrl['host'])) {
+                        throw new \Exception("Invalid webhook URL.");
+                    }
+
+                    $ip = gethostbyname($parsedUrl['host']);
+                    if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                        throw new \Exception("Blocked SSRF attempt: internal or private IP address resolved.");
+                    }
+
                     // Execute POST request via curl
-                    $ch = curl_init($subscription->target_url);
+                    $ch = curl_init($targetUrl);
+
+                    // Pin the DNS resolution to the validated IP to prevent DNS Rebinding / TOCTOU SSRF attacks
+                    $port = isset($parsedUrl['port']) ? $parsedUrl['port'] : ($parsedUrl['scheme'] === 'https' ? 443 : 80);
+                    curl_setopt($ch, CURLOPT_RESOLVE, ["{$parsedUrl['host']}:$port:$ip"]);
+
                     curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
                     curl_setopt($ch, CURLOPT_POSTFIELDS, $delivery->payload);
                     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);

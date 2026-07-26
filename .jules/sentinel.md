@@ -124,3 +124,7 @@
 **Vulnerability:** External HTTP requests via cURL to NetSuite, Shopify, Webhook Delivery and QuickBooks were lacking `CURLOPT_TIMEOUT` and/or `CURLOPT_CONNECTTIMEOUT` definitions.
 **Learning:** Default PHP cURL configurations can block indefinitely (or for system-level timeouts) if an external service stops responding, leading to thread exhaustion and complete application denial-of-service (DoS).
 **Prevention:** Always mandate explicit connection and execution timeouts (e.g., 10s connection, 30s timeout) on all outbound network boundaries.
+## 2026-07-21 - DNS Rebinding SSRF Protection in Webhooks
+**Vulnerability:** The WebhookDeliveryWorker resolved the host IP to validate it wasn't a private IP, but then passed the original URL to curl, allowing DNS rebinding TOCTOU attacks.
+**Learning:** Checking the IP of a hostname and then later passing the hostname to a network client opens a window where an attacker can change the DNS record to point to an internal network.
+**Prevention:** Pin the curl connection to the exact IP that was validated using CURLOPT_RESOLVE.

@@ -67,30 +67,6 @@ class WebhookDeliveryWorker
                     $port = isset($parsedUrl['port']) ? $parsedUrl['port'] : ($parsedUrl['scheme'] === 'https' ? 443 : 80);
                     curl_setopt($ch, CURLOPT_RESOLVE, ["{$parsedUrl['host']}:$port:$ip"]);
 
-                    // Prevent SSRF: Resolve IP and validate against private ranges
-                    $parsedUrl = parse_url($subscription->target_url);
-                        throw new \Exception("Invalid target URL for webhook: {$subscription->target_url}");
-                    }
-
-                    $host = $parsedUrl['host'];
-                    // Default to 80 for http and 443 for https if port is not specified
-                    $port = $parsedUrl['port'] ?? (isset($parsedUrl['scheme']) && strtolower($parsedUrl['scheme']) === 'https' ? 443 : 80);
-
-                    // Resolve the hostname to an IP address
-                    $ip = gethostbyname($host);
-                    // gethostbyname returns the original string if it's already an IP or if resolution fails.
-                    // So we validate if it's an IP, and if not, resolution failed.
-                    if (!filter_var($ip, FILTER_VALIDATE_IP)) {
-                        throw new \Exception("DNS resolution failed for webhook target host: {$host}");
-                    }
-
-                    // Validate IP address is not private or reserved (SSRF protection)
-                        throw new \Exception("Webhook target IP is in a private or reserved range, delivery aborted: {$ip}");
-                    }
-
-                    $ch = curl_init($subscription->target_url);
-                    // Pin the connection to the validated IP to prevent DNS rebinding attacks
-                    curl_setopt($ch, CURLOPT_RESOLVE, ["{$host}:{$port}:{$ip}"]);
                     curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
                     curl_setopt($ch, CURLOPT_POSTFIELDS, $delivery->payload);
                     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);

@@ -29,19 +29,13 @@ final class AllocationsE2ETest extends TestCase
         self::$pid = (int)($output[0] ?? 0);
 
         // Wait for server to bind
-        $bound = false;
         for ($i = 0; $i < 50; $i++) {
             $fp = @fsockopen('127.0.0.1', 8087, $errno, $errstr, 0.1);
             if ($fp) {
                 fclose($fp);
-                $bound = true;
                 break;
             }
             usleep(50000); // 50ms
-        }
-        if (!$bound) {
-            $logContent = file_exists('tests/Integration/Http/server_allocations.log') ? file_get_contents('tests/Integration/Http/server_allocations.log') : 'No log file';
-            throw new \RuntimeException("Failed to bind PHP test server on port 8087. Log: " . $logContent);
         }
     }
 
@@ -291,22 +285,9 @@ final class AllocationsE2ETest extends TestCase
         }
 
         $decoded = json_decode((string)$result, true);
-
-        if ($statusCode >= 500 || $result === false || $result === '' || $decoded === null) {
-            $logContent = file_exists('tests/Integration/Http/server_allocations.log') ? file_get_contents('tests/Integration/Http/server_allocations.log') : 'No log file';
-            return [
-                'status' => $statusCode,
-                'body'   => [
-                    'error'      => 'Server error or invalid response',
-                    'raw'        => $result,
-                    'server_log' => $logContent
-                ]
-            ];
-        }
-
         return [
             'status' => $statusCode,
-            'body'   => $decoded
+            'body'   => (json_last_error() === JSON_ERROR_NONE) ? $decoded : $result
         ];
     }
 }

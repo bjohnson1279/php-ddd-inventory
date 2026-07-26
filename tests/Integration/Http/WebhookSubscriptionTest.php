@@ -141,7 +141,9 @@ final class WebhookSubscriptionTest extends TestCase
         // Run the CLI worker script with --once flag
         $output = [];
         $resultCode = -1;
-        exec("php scripts/webhook-worker.php --once", $output, $resultCode);
+        $dbConn = getenv('DB_CONNECTION') ?: 'sqlite';
+        $dbData = getenv('DB_DATABASE') ?: 'storage/data/test.sqlite';
+        exec("DB_CONNECTION=" . escapeshellarg($dbConn) . " DB_DATABASE=" . escapeshellarg($dbData) . " php scripts/webhook-worker.php --once", $output, $resultCode);
 
         // It should try to send, fail (since internet domain target_url or mock), and increment attempt
         $delivery = Capsule::table('webhook_deliveries')->where('id', $deliveryId)->first();

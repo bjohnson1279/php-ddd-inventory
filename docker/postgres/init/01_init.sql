@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS locations (
 
 -- Products table
 CREATE TABLE IF NOT EXISTS products (
-  id VARCHAR(100) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   tenant_id VARCHAR(50) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   sku TEXT NOT NULL,
   name TEXT NOT NULL,
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS warehouse_locations (
 );
 
 CREATE TABLE IF NOT EXISTS purchase_orders (
-  id VARCHAR(100) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   purchase_order_number VARCHAR(100) NOT NULL UNIQUE,
   vendor_id VARCHAR(50) NOT NULL,
   tenant_id VARCHAR(50) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -83,8 +83,8 @@ CREATE TABLE IF NOT EXISTS purchase_orders (
 );
 
 CREATE TABLE IF NOT EXISTS purchase_order_items (
-  id VARCHAR(100) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
-  purchase_order_id VARCHAR(100) NOT NULL REFERENCES purchase_orders(id) ON DELETE CASCADE,
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  purchase_order_id UUID NOT NULL REFERENCES purchase_orders(id) ON DELETE CASCADE,
   variant_id VARCHAR(50) NOT NULL,
   quantity INTEGER NOT NULL,
   received_quantity INTEGER NOT NULL DEFAULT 0,
@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS purchase_order_items (
 );
 
 CREATE TABLE IF NOT EXISTS reorder_policies (
-  id VARCHAR(100) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   sku VARCHAR(50) NOT NULL,
   location_id VARCHAR(50) NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
   reorder_point INTEGER NOT NULL,
@@ -106,7 +106,7 @@ CREATE TABLE IF NOT EXISTS reorder_policies (
 
 -- Product Locations (Stock)
 CREATE TABLE IF NOT EXISTS product_locations (
-  product_id VARCHAR(100) NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   location_id VARCHAR(50) NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
   stock_quantity INTEGER NOT NULL DEFAULT 0,
   open_box_quantity INTEGER NOT NULL DEFAULT 0,
@@ -119,9 +119,9 @@ CREATE TABLE IF NOT EXISTS product_locations (
 
 -- Inventory transactions (Ledger)
 CREATE TABLE IF NOT EXISTS inventory_transactions (
-  id VARCHAR(100) DEFAULT uuid_generate_v4()::text,
+  id UUID DEFAULT uuid_generate_v4(),
   tenant_id VARCHAR(50) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-  product_id VARCHAR(100) NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   type VARCHAR(50) NOT NULL,
   quantity_change INTEGER NOT NULL,
   condition VARCHAR(50) NOT NULL,
@@ -134,7 +134,7 @@ SELECT create_hypertable('inventory_transactions', 'created_at', if_not_exists =
 
 -- Inventory counts
 CREATE TABLE IF NOT EXISTS inventory_counts (
-  id VARCHAR(100) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   tenant_id VARCHAR(50) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   status VARCHAR(50) NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
@@ -143,9 +143,9 @@ CREATE TABLE IF NOT EXISTS inventory_counts (
 
 -- Inventory count items
 CREATE TABLE IF NOT EXISTS inventory_count_items (
-  id VARCHAR(100) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
-  inventory_count_id VARCHAR(100) NOT NULL REFERENCES inventory_counts(id) ON DELETE CASCADE,
-  product_id VARCHAR(100) REFERENCES products(id) ON DELETE SET NULL,
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  inventory_count_id UUID NOT NULL REFERENCES inventory_counts(id) ON DELETE CASCADE,
+  product_id UUID REFERENCES products(id) ON DELETE SET NULL,
   sku TEXT NOT NULL,
   location_id VARCHAR(50) NOT NULL,
   counted_quantity INTEGER NOT NULL DEFAULT 0,
@@ -162,7 +162,7 @@ INSERT INTO locations (id, name, type) VALUES ('LOC-BACKROOM', 'Backroom Storage
 
 -- Ledger entries (append-only)
 CREATE TABLE IF NOT EXISTS ledger_entries (
-  id VARCHAR(100) DEFAULT uuid_generate_v4()::text,
+  id UUID DEFAULT uuid_generate_v4(),
   tenant_id VARCHAR(50) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   variant_id TEXT NOT NULL,
   quantity INTEGER NOT NULL,
@@ -206,7 +206,7 @@ SELECT add_continuous_aggregate_policy('daily_stock_velocity',
 
 -- Serialized item tracking
 CREATE TABLE IF NOT EXISTS serialized_items (
-  id VARCHAR(100) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   variant_id TEXT NOT NULL,
   serial_number TEXT NOT NULL,
   tenant_id VARCHAR(50) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -220,7 +220,7 @@ CREATE INDEX IF NOT EXISTS idx_serial_variant ON serialized_items(variant_id);
 
 -- Barcode registry
 CREATE TABLE IF NOT EXISTS barcodes (
-  id VARCHAR(100) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   value TEXT NOT NULL UNIQUE,
   variant_id TEXT NOT NULL,
   symbology VARCHAR(50),
@@ -232,7 +232,7 @@ CREATE INDEX IF NOT EXISTS idx_barcodes_variant ON barcodes(variant_id);
 
 -- Stock onboarding (opening balance)
 CREATE TABLE IF NOT EXISTS stock_onboardings (
-  id VARCHAR(100) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   tenant_id VARCHAR(50) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   location_id VARCHAR(50) NOT NULL,
   as_of_date DATE NOT NULL,
@@ -241,8 +241,8 @@ CREATE TABLE IF NOT EXISTS stock_onboardings (
 );
 
 CREATE TABLE IF NOT EXISTS stock_onboarding_items (
-  id VARCHAR(100) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
-  onboarding_id VARCHAR(100) NOT NULL REFERENCES stock_onboardings(id) ON DELETE CASCADE,
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  onboarding_id UUID NOT NULL REFERENCES stock_onboardings(id) ON DELETE CASCADE,
   variant_id TEXT NOT NULL,
   quantity INTEGER NOT NULL DEFAULT 0,
   unit_cost_cents INTEGER NOT NULL DEFAULT 0
@@ -251,7 +251,7 @@ CREATE INDEX IF NOT EXISTS idx_onboarding_variant ON stock_onboarding_items(vari
 
 -- Accounting journal entries (simple storage of lines as JSON)
 CREATE TABLE IF NOT EXISTS journal_entries (
-  id VARCHAR(100) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   tenant_id VARCHAR(50) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   entry_date DATE NOT NULL,
   description TEXT,
@@ -263,7 +263,7 @@ CREATE TABLE IF NOT EXISTS journal_entries (
 
 -- UoM configuration and conversion rules
 CREATE TABLE IF NOT EXISTS product_uom_configurations (
-  id VARCHAR(100) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   variant_id TEXT NOT NULL,
   base_unit VARCHAR(50) NOT NULL,
   purchase_unit VARCHAR(50),
@@ -272,8 +272,8 @@ CREATE TABLE IF NOT EXISTS product_uom_configurations (
 );
 
 CREATE TABLE IF NOT EXISTS uom_conversion_rules (
-  id VARCHAR(100) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
-  configuration_id VARCHAR(100) NOT NULL REFERENCES product_uom_configurations(id) ON DELETE CASCADE,
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  configuration_id UUID NOT NULL REFERENCES product_uom_configurations(id) ON DELETE CASCADE,
   unit VARCHAR(50) NOT NULL,
   factor_to_base NUMERIC NOT NULL,
   label TEXT
@@ -281,22 +281,22 @@ CREATE TABLE IF NOT EXISTS uom_conversion_rules (
 
 -- Kits and components
 CREATE TABLE IF NOT EXISTS kits (
-  id VARCHAR(100) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   sku TEXT NOT NULL UNIQUE,
   name TEXT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS kit_components (
-  id VARCHAR(100) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
-  kit_id VARCHAR(100) NOT NULL REFERENCES kits(id) ON DELETE CASCADE,
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  kit_id UUID NOT NULL REFERENCES kits(id) ON DELETE CASCADE,
   variant_id TEXT NOT NULL,
   quantity INTEGER NOT NULL DEFAULT 1
 );
 
 -- Outbox messages
 CREATE TABLE IF NOT EXISTS outbox_messages (
-  id VARCHAR(100) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   event_type VARCHAR(255) NOT NULL,
   payload JSONB NOT NULL,
   occurred_at TIMESTAMP WITH TIME ZONE DEFAULT now(),

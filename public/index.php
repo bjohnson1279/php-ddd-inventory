@@ -6,21 +6,13 @@ require __DIR__ . '/../vendor/autoload.php';
 // Must be registered before anything else can throw so that all unhandled
 // exceptions return JSON instead of an HTML error page.
 set_exception_handler(function (Throwable $e): void {
-    restore_error_handler();
     if (!headers_sent()) {
         http_response_code(500);
         header('Content-Type: application/json');
     }
     error_log('[UNHANDLED] ' . get_class($e) . ': ' . $e->getMessage()
         . ' in ' . $e->getFile() . ':' . $e->getLine());
-    $payload = [
-        'error' => 'Internal server error',
-        'message' => $e->getMessage(),
-        'file' => $e->getFile() . ':' . $e->getLine(),
-        'exception' => get_class($e),
-        'trace' => explode("\n", $e->getTraceAsString())
-    ];
-    echo json_encode($payload, JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR);
+    echo json_encode(['error' => 'Internal server error']);
     exit;
 });
 
@@ -32,7 +24,6 @@ set_error_handler(function (int $errno, string $errstr, string $errfile, int $er
 });
 
 use Illuminate\Database\Capsule\Manager as Capsule;
-use InventoryApp\Infrastructure\ServiceContainer;
 
 // ── Environment ──────────────────────────────────────────────────────────────
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../');
@@ -55,7 +46,7 @@ if ($driver === 'sqlite') {
 } else {
     $capsule->addConnection([
         'driver'    => $driver,
-        'host'      => getenv('DB_HOST')       ?: 'localhost',
+        'host'      => getenv('DB_HOST')       ?: 'db',
         'database'  => getenv('DB_DATABASE')   ?: 'ddd_inventory',
         'username'  => getenv('DB_USERNAME')   ?: 'ddd_user',
         'password'  => getenv('DB_PASSWORD') !== false && getenv('DB_PASSWORD') !== '' ? getenv('DB_PASSWORD') : 'secret',
@@ -92,6 +83,7 @@ try {
 }
 
 // ── Event listeners ──────────────────────────────────────────────────────────
+use InventoryApp\Infrastructure\ServiceContainer;
 use InventoryApp\Application\Inventory\Listeners\SyncStockToShopify;
 use InventoryApp\Application\Inventory\Listeners\CreateInventoryItemOnVariantAdded;
 use InventoryApp\Application\Catalog\Listeners\SyncCatalogToShopify;
@@ -607,12 +599,12 @@ if ($method === 'POST' && $uri === '/api/setup') {
             }
 
             return new \InventoryApp\Infrastructure\Http\Response(['message' => 'Organization and admin account set up successfully.'], 200);
-        } catch (\Throwable $e) {
+        } catch (\Exception $e) {
             if ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException) {
                 return new \InventoryApp\Infrastructure\Http\Response(['error' => $e->getMessage()], 400);
             } else {
                 error_log('[API Error] ' . get_class($e) . ': ' . $e->getMessage());
-                return new \InventoryApp\Infrastructure\Http\Response(['error' => 'An internal server error occurred.', 'message' => $e->getMessage()], 500);
+                return new \InventoryApp\Infrastructure\Http\Response(['error' => 'An internal server error occurred.'], 500);
             }
         }
     });

@@ -124,3 +124,8 @@
 **Vulnerability:** External HTTP requests via cURL to NetSuite, Shopify, Webhook Delivery and QuickBooks were lacking `CURLOPT_TIMEOUT` and/or `CURLOPT_CONNECTTIMEOUT` definitions.
 **Learning:** Default PHP cURL configurations can block indefinitely (or for system-level timeouts) if an external service stops responding, leading to thread exhaustion and complete application denial-of-service (DoS).
 **Prevention:** Always mandate explicit connection and execution timeouts (e.g., 10s connection, 30s timeout) on all outbound network boundaries.
+
+## 2026-07-26 - Prevent SSRF via Webhook Delivery Target URLs
+**Vulnerability:** The webhook delivery worker was fetching user-provided target URLs (`CURLOPT_URL`) without validating the DNS-resolved IP address.
+**Learning:** Blindly executing cURL requests to user-controlled URLs allows Server-Side Request Forgery (SSRF) attacks, enabling attackers to target internal systems (like `127.0.0.1` or AWS IMDS). Resolving the hostname manually, checking against private/reserved ranges, and pinning the cURL connection with `CURLOPT_RESOLVE` is necessary to prevent SSRF and DNS Rebinding (TOCTOU).
+**Prevention:** Use `gethostbyname()` to resolve hostnames, validate the result using `filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)`, and secure the curl execution with `curl_setopt($ch, CURLOPT_RESOLVE, ["{$host}:{$port}:{$ip}"])`. Do not block valid raw IP addresses by naively checking `if ($ip === $host)`.

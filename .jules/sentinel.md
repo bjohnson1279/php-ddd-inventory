@@ -128,3 +128,8 @@
 **Vulnerability:** A hardcoded string `'compliance-fallback-secret-key-12345!@#'` was used as a fallback if the `COMPLIANCE_PRIVATE_KEY` environment variable was missing or empty. This exposes cryptographic signatures on the compliance ledger to being forged or compromised using a publicly known key.
 **Learning:** Hardcoding default secrets in code bypasses the requirement for operators to properly manage sensitive keys in their deployment environments.
 **Prevention:** Instead of falling back to a dummy secret, critical cryptographic keys should fail-fast by throwing a `\RuntimeException` during application initialization or service instantiation, explicitly instructing operators to configure the environment variable.
+
+## 2026-07-26 - Prevent SSRF via Webhook Delivery Target URLs
+**Vulnerability:** The webhook delivery worker was fetching user-provided target URLs (`CURLOPT_URL`) without validating the DNS-resolved IP address.
+**Learning:** Blindly executing cURL requests to user-controlled URLs allows Server-Side Request Forgery (SSRF) attacks, enabling attackers to target internal systems (like `127.0.0.1` or AWS IMDS). Resolving the hostname manually, checking against private/reserved ranges, and pinning the cURL connection with `CURLOPT_RESOLVE` is necessary to prevent SSRF and DNS Rebinding (TOCTOU).
+**Prevention:** Use `gethostbyname()` to resolve hostnames, validate the result using `filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)`, and secure the curl execution with `curl_setopt($ch, CURLOPT_RESOLVE, ["{$host}:{$port}:{$ip}"])`. Do not block valid raw IP addresses by naively checking `if ($ip === $host)`.

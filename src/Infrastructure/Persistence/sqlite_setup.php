@@ -17,7 +17,8 @@ class SqliteSetup
             self::getReturnsQueries(),
             self::getForecastingQueries(),
             self::getShippingQueries(),
-            self::getComplianceQueries()
+            self::getComplianceQueries(),
+            self::getRfidQueries()
         );
 
         foreach ($queries as $q) {
@@ -529,6 +530,21 @@ class SqliteSetup
               last_error TEXT,
               next_attempt_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               processed_at DATETIME,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )"
+        ];
+    }
+
+    private static function getRfidQueries(): array
+    {
+        return [
+            "CREATE TABLE IF NOT EXISTS rfid_tags (
+              epc VARCHAR(100) PRIMARY KEY,
+              sku VARCHAR(100) NOT NULL,
+              serial_number VARCHAR(100) NOT NULL,
+              status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
+              last_seen_at DATETIME,
+              last_location VARCHAR(50),
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )"
         ];

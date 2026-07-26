@@ -185,3 +185,6 @@
 ## 2024-07-28 - Collection Concat Performance in Loops
 **Learning:** Using `$collection->concat()` inside a loop (e.g., `foreach (array_chunk...) { $results = $results->concat(...) }`) is highly inefficient. Each iteration creates a new `Collection` instance and copies all previous elements, resulting in $O(N^2)$ memory complexity and significant object creation overhead.
 **Action:** When building up a large list inside a loop, always collect elements using native PHP arrays (e.g., `array_push($array, ...$items)`) and only convert the final array to a `Collection` (using `collect($array)`) after the loop completes.
+## 2026-07-25 - Fix N+1 queries in ReorderPolicyService loop
+**Learning:** Calling `findAll()` inside a loop that iterates over policies leads to N full table scans. Similarly, calling `findBySku()` iteratively per policy causes N single queries. Furthermore, using `array_unique` on an array of `SKU` value objects throws fatal errors in PHP.
+**Action:** Hoist the database queries out of the loop. Collect unique SKUs manually by extracting primitive string values (`->getValue()`) as keys, fetch products via `findBySkus()`, and fetch all PurchaseOrders once. Pass the pre-fetched arrays as optional arguments to nested forecaster methods to eliminate the N+1 pattern.

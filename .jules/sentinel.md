@@ -128,3 +128,8 @@
 **Vulnerability:** The WebhookDeliveryWorker resolved the host IP to validate it wasn't a private IP, but then passed the original URL to curl, allowing DNS rebinding TOCTOU attacks.
 **Learning:** Checking the IP of a hostname and then later passing the hostname to a network client opens a window where an attacker can change the DNS record to point to an internal network.
 **Prevention:** Pin the curl connection to the exact IP that was validated using CURLOPT_RESOLVE.
+
+## 2026-07-26 - Prevent SSRF via Webhook Delivery Target URLs
+**Vulnerability:** The webhook delivery worker was fetching user-provided target URLs (`CURLOPT_URL`) without validating the DNS-resolved IP address.
+**Learning:** Blindly executing cURL requests to user-controlled URLs allows Server-Side Request Forgery (SSRF) attacks, enabling attackers to target internal systems (like `127.0.0.1` or AWS IMDS). Resolving the hostname manually, checking against private/reserved ranges, and pinning the cURL connection with `CURLOPT_RESOLVE` is necessary to prevent SSRF and DNS Rebinding (TOCTOU).
+**Prevention:** Use `gethostbyname()` to resolve hostnames, validate the result using `filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)`, and secure the curl execution with `curl_setopt($ch, CURLOPT_RESOLVE, ["{$host}:{$port}:{$ip}"])`. Do not block valid raw IP addresses by naively checking `if ($ip === $host)`.

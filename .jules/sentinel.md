@@ -129,3 +129,7 @@
 **Vulnerability:** The webhook delivery worker was fetching user-provided target URLs (`CURLOPT_URL`) without validating the DNS-resolved IP address.
 **Learning:** Blindly executing cURL requests to user-controlled URLs allows Server-Side Request Forgery (SSRF) attacks, enabling attackers to target internal systems (like `127.0.0.1` or AWS IMDS). Resolving the hostname manually, checking against private/reserved ranges, and pinning the cURL connection with `CURLOPT_RESOLVE` is necessary to prevent SSRF and DNS Rebinding (TOCTOU).
 **Prevention:** Use `gethostbyname()` to resolve hostnames, validate the result using `filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)`, and secure the curl execution with `curl_setopt($ch, CURLOPT_RESOLVE, ["{$host}:{$port}:{$ip}"])`. Do not block valid raw IP addresses by naively checking `if ($ip === $host)`.
+## 2026-07-27 - Hardcoded DB Password Fallback Fixed
+**Vulnerability:** A hardcoded fallback password ('secret') was used if the DB_PASSWORD environment variable was unset, leading to potential unauthorized access.
+**Learning:** Using the Elvis operator (`?:`) with `getenv()` and a hardcoded string can mask missing configuration and default to insecure credentials.
+**Prevention:** Throw an explicit exception (e.g., `\RuntimeException`) when critical credentials are not provided via environment variables, ensuring fail-fast behavior instead of falling back to insecure defaults.

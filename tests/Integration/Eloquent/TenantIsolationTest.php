@@ -22,6 +22,10 @@ final class TenantIsolationTest extends TestCase
 
     protected function setUp(): void
     {
+        if (!getenv('DB_PASSWORD')) {
+            putenv('DB_PASSWORD=secret');
+        }
+
         $this->capsule = ServiceContainer::getInstance()->make(Capsule::class);
         $this->db = $this->capsule->getConnection();
         
@@ -35,18 +39,18 @@ final class TenantIsolationTest extends TestCase
                 db_user          TEXT NOT NULL DEFAULT 'postgres',
                 db_password      TEXT NOT NULL DEFAULT 'password',
                 status           TEXT NOT NULL DEFAULT 'PROVISIONING',
-                provisioned_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                provisioned_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 migrated_version TEXT NOT NULL DEFAULT '0'
             )
         ");
 
         // Clean registry
-        $this->db->table('tenant_registry')->truncate();
+        $this->db->table('tenant_registry')->delete();
     }
 
     protected function tearDown(): void
     {
-        $this->db->table('tenant_registry')->truncate();
+        $this->db->table('tenant_registry')->delete();
     }
 
     public function test_registry_can_register_and_lookup_tenant(): void
@@ -71,6 +75,26 @@ final class TenantIsolationTest extends TestCase
         $lookupAfter = $registry->lookupTenant('acme-corp');
         $this->assertEquals('ACTIVE', $lookupAfter->status);
         $this->assertEquals('1', $lookupAfter->migratedVersion);
+    }
+
+    public function test_registry_throws_exception_if_no_password(): void
+    {
+        $registry = new TenantRegistry($this->capsule);
+
+        $oldPassword = getenv('DB_PASSWORD');
+        putenv('DB_PASSWORD=');
+
+        try {
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('DB_PASSWORD environment variable must be set.');
+            $registry->registerTenant('no-pass-tenant');
+        } finally {
+            if ($oldPassword !== false) {
+                putenv("DB_PASSWORD={$oldPassword}");
+            } else {
+                putenv('DB_PASSWORD'); // unset
+            }
+        }
     }
 
     public function test_registry_cannot_register_duplicate_active_tenant(): void

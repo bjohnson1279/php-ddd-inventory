@@ -135,6 +135,7 @@ class AuditProcessorService
                             }
                         } catch (\Exception $e) {
                             // Ignore network/API errors for robustness
+                            error_log('[AuditProcessorService] Shopify API error: ' . $e->getMessage());
                         }
                     } else {
                         // Mock mismatch if sku ends with -DIFF

@@ -104,9 +104,9 @@ class ReceiveRMATest extends TestCase
             ->with('var_1', 5, RMADisposition::Restock);
 
         $this->productRepositoryMock->expects($this->once())
-            ->method('findById')
-            ->with('var_1')
-            ->willReturn($product);
+            ->method('findByIds')
+            ->with(['var_1'])
+            ->willReturn(['var_1' => $product]);
 
         $product->expects($this->once())
             ->method('receiveStockAt')
@@ -185,7 +185,7 @@ class ReceiveRMATest extends TestCase
         $rma = $this->createRmaMock('rma_1', 'tenant_1', 'LOC-1', [$rmaItem]);
 
         $this->rmaRepositoryMock->method('findById')->willReturn($rma);
-        $this->productRepositoryMock->method('findById')->willReturn(null);
+        $this->productRepositoryMock->method('findByIds')->willReturn([]);
 
         $this->expectException(Exception::class);
         $this->expectExceptionMessage('Product not found for variant var_1');
@@ -212,7 +212,7 @@ class ReceiveRMATest extends TestCase
         $product = $this->createProductMock();
 
         $this->rmaRepositoryMock->method('findById')->willReturn($rma);
-        $this->productRepositoryMock->method('findById')->willReturn($product);
+        $this->productRepositoryMock->method('findByIds')->willReturn(['var_1' => $product]);
 
         $product->expects($this->once())
             ->method('receiveStockAt')
@@ -248,7 +248,7 @@ class ReceiveRMATest extends TestCase
         $product = $this->createProductMock();
 
         $this->rmaRepositoryMock->method('findById')->willReturn($rma);
-        $this->productRepositoryMock->method('findById')->willReturn($product);
+        $this->productRepositoryMock->method('findByIds')->willReturn(['var_1' => $product]);
 
         $product->expects($this->once())
             ->method('dispatchStockAt')
@@ -297,7 +297,7 @@ class ReceiveRMATest extends TestCase
         $serialItem = $this->createMock(SerializedItem::class);
 
         $this->rmaRepositoryMock->method('findById')->willReturn($rma);
-        $this->productRepositoryMock->method('findById')->willReturn($product);
+        $this->productRepositoryMock->method('findByIds')->willReturn(['var_1' => $product]);
 
         $this->serializedRepositoryMock->expects($this->once())
             ->method('findBySerial')
@@ -339,7 +339,7 @@ class ReceiveRMATest extends TestCase
         $serialItem = $this->createMock(SerializedItem::class);
 
         $this->rmaRepositoryMock->method('findById')->willReturn($rma);
-        $this->productRepositoryMock->method('findById')->willReturn($product);
+        $this->productRepositoryMock->method('findByIds')->willReturn(['var_1' => $product]);
 
         $this->serializedRepositoryMock->expects($this->once())
             ->method('findBySerial')
@@ -381,7 +381,7 @@ class ReceiveRMATest extends TestCase
         $serialItem = $this->createMock(SerializedItem::class);
 
         $this->rmaRepositoryMock->method('findById')->willReturn($rma);
-        $this->productRepositoryMock->method('findById')->willReturn($product);
+        $this->productRepositoryMock->method('findByIds')->willReturn(['var_1' => $product]);
 
         $this->serializedRepositoryMock->expects($this->once())
             ->method('findBySerial')
@@ -430,7 +430,7 @@ class ReceiveRMATest extends TestCase
         $product = $this->createProductMock();
 
         $this->rmaRepositoryMock->method('findById')->willReturn($rma);
-        $this->productRepositoryMock->method('findById')->willReturn($product);
+        $this->productRepositoryMock->method('findByIds')->willReturn(['var_1' => $product]);
 
         $this->serializedRepositoryMock->expects($this->once())
             ->method('findBySerial')
@@ -543,11 +543,12 @@ class ReceiveRMATest extends TestCase
                 ['var_2', 2, RMADisposition::Restock]
             );
 
-        $this->productRepositoryMock->expects($this->exactly(2))
-            ->method('findById')
-            ->willReturnMap([
-                ['var_1', $product1],
-                ['var_2', $product2]
+        $this->productRepositoryMock->expects($this->once())
+            ->method('findByIds')
+            ->with(['var_1', 'var_2'])
+            ->willReturn([
+                'var_1' => $product1,
+                'var_2' => $product2
             ]);
 
         $product1->expects($this->once())

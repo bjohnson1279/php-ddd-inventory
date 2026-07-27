@@ -197,3 +197,6 @@
 1. `$policy = $this->replenishmentRuleRepo->findBySkuAndLocation(...)` which executed an extra query per SKU.
 2. Iterated over all `$forecasts` every time for each SKU in the loop to find `$activeForecast` causing an $O(N \cdot M)$ complexity.
 **Action:** Replaced `$this->replenishmentRuleRepo->findBySkuAndLocation` with an in-memory dictionary lookup `$policyMap[$skuStr] ?? null` utilizing the already pre-fetched `$policies`. Grouped `$forecasts` into `$forecastMap` by SKU before the loop and retrieved `$forecastMap[$skuStr]` to eliminate the redundant iteration, changing $O(N \cdot M)$ to $O(N)$.
+## 2024-05-19 - N+1 Queries in ReceiveRMA Use Case
+**Learning:** In the `ReceiveRMA` use case, calling `$this->productRepository->findById($item['variantId'])` inside a loop over `$dto['items']` causes an N+1 query issue, negatively impacting performance when receiving RMAs with many items.
+**Action:** Extract all unique `variantId`s from the DTO items before the loop using `array_column` and `array_unique`. Pre-fetch all required products in a single batch using `$this->productRepository->findByIds($variantIds)`, and store them in an associative array. Inside the loop, perform an in-memory lookup from this array to eliminate the N+1 queries.

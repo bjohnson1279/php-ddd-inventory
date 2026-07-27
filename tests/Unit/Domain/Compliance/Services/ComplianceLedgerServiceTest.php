@@ -150,4 +150,16 @@ class ComplianceLedgerServiceTest extends TestCase
         $this->assertEquals(1, $validationResult['failedSequenceNumber']);
         $this->assertStringContainsString('Cryptographic signature validation failed', $validationResult['reason']);
     }
+
+    public function testExceptionIsThrownWhenPrivateKeyIsNotSet()
+    {
+        putenv('COMPLIANCE_PRIVATE_KEY=');
+        putenv('COMPLIANCE_KEY=');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Compliance private key environment variable is not set.');
+
+        $payload = ['sku' => 'SKU-TEST-1'];
+        ComplianceLedgerService::logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
+    }
 }

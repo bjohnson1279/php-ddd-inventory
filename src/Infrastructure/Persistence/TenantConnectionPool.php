@@ -78,7 +78,9 @@ class TenantConnectionPool
             $connectionName = 'tenant_' . $tenantId;
             try {
                 $this->capsule->getConnection($connectionName)->disconnect();
-            } catch (\Throwable $_) {}
+            } catch (\Throwable $e) {
+                error_log('[TenantConnectionPool] Failed to disconnect tenant connection: ' . $e->getMessage());
+            }
             unset($this->cache[$tenantId]);
         }
     }

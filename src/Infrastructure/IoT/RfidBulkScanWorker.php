@@ -124,6 +124,19 @@ class RfidBulkScanWorker
                 }
             }
 
+            // Pre-fetch related Serial Items and Products
+            $serialsToFetch = [];
+            $skusToFetch = [];
+            foreach ($registeredTags as $regTag) {
+                $serialsToFetch[] = new SerialNumber($regTag->serialNumber->value);
+                $skusToFetch[] = new SKU($regTag->sku);
+            }
+
+            $prefetchedSerials = $this->serializedItemRepo->findBySerials($serialsToFetch, $tenantId);
+            $prefetchedProducts = $this->productRepo->findBySkus($skusToFetch);
+
+            $productsToSave = [];
+
             foreach ($registeredTags as $regTag) {
                 $regTag->lastSeenAt = new \DateTimeImmutable();
                 $regTag->lastLocation = $locationId;
@@ -131,8 +144,8 @@ class RfidBulkScanWorker
 
                 $this->rfidTagRepo->save($tenantId, $regTag);
 
-                $serialNo = new SerialNumber($regTag->serialNumber->value);
-                $serialItem = $this->serializedItemRepo->findBySerial($serialNo, $tenantId);
+                $serialValLower = strtolower(trim($regTag->serialNumber->value));
+                $serialItem = $prefetchedSerials[$serialValLower] ?? null;
 
                 if ($serialItem) {
                     $oldLoc = $serialItem->locationId();
@@ -140,18 +153,15 @@ class RfidBulkScanWorker
                         $serialItem->scanCheckIn($locationId, 'rfid-scan-worker');
                         $this->serializedItemRepo->save($serialItem);
 
-                        if ($oldLoc && $oldLoc !== 'default') {
-                            $product = $this->productRepo->findBySku(new SKU($regTag->sku));
-                            if ($product) {
-                                $product->dispatchStockAt(new LocationId($oldLoc), new Quantity(1), "RFID relocation SN {$serialNo->value}");
-                                $this->productRepo->save($product);
-                            }
-                        }
+                        $skuVal = $regTag->sku;
+                        $product = $prefetchedProducts[$skuVal] ?? null;
 
-                        $product = $this->productRepo->findBySku(new SKU($regTag->sku));
                         if ($product) {
-                            $product->receiveStockAt(new LocationId($locationId), new Quantity(1), "RFID relocation SN {$serialNo->value}");
-                            $this->productRepo->save($product);
+                            if ($oldLoc && $oldLoc !== 'default') {
+                                $product->dispatchStockAt(new LocationId($oldLoc), new Quantity(1), "RFID relocation SN {$regTag->serialNumber->value}");
+                            }
+                            $product->receiveStockAt(new LocationId($locationId), new Quantity(1), "RFID relocation SN {$regTag->serialNumber->value}");
+                            $productsToSave[$skuVal] = $product;
                         }
 
                         echo json_encode([
@@ -160,6 +170,11 @@ class RfidBulkScanWorker
                         ]) . "\n";
                     }
                 }
+            }
+
+            // Batch save products
+            if (!empty($productsToSave)) {
+                $this->productRepo->saveAll(array_values($productsToSave));
             }
 
             $scanEvent = new RfidScanProcessedEvent(

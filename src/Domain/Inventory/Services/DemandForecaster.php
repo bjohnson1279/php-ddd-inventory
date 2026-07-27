@@ -23,7 +23,7 @@ class DemandForecaster
         private readonly DemandForecastRepositoryInterface $demandForecastRepo
     ) {}
 
-    public function calculateSalesVelocity(SKU $sku, LocationId $locationId, ?Product $product = null): array
+    public function calculateSalesVelocity(SKU $sku, LocationId $locationId, ?Product $product = null, ?array $entries = null): array
     {
         // ⚡ Bolt: Use injected product if provided to prevent N+1 redundant queries.
         $product = $product ?? $this->productRepo->findBySku($sku);
@@ -31,7 +31,7 @@ class DemandForecaster
             throw new \Exception("Product not found for SKU: " . $sku->getValue());
         }
 
-        $entries = $this->ledgerRepo->entriesFor($sku->getValue(), $locationId->getValue());
+        $entries = $entries ?? $this->ledgerRepo->entriesFor($sku->getValue(), $locationId->getValue());
 
         return $this->calculateSalesVelocityFromData($product, $locationId, $entries);
     }
@@ -96,13 +96,13 @@ class DemandForecaster
         float $trendMultiplier = 1.0,
         ?Product $product = null
     ): DemandForecast {
-        $velocity = $this->calculateSalesVelocity($sku, $locationId, $product);
+        $entries = $this->ledgerRepo->entriesFor($sku->getValue(), $locationId->getValue());
+        $velocity = $this->calculateSalesVelocity($sku, $locationId, $product, $entries);
         $baseQuantity = $velocity['averageDailySales30d'] * $forecastDays;
 
         // --- Seasonal Multiplier Calculation ---
         $now = new DateTimeImmutable();
         $oneYearAgo = $now->modify('-365 days');
-        $entries = $this->ledgerRepo->entriesFor($sku->getValue(), $locationId->getValue());
 
         $dispatches = array_filter($entries, function ($e) use ($oneYearAgo) {
             return $e->occurredAt >= $oneYearAgo &&
@@ -206,8 +206,9 @@ class DemandForecaster
                 continue;
             }
 
-            // ⚡ Bolt: Pass the pre-fetched $product to prevent N+1 query inside calculateSalesVelocity.
-            $velocity = $this->calculateSalesVelocity($sku, $locationId, $product);
+            // ⚡ Bolt: Pass the pre-fetched $product and ledger entries to prevent N+1 query inside calculateSalesVelocity.
+            $skuEntries = $entriesBySku[$skuStr] ?? [];
+            $velocity = $this->calculateSalesVelocity($sku, $locationId, $product, $skuEntries);
             $policy = $this->replenishmentRuleRepo->findBySkuAndLocation($sku, $locationId->getValue());
 
             $reorderPoint = $policy ? $policy->reorderPoint : 10;

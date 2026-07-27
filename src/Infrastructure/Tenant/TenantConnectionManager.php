@@ -22,7 +22,7 @@ class TenantConnectionManager
     public function registerTenantConnection(string $tenantId, array $dbConfig): void
     {
         $connectionName = "tenant_" . $tenantId;
-        
+
         $config = array_merge([
             'driver'    => 'pgsql',
             'host'      => env('DB_HOST', '127.0.0.1'),

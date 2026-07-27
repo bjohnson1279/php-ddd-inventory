@@ -10,9 +10,9 @@ class ComplianceLedgerService
 {
     private static function getPrivateKey(): string
     {
-        $key = getenv('COMPLIANCE_PRIVATE_KEY');
+        $key = getenv('COMPLIANCE_PRIVATE_KEY') ?: getenv('COMPLIANCE_KEY');
         if (!$key || empty(trim($key))) {
-            return 'compliance-fallback-secret-key-12345!@#';
+            $key = 'compliance-fallback-secret-key-12345!@#';
         }
         return $key;
     }

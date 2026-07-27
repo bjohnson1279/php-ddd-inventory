@@ -48,7 +48,9 @@ class TenantProvisioner
             // Cleanup on failure
             try {
                 $this->capsule->getConnection()->statement("DROP DATABASE IF EXISTS \"{$dbName}\"");
-            } catch (\Throwable $_) {}
+            } catch (\Throwable $_) {
+                error_log('[TenantProvisioner] Failed to drop database during cleanup: ' . $_->getMessage());
+            }
 
             $this->registry->updateStatus($tenantId, 'DEPROVISIONED');
             throw $e;
@@ -73,7 +75,9 @@ class TenantProvisioner
                 WHERE pg_stat_activity.datname = '{$entry->dbName}'
                   AND pid <> pg_backend_pid()
             ");
-        } catch (\Throwable $_) {}
+        } catch (\Throwable $_) {
+            error_log('[TenantProvisioner] Failed to terminate active connections: ' . $_->getMessage());
+        }
 
         $this->capsule->getConnection()->statement("DROP DATABASE IF EXISTS \"{$entry->dbName}\"");
         $this->registry->deprovisionTenant($tenantId);

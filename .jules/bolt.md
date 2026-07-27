@@ -191,3 +191,9 @@
 ## 2024-05-18 - Eliminated N+1 and Redundant Queries in DemandForecaster
 **Learning:** Found that `DemandForecaster` pre-fetched data to avoid N+1 queries, but failed to pass that data down to the inner method `calculateSalesVelocity`. This resulted in the inner method executing a query on every iteration anyway. `generateDemandForecast` also executed the same query twice in succession.
 **Action:** When pre-fetching data to avoid N+1 queries, ensure the retrieved array/map is correctly passed down the entire call stack to the methods that actually perform the data extraction, otherwise the pre-fetch is useless.
+
+## 2024-07-28 - N+1 Queries in DemandForecaster bulk evaluation (Forecasts & Policies)
+**Learning:** Found N+1 queries in `DemandForecaster::getDemandPlanningReport`. Even though `findAllForLocation` and `findAllByLocation` pre-fetched data, inside the loop over SKUs it did:
+1. `$policy = $this->replenishmentRuleRepo->findBySkuAndLocation(...)` which executed an extra query per SKU.
+2. Iterated over all `$forecasts` every time for each SKU in the loop to find `$activeForecast` causing an $O(N \cdot M)$ complexity.
+**Action:** Replaced `$this->replenishmentRuleRepo->findBySkuAndLocation` with an in-memory dictionary lookup `$policyMap[$skuStr] ?? null` utilizing the already pre-fetched `$policies`. Grouped `$forecasts` into `$forecastMap` by SKU before the loop and retrieved `$forecastMap[$skuStr]` to eliminate the redundant iteration, changing $O(N \cdot M)$ to $O(N)$.

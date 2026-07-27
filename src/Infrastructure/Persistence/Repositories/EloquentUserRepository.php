@@ -78,8 +78,9 @@ class EloquentUserRepository implements UserRepositoryInterface
             ->map(function ($roleModel) {
                 try {
                     return Role::createDefault($roleModel->id);
-                } catch (\InvalidArgumentException) {
+                } catch (\InvalidArgumentException $e) {
                     // Unknown role slug in DB — skip gracefully
+                    error_log('[EloquentUserRepository.php] ' . $e->getMessage());
                     return null;
                 }
             })

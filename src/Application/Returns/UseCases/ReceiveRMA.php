@@ -39,6 +39,9 @@ class ReceiveRMA
             throw new Exception("RMA with ID {$dto['rmaId']} not found.");
         }
 
+        $variantIds = array_unique(array_column($dto['items'], 'variantId'));
+        $products = $this->productRepository->findByIds($variantIds);
+
         foreach ($dto['items'] as $item) {
             // Find RMA Item
             $rmaItem = null;
@@ -62,7 +65,7 @@ class ReceiveRMA
                 : $rma->getLocationId()->getValue();
 
             // Increment stock level on Product aggregate root
-            $product = $this->productRepository->findById($item['variantId']);
+            $product = $products[$item['variantId']] ?? null;
             if (!$product) {
                 throw new Exception("Product not found for variant {$item['variantId']}");
             }

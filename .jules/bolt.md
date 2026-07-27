@@ -188,3 +188,6 @@
 ## 2026-07-25 - Fix N+1 queries in ReorderPolicyService loop
 **Learning:** Calling `findAll()` inside a loop that iterates over policies leads to N full table scans. Similarly, calling `findBySku()` iteratively per policy causes N single queries. Furthermore, using `array_unique` on an array of `SKU` value objects throws fatal errors in PHP.
 **Action:** Hoist the database queries out of the loop. Collect unique SKUs manually by extracting primitive string values (`->getValue()`) as keys, fetch products via `findBySkus()`, and fetch all PurchaseOrders once. Pass the pre-fetched arrays as optional arguments to nested forecaster methods to eliminate the N+1 pattern.
+## 2024-05-18 - Eliminated N+1 and Redundant Queries in DemandForecaster
+**Learning:** Found that `DemandForecaster` pre-fetched data to avoid N+1 queries, but failed to pass that data down to the inner method `calculateSalesVelocity`. This resulted in the inner method executing a query on every iteration anyway. `generateDemandForecast` also executed the same query twice in succession.
+**Action:** When pre-fetching data to avoid N+1 queries, ensure the retrieved array/map is correctly passed down the entire call stack to the methods that actually perform the data extraction, otherwise the pre-fetch is useless.

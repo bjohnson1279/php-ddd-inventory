@@ -134,7 +134,7 @@ final class WebhookSubscriptionTest extends TestCase
             'payload' => json_encode(['sku' => 'SKU-1']),
             'status' => 'Pending',
             'attempts' => 0,
-            'next_attempt_at' => (new \DateTime())->format('Y-m-d H:i:s'),
+            'next_attempt_at' => (new \DateTime('-1 minute'))->format('Y-m-d H:i:s'),
             'created_at' => (new \DateTime())->format('Y-m-d H:i:s')
         ]);
 

@@ -7,6 +7,8 @@ use InventoryApp\Infrastructure\Models\WebhookDeliveryModel;
 
 class WebhookDeliveryWorker
 {
+    private array $dnsCache = [];
+
     public function run(bool $once = false): void
     {
         echo "Starting DDD Webhook Delivery Worker...\n";
@@ -60,7 +62,12 @@ class WebhookDeliveryWorker
                     $port = $parsedUrl['port'] ?? (isset($parsedUrl['scheme']) && strtolower($parsedUrl['scheme']) === 'https' ? 443 : 80);
 
                     // Resolve the hostname to an IP address
-                    $ip = gethostbyname($host);
+                    if (isset($this->dnsCache[$host])) {
+                        $ip = $this->dnsCache[$host];
+                    } else {
+                        $ip = gethostbyname($host);
+                        $this->dnsCache[$host] = $ip;
+                    }
                     // gethostbyname returns the original string if it's already an IP or if resolution fails.
                     // So we validate if it's an IP, and if not, resolution failed.
                     if (!filter_var($ip, FILTER_VALIDATE_IP)) {

@@ -155,11 +155,16 @@ class ComplianceLedgerServiceTest extends TestCase
     {
         putenv('COMPLIANCE_PRIVATE_KEY=');
         putenv('COMPLIANCE_KEY=');
+        putenv('APP_ENV=production');
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Compliance private key environment variable is not set.');
+        try {
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('Compliance private key environment variable is not set.');
 
-        $payload = ['sku' => 'SKU-TEST-1'];
-        ComplianceLedgerService::logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
+            $payload = ['sku' => 'SKU-TEST-1'];
+            ComplianceLedgerService::logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
+        } finally {
+            putenv('APP_ENV=testing');
+        }
     }
 }

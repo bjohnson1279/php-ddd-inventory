@@ -9,6 +9,7 @@ use InventoryApp\Infrastructure\Http\RequestInterface;
 use InventoryApp\Application\Inventory\UseCases\ReceiveStock;
 use InventoryApp\Application\Inventory\UseCases\DispatchStock;
 use InventoryApp\Application\Inventory\UseCases\GetStockLevel;
+use InventoryApp\Application\Inventory\UseCases\ReleaseAllocation;
 use Exception;
 
 class InventoryControllerTest extends TestCase
@@ -17,6 +18,7 @@ class InventoryControllerTest extends TestCase
     private $receiveStockMock;
     private $dispatchStockMock;
     private $getStockLevelMock;
+    private $releaseAllocationMock;
 
     protected function setUp(): void
     {
@@ -24,6 +26,108 @@ class InventoryControllerTest extends TestCase
         $this->receiveStockMock = $this->createMock(ReceiveStock::class);
         $this->dispatchStockMock = $this->createMock(DispatchStock::class);
         $this->getStockLevelMock = $this->createMock(\InventoryApp\Application\Inventory\Queries\StockQueryServiceInterface::class);
+        $this->releaseAllocationMock = $this->createMock(ReleaseAllocation::class);
+    }
+
+    /**
+     * Test: releaseAllocation() successfully processes a valid request
+     */
+    public function testReleaseAllocationWithValidRequest(): void
+    {
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->once())
+            ->method('validate')
+            ->with([
+                'sku'         => 'required|string',
+                'amount'      => 'required|integer',
+                'location_id' => 'string'
+            ])
+            ->willReturn([
+                'sku'         => 'TEST-SKU',
+                'amount'      => 5,
+                'location_id' => 'LOC-1'
+            ]);
+
+        $this->releaseAllocationMock->expects($this->once())
+            ->method('execute')
+            ->with(
+                $this->callback(fn($sku) => $sku instanceof \InventoryApp\Domain\Inventory\ValueObjects\SKU && $sku->getValue() === 'TEST-SKU'),
+                $this->callback(fn($qty) => $qty instanceof \InventoryApp\Domain\Inventory\ValueObjects\Quantity && $qty->getValue() === 5),
+                $this->callback(fn($loc) => $loc instanceof \InventoryApp\Domain\Inventory\ValueObjects\LocationId && $loc->getValue() === 'LOC-1')
+            );
+
+        $response = $this->controller->releaseAllocation($requestMock, $this->releaseAllocationMock);
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertStringContainsString('Allocation released successfully', $response->getContent());
+    }
+
+    /**
+     * Test: releaseAllocation() returns 400 when validation fails
+     */
+    public function testReleaseAllocationWithInvalidData(): void
+    {
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->once())
+            ->method('validate')
+            ->willThrowException(new \DomainException('Validation failed: Missing sku'));
+
+        $response = $this->controller->releaseAllocation($requestMock, $this->releaseAllocationMock);
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(400, $response->getStatusCode());
+        $this->assertStringContainsString('Validation failed', $response->getContent());
+    }
+
+    /**
+     * Test: releaseAllocation() returns 400 when use case throws exception
+     */
+    public function testReleaseAllocationWhenUseCaseThrowsException(): void
+    {
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->once())
+            ->method('validate')
+            ->willReturn([
+                'sku'         => 'NONEXISTENT-SKU',
+                'amount'      => 5,
+                'location_id' => 'LOC-1'
+            ]);
+
+        $this->releaseAllocationMock->expects($this->once())
+            ->method('execute')
+            ->willThrowException(new \DomainException('Product not found with SKU: NONEXISTENT-SKU'));
+
+        $response = $this->controller->releaseAllocation($requestMock, $this->releaseAllocationMock);
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(400, $response->getStatusCode());
+        $this->assertStringContainsString('Product not found', $response->getContent());
+    }
+
+    /**
+     * Test: releaseAllocation() returns 500 when unknown exception occurs
+     */
+    public function testReleaseAllocationWhenGenericExceptionThrown(): void
+    {
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->once())
+            ->method('validate')
+            ->willReturn([
+                'sku'         => 'TEST-SKU',
+                'amount'      => 5,
+                'location_id' => 'LOC-1'
+            ]);
+
+        $this->releaseAllocationMock->expects($this->once())
+            ->method('execute')
+            ->willThrowException(new \Exception('Database connection failed'));
+
+        $response = $this->controller->releaseAllocation($requestMock, $this->releaseAllocationMock);
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(500, $response->getStatusCode());
+        $this->assertStringContainsString('internal server error', $response->getContent());
     }
 
     /**

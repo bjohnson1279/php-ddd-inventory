@@ -50,6 +50,7 @@ class TenantProvisioner
                 $this->capsule->getConnection()->statement("DROP DATABASE IF EXISTS \"{$dbName}\"");
             } catch (\Throwable $_) {
                 error_log('[TenantProvisioner] Failed to cleanup database: ' . $_->getMessage());
+                error_log('[TenantProvisioner] Failed to drop database during cleanup: ' . $_->getMessage());
             }
 
             $this->registry->updateStatus($tenantId, 'DEPROVISIONED');
@@ -77,6 +78,7 @@ class TenantProvisioner
             ");
         } catch (\Throwable $_) {
             error_log('[TenantProvisioner] Failed to terminate connections: ' . $_->getMessage());
+            error_log('[TenantProvisioner] Failed to terminate active connections: ' . $_->getMessage());
         }
 
         $this->capsule->getConnection()->statement("DROP DATABASE IF EXISTS \"{$entry->dbName}\"");

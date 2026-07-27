@@ -21,7 +21,13 @@ final class ReportControllerTest extends TestCase
     public static function setUpBeforeClass(): void
     {
         $output = [];
-        $command = "php -S 127.0.0.1:8089 public/index.php > tests/Integration/Http/server_report.log 2>&1 & echo $!";
+        $dbConn = getenv("DB_CONNECTION") ?: "pgsql";
+        $dbDb = getenv("DB_DATABASE") === ":memory:" ? realpath(__DIR__ . "/../../../storage/data/test.sqlite") : (getenv("DB_DATABASE") ?: "ddd_inventory");
+        $dbHost = getenv("DB_HOST") ?: "localhost";
+        $dbUser = getenv("DB_USERNAME") ?: "ddd_user";
+        $dbPass = getenv("DB_PASSWORD") ?: "secret";
+
+        $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8100 public/index.php > tests/Integration/Http/server_report.log 2>&1 & echo $!";
 
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
@@ -157,7 +163,7 @@ final class ReportControllerTest extends TestCase
 
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
     {
-        $url = 'http://127.0.0.1:8089' . $path;
+        $url = 'http://127.0.0.1:8100' . $path;
         $options = [
             'http' => [
                 'header'        => "Content-Type: application/json\r\n",

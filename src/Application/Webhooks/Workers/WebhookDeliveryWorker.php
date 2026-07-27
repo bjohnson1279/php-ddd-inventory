@@ -37,13 +37,16 @@ class WebhookDeliveryWorker
             $ids = $deliveries->pluck('id')->toArray();
             WebhookDeliveryModel::whereIn('id', $ids)->update(['status' => 'Processing']);
 
+            $subscriptionIds = $deliveries->pluck('subscription_id')->unique()->toArray();
+            $subscriptions = WebhookSubscriptionModel::whereIn('id', $subscriptionIds)->get()->keyBy('id');
+
             foreach ($deliveries as $delivery) {
                 $delivery->status = 'Processing';
                 $delivery->syncOriginal();
                 echo "Processing Webhook Delivery ID: {$delivery->id}...\n";
 
                 try {
-                    $subscription = WebhookSubscriptionModel::find($delivery->subscription_id);
+                    $subscription = $subscriptions->get($delivery->subscription_id);
                     if (!$subscription || !$subscription->is_active) {
                         throw new \Exception("Subscription not found or inactive: {$delivery->subscription_id}");
                     }

@@ -62,6 +62,37 @@ class EloquentSerializedItemRepository implements SerializedItemRepositoryInterf
         return $model ? $this->hydrate($model) : null;
     }
 
+    /**
+     * @param SerialNumber[] $serials
+     * @return array<string, SerializedItem> Indexed by lowercase serial number
+     */
+    public function findBySerials(array $serials, string $tenantId): array
+    {
+        if (empty($serials)) {
+            return [];
+        }
+
+        $serialValues = array_map(fn($s) => strtolower(trim($s->value)), $serials);
+        $result = [];
+
+        // Chunking the query to avoid hitting parameter limits (e.g., 999 in SQLite or 65535 in Postgres)
+        $chunks = array_chunk($serialValues, 500);
+
+        foreach ($chunks as $chunk) {
+            $placeholders = implode(', ', array_fill(0, count($chunk), '?'));
+
+            $models = SerializedItemModel::where('tenant_id', $tenantId)
+                ->whereRaw("LOWER(serial_number) IN ($placeholders)", $chunk)
+                ->get();
+
+            foreach ($models as $model) {
+                $result[strtolower(trim($model->serial_number))] = $this->hydrate($model);
+            }
+        }
+
+        return $result;
+    }
+
     public function findById(string $id): ?SerializedItem
     {
         $model = SerializedItemModel::find($id);

@@ -45,7 +45,11 @@ class TenantRegistry
         $port = $dbPort ?? (int)(getenv('DB_PORT') ?: 5432);
         $name = $dbName ?? "inventory_tenant_{$safeName}";
         $user = $dbUser ?? (getenv('DB_USERNAME') ?: 'ddd_user');
-        $password = $dbPassword ?? (getenv('DB_PASSWORD') ?: 'secret');
+
+        $password = $dbPassword ?? getenv('DB_PASSWORD');
+        if (!$password) {
+            throw new \RuntimeException('DB_PASSWORD environment variable must be set.');
+        }
 
         $existing = $this->lookupTenant($tenantId);
         if ($existing && $existing->status !== 'DEPROVISIONED') {
@@ -54,7 +58,7 @@ class TenantRegistry
 
         $this->capsule->getConnection()->statement("
             INSERT INTO tenant_registry (tenant_id, db_host, db_port, db_name, db_user, db_password, status, provisioned_at, migrated_version)
-            VALUES (?, ?, ?, ?, ?, ?, 'PROVISIONING', NOW(), '0')
+            VALUES (?, ?, ?, ?, ?, ?, 'PROVISIONING', CURRENT_TIMESTAMP, '0')
             ON CONFLICT (tenant_id) DO UPDATE SET
                 db_host = EXCLUDED.db_host,
                 db_port = EXCLUDED.db_port,
@@ -62,7 +66,7 @@ class TenantRegistry
                 db_user = EXCLUDED.db_user,
                 db_password = EXCLUDED.db_password,
                 status = EXCLUDED.status,
-                provisioned_at = NOW(),
+                provisioned_at = CURRENT_TIMESTAMP,
                 migrated_version = EXCLUDED.migrated_version
         ", [$tenantId, $host, $port, $name, $user, $password]);
 

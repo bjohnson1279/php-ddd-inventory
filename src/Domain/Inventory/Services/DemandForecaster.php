@@ -36,7 +36,7 @@ class DemandForecaster
         return $this->calculateSalesVelocityFromData($product, $locationId, $entries);
     }
 
-    private function calculateSalesVelocityFromData($product, LocationId $locationId, array $entries): array
+    private function calculateSalesVelocityFromData(Product $product, LocationId $locationId, array $entries): array
     {
         $skuStr = $product->getSku()->getValue();
         $now = new DateTimeImmutable();

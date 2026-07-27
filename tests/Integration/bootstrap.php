@@ -6,6 +6,7 @@ require __DIR__ . '/../../vendor/autoload.php';
 
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../../');
 $dotenv->safeLoad();
+putenv("COMPLIANCE_PRIVATE_KEY=integration-test-secret-key-12345");
 
 $driver = getenv('DB_CONNECTION') ?: 'pgsql';
 

@@ -16,6 +16,12 @@ interface SerializedItemRepositoryInterface
 
     public function findBySerial(SerialNumber $serial, string $tenantId): ?SerializedItem;
 
+    /**
+     * @param SerialNumber[] $serials
+     * @return array<string, SerializedItem> Indexed by lowercase serial number
+     */
+    public function findBySerials(array $serials, string $tenantId): array;
+
     public function findById(string $id): ?SerializedItem;
 
     /** @return SerializedItem[] */

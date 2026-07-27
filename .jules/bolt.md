@@ -200,3 +200,6 @@
 ## 2024-05-19 - N+1 Queries in ReceiveRMA Use Case
 **Learning:** In the `ReceiveRMA` use case, calling `$this->productRepository->findById($item['variantId'])` inside a loop over `$dto['items']` causes an N+1 query issue, negatively impacting performance when receiving RMAs with many items.
 **Action:** Extract all unique `variantId`s from the DTO items before the loop using `array_column` and `array_unique`. Pre-fetch all required products in a single batch using `$this->productRepository->findByIds($variantIds)`, and store them in an associative array. Inside the loop, perform an in-memory lookup from this array to eliminate the N+1 queries.
+## 2024-05-20 - Fix N+1 in RfidBulkScanWorker
+**Learning:** Pre-fetching relationships manually via chunked IN queries avoids massive N+1 issues in batch processing, but must respect parameter limits of underlying databases (e.g. SQLite max 999 parameters, Postgres 65535). Use `array_chunk` on lists of IDs when pre-fetching to prevent DB driver crashes on large bulk payloads.
+**Action:** Always wrap large bulk IN query operations (like `whereIn`) with `array_chunk` in repositories meant to handle bulk IoT or ingestion data.

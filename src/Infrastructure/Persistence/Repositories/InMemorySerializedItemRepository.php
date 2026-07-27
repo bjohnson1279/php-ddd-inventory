@@ -97,6 +97,28 @@ class InMemorySerializedItemRepository implements SerializedItemRepositoryInterf
         return null;
     }
 
+    /**
+     * @param SerialNumber[] $serials
+     * @return array<string, SerializedItem> Indexed by lowercase serial number
+     */
+    public function findBySerials(array $serials, string $tenantId): array
+    {
+        if (empty($serials)) return [];
+        $rows = $this->read();
+        $serialMap = [];
+        foreach ($serials as $s) {
+            $serialMap[strtoupper($s->value)] = true;
+        }
+
+        $result = [];
+        foreach ($rows as $r) {
+            if ($r['tenantId'] === $tenantId && isset($serialMap[strtoupper($r['serialNumber'])])) {
+                $result[strtolower($r['serialNumber'])] = $this->hydrate($r);
+            }
+        }
+        return $result;
+    }
+
     public function findById(string $id): ?SerializedItem
     {
         $rows = $this->read();

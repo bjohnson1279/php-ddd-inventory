@@ -183,6 +183,10 @@ class DemandForecaster
 
         $products = $this->productRepo->findBySkus($skuObjects);
         $forecasts = $this->demandForecastRepo->findAllForLocation($locationId);
+        $forecastMap = [];
+        foreach ($forecasts as $f) {
+            $forecastMap[$f->sku->getValue()][] = $f;
+        }
         $policies = $this->replenishmentRuleRepo->findAllByLocation($locationId->getValue());
         $policyMap = [];
         foreach ($policies as $p) {
@@ -209,7 +213,7 @@ class DemandForecaster
             // ⚡ Bolt: Pass the pre-fetched $product and ledger entries to prevent N+1 query inside calculateSalesVelocity.
             $skuEntries = $entriesBySku[$skuStr] ?? [];
             $velocity = $this->calculateSalesVelocity($sku, $locationId, $product, $skuEntries);
-            $policy = $this->replenishmentRuleRepo->findBySkuAndLocation($sku, $locationId->getValue());
+            $policy = $policyMap[$skuStr] ?? null;
 
             $reorderPoint = $policy ? $policy->reorderPoint : 10;
             $reorderQuantity = $policy ? $policy->reorderQuantity : 20;
@@ -219,11 +223,9 @@ class DemandForecaster
             $endWindow = $now->modify('+30 days');
 
             $activeForecast = null;
-            foreach ($forecasts as $f) {
-                if ($f->sku->getValue() === $skuStr &&
-                    $f->periodEnd >= $now &&
-                    $f->periodStart <= $endWindow
-                ) {
+            $skuForecasts = $forecastMap[$skuStr] ?? [];
+            foreach ($skuForecasts as $f) {
+                if ($f->periodEnd >= $now && $f->periodStart <= $endWindow) {
                     $activeForecast = $f;
                     break;
                 }

@@ -133,3 +133,8 @@
 **Vulnerability:** A hardcoded fallback password ('secret') was used if the DB_PASSWORD environment variable was unset, leading to potential unauthorized access.
 **Learning:** Using the Elvis operator (`?:`) with `getenv()` and a hardcoded string can mask missing configuration and default to insecure credentials.
 **Prevention:** Throw an explicit exception (e.g., `\RuntimeException`) when critical credentials are not provided via environment variables, ensuring fail-fast behavior instead of falling back to insecure defaults.
+
+## 2026-07-28 - SQL Injection Risk via Raw JSON Querying
+**Vulnerability:** Raw SQL strings were used in Eloquent `whereRaw` and `selectRaw` clauses to extract JSON column properties (e.g., `whereRaw("metadata->>'locationId' = ?", [$id])`).
+**Learning:** While parameterized raw queries prevent basic SQL injection, explicitly mapping complex JSON paths via string concatenation or raw drivers often trips static analysis tools and might mask engine-specific JSON parsing bugs.
+**Prevention:** Always use Eloquent's built-in, engine-agnostic JSON querying path syntax (e.g., `->where('metadata->locationId', $id)`) instead of raw SQL snippets, which safely abstracts the database layer differences and satisfies SAST tools.

@@ -2452,6 +2452,121 @@ if ($method === 'POST' && str_starts_with($uri, '/webhooks/shopify/')) {
     exit;
 }
 
+// ── Lot Quarantine & Recall Endpoints ─────────────────────────────────────
+if ($uri === '/api/lots/quarantine' && $method === 'POST') {
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+    $lotNumber = $input['lotNumber'] ?? '';
+    $variantId = $input['variantId'] ?? '';
+    $reason = $input['reason'] ?? 'Quarantine initiated';
+    $tenantId = 'tenant-1';
+
+    $lot = new \App\Domain\Inventory\Entities\LotBatch(
+        id: uniqid('lot-'),
+        tenantId: $tenantId,
+        lotNumber: $lotNumber,
+        variantId: $variantId,
+        status: 'QUARANTINED',
+        quarantinedAt: new DateTimeImmutable(),
+        quarantineReason: $reason
+    );
+
+    echo json_encode([
+        'id' => $lot->id,
+        'tenantId' => $lot->tenantId,
+        'lotNumber' => $lot->lotNumber,
+        'variantId' => $lot->variantId,
+        'status' => $lot->status,
+        'quarantineReason' => $lot->quarantineReason
+    ]);
+    exit;
+}
+
+if ($uri === '/api/lots/recall' && $method === 'POST') {
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+    $lotNumber = $input['lotNumber'] ?? '';
+    $variantId = $input['variantId'] ?? '';
+    $reason = $input['reason'] ?? 'Recall initiated';
+    $tenantId = 'tenant-1';
+
+    $lot = new \App\Domain\Inventory\Entities\LotBatch(
+        id: uniqid('lot-'),
+        tenantId: $tenantId,
+        lotNumber: $lotNumber,
+        variantId: $variantId,
+        status: 'RECALLED',
+        recalledAt: new DateTimeImmutable(),
+        quarantineReason: $reason
+    );
+
+    echo json_encode([
+        'id' => $lot->id,
+        'tenantId' => $lot->tenantId,
+        'lotNumber' => $lot->lotNumber,
+        'variantId' => $lot->variantId,
+        'status' => $lot->status,
+        'quarantineReason' => $lot->quarantineReason
+    ]);
+    exit;
+}
+
+if ($uri === '/api/lots/release' && $method === 'POST') {
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+    $lotNumber = $input['lotNumber'] ?? '';
+    $variantId = $input['variantId'] ?? '';
+
+    echo json_encode([
+        'tenantId' => 'tenant-1',
+        'lotNumber' => $lotNumber,
+        'variantId' => $variantId,
+        'status' => 'ACTIVE'
+    ]);
+    exit;
+}
+
+if (str_starts_with($uri, '/api/lots/') && str_ends_with($uri, '/traceability') && $method === 'GET') {
+    $parts = explode('/', trim($uri, '/'));
+    $lotNumber = urldecode($parts[2] ?? '');
+    $variantId = $_GET['variantId'] ?? '';
+    
+    $lot = new \App\Domain\Inventory\Entities\LotBatch(
+        id: 'temp-lot-1',
+        tenantId: 'tenant-1',
+        lotNumber: $lotNumber,
+        variantId: $variantId,
+        status: 'ACTIVE'
+    );
+
+    $report = \App\Domain\Inventory\Services\LotRecallService::generateTraceabilityReport($lot, [], []);
+    echo json_encode($report);
+    exit;
+}
+
+if ($uri === '/api/cross-dock/evaluate' && $method === 'POST') {
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+    $poId = $input['purchaseOrderId'] ?? 'PO-1';
+    $inbound = $input['inboundItems'] ?? [];
+    $backorders = $input['backorders'] ?? [];
+
+    $result = \App\Domain\Shipping\Services\CrossDockingEngine::evaluate($poId, $inbound, $backorders);
+    echo json_encode($result);
+    exit;
+}
+
+if ($uri === '/api/fulfillment/drop-ship' && $method === 'POST') {
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+    echo json_encode([
+        'status' => 'SUCCESS',
+        'dropShipPoId' => uniqid('ds-po-'),
+        'orderId' => $input['orderId'] ?? '',
+        'variantId' => $input['variantId'] ?? '',
+        'quantity' => $input['quantity'] ?? 1,
+        'supplierId' => $input['supplierId'] ?? '',
+        'createdAt' => (new DateTimeImmutable())->format(DATE_ATOM)
+    ]);
+    exit;
+}
+
 // ── Fallback ──────────────────────────────────────────────────────────────────
 http_response_code(200);
 echo json_encode(['message' => 'DDD Inventory API is running', 'uri' => $uri]);
+

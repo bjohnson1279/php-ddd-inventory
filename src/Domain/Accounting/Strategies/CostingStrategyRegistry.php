@@ -16,6 +16,7 @@ class CostingStrategyRegistry
                 CostingMethod::FIFO->value => new FifoCostingStrategy(),
                 CostingMethod::LIFO->value => new LifoCostingStrategy(),
                 CostingMethod::WeightedAverageCost->value => new WeightedAverageCostingStrategy(),
+                CostingMethod::FEFO->value => new FefoCostingStrategy(),
             ];
         }
     }

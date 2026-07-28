@@ -8,4 +8,5 @@ enum CostingMethod: string
     case LIFO = 'lifo';
     case WeightedAverageCost = 'weighted_average_cost';
     case SpecificIdentification = 'specific_identification';
+    case FEFO = 'fefo';
 }

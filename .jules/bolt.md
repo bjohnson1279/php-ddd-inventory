@@ -203,3 +203,7 @@
 ## 2024-05-20 - Fix N+1 in RfidBulkScanWorker
 **Learning:** Pre-fetching relationships manually via chunked IN queries avoids massive N+1 issues in batch processing, but must respect parameter limits of underlying databases (e.g. SQLite max 999 parameters, Postgres 65535). Use `array_chunk` on lists of IDs when pre-fetching to prevent DB driver crashes on large bulk payloads.
 **Action:** Always wrap large bulk IN query operations (like `whereIn`) with `array_chunk` in repositories meant to handle bulk IoT or ingestion data.
+
+## 2024-05-18 - Update PHPUnit mock expectations when refactoring single appends to batch appends
+**Learning:** When refactoring iterative repository insertions (e.g., `append`) into batch operations (e.g., `appendAll`), update PHPUnit mock expectations to reflect the change from multiple invocations (`$this->exactly($n)`) to a single invocation (`$this->once()`), alongside updating the callback signature to accept an array.
+**Action:** When updating mock expectations for a newly introduced `appendAll` method, ensure to use `$this->once()` if the batch method is called once outside the loop, rather than `$this->exactly($n)` which corresponds to the old `append` method behavior inside the loop.

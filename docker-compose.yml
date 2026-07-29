@@ -114,7 +114,7 @@ services:
 
   python-sidecar:
     build:
-      context: ../python-sidecar
+      context: ../inventory-python-sidecar
       dockerfile: Dockerfile
     container_name: ddd_inventory_python_sidecar
     ports:

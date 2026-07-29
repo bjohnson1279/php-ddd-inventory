@@ -2566,6 +2566,26 @@ if ($uri === '/api/fulfillment/drop-ship' && $method === 'POST') {
     exit;
 }
 
+// ── Route: GET /api/anomaly-detection/analyze ──────────────────────────────────
+if ($method === 'GET' && $uri === '/api/anomaly-detection/analyze') {
+    requireAuth();
+    $service = new \InventoryApp\Application\AI\AnomalyDetectionService();
+    $response = $service->analyze($_GET);
+    http_response_code(200);
+    echo json_encode($response);
+    exit;
+}
+
+// ── Route: GET /api/rebalance/matrix ───────────────────────────────────────────
+if ($method === 'GET' && $uri === '/api/rebalance/matrix') {
+    requireAuth();
+    $service = new \InventoryApp\Application\AI\RebalanceOptimizationService();
+    $response = $service->getMatrix($_GET);
+    http_response_code(200);
+    echo json_encode($response);
+    exit;
+}
+
 // ── Fallback ──────────────────────────────────────────────────────────────────
 http_response_code(200);
 echo json_encode(['message' => 'DDD Inventory API is running', 'uri' => $uri]);

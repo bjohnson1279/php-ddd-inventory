@@ -22,12 +22,26 @@ class ProductRecallServiceTest extends TestCase
         $this->service = new ProductRecallService($this->ledgerRepo);
     }
 
-    public function testTraceThrowsExceptionOnEmptyLotNumber(): void
+    public function emptyLotNumberProvider(): array
+    {
+        return [
+            'empty string' => [''],
+            'spaces' => ['   '],
+            'tab' => ["\t"],
+            'newline' => ["\n"],
+            'mixed whitespace' => [" \t\n\r "],
+        ];
+    }
+
+    /**
+     * @dataProvider emptyLotNumberProvider
+     */
+    public function testTraceThrowsExceptionOnEmptyLotNumber(string $lotNumber): void
     {
         $this->expectException(Exception::class);
         $this->expectExceptionMessage("Lot number cannot be empty.");
 
-        $this->service->traceProductRecall("   ");
+        $this->service->traceProductRecall($lotNumber);
     }
 
     public function testTraceFiltersAndMapsCorrectly(): void
@@ -97,5 +111,56 @@ class ProductRecallServiceTest extends TestCase
             'occurredAt'    => '2023-10-27 12:00:00',
             'actorId'       => 'actor-3',
         ], current(array_slice($result, 1, 1))); // Use array_slice + current because array_filter preserves keys
+    }
+
+    public function testTraceReturnsEmptyArrayWhenNoEntriesFound(): void
+    {
+        $this->ledgerRepo->expects($this->once())
+            ->method('findRecallEntries')
+            ->with('LOT123')
+            ->willReturn([]);
+
+        $result = $this->service->traceProductRecall('LOT123');
+
+        $this->assertIsArray($result);
+        $this->assertEmpty($result);
+    }
+
+    public function testTraceReturnsEmptyArrayWhenOnlyPositiveQuantitiesExist(): void
+    {
+        $date1 = new DateTimeImmutable('2023-10-27 10:00:00');
+        $date2 = new DateTimeImmutable('2023-10-27 11:00:00');
+
+        $entry1 = clone (new LedgerEntry(
+            id: 'entry-1',
+            variantId: 'var-1',
+            quantity: 10,
+            reason: ReasonCode::PurchaseReceipt,
+            actorId: 'actor-1',
+            referenceId: 'ref-1',
+            occurredAt: $date1,
+            metadata: ['locationId' => 'loc-1']
+        ));
+
+        $entry2 = clone (new LedgerEntry(
+            id: 'entry-2',
+            variantId: 'var-1',
+            quantity: 5,
+            reason: ReasonCode::Adjustment,
+            actorId: 'actor-2',
+            referenceId: 'ref-2',
+            occurredAt: $date2,
+            metadata: ['locationId' => 'loc-1']
+        ));
+
+        $this->ledgerRepo->expects($this->once())
+            ->method('findRecallEntries')
+            ->with('LOT123')
+            ->willReturn([$entry1, $entry2]);
+
+        $result = $this->service->traceProductRecall('LOT123');
+
+        $this->assertIsArray($result);
+        $this->assertEmpty($result);
     }
 }

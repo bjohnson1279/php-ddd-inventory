@@ -1,237 +1,913 @@
-openapi: 3.0.0
+openapi: 3.1.0
 info:
-  title: DDD Inventory API
+  title: Inventory REST API
   version: 1.0.0
-  description: API surface for the sample DDD Inventory application (minimal spec)
 servers:
-  - url: http://localhost:8000
-paths:
-  /api/inventory/receive:
-    post:
-      summary: Receive stock for a SKU
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ReceiveRequest'
-      responses:
-        '200':
-          description: Stock received
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-  /api/inventory/dispatch:
-    post:
-      summary: Dispatch stock for a SKU
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DispatchRequest'
-      responses:
-        '200':
-          description: Stock dispatched
-  /api/inventory/{sku}/stock:
-    get:
-      summary: Get stock level for SKU
-      parameters:
-        - name: sku
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: location_id
-          in: query
-          required: false
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Stock level
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StockResponse'
-  /api/inventory-counts:
-    post:
-      summary: Start an inventory count
-      responses:
-        '201':
-          description: Count started
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CountStartResponse'
-  /api/inventory-counts/{count_id}/items:
-    post:
-      summary: Record item count
-      parameters:
-        - name: count_id
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CountItemRequest'
-      responses:
-        '200':
-          description: Item recorded
-  /api/inventory-counts/{count_id}/complete:
-    post:
-      summary: Complete inventory count and reconcile
-      parameters:
-        - name: count_id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Count completed and reconciled
-  /api/catalog/products:
-    post:
-      summary: Create catalog product
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CatalogProductRequest'
-      responses:
-        '201':
-          description: Product created
-  /api/catalog/products/{productId}/variants:
-    post:
-      summary: Add variant to product
-      parameters:
-        - name: productId
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AddVariantRequest'
-      responses:
-        '201':
-          description: Variant added
-  /api/compliance/ledger:
-    get:
-      summary: Fetch compliance audit logs
-      parameters:
-        - name: tenantId
-          in: query
-          required: false
-          schema:
-            type: string
-      responses:
-        '200':
-          description: List of cryptographically signed block entries
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-  /api/compliance/verify:
-    post:
-      summary: Verify compliance ledger integrity
-      parameters:
-        - name: tenantId
-          in: query
-          required: false
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Cryptographic integrity validation outcome
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  isValid:
-                    type: boolean
+- url: http://localhost:8000
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
-    ReceiveRequest:
+    Item:
       type: object
-      required: [sku, quantity, location_id]
       properties:
-        sku:
+        variantId:
           type: string
         quantity:
-          type: integer
-          minimum: 1
-        location_id:
-          type: string
-    DispatchRequest:
+          type: number
+        unitCostCents:
+          type: number
+      required:
+      - variantId
+      - quantity
+      - unitCostCents
+    StockOnboarding:
       type: object
-      required: [sku, quantity, location_id]
       properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        locationId:
+          type: string
+        status:
+          type: string
+          enum:
+          - draft
+          - submitted
+        asOfDate:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Item'
+    Barcode:
+      type: object
+      properties:
+        value:
+          type: string
+        symbology:
+          type: string
+    BarcodeAssignment:
+      type: object
+      properties:
+        id:
+          type: string
         sku:
           type: string
-        quantity:
-          type: integer
-          minimum: 1
-        location_id:
+        barcode:
+          $ref: '#/components/schemas/Barcode'
+        source:
           type: string
-    StockResponse:
+        isPrimary:
+          type: boolean
+        assignedAt:
+          type: string
+    ProductVariant:
       type: object
       properties:
+        id:
+          type: string
         sku:
           type: string
-        location_id:
+        trackingMode:
           type: string
-        stock:
-          type: integer
-    CountStartResponse:
+          enum:
+          - quantity
+          - serial
+          - lot
+        attributes:
+          type: array
+          items:
+            type: object
+        barcodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/BarcodeAssignment'
+        weightGrams:
+          type: number
+        volumeCubicMeters:
+          type: number
+    Product:
       type: object
       properties:
-        message:
+        id:
           type: string
-        count_id:
-          type: string
-    CountItemRequest:
-      type: object
-      required: [sku, quantity]
-      properties:
-        sku:
-          type: string
-        quantity:
-          type: integer
-          minimum: 0
-    CatalogProductRequest:
-      type: object
-      required: [name, description, department]
-      properties:
         name:
+          type: string
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductVariant'
+    JournalLine:
+      type: object
+      properties:
+        accountCode:
+          type: string
+        amountCents:
+          type: number
+        type:
+          type: string
+          enum:
+          - debit
+          - credit
+        memo:
+          type: string
+    JournalEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        date:
           type: string
         description:
           type: string
-        department:
+        method:
           type: string
-    AddVariantRequest:
+          enum:
+          - cash
+          - accrual
+        referenceId:
+          type: string
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/JournalLine'
+    StatusTransition:
       type: object
-      required: [sku, attributes, price]
+      properties:
+        from:
+          type: string
+        to:
+          type: string
+        reason:
+          type: string
+        actor:
+          type: string
+        occurredAt:
+          type: string
+        referenceId:
+          type: string
+    SerializedItem:
+      type: object
+      properties:
+        id:
+          type: string
+        variantId:
+          type: string
+        serialNumber:
+          type: string
+        tenantId:
+          type: string
+        locationId:
+          type: string
+        status:
+          type: string
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/StatusTransition'
+    ShopifyConnection:
+      type: object
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        platform:
+          type: string
+        storeDomain:
+          type: string
+        isActive:
+          type: boolean
+    InventoryItem:
+      type: object
+      properties:
+        id:
+          type: string
+        sku:
+          type: string
+        locationId:
+          type: string
+        quantity:
+          type: number
+        version:
+          type: number
+    ForecastingReportItem:
+      type: object
       properties:
         sku:
           type: string
-        attributes:
-          type: object
-        price:
+        name:
+          type: string
+        currentStock:
           type: number
-          format: float
+        salesVelocity7d:
+          type: number
+        salesVelocity30d:
+          type: number
+        salesVelocity90d:
+          type: number
+        forecastedDemand:
+          type: number
+        suggestedROP:
+          type: number
+        safetyStock:
+          type: number
+    FulfillmentAllocation:
+      type: object
+      properties:
+        locationId:
+          type: string
+        quantity:
+          type: number
+    FulfillmentPlan:
+      type: object
+      properties:
+        allocations:
+          type: array
+          items:
+            $ref: '#/components/schemas/FulfillmentAllocation'
+        totalCost:
+          type: number
+        totalDistance:
+          type: number
+        splitCount:
+          type: number
+    ReorderPolicy:
+      type: object
+      properties:
+        sku:
+          type: string
+        locationId:
+          type: string
+        reorderPoint:
+          type: number
+        safetyStock:
+          type: number
+        economicOrderQuantity:
+          type: number
+    WebhookSubscription:
+      type: object
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        url:
+          type: string
+        eventTypes:
+          type: array
+          items:
+            type: string
+    WebhookDeliveryLog:
+      type: object
+      properties:
+        id:
+          type: string
+        subscriptionId:
+          type: string
+        eventName:
+          type: string
+        status:
+          type: string
+        statusCode:
+          type: number
+        occurredOn:
+          type: string
+    WarehouseLocation:
+      type: object
+      properties:
+        id:
+          type: string
+        warehouseId:
+          type: string
+        zone:
+          type: string
+        maxWeightGrams:
+          type: number
+        maxVolumeCubicMeters:
+          type: number
+    PutawaySuggestion:
+      type: object
+      properties:
+        locationId:
+          type: string
+        sku:
+          type: string
+        suggestedQuantity:
+          type: number
+    PurchaseOrderItem:
+      type: object
+      properties:
+        sku:
+          type: string
+        quantity:
+          type: number
+        unitCostCents:
+          type: number
+    PurchaseOrder:
+      type: object
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        supplier:
+          type: string
+        status:
+          type: string
+          enum:
+          - draft
+          - approved
+          - sent
+          - received
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PurchaseOrderItem'
+        createdAt:
+          type: string
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+    AuditDiscrepancy:
+      type: object
+      properties:
+        id:
+          type: string
+        sku:
+          type: string
+        locationId:
+          type: string
+        expectedQuantity:
+          type: number
+        actualQuantity:
+          type: number
+        discrepancyCount:
+          type: number
+        status:
+          type: string
+        detectedAt:
+          type: string
+        resolvedAt:
+          type: string
+    OutboxStats:
+      type: object
+      properties:
+        pendingCount:
+          type: number
+        publishedCount:
+          type: number
+        failedCount:
+          type: number
+    OutboxEvent:
+      type: object
+      properties:
+        id:
+          type: string
+        eventType:
+          type: string
+        payload:
+          type: string
+        error:
+          type: string
+        status:
+          type: string
+        occurredAt:
+          type: string
+    TenantAccountingConfig:
+      type: object
+      properties:
+        tenantId:
+          type: string
+        accountingMethod:
+          type: string
+        costingMethod:
+          type: string
+        currencyCode:
+          type: string
+        fiscalYearStart:
+          type: string
+    QuarantinedItem:
+      type: object
+      properties:
+        id:
+          type: string
+        sku:
+          type: string
+        locationId:
+          type: string
+        quantity:
+          type: number
+        reason:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+    ValuationItem:
+      type: object
+      properties:
+        variantId:
+          type: string
+        sku:
+          type: string
+        name:
+          type: string
+        costingMethod:
+          type: string
+        totalQuantity:
+          type: number
+        totalValueCents:
+          type: number
+        unitCostCents:
+          type: number
+    RfidTag:
+      type: object
+      properties:
+        epc:
+          type: string
+        sku:
+          type: string
+        serialNumber:
+          type: string
+        status:
+          type: string
+        lastSeenAt:
+          type: string
+        lastLocation:
+          type: string
+    RfidScanUpdate:
+      type: object
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        locationId:
+          type: string
+        totalCount:
+          type: number
+        matchedCount:
+          type: number
+        unmatchedCount:
+          type: number
+        unmatchedEpcs:
+          type: array
+          items:
+            type: string
+paths:
+  /api/auth/login:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/shopify:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/inventory/receive:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/inventory/dispatch:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/inventory/allocate:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/inventory/release-allocation:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/inventory/fulfill-allocation:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/inventory:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/users:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/barcodes/assign:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/barcodes/generate:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/barcodes/scan:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/serials/register:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/serials/trace:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/kits/create:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/kits/assemble:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/kits/disassemble:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/kits/dispatch:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/accounting/ledger:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/accounting/valuation:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/accounting/tenant-config:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/onboarding:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/purchase-orders:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/purchase-orders/create:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/purchase-orders/approve:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/purchase-orders/send:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/purchase-orders/receive:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/reorder-policies:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/reorder-policies/save:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/reorder-policies/evaluate:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/audits/create:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/audits/start:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/audits/count:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/audits/complete:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/returns/rma:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/returns/quarantine:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/returns/quarantine/resolve:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/outbox/stats:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/outbox/dead-letters:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/outbox/retry:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/forecasting/forecast:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/forecasting/report:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/shipping/rates:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/notifications:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/compliance/ledger:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/compliance/verify:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/audit:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/warehouse-locations:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/warehouse-locations/putaway:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/warehouse-locations/pick-route:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/warehouse-locations/slotting:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/webhooks/subscriptions:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/webhooks/subscriptions/deliveries:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/rfid/tags:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/rfid/assign:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/rfid/scan:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/lots/quarantine:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/lots/recall:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/lots/release:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/lots/{lotNumber}/traceability:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/cross-dock/evaluate:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/fulfillment/drop-ship:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK

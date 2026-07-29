@@ -21,30 +21,26 @@ final class ComplianceE2ETest extends TestCase
     public static function setUpBeforeClass(): void
     {
         $output = [];
-        $dbConn = escapeshellarg(getenv('DB_CONNECTION') ?: 'pgsql');
-        $dbDb = escapeshellarg(getenv('DB_DATABASE') ?: '');
+        $dbConn = escapeshellarg(getenv('DB_CONNECTION') ?: 'sqlite');
+        $dbDb = getenv('DB_DATABASE') ?: '';
+        if ($dbConn === "'sqlite'" && $dbDb === ':memory:') {
+            $dbDb = __DIR__ . '/../../database.sqlite';
+        }
+        if ($dbConn === "'sqlite'") @touch($dbDb);
+        $dbDb = escapeshellarg($dbDb);
         $dbHost = escapeshellarg(getenv('DB_HOST') ?: '');
         $dbUser = escapeshellarg(getenv('DB_USERNAME') ?: '');
         $dbPass = escapeshellarg(getenv('DB_PASSWORD') ?: '');
-        $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8099 public/index.php > tests/Integration/Http/server_compliance.log 2>&1 & echo $!";
-        $dbConn = getenv('DB_CONNECTION') ?: 'sqlite';
-        $dbDb = getenv('DB_DATABASE') ?: 'testing';
-        $dbDb   = getenv('DB_DATABASE') ?: __DIR__ . '/../../../database.sqlite';
-        $dbHost = getenv('DB_HOST') ?: '127.0.0.1';
-        $dbUser = getenv('DB_USERNAME') ?: 'root';
-        $dbPass = getenv('DB_PASSWORD') ?: '';
 
-        $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8096 public/index.php > tests/Integration/Http/server_compliance.log 2>&1 & echo $!";
-        // Assign a unique non-overlapping port number for this test file
-        $command = "php -S 127.0.0.1:8100 public/index.php > tests/Integration/Http/server_compliance.log 2>&1 & echo $!";
+
+
+        $command = "COMPLIANCE_PRIVATE_KEY=test-secret-key-12345 DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8100 public/index.php > tests/Integration/Http/server_compliance.log 2>&1 & echo $!";
 
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
 
         // Wait for server to bind
         for ($i = 0; $i < 50; $i++) {
-            $fp = @fsockopen('127.0.0.1', 8096, $errno, $errstr, 0.1);
-            $fp = @fsockopen('127.0.0.1', 8099, $errno, $errstr, 0.1);
             $fp = @fsockopen('127.0.0.1', 8100, $errno, $errstr, 0.1);
             if ($fp) {
                 fclose($fp);
@@ -58,6 +54,10 @@ final class ComplianceE2ETest extends TestCase
     {
         if (self::$pid) {
             exec("kill " . self::$pid . " > /dev/null 2>&1");
+        @unlink(__DIR__ . '/../../database.sqlite');
+        @unlink(__DIR__ . '/../../../database.sqlite');
+        @unlink(__DIR__ . '/../../database.sqlite');
+        @unlink(__DIR__ . '/../../../database.sqlite');
         }
     }
 
@@ -67,7 +67,7 @@ final class ComplianceE2ETest extends TestCase
         Capsule::table('ledger_entries')->delete();
         Capsule::table('users')->delete();
         Capsule::table('user_roles')->delete();
-        Capsule::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
+        // Capsule::table('tenants')->whereNotIn('id', ['test-tenant', 'system'])->delete();
         Capsule::table('catalog_variants')->delete();
         Capsule::table('catalog_products')->delete();
         Capsule::table('locations')->where('id', '!=', 'LOC-INT')->delete();
@@ -85,7 +85,7 @@ final class ComplianceE2ETest extends TestCase
             'adminEmail'    => $this->email,
             'adminPassword' => $this->password,
         ]);
-        $this->assertEquals(200, $setupRes['status']);
+        $this->assertEquals(200, $setupRes['status'], json_encode($setupRes));
 
         // Login
         $loginRes = $this->request('POST', '/api/auth/login', [
@@ -93,6 +93,7 @@ final class ComplianceE2ETest extends TestCase
             'email'     => $this->email,
             'password'  => $this->password,
         ]);
+        $this->assertEquals(200, $loginRes['status'], json_encode($loginRes));
         $this->token = $loginRes['body']['token'];
     }
 
@@ -155,8 +156,6 @@ final class ComplianceE2ETest extends TestCase
 
     private function request(string $method, string $path, array $body = [], ?string $token = null): array
     {
-        $url = 'http://127.0.0.1:8096' . $path;
-        $url = 'http://127.0.0.1:8099' . $path;
         $url = 'http://127.0.0.1:8100' . $path;
         $options = [
             'http' => [

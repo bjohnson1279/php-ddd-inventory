@@ -47,6 +47,7 @@ class DisassembleKitTest extends TestCase
     {
         $this->productRepository->expects($this->never())->method('save');
         $this->ledgerRepository->expects($this->never())->method('append');
+        $this->ledgerRepository->expects($this->never())->method('appendAll');
         $this->costLayerRepository->expects($this->never())->method('saveBatch');
         $this->costLayerRepository->expects($this->never())->method('save');
         $this->journalService->expects($this->never())->method('onKitDisassembly');
@@ -68,6 +69,7 @@ class DisassembleKitTest extends TestCase
     {
         $this->productRepository->expects($this->never())->method('save');
         $this->ledgerRepository->expects($this->never())->method('append');
+        $this->ledgerRepository->expects($this->never())->method('appendAll');
         $this->costLayerRepository->expects($this->never())->method('saveBatch');
         $this->costLayerRepository->expects($this->never())->method('save');
         $this->journalService->expects($this->never())->method('onKitDisassembly');
@@ -91,6 +93,7 @@ class DisassembleKitTest extends TestCase
     {
         $this->productRepository->expects($this->never())->method('save');
         $this->ledgerRepository->expects($this->never())->method('append');
+        $this->ledgerRepository->expects($this->never())->method('appendAll');
         $this->costLayerRepository->expects($this->never())->method('saveBatch');
         $this->costLayerRepository->expects($this->never())->method('save');
         $this->journalService->expects($this->never())->method('onKitDisassembly');
@@ -116,6 +119,7 @@ class DisassembleKitTest extends TestCase
     {
         $this->productRepository->expects($this->never())->method('save');
         $this->ledgerRepository->expects($this->never())->method('append');
+        $this->ledgerRepository->expects($this->never())->method('appendAll');
         $this->costLayerRepository->expects($this->never())->method('saveBatch');
         $this->costLayerRepository->expects($this->never())->method('save');
         $this->journalService->expects($this->never())->method('onKitDisassembly');
@@ -215,12 +219,16 @@ class DisassembleKitTest extends TestCase
                 return in_array($product->getId(), ['prod_kit_1', 'comp-1']);
             }));
 
-        $this->ledgerRepository->expects($this->exactly(2))
-            ->method('append')
-            ->with($this->callback(function ($entry) {
-                return $entry->actorId === 'actor-1'
-                    && $entry->referenceId === 'ref-1'
-                    && $entry->metadata['locationId'] === 'LOC-1';
+        $this->ledgerRepository->expects($this->once())
+            ->method('appendAll')
+            ->with($this->callback(function (array $entries) {
+                if (count($entries) !== 2) return false;
+                foreach ($entries as $entry) {
+                    if ($entry->actorId !== 'actor-1') return false;
+                    if ($entry->referenceId !== 'ref-1') return false;
+                    if ($entry->metadata['locationId'] !== 'LOC-1') return false;
+                }
+                return true;
             }));
 
         $this->journalService->expects($this->once())
@@ -362,6 +370,7 @@ class DisassembleKitTest extends TestCase
     {
         $this->productRepository->expects($this->never())->method('save');
         $this->ledgerRepository->expects($this->never())->method('append');
+        $this->ledgerRepository->expects($this->never())->method('appendAll');
         $this->costLayerRepository->expects($this->never())->method('saveBatch');
         $this->costLayerRepository->expects($this->never())->method('save');
         $this->journalService->expects($this->never())->method('onKitDisassembly');

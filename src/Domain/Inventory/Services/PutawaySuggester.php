@@ -50,24 +50,25 @@ class PutawaySuggester
             return [];
         }
 
-        // Load all product locations to calculate current occupancy
-        $allStocks = ProductLocationModel::where('stock_quantity', '>', 0)
-            ->with('product')
+        // ⚡ Bolt: Prevent massive memory consumption and slow PHP iteration by pushing
+        // the weight and volume aggregation to the database using an optimized group-by query.
+        $occupancyData = Capsule::table('product_locations')
+            ->join('products', 'product_locations.product_id', '=', 'products.id')
+            ->where('product_locations.stock_quantity', '>', 0)
+            ->select(
+                'product_locations.location_id',
+                Capsule::raw('SUM(product_locations.stock_quantity * COALESCE(products.weight_grams, 0)) as total_weight'),
+                Capsule::raw('SUM(product_locations.stock_quantity * COALESCE(products.volume_cubic_meters, 0.0)) as total_volume')
+            )
+            ->groupBy('product_locations.location_id')
             ->get();
 
         $occupiedMap = [];
-        foreach ($allStocks as $stock) {
-            if (!$stock->product) continue;
-            $locId = $stock->location_id;
-
-            $weight = $stock->stock_quantity * ($stock->product->weight_grams ?? 0);
-            $volume = $stock->stock_quantity * ($stock->product->volume_cubic_meters ?? 0.0);
-
-            if (!isset($occupiedMap[$locId])) {
-                $occupiedMap[$locId] = ['weight' => 0, 'volume' => 0.0];
-            }
-            $occupiedMap[$locId]['weight'] += $weight;
-            $occupiedMap[$locId]['volume'] += $volume;
+        foreach ($occupancyData as $row) {
+            $occupiedMap[$row->location_id] = [
+                'weight' => (int) $row->total_weight,
+                'volume' => (float) $row->total_volume,
+            ];
         }
 
         $locationCapacities = [];

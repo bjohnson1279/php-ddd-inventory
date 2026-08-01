@@ -2003,50 +2003,6 @@ if ($method === 'POST' && $uri === '/api/compliance/verify') {
     exit;
 }
 
-// ── Route: GET /api/compliance/reconstruct ─────────────────────────────────────
-if ($method === 'GET' && $uri === '/api/compliance/reconstruct') {
-    requireAuth();
-    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ComplianceController())
-        ->reconstruct($request);
-    http_response_code($response->getStatusCode());
-    echo $response->getContent();
-    exit;
-}
-
-// ── Route: GET /api/compliance/replay ──────────────────────────────────────────
-if ($method === 'GET' && $uri === '/api/compliance/replay') {
-    requireAuth();
-    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ComplianceController())
-        ->replay($request);
-    http_response_code($response->getStatusCode());
-    echo $response->getContent();
-    exit;
-}
-
-// ── Route: GET /api/admin/cache/stats ───────────────────────────────────────────
-if ($method === 'GET' && $uri === '/api/admin/cache/stats') {
-    requireAuth();
-    $stats = [
-        'hits' => 150,
-        'misses' => 20,
-        'hitRatio' => 88.24,
-        'invalidations' => 5,
-        'activeKeysCount' => 38
-    ];
-    http_response_code(200);
-    echo json_encode($stats);
-    exit;
-}
-
-// ── Route: POST /api/admin/cache/clear ─────────────────────────────────────────
-if ($method === 'POST' && $uri === '/api/admin/cache/clear') {
-    requireAuth();
-    http_response_code(200);
-    echo json_encode(['success' => true, 'clearedKeysCount' => 38]);
-    exit;
-}
-
-
 // ── Route: GET /api/warehouse-locations/slotting-suggestions ────────────────────
 if ($method === 'GET' && $uri === '/api/warehouse-locations/slotting-suggestions') {
     requireAuth();
@@ -2607,26 +2563,6 @@ if ($uri === '/api/fulfillment/drop-ship' && $method === 'POST') {
         'supplierId' => $input['supplierId'] ?? '',
         'createdAt' => (new DateTimeImmutable())->format(DATE_ATOM)
     ]);
-    exit;
-}
-
-// ── Route: GET /api/anomaly-detection/analyze ──────────────────────────────────
-if ($method === 'GET' && $uri === '/api/anomaly-detection/analyze') {
-    requireAuth();
-    $service = new \InventoryApp\Application\AI\AnomalyDetectionService();
-    $response = $service->analyze($_GET);
-    http_response_code(200);
-    echo json_encode($response);
-    exit;
-}
-
-// ── Route: GET /api/rebalance/matrix ───────────────────────────────────────────
-if ($method === 'GET' && $uri === '/api/rebalance/matrix') {
-    requireAuth();
-    $service = new \InventoryApp\Application\AI\RebalanceOptimizationService();
-    $response = $service->getMatrix($_GET);
-    http_response_code(200);
-    echo json_encode($response);
     exit;
 }
 

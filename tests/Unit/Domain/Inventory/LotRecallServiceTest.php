@@ -3,9 +3,9 @@
 namespace Tests\Unit\Domain\Inventory;
 
 use PHPUnit\Framework\TestCase;
-use InventoryApp\Domain\Inventory\Entities\LotBatch;
-use InventoryApp\Domain\Inventory\Services\LotRecallService;
-use InventoryApp\Domain\Shipping\Services\CrossDockingEngine;
+use App\Domain\Inventory\Entities\LotBatch;
+use App\Domain\Inventory\Services\LotRecallService;
+use App\Domain\Shipping\Services\CrossDockingEngine;
 use DateTimeImmutable;
 
 class LotRecallServiceTest extends TestCase

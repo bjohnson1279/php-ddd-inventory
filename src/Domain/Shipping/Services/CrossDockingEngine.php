@@ -1,6 +1,6 @@
 <?php
 
-namespace InventoryApp\Domain\Shipping\Services;
+namespace App\Domain\Shipping\Services;
 
 class CrossDockingEngine
 {

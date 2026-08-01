@@ -207,10 +207,3 @@
 ## 2024-05-18 - Update PHPUnit mock expectations when refactoring single appends to batch appends
 **Learning:** When refactoring iterative repository insertions (e.g., `append`) into batch operations (e.g., `appendAll`), update PHPUnit mock expectations to reflect the change from multiple invocations (`$this->exactly($n)`) to a single invocation (`$this->once()`), alongside updating the callback signature to accept an array.
 **Action:** When updating mock expectations for a newly introduced `appendAll` method, ensure to use `$this->once()` if the batch method is called once outside the loop, rather than `$this->exactly($n)` which corresponds to the old `append` method behavior inside the loop.
-
-## 2025-02-12 - Ledger Repository Bulk Insert
-**Learning:** In the domain architecture, certain operations (like kit assembly/disassembly) loop through collections of child items and append entries to a ledger. Previously, `LedgerRepositoryInterface` only exposed a single `append()` method, forcing N+1 insert queries (one for each component plus the kit itself) during complex operations. Adding an `appendAll()` method to the repository interfaces and optimizing the use cases to collect entries first dramatically reduces database roundtrips.
-**Action:** When working on aggregates or use cases that process collections of children, always check the persistence layer to see if batching inserts (e.g., `insert` vs `create`) is possible instead of looping `save` or `append`.
-## 2024-05-14 - PHP Memory vs Database Aggregation
-**Learning:** In a large warehouse environment, iterating over every active `ProductLocationModel` to calculate total occupied weight and volume manually in PHP consumes excessive memory and causes O(N) performance degradation as inventory grows.
-**Action:** When calculating aggregate metrics across large datasets in Laravel/Capsule, bypass Eloquent model hydration entirely. Offload the math (like `SUM` and multiplications) to the database using `Capsule::table()` and `Capsule::raw()` with `GROUP BY` to achieve O(L) time complexity and minimal memory usage.

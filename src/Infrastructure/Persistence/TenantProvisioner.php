@@ -45,7 +45,6 @@ class TenantProvisioner
             return $dbName;
 
         } catch (\Throwable $e) {
-            error_log('[TenantProvisioner] Provisioning failed: ' . $e->getMessage());
             // Cleanup on failure
             try {
                 $this->capsule->getConnection()->statement("DROP DATABASE IF EXISTS \"{$dbName}\"");

@@ -5,6 +5,7 @@ namespace InventoryApp\Application\Procurement\UseCases;
 use InventoryApp\Domain\Procurement\Repositories\PurchaseOrderRepositoryInterface;
 use InventoryApp\Domain\Inventory\Repositories\ProductRepositoryInterface;
 use InventoryApp\Domain\Accounting\Repositories\CostLayerRepositoryInterface;
+use InventoryApp\Application\Inventory\UseCases\ReceiveStock;
 use InventoryApp\Domain\Accounting\Entities\InventoryCostLayer;
 use InventoryApp\Domain\Inventory\ValueObjects\SKU;
 use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
@@ -30,12 +31,8 @@ class ReceivePurchaseOrder
             throw new Exception("Purchase order with ID {$data['purchaseOrderId']} not found.");
         }
 
+        $receiveStock = new ReceiveStock($this->productRepository, $this->events);
         $costLayers = [];
-        $modifiedProducts = [];
-
-        $variantIds = array_unique(array_column($data['items'], 'variantId'));
-        $skus = array_map(fn($id) => new SKU($id), $variantIds);
-        $productsMap = $this->productRepository->findBySkus($skus);
 
         foreach ($data['items'] as $item) {
             $poItem = null;
@@ -54,17 +51,12 @@ class ReceivePurchaseOrder
             $po->receiveItems($item['variantId'], $item['quantityReceived']);
 
             // 2. Receive physical stock
-            if (!isset($productsMap[$item['variantId']])) {
-                throw new Exception("Product not found with SKU: " . $item['variantId']);
-            }
-            $product = $productsMap[$item['variantId']];
-            $product->receiveStockAt(
+            $receiveStock->execute(
+                new SKU($item['variantId']),
                 new LocationId($po->locationId),
                 new Quantity($item['quantityReceived']),
-                $po->purchaseOrderNumber,
-                true // skip cost layer creation via domain event
+                $po->purchaseOrderNumber
             );
-            $modifiedProducts[$product->getId()] = $product;
 
             // 3. Prepare Cost Layer
             $costLayers[] = new InventoryCostLayer(
@@ -76,16 +68,6 @@ class ReceivePurchaseOrder
                 new DateTimeImmutable(),
                 $po->id
             );
-        }
-
-        if (!empty($modifiedProducts)) {
-            $this->productRepository->saveAll(array_values($modifiedProducts));
-
-            foreach ($modifiedProducts as $product) {
-                foreach ($product->releaseEvents() as $event) {
-                    $this->events->dispatch($event);
-                }
-            }
         }
 
         if (!empty($costLayers)) {

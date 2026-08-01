@@ -111,18 +111,16 @@ class ReceivePurchaseOrderTest extends TestCase
 
         // ReceiveStock dependency
         $this->productRepository->expects($this->once())
-            ->method('findBySkus')
-            ->with($this->callback(function (array $skus) {
-                if (count($skus) !== 1) return false;
-                return $skus[0]->getValue() === 'VARIANT-1';
+            ->method('findBySku')
+            ->with($this->callback(function (SKU $sku) {
+                return $sku->getValue() === 'VARIANT-1';
             }))
-            ->willReturn(['VARIANT-1' => $productMock]);
+            ->willReturn($productMock);
 
         $this->productRepository->expects($this->once())
-            ->method('saveAll')
-            ->with($this->callback(function (array $products) {
-                if (count($products) !== 1) return false;
-                return $products[0]->getTotalStockQuantity()->getValue() === 5;
+            ->method('save')
+            ->with($this->callback(function (Product $p) {
+                return $p->getTotalStockQuantity()->getValue() === 5;
             }));
 
         $this->costLayerRepository->expects($this->once())

@@ -1,6 +1,6 @@
 <?php
 
-namespace InventoryApp\Domain\Inventory\Entities;
+namespace App\Domain\Inventory\Entities;
 
 use DateTimeImmutable;
 

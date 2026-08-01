@@ -1,8 +1,8 @@
 <?php
 
-namespace InventoryApp\Domain\Inventory\Services;
+namespace App\Domain\Inventory\Services;
 
-use InventoryApp\Domain\Inventory\Entities\LotBatch;
+use App\Domain\Inventory\Entities\LotBatch;
 
 class LotRecallService
 {

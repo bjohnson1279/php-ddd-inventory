@@ -200,11 +200,8 @@ final class ForecastingE2ETest extends TestCase
         $now = new \DateTime();
         $nowStr = $now->format('Y-m-d H:i:s');
 
-        $sameMonthLastYear = (new \DateTime())->modify('-1 year');
+        $sameMonthLastYear = (new \DateTime())->modify('-364 days');
         $sameMonthLastYearStr = $sameMonthLastYear->format('Y-m-d H:i:s');
-        // To guarantee this sale falls in the target month index and boosts the seasonal multiplier,
-        // we use the current date instead of trying to hit the edge of the 365-day window.
-        $sameMonthLastYearStr = $nowStr;
 
         $diffMonthLastYear = (new \DateTime())->modify('-300 days');
         $diffMonthLastYearStr = $diffMonthLastYear->format('Y-m-d H:i:s');

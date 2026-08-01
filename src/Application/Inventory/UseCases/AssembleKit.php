@@ -87,7 +87,6 @@ class AssembleKit
         // 3. Consume FIFO costing layers for components and calculate total components cost
         $totalCostCents = 0;
         $modifiedProducts = [];
-        $ledgerEntriesToAppend = [];
         foreach ($componentsToConsume as $comp) {
             $breakdown = $this->costLayerService->consumeFifoLayers($comp['variantId'], $comp['needed']);
             $totalCostCents += $breakdown->totalCostCents;
@@ -98,7 +97,7 @@ class AssembleKit
             $modifiedProducts[] = $product;
 
             // Write deduction to ledger_entries
-            $ledgerEntriesToAppend[] = new LedgerEntry(
+            $ledgerEntry = new LedgerEntry(
                 id: Uuid::uuid4()->toString(),
                 variantId: $comp['variantId'],
                 quantity: -$comp['needed'],
@@ -108,6 +107,7 @@ class AssembleKit
                 occurredAt: new \DateTimeImmutable(),
                 metadata: ['locationId' => $locationId]
             );
+            $this->ledgerRepository->append($ledgerEntry);
         }
 
         // Save all modified products collectively (Optimized write)
@@ -135,8 +135,8 @@ class AssembleKit
         $kitProduct->receiveStockAt(new LocationId($locationId), new Quantity($quantity), $referenceId);
         $this->productRepository->save($kitProduct);
 
-        // 7. Add increment ledger entry for Kit variant to the batch
-        $ledgerEntriesToAppend[] = new LedgerEntry(
+        // 7. Write increment ledger entry for Kit variant
+        $kitLedgerEntry = new LedgerEntry(
             id: Uuid::uuid4()->toString(),
             variantId: $kitProduct->getId(),
             quantity: $quantity,
@@ -146,7 +146,7 @@ class AssembleKit
             occurredAt: new \DateTimeImmutable(),
             metadata: ['locationId' => $locationId]
         );
-        $this->ledgerRepository->appendAll($ledgerEntriesToAppend);
+        $this->ledgerRepository->append($kitLedgerEntry);
 
         // 8. Write balanced double-entry Journal Entry
         $this->journalService->onKitAssembly(

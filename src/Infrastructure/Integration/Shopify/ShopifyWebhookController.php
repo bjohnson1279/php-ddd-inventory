@@ -40,8 +40,6 @@ class ShopifyWebhookController
             $this->mapper->handleOrderPaid($payload);
             return response()->json(['message' => 'Order processed'], 200);
         } catch (Exception $e) {
-            // Log the error; always return 200 to Shopify to prevent retries
-            // when the error is a business logic issue rather than infra.
             report($e);
             return response()->json(['message' => 'Accepted'], 200);
         }

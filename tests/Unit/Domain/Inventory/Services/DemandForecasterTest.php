@@ -13,26 +13,21 @@ use InventoryApp\Domain\Inventory\Repositories\DemandForecastRepositoryInterface
 use InventoryApp\Domain\Inventory\ValueObjects\SKU;
 use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
 use InventoryApp\Domain\Inventory\Entities\Product;
+use InventoryApp\Domain\Inventory\Entities\LocationStock;
 use InventoryApp\Domain\Inventory\Entities\LedgerEntry;
 use InventoryApp\Domain\Inventory\Enums\ReasonCode;
 use InventoryApp\Domain\Inventory\ValueObjects\Department;
 use InventoryApp\Domain\Inventory\ValueObjects\Quantity;
-use DateTimeImmutable;
-use Ramsey\Uuid\Uuid;
-
-class DemandForecasterTest extends TestCase
-{
-    private ProductRepositoryInterface $productRepo;
-    private LedgerRepositoryInterface $ledgerRepo;
-    private ReorderPolicyRepositoryInterface $replenishmentRuleRepo;
-    private DemandForecastRepositoryInterface $demandForecastRepo;
-use InventoryApp\Domain\Inventory\Entities\LocationStock;
 use InventoryApp\Domain\Procurement\Services\ReorderPolicyService;
 use InventoryApp\Infrastructure\ServiceContainer;
+use DateTimeImmutable;
+use Ramsey\Uuid\Uuid;
 use Exception;
 
 final class DemandForecasterTest extends TestCase
 {
+    private ProductRepositoryInterface $productRepo;
+    private LedgerRepositoryInterface $ledgerRepo;
     private ReorderPolicyRepositoryInterface $policyRepo;
     private DemandForecastRepositoryInterface $forecastRepo;
     private DemandForecaster $forecaster;
@@ -41,16 +36,14 @@ final class DemandForecasterTest extends TestCase
     {
         $this->productRepo = $this->createMock(ProductRepositoryInterface::class);
         $this->ledgerRepo = $this->createMock(LedgerRepositoryInterface::class);
-        $this->replenishmentRuleRepo = $this->createMock(ReorderPolicyRepositoryInterface::class);
-        $this->demandForecastRepo = $this->createMock(DemandForecastRepositoryInterface::class);
         $this->policyRepo = $this->createMock(ReorderPolicyRepositoryInterface::class);
         $this->forecastRepo = $this->createMock(DemandForecastRepositoryInterface::class);
 
         $this->forecaster = new DemandForecaster(
             $this->productRepo,
             $this->ledgerRepo,
-            $this->replenishmentRuleRepo,
-            $this->demandForecastRepo
+            $this->policyRepo,
+            $this->forecastRepo
         );
     }
 
@@ -62,6 +55,7 @@ final class DemandForecasterTest extends TestCase
             'Test Product',
             new Department('Electronics'),
             new Quantity(10)
+        );
     }
 
     public function testCalculateSalesVelocityUsesInjectedProductAndEntries(): void
@@ -81,12 +75,24 @@ final class DemandForecasterTest extends TestCase
                 null,
                 (new DateTimeImmutable())->modify('-5 days') // Last 7 days
             ),
+            new LedgerEntry(
+                Uuid::uuid4()->toString(),
+                'TEST-SKU-1',
                 -20, // KitSale
                 ReasonCode::KitSale,
+                'actor-1',
+                null,
                 (new DateTimeImmutable())->modify('-15 days') // Last 30 days
+            ),
+            new LedgerEntry(
+                Uuid::uuid4()->toString(),
+                'TEST-SKU-1',
                 -30, // Sale
+                ReasonCode::Sale,
+                'actor-1',
+                null,
                 (new DateTimeImmutable())->modify('-60 days') // Last 90 days
-            )
+            ),
         ];
 
         // Product is injected, so no call to findBySku
@@ -129,6 +135,8 @@ final class DemandForecasterTest extends TestCase
             ->with($sku)
             ->willReturn($product);
 
+        $this->ledgerRepo->expects($this->once())
+            ->method('entriesFor')
             ->with('TEST-SKU-2', 'LOC-TEST-2')
             ->willReturn([]);
 
@@ -147,14 +155,15 @@ final class DemandForecasterTest extends TestCase
         $sku = new SKU('TEST-SKU-3');
         $locationId = new LocationId('LOC-TEST-3');
 
+        $this->productRepo->expects($this->once())
+            ->method('findBySku')
+            ->with($sku)
             ->willReturn(null);
 
         $this->expectException(\Exception::class);
         $this->expectExceptionMessage("Product not found for SKU: TEST-SKU-3");
 
         $this->forecaster->calculateSalesVelocity($sku, $locationId);
-            $this->policyRepo,
-            $this->forecastRepo
     }
 
     public function testGenerateDemandForecastErrorPath(): void
@@ -179,7 +188,7 @@ final class DemandForecasterTest extends TestCase
         $mockPolicyService->method('checkPolicy')->willThrowException(new Exception('Policy evaluation failed'));
 
         $container = ServiceContainer::getInstance();
-        $container->instance(\InventoryApp\Domain\Procurement\Services\ReorderPolicyService::class, $mockPolicyService);
+        $container->instance(ReorderPolicyService::class, $mockPolicyService);
 
         // Run forecast generation
         // Suppress error_log output for clean tests
@@ -193,6 +202,6 @@ final class DemandForecasterTest extends TestCase
         $this->assertEquals($locationId, $forecast->locationId);
 
         // Clean up mock
-        $container->forgetInstance(\InventoryApp\Domain\Procurement\Services\ReorderPolicyService::class);
+        $container->forgetInstance(ReorderPolicyService::class);
     }
 }

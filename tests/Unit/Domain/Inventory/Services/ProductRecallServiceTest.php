@@ -44,6 +44,14 @@ class ProductRecallServiceTest extends TestCase
         $this->service->traceProductRecall($lotNumber);
     }
 
+    public function testTraceProductRecallFailsOnEmptyLot(): void
+    {
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage("Lot number cannot be empty.");
+
+        $this->service->traceProductRecall('');
+    }
+
     public function testTraceFiltersAndMapsCorrectly(): void
     {
         $date1 = new DateTimeImmutable('2023-10-27 10:00:00');

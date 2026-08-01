@@ -53,4 +53,31 @@ class ComplianceController
             return new Response(['error' => 'An internal server error occurred.'], 500);
         }
     }
+
+    public function reconstruct(RequestInterface $request)
+    {
+        try {
+            $tenantId = $request->query('tenantId') ?: 'tenant-1';
+            $timestamp = $request->query('timestamp') ?: null;
+            $result = ComplianceLedgerService::reconstructState($tenantId, $timestamp);
+            return new Response($result, 200);
+        } catch (Exception $e) {
+            error_log('[ComplianceController] ' . $e->getMessage());
+            return new Response(['error' => 'Failed to reconstruct state.'], 500);
+        }
+    }
+
+    public function replay(RequestInterface $request)
+    {
+        try {
+            $tenantId = $request->query('tenantId') ?: 'tenant-1';
+            $timestamp = $request->query('timestamp') ?: null;
+            $result = ComplianceLedgerService::replayAudit($tenantId, $timestamp);
+            return new Response($result, 200);
+        } catch (Exception $e) {
+            error_log('[ComplianceController] ' . $e->getMessage());
+            return new Response(['error' => 'Failed to replay audit.'], 500);
+        }
+    }
 }
+

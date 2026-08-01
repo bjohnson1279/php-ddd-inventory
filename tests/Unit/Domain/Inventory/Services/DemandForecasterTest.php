@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\Domain\Inventory\Services;
 
 use PHPUnit\Framework\TestCase;
@@ -24,6 +26,15 @@ class DemandForecasterTest extends TestCase
     private LedgerRepositoryInterface $ledgerRepo;
     private ReorderPolicyRepositoryInterface $replenishmentRuleRepo;
     private DemandForecastRepositoryInterface $demandForecastRepo;
+use InventoryApp\Domain\Inventory\Entities\LocationStock;
+use InventoryApp\Domain\Procurement\Services\ReorderPolicyService;
+use InventoryApp\Infrastructure\ServiceContainer;
+use Exception;
+
+final class DemandForecasterTest extends TestCase
+{
+    private ReorderPolicyRepositoryInterface $policyRepo;
+    private DemandForecastRepositoryInterface $forecastRepo;
     private DemandForecaster $forecaster;
 
     protected function setUp(): void
@@ -32,6 +43,8 @@ class DemandForecasterTest extends TestCase
         $this->ledgerRepo = $this->createMock(LedgerRepositoryInterface::class);
         $this->replenishmentRuleRepo = $this->createMock(ReorderPolicyRepositoryInterface::class);
         $this->demandForecastRepo = $this->createMock(DemandForecastRepositoryInterface::class);
+        $this->policyRepo = $this->createMock(ReorderPolicyRepositoryInterface::class);
+        $this->forecastRepo = $this->createMock(DemandForecastRepositoryInterface::class);
 
         $this->forecaster = new DemandForecaster(
             $this->productRepo,
@@ -49,7 +62,6 @@ class DemandForecasterTest extends TestCase
             'Test Product',
             new Department('Electronics'),
             new Quantity(10)
-        );
     }
 
     public function testCalculateSalesVelocityUsesInjectedProductAndEntries(): void
@@ -69,22 +81,10 @@ class DemandForecasterTest extends TestCase
                 null,
                 (new DateTimeImmutable())->modify('-5 days') // Last 7 days
             ),
-            new LedgerEntry(
-                Uuid::uuid4()->toString(),
-                'TEST-SKU-1',
                 -20, // KitSale
                 ReasonCode::KitSale,
-                'actor-1',
-                null,
                 (new DateTimeImmutable())->modify('-15 days') // Last 30 days
-            ),
-            new LedgerEntry(
-                Uuid::uuid4()->toString(),
-                'TEST-SKU-1',
                 -30, // Sale
-                ReasonCode::Sale,
-                'actor-1',
-                null,
                 (new DateTimeImmutable())->modify('-60 days') // Last 90 days
             )
         ];
@@ -129,8 +129,6 @@ class DemandForecasterTest extends TestCase
             ->with($sku)
             ->willReturn($product);
 
-        $this->ledgerRepo->expects($this->once())
-            ->method('entriesFor')
             ->with('TEST-SKU-2', 'LOC-TEST-2')
             ->willReturn([]);
 
@@ -149,14 +147,52 @@ class DemandForecasterTest extends TestCase
         $sku = new SKU('TEST-SKU-3');
         $locationId = new LocationId('LOC-TEST-3');
 
-        $this->productRepo->expects($this->once())
-            ->method('findBySku')
-            ->with($sku)
             ->willReturn(null);
 
         $this->expectException(\Exception::class);
         $this->expectExceptionMessage("Product not found for SKU: TEST-SKU-3");
 
         $this->forecaster->calculateSalesVelocity($sku, $locationId);
+            $this->policyRepo,
+            $this->forecastRepo
+    }
+
+    public function testGenerateDemandForecastErrorPath(): void
+    {
+        $sku = new SKU('TEST-SKU');
+        $locationId = new LocationId('LOC-1');
+
+        $product = $this->createMock(Product::class);
+        $product->method('getSku')->willReturn($sku);
+
+        $locationStock = $this->createMock(LocationStock::class);
+        $stockQty = $this->createMock(Quantity::class);
+        $stockQty->method('getValue')->willReturn(10);
+        $locationStock->method('getStockQuantity')->willReturn($stockQty);
+
+        $product->method('getStockAt')->willReturn($locationStock);
+
+        $this->ledgerRepo->method('entriesFor')->willReturn([]);
+
+        // Use a mock ServiceContainer that binds the ReorderPolicyService mock
+        $mockPolicyService = $this->createMock(ReorderPolicyService::class);
+        $mockPolicyService->method('checkPolicy')->willThrowException(new Exception('Policy evaluation failed'));
+
+        $container = ServiceContainer::getInstance();
+        $container->instance(\InventoryApp\Domain\Procurement\Services\ReorderPolicyService::class, $mockPolicyService);
+
+        // Run forecast generation
+        // Suppress error_log output for clean tests
+        ob_start();
+        $forecast = $this->forecaster->generateDemandForecast($sku, $locationId, 30, 1.0, $product);
+        ob_end_clean();
+
+        // Check if forecast is valid
+        $this->assertNotNull($forecast);
+        $this->assertEquals($sku, $forecast->sku);
+        $this->assertEquals($locationId, $forecast->locationId);
+
+        // Clean up mock
+        $container->forgetInstance(\InventoryApp\Domain\Procurement\Services\ReorderPolicyService::class);
     }
 }

@@ -81,7 +81,12 @@ class EventDispatcher implements EventDispatcherInterface
             ]);
         } catch (\Throwable $e) {
             // Fallback: Run synchronously if DB connection is unavailable (e.g. in some in-memory unit tests)
-            error_log("[EventDispatcher] Failed to queue listener " . get_class($listenerObj) . ": " . $e->getMessage() . ". Running synchronously.");
+            error_log(sprintf(
+                "[EventDispatcher] Failed to queue listener %s: %s. Running synchronously.",
+                get_class($listenerObj),
+                $e->getMessage()
+            ));
+
             if (method_exists($listenerObj, 'handle')) {
                 $listenerObj->handle($event);
             }

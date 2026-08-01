@@ -60,6 +60,34 @@ class RouteOrderTest extends TestCase
         $this->assertEquals(999999, $fulfillmentPlan->estimatedShippingCostCents);
     }
 
+    public function test_it_handles_fetch_rates_exception_by_returning_fallback_cost(): void
+    {
+        $skuStr = 'TEST-SKU';
+        $quantity = 1;
+        $destinationAddress = '123 Main St, New York, NY 10001';
+
+        // Setup fake product with enough stock
+        $product = new Product('p1', new SKU($skuStr), 'Test Product', new Department('TEST'));
+        $locationId = new LocationId('LOC-WH1-NY');
+        // Add sufficient stock so allocation works
+        $product->getStockAt($locationId)->addStock(new Quantity(5), new Condition(Condition::NEW));
+
+        $this->productRepositoryMock->expects($this->once())
+            ->method('findBySku')
+            ->with($this->callback(fn(SKU $s) => $s->getValue() === $skuStr))
+            ->willReturn($product);
+
+        // Carrier service throws exception when fetching rates
+        $this->carrierServiceMock->expects($this->once())
+            ->method('fetchRates')
+            ->willThrowException(new Exception('Network error'));
+
+        $fulfillmentPlan = $this->useCase->execute($skuStr, $quantity, $destinationAddress);
+
+        // Assert fallback cost is used
+        $this->assertEquals(999999, $fulfillmentPlan->estimatedShippingCostCents);
+    }
+
     public function test_it_returns_fallback_cost_when_carrier_service_throws_runtime_exception(): void
     {
         $skuStr = 'TEST-SKU';

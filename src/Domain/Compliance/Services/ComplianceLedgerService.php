@@ -12,7 +12,6 @@ class ComplianceLedgerService
     {
         $key = getenv('COMPLIANCE_PRIVATE_KEY') ?: getenv('COMPLIANCE_KEY');
         if (!$key || empty(trim($key))) {
-            if (getenv('APP_ENV') === 'testing') {
             $env = getenv('APP_ENV');
             if ($env === 'testing' || !$env || $env === 'development') {
                 return 'compliance-fallback-secret-key-12345!@#';

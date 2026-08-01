@@ -799,6 +799,34 @@ paths:
       responses:
         '200':
           description: OK
+  /api/compliance/reconstruct:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/compliance/replay:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/admin/cache/stats:
+    get:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /api/admin/cache/clear:
+    post:
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
   /api/audit:
     get:
       security:

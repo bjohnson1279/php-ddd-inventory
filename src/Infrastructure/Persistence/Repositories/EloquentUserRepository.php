@@ -80,7 +80,7 @@ class EloquentUserRepository implements UserRepositoryInterface
                     return Role::createDefault($roleModel->id);
                 } catch (\InvalidArgumentException $e) {
                     // Unknown role slug in DB — skip gracefully
-                    error_log('[EloquentUserRepository.php] ' . $e->getMessage());
+                    error_log('[EloquentUserRepository] ' . $e->getMessage());
                     return null;
                 }
             })

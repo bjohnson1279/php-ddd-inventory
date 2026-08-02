@@ -20,6 +20,7 @@ class ComplianceLedgerServiceTest extends TestCase
         parent::setUp();
         $this->savedEntries = [];
         putenv('COMPLIANCE_PRIVATE_KEY=test-secret-key-12345');
+        putenv('APP_ENV=testing');
 
         $this->mockRepo = $this->createMock(ComplianceLedgerRepositoryInterface::class);
 

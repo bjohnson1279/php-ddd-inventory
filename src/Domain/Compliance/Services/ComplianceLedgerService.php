@@ -12,7 +12,7 @@ class ComplianceLedgerService
     {
         $key = getenv('COMPLIANCE_PRIVATE_KEY') ?: getenv('COMPLIANCE_KEY');
         if (!$key || empty(trim($key))) {
-            $env = getenv('APP_ENV');
+            $env = getenv('APP_ENV') ?: (getenv('GITHUB_ACTIONS') ? 'testing' : null);
             if ($env === 'testing') {
                 return 'compliance-fallback-secret-key-12345!@#';
             }

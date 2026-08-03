@@ -214,7 +214,3 @@
 ## 2024-05-14 - PHP Memory vs Database Aggregation
 **Learning:** In a large warehouse environment, iterating over every active `ProductLocationModel` to calculate total occupied weight and volume manually in PHP consumes excessive memory and causes O(N) performance degradation as inventory grows.
 **Action:** When calculating aggregate metrics across large datasets in Laravel/Capsule, bypass Eloquent model hydration entirely. Offload the math (like `SUM` and multiplications) to the database using `Capsule::table()` and `Capsule::raw()` with `GROUP BY` to achieve O(L) time complexity and minimal memory usage.
-
-## 2024-05-14 - PHP Memory vs Database Aggregation
-**Learning:** In a large warehouse environment, iterating over every active `ProductLocationModel` to calculate total occupied weight and volume manually in PHP consumes excessive memory and causes O(N) performance degradation as inventory grows.
-**Action:** When calculating aggregate metrics across large datasets in Laravel/Capsule, bypass Eloquent model hydration entirely. Offload the math (like `SUM` and multiplications) to the database using `Capsule::table()` and `Capsule::raw()` with `GROUP BY` to achieve O(L) time complexity and minimal memory usage.

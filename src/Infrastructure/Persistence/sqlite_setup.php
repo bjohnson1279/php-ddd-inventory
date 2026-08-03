@@ -18,7 +18,8 @@ class SqliteSetup
             self::getForecastingQueries(),
             self::getShippingQueries(),
             self::getComplianceQueries(),
-            self::getRfidQueries()
+            self::getRfidQueries(),
+            self::getLogisticsErpQueries()
         );
 
         foreach ($queries as $q) {
@@ -549,4 +550,67 @@ class SqliteSetup
             )"
         ];
     }
+
+    private static function getLogisticsErpQueries(): array
+    {
+        return [
+            "CREATE TABLE IF NOT EXISTS bills_of_lading (
+              id TEXT PRIMARY KEY,
+              bol_number TEXT NOT NULL UNIQUE,
+              carrier TEXT NOT NULL,
+              origin_address TEXT NOT NULL,
+              destination_address TEXT NOT NULL,
+              weight_kg NUMERIC NOT NULL,
+              total_packages INTEGER NOT NULL,
+              status TEXT NOT NULL DEFAULT 'GENERATED',
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS return_merchandise_authorizations (
+              id TEXT PRIMARY KEY,
+              rma_number TEXT NOT NULL UNIQUE,
+              order_id TEXT NOT NULL,
+              customer_id TEXT NOT NULL,
+              status TEXT NOT NULL DEFAULT 'PENDING_INSPECTION',
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS rma_items (
+              id TEXT PRIMARY KEY,
+              rma_id TEXT NOT NULL,
+              sku TEXT NOT NULL,
+              quantity INTEGER NOT NULL,
+              reason TEXT NOT NULL,
+              disposition TEXT NOT NULL DEFAULT 'PENDING',
+              inspected_at DATETIME
+            )",
+            "CREATE TABLE IF NOT EXISTS supplier_asns (
+              id TEXT PRIMARY KEY,
+              asn_number TEXT NOT NULL UNIQUE,
+              supplier_id TEXT NOT NULL,
+              expected_delivery DATETIME NOT NULL,
+              actual_delivery DATETIME,
+              status TEXT NOT NULL DEFAULT 'IN_TRANSIT',
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS supplier_scorecards (
+              id TEXT PRIMARY KEY,
+              supplier_id TEXT NOT NULL,
+              on_time_rate NUMERIC NOT NULL,
+              in_full_rate NUMERIC NOT NULL,
+              defect_rate NUMERIC NOT NULL,
+              otif_score NUMERIC NOT NULL,
+              evaluated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS esg_emissions_records (
+              id TEXT PRIMARY KEY,
+              tenant_id TEXT NOT NULL,
+              transport_mode TEXT NOT NULL,
+              distance_km NUMERIC NOT NULL,
+              weight_kg NUMERIC NOT NULL,
+              ton_km NUMERIC NOT NULL,
+              co2e_kg NUMERIC NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )"
+        ];
+    }
 }
+

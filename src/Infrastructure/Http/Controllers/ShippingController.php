@@ -170,4 +170,88 @@ class ShippingController
             return new Response(['error' => $e->getMessage(), 'type' => $type], 400);
         }
     }
+
+    public function calculateCarrierRates(RequestInterface $request): Response
+    {
+        try {
+            $body = $request->getParsedBody();
+            $carrier = $body['carrier'] ?? null;
+            $originPostalCode = $body['originPostalCode'] ?? null;
+            $destinationPostalCode = $body['destinationPostalCode'] ?? null;
+            $weightKg = isset($body['weightKg']) ? (float)$body['weightKg'] : null;
+            $serviceLevel = $body['serviceLevel'] ?? null;
+
+            if (!$carrier || !$originPostalCode || !$destinationPostalCode || $weightKg === null) {
+                return new Response(['error' => 'Missing required fields: carrier, originPostalCode, destinationPostalCode, weightKg.'], 400);
+            }
+
+            $originNum = (int)preg_replace('/\D/', '', $originPostalCode ?: '10001');
+            $destNum = (int)preg_replace('/\D/', '', $destinationPostalCode ?: '90001');
+            $baseDistanceFactor = abs($destNum - $originNum);
+
+            $baseCents = (int)round(1500 + $weightKg * 250 + ($baseDistanceFactor % 2000));
+            $fuelSurchargeCents = (int)round($baseCents * 0.12);
+            $totalRateCents = $baseCents + $fuelSurchargeCents;
+
+            $service = $serviceLevel ?: 'GROUND_STANDARD';
+            $days = 3;
+            if ($carrier === 'FEDEX') { $service = $serviceLevel ?: 'FEDEX_EXPRESS_SAVER'; $days = 2; }
+            elseif ($carrier === 'UPS') { $service = $serviceLevel ?: 'UPS_GROUND'; $days = 3; }
+            elseif ($carrier === 'DHL') { $service = $serviceLevel ?: 'EXPRESS_WORLDWIDE'; $days = 1; }
+            elseif ($carrier === 'GENERIC_LTL') { $service = $serviceLevel ?: 'FREIGHT_LTL_STANDARD'; $days = 5; }
+
+            return new Response([
+                'carrier' => $carrier,
+                'serviceLevel' => $service,
+                'baseRateCents' => $baseCents,
+                'fuelSurchargeCents' => $fuelSurchargeCents,
+                'totalRateCents' => $totalRateCents,
+                'estimatedDeliveryDays' => $days,
+                'currency' => 'USD',
+            ], 200);
+        } catch (Exception $e) {
+            return new Response(['error' => 'Failed to calculate carrier rates: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function generateShippingLabel(RequestInterface $request): Response
+    {
+        try {
+            $body = $request->getParsedBody();
+            $carrier = $body['carrier'] ?? null;
+            $recipientName = $body['recipientName'] ?? null;
+            $shippingAddress = $body['shippingAddress'] ?? null;
+            $serviceLevel = $body['serviceLevel'] ?? null;
+            $format = $body['format'] ?? 'BOTH';
+
+            if (!$carrier || !$recipientName || !$shippingAddress) {
+                return new Response(['error' => 'Missing required fields: carrier, recipientName, shippingAddress.'], 400);
+            }
+
+            $trackingPrefix = $carrier === 'FEDEX' ? 'FX' : ($carrier === 'UPS' ? '1Z' : ($carrier === 'DHL' ? 'DHL' : 'LTL'));
+            $trackingNumber = $trackingPrefix . rand(1000000000, 9999999999);
+
+            $zplString = ($format === 'ZPL' || $format === 'BOTH')
+                ? "^XA^FO50,50^A0N,50,50^FD{$carrier} SHIPPING LABEL^FS^FO50,120^A0N,30,30^FDTo: {$recipientName}^FS^FO50,160^A0N,25,25^FDAddr: {$shippingAddress}^FS^FO50,210^BY3^BCN,100,Y,N,N^FD{$trackingNumber}^FS^XZ"
+                : null;
+
+            $pdfBase64 = ($format === 'PDF' || $format === 'BOTH')
+                ? base64_encode("PDF-MOCK-LABEL-{$carrier}-{$trackingNumber}-{$recipientName}")
+                : null;
+
+            return new Response([
+                'carrier' => $carrier,
+                'trackingNumber' => $trackingNumber,
+                'serviceLevel' => $serviceLevel ?: 'STANDARD_GROUND',
+                'labelFormat' => $format,
+                'zplString' => $zplString,
+                'pdfBase64' => $pdfBase64,
+                'bolUrl' => $carrier === 'GENERIC_LTL' ? "https://logistics.internal/bol/{$trackingNumber}.pdf" : null,
+                'createdAt' => date('c'),
+            ], 200);
+        } catch (Exception $e) {
+            return new Response(['error' => 'Failed to generate shipping label: ' . $e->getMessage()], 500);
+        }
+    }
 }
+

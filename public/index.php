@@ -1686,6 +1686,33 @@ if ($method === 'POST' && $uri === '/api/shipping/route') {
     exit;
 }
 
+// Route: POST /api/shipping/quote
+if ($method === 'POST' && $uri === '/api/shipping/quote') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ShippingController())->calculateCarrierRates($request);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: POST /api/shipping/label
+if ($method === 'POST' && $uri === '/api/shipping/label') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ShippingController())->generateShippingLabel($request);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// Route: POST /api/erp/sync
+if ($method === 'POST' && $uri === '/api/erp/sync') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\JournalController())->syncJournal($request);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
 // ── Outbox ──────────────────────────────────────────────────────────────────────
 // Route: GET /api/outbox/stats
 if ($method === 'GET' && $uri === '/api/outbox/stats') {

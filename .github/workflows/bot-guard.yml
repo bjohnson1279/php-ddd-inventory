@@ -1,0 +1,38 @@
+name: Automated Bot Guardrail
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  audit-bot-pr:
+    runs-on: ubuntu-latest
+    if: contains(github.actor, 'jules') || contains(github.actor, 'sentinel') || contains(github.head_ref, 'sentinel') || contains(github.head_ref, 'jules')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Inspect Diff Statistics for Destructive Changes
+        run: |
+          echo "=== Auditing PR Diff for Bot Regressions ==="
+          
+          # Check for forbidden scratch files
+          SCRATCH_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '^test(_.*)?\.(ts|js)$' || true)
+          if [ -n "$SCRATCH_FILES" ]; then
+            echo "❌ ERROR: PR contains forbidden scratch verification files:"
+            echo "$SCRATCH_FILES"
+            exit 1
+          fi
+
+          # Check for line deletions in critical schema files
+          DELETED_LINES=$(git diff --stat origin/${{ github.base_ref }}...HEAD | grep -E 'schema\.prisma|src/index\.ts|public/index\.php|docker/postgres/init/' | awk '{print $5}' | grep '-' || true)
+          for count in $DELETED_LINES; do
+            num=$(echo "$count" | tr -d '-')
+            if [ "$num" -gt 15 ]; then
+              echo "❌ ERROR: PR deletes $num lines from a core schema or entrypoint file, exceeding safety threshold (max 15)."
+              exit 1
+            fi
+          done
+
+          echo "✅ Bot Guardrail Passed."

@@ -100,9 +100,14 @@ final class ForecastingE2ETest extends TestCase
         // 2. Add historic ledger entries for sale (simulating dispatches)
         // 3 dispatches of size 10 in the last 30 days
         $nowStr = date('Y-m-d H:i:s');
-        $twoDaysAgo = date('Y-m-d H:i:s', time() - 2 * 24 * 3600);
-        $fiveDaysAgo = date('Y-m-d H:i:s', time() - 5 * 24 * 3600);
-        $tenDaysAgo = date('Y-m-d H:i:s', time() - 10 * 24 * 3600);
+        // We explicitly use the same month for all entries to ensure stable test assertions
+        // otherwise the seasonal multiplier will factor in and break tests near the start of a month.
+        // Force the baseline date to be exactly mid-month (e.g., 15th) so day offsets never cross months.
+        $baselineTime = mktime(12, 0, 0, (int)date('n'), 15, (int)date('Y'));
+        $nowStr = date('Y-m-d H:i:s', $baselineTime);
+        $twoDaysAgo = date('Y-m-d H:i:s', $baselineTime - 2 * 24 * 3600);
+        $fiveDaysAgo = date('Y-m-d H:i:s', $baselineTime - 5 * 24 * 3600);
+        $tenDaysAgo = date('Y-m-d H:i:s', $baselineTime - 10 * 24 * 3600);
 
         Capsule::table('ledger_entries')->insert([
             [

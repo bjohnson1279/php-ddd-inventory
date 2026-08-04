@@ -25,18 +25,23 @@ final class ComplianceE2ETest extends TestCase
         $dbDb = escapeshellarg(getenv('DB_DATABASE') ?: '');
         $dbHost = escapeshellarg(getenv('DB_HOST') ?: '');
         $dbUser = escapeshellarg(getenv('DB_USERNAME') ?: '');
-        $dbPass = escapeshellarg(getenv('DB_PASSWORD') ?: '');
+        $dbPass = escapeshellarg(getenv("DB_PASSWORD") ?: "secret");
         $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8099 public/index.php > tests/Integration/Http/server_compliance.log 2>&1 & echo $!";
         $dbConn = getenv('DB_CONNECTION') ?: 'sqlite';
         $dbDb = getenv('DB_DATABASE') ?: 'testing';
         $dbDb   = getenv('DB_DATABASE') ?: __DIR__ . '/../../../database.sqlite';
         $dbHost = getenv('DB_HOST') ?: '127.0.0.1';
         $dbUser = getenv('DB_USERNAME') ?: 'root';
-        $dbPass = getenv('DB_PASSWORD') ?: '';
+        $dbPass = escapeshellarg(getenv("DB_PASSWORD") ?: "secret");
 
         $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8096 public/index.php > tests/Integration/Http/server_compliance.log 2>&1 & echo $!";
         // Assign a unique non-overlapping port number for this test file
-        $command = "php -S 127.0.0.1:8100 public/index.php > tests/Integration/Http/server_compliance.log 2>&1 & echo $!";
+        $dbConn = escapeshellarg(getenv("DB_CONNECTION") ?: "pgsql");
+        $dbDb = escapeshellarg(getenv("DB_DATABASE") ?: "ddd_inventory");
+        $dbHost = escapeshellarg(getenv("DB_HOST") ?: "127.0.0.1");
+        $dbUser = escapeshellarg(getenv("DB_USERNAME") ?: "ddd_user");
+        $dbPass = escapeshellarg(getenv("DB_PASSWORD") ?: "secret");
+        $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8100 public/index.php > tests/Integration/Http/server_compliance.log 2>&1 & echo $!";
 
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);

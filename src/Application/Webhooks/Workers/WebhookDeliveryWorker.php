@@ -40,10 +40,6 @@ class WebhookDeliveryWorker
             $subscriptionIds = $deliveries->pluck('subscription_id')->unique()->toArray();
             $subscriptions = WebhookSubscriptionModel::whereIn('id', $subscriptionIds)->get()->keyBy('id');
 
-            $mh = curl_multi_init();
-            $curlHandles = [];
-            $deliveryExceptions = [];
-
             foreach ($deliveries as $delivery) {
                 $delivery->status = 'Processing';
                 $delivery->syncOriginal();
@@ -101,51 +97,17 @@ class WebhookDeliveryWorker
                         'X-Webhook-Event: ' . $delivery->event_type
                     ]);
 
-                    curl_multi_add_handle($mh, $ch);
-                    $curlHandles[$delivery->id] = ['ch' => $ch, 'delivery' => $delivery, 'subscription' => $subscription];
-                } catch (\Throwable $e) {
-                    $deliveryExceptions[$delivery->id] = $e;
-                }
-            }
+                    $response = curl_exec($ch);
+                    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                    $curlError = curl_error($ch);
+                    curl_close($ch);
 
-            // Execute concurrent requests
-            if (!empty($curlHandles)) {
-                do {
-                    $status = curl_multi_exec($mh, $active);
-                    if ($active) {
-                        curl_multi_select($mh);
-                    }
-                } while ($active && $status == CURLM_OK);
-            }
-
-            foreach ($deliveries as $delivery) {
-                if (isset($deliveryExceptions[$delivery->id])) {
-                    $e = $deliveryExceptions[$delivery->id];
-                    $this->handleFailure($delivery, $e, $subscriptions->get($delivery->subscription_id));
-                    continue;
-                }
-
-                if (!isset($curlHandles[$delivery->id])) {
-                    continue; // Should not happen
-                }
-
-                $handleData = $curlHandles[$delivery->id];
-                $ch = $handleData['ch'];
-                $subscription = $handleData['subscription'];
-
-                $response = curl_multi_getcontent($ch);
-                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                $curlError = curl_error($ch);
-                curl_multi_remove_handle($mh, $ch);
-                curl_close($ch);
-
-                try {
                     if ($curlError) {
                         throw new \Exception("cURL Error: " . $curlError);
                     }
 
                     if ($httpCode < 200 || $httpCode >= 300) {
-                        throw new \Exception("HTTP Error: " . $httpCode . " Response: " . $response);
+                        throw new \Exception("HTTP Error Status: " . $httpCode);
                     }
 
                     // Mark as Success
@@ -156,49 +118,42 @@ class WebhookDeliveryWorker
 
                     echo "Webhook delivery {$delivery->id} sent successfully.\n";
                 } catch (\Throwable $e) {
-                    $this->handleFailure($delivery, $e, $subscription);
+                    $nextAttempts = $delivery->attempts + 1;
+                    $backoffSecs = min(pow(2, $nextAttempts), 24 * 60 * 60);
+                    $nextAttemptAt = (new \DateTime())->modify("+{$backoffSecs} seconds");
+                    $nextStatus = $nextAttempts >= 5 ? 'Failed' : 'Pending';
+
+                    echo "Webhook delivery {$delivery->id} failed: " . $e->getMessage() . "\n";
+
+                    try {
+                        $tenantId = $subscription ? $subscription->tenant_id : 'default-tenant';
+                        (new \InventoryApp\Application\Notification\Services\NotificationService())->createNotification(
+                            $tenantId,
+                            "Webhook Delivery Failed",
+                            json_encode([
+                                'id'           => $delivery->id,
+                                'targetUrl'    => $subscription ? $subscription->target_url : 'unknown',
+                                'eventType'    => $delivery->event_type,
+                                'payload'      => $delivery->payload,
+                                'errorMessage' => $e->getMessage(),
+                                'attemptCount' => $nextAttempts
+                            ]),
+                            'webhook_failed'
+                        );
+                    } catch (\Throwable $notiEx) {
+                        error_log('Failed to create webhook_failed notification: ' . $notiEx->getMessage());
+                    }
+
+                    $delivery->status = $nextStatus;
+                    $delivery->attempts = $nextAttempts;
+                    $delivery->last_error = $e->getMessage();
+                    $delivery->next_attempt_at = $nextAttemptAt;
+                    $delivery->save();
                 }
             }
-
-            curl_multi_close($mh);
 
         } while (!$once);
 
         echo "DDD Webhook Delivery Worker finished.\n";
-    }
-
-    private function handleFailure($delivery, \Throwable $e, $subscription): void
-    {
-        $nextAttempts = $delivery->attempts + 1;
-        $backoffSecs = min(pow(2, $nextAttempts), 24 * 60 * 60);
-        $nextAttemptAt = (new \DateTime())->modify("+{$backoffSecs} seconds");
-        $nextStatus = $nextAttempts >= 5 ? 'Failed' : 'Pending';
-
-        echo "Webhook delivery {$delivery->id} failed: " . $e->getMessage() . "\n";
-
-        try {
-            $tenantId = $subscription ? $subscription->tenant_id : 'default-tenant';
-            (new \InventoryApp\Application\Notification\Services\NotificationService())->createNotification(
-                $tenantId,
-                "Webhook Delivery Failed",
-                json_encode([
-                    'id'           => $delivery->id,
-                    'targetUrl'    => $subscription ? $subscription->target_url : 'unknown',
-                    'eventType'    => $delivery->event_type,
-                    'payload'      => $delivery->payload,
-                    'errorMessage' => $e->getMessage(),
-                    'attemptCount' => $nextAttempts
-                ]),
-                'webhook_failed'
-            );
-        } catch (\Throwable $notiEx) {
-            error_log('Failed to create webhook_failed notification: ' . $notiEx->getMessage());
-        }
-
-        $delivery->status = $nextStatus;
-        $delivery->attempts = $nextAttempts;
-        $delivery->last_error = $e->getMessage();
-        $delivery->next_attempt_at = $nextAttemptAt;
-        $delivery->save();
     }
 }

@@ -26,7 +26,12 @@ final class AuditE2ETest extends TestCase
         putenv("QUICKBOOKS_ACCESS_TOKEN=mock-qbo-token");
 
         $output = [];
-        $command = "php -S 127.0.0.1:8092 public/index.php > tests/Integration/Http/server_audit.log 2>&1 & echo $!";
+        $dbConn = escapeshellarg(getenv("DB_CONNECTION") ?: "pgsql");
+        $dbDb = escapeshellarg(getenv("DB_DATABASE") ?: "ddd_inventory");
+        $dbHost = escapeshellarg(getenv("DB_HOST") ?: "127.0.0.1");
+        $dbUser = escapeshellarg(getenv("DB_USERNAME") ?: "ddd_user");
+        $dbPass = escapeshellarg(getenv("DB_PASSWORD") ?: "secret");
+        $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8092 public/index.php > tests/Integration/Http/server_audit.log 2>&1 & echo $!";
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
 

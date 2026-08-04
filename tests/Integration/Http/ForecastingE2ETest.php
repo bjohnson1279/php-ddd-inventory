@@ -21,7 +21,12 @@ final class ForecastingE2ETest extends TestCase
     public static function setUpBeforeClass(): void
     {
         $output = [];
-        $command = "php -S 127.0.0.1:8089 public/index.php > tests/Integration/Http/server_forecasting.log 2>&1 & echo $!";
+        $dbConn = escapeshellarg(getenv("DB_CONNECTION") ?: "pgsql");
+        $dbDb = escapeshellarg(getenv("DB_DATABASE") ?: "ddd_inventory");
+        $dbHost = escapeshellarg(getenv("DB_HOST") ?: "127.0.0.1");
+        $dbUser = escapeshellarg(getenv("DB_USERNAME") ?: "ddd_user");
+        $dbPass = escapeshellarg(getenv("DB_PASSWORD") ?: "secret");
+        $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8089 public/index.php > tests/Integration/Http/server_forecasting.log 2>&1 & echo $!";
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
 
@@ -173,12 +178,8 @@ final class ForecastingE2ETest extends TestCase
         $forecast = $forecastRes['body']['forecast'];
         $this->assertEquals($sku, $forecast['sku']);
         $this->assertEquals($locationId, $forecast['locationId']);
-
-        // Base = 15. The multiplier is 1.0 because all sales fall exactly into this single month.
-        // Math.ceil(15 * 1.2 * 1.0) = 18.
+        // Projected forecast quantity: Math.ceil(ADS (1.0) * forecastDays (15) * trendMultiplier (1.2)) = Math.ceil(18) = 18.
         $this->assertEquals(18, $forecast['forecastedQuantity']);
-
-        // As $seasonalMultiplier is exactly 1.0, and ADS > 0, confidence is 0.85
         $this->assertEquals(0.85, $forecast['confidenceLevel']);
 
         // 5. Request report again, it should now reflect active forecast

@@ -58,9 +58,9 @@ class ReorderPolicyServiceTest extends TestCase
             ->method('save');
 
         $this->productRepoMock->expects($this->once())
-            ->method('findBySku')
-            ->with($sku)
-            ->willReturn(null);
+            ->method('findBySkus')
+            ->with([$sku])
+            ->willReturn([]);
 
         // Redirect stderr to suppress the error_log output during the test
         $tmp = tmpfile();

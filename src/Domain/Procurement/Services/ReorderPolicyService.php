@@ -29,6 +29,18 @@ class ReorderPolicyService
         int $windowDays = 30
     ): array {
         $policies = $this->reorderPolicyRepository->findAll();
+
+        // ⚡ Bolt: Pre-fetch all related products to prevent N+1 queries in the loop
+        $products = [];
+        if (!empty($policies)) {
+            $skus = array_map(fn($p) => $p->sku, $policies);
+            // The repository's findBySkus method correctly returns an array indexed by SKU string.
+            $products = $productRepo->findBySkus($skus);
+        }
+
+        // ⚡ Bolt: Lazy-load POs only when needed to avoid memory bloat
+        $allPos = null;
+
         $results = [];
 
         foreach ($policies as $policy) {
@@ -52,7 +64,7 @@ class ReorderPolicyService
             }
 
             $skuStr = $policy->sku->getValue();
-            $product = $productRepo->findBySku($policy->sku);
+            $product = $products[$skuStr] ?? null;
 
             $currentQty = 0;
             if ($product) {
@@ -64,7 +76,9 @@ class ReorderPolicyService
             $reason = "";
 
             if ($policy->shouldReorder($currentQty)) {
-                $allPos = $this->poRepository->findAll();
+                if ($allPos === null) {
+                    $allPos = $this->poRepository->findAll();
+                }
                 $alreadyOrdered = false;
                 foreach ($allPos as $po) {
                     if ($po->tenantId !== $tenantId || $po->locationId !== $policy->locationId) {

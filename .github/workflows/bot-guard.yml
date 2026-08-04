@@ -15,8 +15,15 @@ jobs:
 
       - name: Inspect Diff Statistics for Destructive Changes
         run: |
-          echo "=== Auditing PR Diff for Bot Regressions ==="
-          
+          echo "=== Auditing PR Diff for Bot Regressions & Hallucinations ==="
+
+          # Check for zero-diff or hallucinatory acknowledgment PRs
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -v '^\.jules/' | grep -v 'package.*json' | grep -v 'composer\.lock' || true)
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "❌ ERROR: PR contains 0 code changes (hallucinatory task acknowledgment). Auto-failing."
+            exit 1
+          fi
+
           # Check for forbidden scratch files
           SCRATCH_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '^test(_.*)?\.(ts|js)$' || true)
           if [ -n "$SCRATCH_FILES" ]; then

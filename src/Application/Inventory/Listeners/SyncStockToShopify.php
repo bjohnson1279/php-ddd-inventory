@@ -71,20 +71,19 @@ class SyncStockToShopify implements QueuedListenerInterface
             try {
                 $rows = DB::table('shopify_sku_mappings')
                     ->whereIn('sku', $chunk)
-                    ->get(['sku', 'shopify_inventory_item_id']);
-                foreach ($rows as $row) {
-                    self::$itemCache[$row->sku] = $row->shopify_inventory_item_id;
+                    ->pluck('shopify_inventory_item_id', 'sku')
+                    ->toArray();
+                foreach ($chunk as $sku) {
+                    self::$itemCache[$sku] = $rows[$sku] ?? null;
                 }
             } catch (\Throwable $e) {
                 if (DB::connection()->getDriverName() === 'sqlite' && str_contains($e->getMessage(), 'no such table')) {
                     // Ignore missing table during isolated SQLite tests
+                    foreach ($chunk as $sku) {
+                        self::$itemCache[$sku] = null;
+                    }
                 } else {
                     throw $e;
-                }
-            }
-            foreach ($chunk as $sku) {
-                if (!array_key_exists($sku, self::$itemCache)) {
-                    self::$itemCache[$sku] = null;
                 }
             }
         }
@@ -94,20 +93,19 @@ class SyncStockToShopify implements QueuedListenerInterface
             try {
                 $rows = DB::table('shopify_location_mappings')
                     ->whereIn('our_location_id', $chunk)
-                    ->get(['our_location_id', 'shopify_location_id']);
-                foreach ($rows as $row) {
-                    self::$locationCache[$row->our_location_id] = $row->shopify_location_id;
+                    ->pluck('shopify_location_id', 'our_location_id')
+                    ->toArray();
+                foreach ($chunk as $locId) {
+                    self::$locationCache[$locId] = $rows[$locId] ?? null;
                 }
             } catch (\Throwable $e) {
                 if (DB::connection()->getDriverName() === 'sqlite' && str_contains($e->getMessage(), 'no such table')) {
                     // Ignore missing table during isolated SQLite tests
+                    foreach ($chunk as $locId) {
+                        self::$locationCache[$locId] = null;
+                    }
                 } else {
                     throw $e;
-                }
-            }
-            foreach ($chunk as $locId) {
-                if (!array_key_exists($locId, self::$locationCache)) {
-                    self::$locationCache[$locId] = null;
                 }
             }
         }

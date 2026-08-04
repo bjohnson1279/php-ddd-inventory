@@ -173,8 +173,12 @@ final class ForecastingE2ETest extends TestCase
         $forecast = $forecastRes['body']['forecast'];
         $this->assertEquals($sku, $forecast['sku']);
         $this->assertEquals($locationId, $forecast['locationId']);
-        // Projected forecast quantity: Math.ceil(ADS (1.0) * forecastDays (15) * trendMultiplier (1.2)) = Math.ceil(18) = 18.
+
+        // Base = 15. The multiplier is 1.0 because all sales fall exactly into this single month.
+        // Math.ceil(15 * 1.2 * 1.0) = 18.
         $this->assertEquals(18, $forecast['forecastedQuantity']);
+
+        // As $seasonalMultiplier is exactly 1.0, and ADS > 0, confidence is 0.85
         $this->assertEquals(0.85, $forecast['confidenceLevel']);
 
         // 5. Request report again, it should now reflect active forecast

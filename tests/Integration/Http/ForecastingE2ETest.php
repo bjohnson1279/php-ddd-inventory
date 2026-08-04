@@ -100,9 +100,9 @@ final class ForecastingE2ETest extends TestCase
         // 2. Add historic ledger entries for sale (simulating dispatches)
         // 3 dispatches of size 10 in the last 30 days
         $nowStr = date('Y-m-d H:i:s');
-        $twoDaysAgo = date('Y-m-d H:i:s', time() - 2 * 24 * 3600);
-        $fiveDaysAgo = date('Y-m-d H:i:s', time() - 5 * 24 * 3600);
-        $tenDaysAgo = date('Y-m-d H:i:s', time() - 10 * 24 * 3600);
+        // To guarantee these sales fall in the target month index and do not skew the seasonal multiplier
+        // to anything other than 1.0, we use the current date instead of edge offsets.
+        $occurredAtStr = $nowStr;
 
         Capsule::table('ledger_entries')->insert([
             [
@@ -113,7 +113,7 @@ final class ForecastingE2ETest extends TestCase
                 'reason' => 'sale',
                 'actor_id' => 'system',
                 'reference_id' => '1',
-                'occurred_at' => $twoDaysAgo,
+                'occurred_at' => $occurredAtStr,
                 'metadata' => json_encode(['locationId' => $locationId]),
                 'created_at' => $nowStr,
             ],
@@ -125,7 +125,7 @@ final class ForecastingE2ETest extends TestCase
                 'reason' => 'sale',
                 'actor_id' => 'system',
                 'reference_id' => '2',
-                'occurred_at' => $fiveDaysAgo,
+                'occurred_at' => $occurredAtStr,
                 'metadata' => json_encode(['locationId' => $locationId]),
                 'created_at' => $nowStr,
             ],
@@ -137,7 +137,7 @@ final class ForecastingE2ETest extends TestCase
                 'reason' => 'sale',
                 'actor_id' => 'system',
                 'reference_id' => '3',
-                'occurred_at' => $tenDaysAgo,
+                'occurred_at' => $occurredAtStr,
                 'metadata' => json_encode(['locationId' => $locationId]),
                 'created_at' => $nowStr,
             ]

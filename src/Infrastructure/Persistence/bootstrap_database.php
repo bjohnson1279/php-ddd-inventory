@@ -35,7 +35,7 @@ if ($driver === 'sqlite') {
         'port'     => getenv('DB_PORT') ?: '5432',
         'database' => getenv('DB_DATABASE') ?: 'ddd_inventory',
         'username' => getenv('DB_USERNAME') ?: 'ddd_user',
-        'password' => getenv('DB_PASSWORD') !== false && getenv('DB_PASSWORD') !== '' ? getenv('DB_PASSWORD') : 'secret',
+        'password' => (getenv('DB_PASSWORD') !== false && getenv('DB_PASSWORD') !== '') ? getenv('DB_PASSWORD') : ((!getenv('APP_ENV') || getenv('APP_ENV') === 'testing') ? 'secret' : throw new \RuntimeException('DB_PASSWORD is required')),
         'charset'  => 'utf8',
         'prefix'   => '',
         'schema'   => 'public',

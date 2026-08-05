@@ -36,6 +36,38 @@ class LotRecallServiceTest extends TestCase
         $this->assertContains('Client Alpha', $report['affectedCustomers']);
     }
 
+    public function testTraceabilityReportGenerationEdgeCases(): void
+    {
+        $lot = new LotBatch('l-1', 't-1', 'LOT-100', 'VAR-50', 'RECALLED');
+
+        $shipments = [
+            ['orderId' => 'SHIP-2', 'customerId' => 'Client Beta'],
+            ['someOtherKey' => 'value'],
+            ['id' => 'SHIP-3', 'customerId' => 'Client Beta', 'quantity' => 5],
+        ];
+
+        $costLayers = [
+            ['id' => 'CL-1', 'cost' => 10],
+            ['id' => 'CL-2', 'cost' => 12],
+        ];
+
+        $report = LotRecallService::generateTraceabilityReport($lot, $costLayers, $shipments);
+
+        $this->assertEquals('LOT-100', $report['lotNumber']);
+        $this->assertEquals(2, $report['affectedCostLayersCount']);
+
+        $this->assertCount(3, $report['affectedOrders']);
+        $this->assertEquals('SHIP-2', $report['affectedOrders'][0]['orderId']);
+        $this->assertEquals(1, $report['affectedOrders'][0]['quantity']);
+        $this->assertEquals('order-unknown', $report['affectedOrders'][1]['orderId']);
+        $this->assertEquals(1, $report['affectedOrders'][1]['quantity']);
+        $this->assertEquals('SHIP-3', $report['affectedOrders'][2]['orderId']);
+        $this->assertEquals(5, $report['affectedOrders'][2]['quantity']);
+
+        $this->assertCount(1, $report['affectedCustomers']);
+        $this->assertEquals('Client Beta', $report['affectedCustomers'][0]);
+    }
+
     public function testCrossDockingEvaluation(): void
     {
         $inbound = [['variantId' => 'V10', 'quantity' => 100]];

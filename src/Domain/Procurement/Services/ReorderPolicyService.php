@@ -38,8 +38,9 @@ class ReorderPolicyService
             $products = $productRepo->findBySkus($skus);
         }
 
-        // ⚡ Bolt: Lazy-load POs only when needed to avoid memory bloat
+        // ⚡ Bolt: Lazy-load POs and pending PO lookup only when needed to avoid memory bloat
         $allPos = null;
+        $pendingPoLookup = null;
 
         $results = [];
 
@@ -76,29 +77,30 @@ class ReorderPolicyService
             $reason = "";
 
             if ($policy->shouldReorder($currentQty)) {
-                if ($allPos === null) {
+                if ($pendingPoLookup === null) {
                     $allPos = $this->poRepository->findAll();
-                }
-                $alreadyOrdered = false;
-                foreach ($allPos as $po) {
-                    if ($po->tenantId !== $tenantId || $po->locationId !== $policy->locationId) {
-                        continue;
-                    }
-                    if (
-                        $po->getStatus() === PurchaseOrderStatus::Draft ||
-                        $po->getStatus() === PurchaseOrderStatus::Approved ||
-                        $po->getStatus() === PurchaseOrderStatus::Sent
-                    ) {
-                        foreach ($po->getItems() as $item) {
-                            if ($item->variantId === $skuStr && $item->getReceivedQuantity() < $item->quantity) {
-                                $alreadyOrdered = true;
-                                break 2;
+                    $pendingPoLookup = [];
+                    foreach ($allPos as $po) {
+                        if (
+                            $po->getStatus() === PurchaseOrderStatus::Draft ||
+                            $po->getStatus() === PurchaseOrderStatus::Approved ||
+                            $po->getStatus() === PurchaseOrderStatus::Sent
+                        ) {
+                            foreach ($po->getItems() as $item) {
+                                if ($item->getReceivedQuantity() < $item->quantity) {
+                                    // ⚡ Bolt: Include tenant ID in cache key to safely support multi-tenant processing
+                                    $pendingPoLookup[$po->tenantId][$po->locationId][$item->variantId] = true;
+                                }
                             }
                         }
                     }
                 }
 
+                $alreadyOrdered = isset($pendingPoLookup[$tenantId][$policy->locationId][$skuStr]);
+
                 if (!$alreadyOrdered) {
+                    // Update our lookup table to prevent multiple POs being drafted in the same run for the same item
+                    $pendingPoLookup[$tenantId][$policy->locationId][$skuStr] = true;
                     $poNumber = 'AUTO-REORDER-' . $skuStr . '-' . strtoupper(base_convert((string)time(), 10, 36));
                     $poId = Uuid::uuid4()->toString();
                     $itemId = Uuid::uuid4()->toString();

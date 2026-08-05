@@ -58,7 +58,7 @@ do {
         }
 
         // Reconstruct event object from serialized data
-        $event = unserialize(base64_decode($job->event_data));
+        $event = unserialize(base64_decode($job->event_data), ['allowed_classes' => \InventoryApp\Infrastructure\Messaging\AllowedClasses::get()]);
 
         // Resolve listener dependencies (e.g. SyncStockToShopify, NotificationListener)
         $listener = resolveListener($job->listener_class, $job->tenant_id);

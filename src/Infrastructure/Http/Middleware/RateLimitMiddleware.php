@@ -21,7 +21,7 @@ class RateLimitMiddleware
 
         $trustedProxiesEnv = getenv('TRUSTED_PROXIES') ?: '';
         $trustedProxies = $trustedProxiesEnv ? array_map('trim', explode(',', $trustedProxiesEnv)) : [];
-        $isTrustedProxy = in_array($ip, $trustedProxies, true) || in_array('*', $trustedProxies, true);
+        $isTrustedProxy = in_array($ip, $trustedProxies, true);
 
         if ($isTrustedProxy && isset($_SERVER['HTTP_X_FORWARDED_FOR']) && $_SERVER['HTTP_X_FORWARDED_FOR'] !== '') {
             $forwardedIps = array_map('trim', explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']));
@@ -29,7 +29,7 @@ class RateLimitMiddleware
             $realIp = null;
             for ($i = count($forwardedIps) - 1; $i >= 0; $i--) {
                 $currentIp = $forwardedIps[$i];
-                if (!in_array($currentIp, $trustedProxies, true) && $currentIp !== '*' && filter_var($currentIp, FILTER_VALIDATE_IP)) {
+                if (!in_array($currentIp, $trustedProxies, true) && filter_var($currentIp, FILTER_VALIDATE_IP)) {
                     $realIp = $currentIp;
                     break;
                 }

@@ -42,6 +42,12 @@ class ReceiveRMA
         $variantIds = array_unique(array_column($dto['items'], 'variantId'));
         $products = $this->productRepository->findByIds($variantIds);
 
+<<<<<<< HEAD
+        $costLayers = [];
+=======
+        $quarantineItems = [];
+>>>>>>> origin/master
+
         foreach ($dto['items'] as $item) {
             // Find RMA Item
             $rmaItem = null;
@@ -83,12 +89,12 @@ class ReceiveRMA
                 new \DateTimeImmutable(),
                 "RMA-{$rma->getId()}"
             );
-            $this->costLayerRepository->save($layer);
+            $costLayers[] = $layer;
 
             // Create Quarantine record if quarantined
             if ($disposition === RMADisposition::Quarantine) {
                 $qId = Uuid::uuid4()->toString();
-                $quarantineItem = new QuarantineItem(
+                $quarantineItems[] = new QuarantineItem(
                     $qId,
                     $item['variantId'],
                     $item['quantityReceived'],
@@ -96,7 +102,6 @@ class ReceiveRMA
                     $rma->getLocationId(),
                     $rma->getTenantId()
                 );
-                $this->quarantineRepository->save($quarantineItem);
             }
 
             // Post return journal entries
@@ -129,9 +134,26 @@ class ReceiveRMA
 
             // Handle Serialized items transitions
             if (!empty($item['serialNumbers'])) {
+<<<<<<< HEAD
+                $serialNumbersObjects = array_map(fn($sn) => new SerialNumber($sn), $item['serialNumbers']);
+                $serialItems = $this->serializedRepository->findBySerials($serialNumbersObjects, $rma->getTenantId()->getValue());
                 foreach ($item['serialNumbers'] as $sn) {
-                    $serialItem = $this->serializedRepository->findBySerial(new SerialNumber($sn), $rma->getTenantId()->getValue());
+                    $serialItem = $serialItems[strtolower($sn)] ?? null;
                     if ($serialItem) {
+=======
+                $serialItemsToSave = [];
+                // N+1 Fetch can also be optimized but the task specifically calls out N+1 Save
+                // Actually we could use findBySerials to fix N+1 fetch as well!
+                // Let's use findBySerials since it's available!
+                $serialNumbers = array_map(fn($sn) => new SerialNumber($sn), $item['serialNumbers']);
+                $serialItems = $this->serializedRepository->findBySerials($serialNumbers, $rma->getTenantId()->getValue());
+
+                foreach ($item['serialNumbers'] as $sn) {
+                    // findBySerials returns array indexed by lowercase serial string
+                    $lowerSn = strtolower(trim($sn));
+                    if (isset($serialItems[$lowerSn])) {
+                        $serialItem = $serialItems[$lowerSn];
+>>>>>>> origin/master
                         $serialItem->acceptReturn($rma->getId(), 'system');
 
                         if ($disposition === RMADisposition::Restock) {
@@ -141,10 +163,23 @@ class ReceiveRMA
                         } elseif ($disposition === RMADisposition::Scrap) {
                             $serialItem->writeOff("Scrapped from RMA {$rma->getRmaNumber()}", 'system', $rma->getId());
                         }
-                        $this->serializedRepository->save($serialItem);
+                        $serialItemsToSave[] = $serialItem;
                     }
                 }
+
+                if (!empty($serialItemsToSave)) {
+                    $this->serializedRepository->saveAll($serialItemsToSave);
+                }
             }
+        }
+
+<<<<<<< HEAD
+        if (!empty($costLayers)) {
+            $this->costLayerRepository->saveBatch($costLayers);
+=======
+        if (!empty($quarantineItems)) {
+            $this->quarantineRepository->saveBatch($quarantineItems);
+>>>>>>> origin/master
         }
 
         $this->rmaRepository->save($rma);

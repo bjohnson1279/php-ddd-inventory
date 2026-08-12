@@ -42,6 +42,8 @@ class ReceiveRMA
         $variantIds = array_unique(array_column($dto['items'], 'variantId'));
         $products = $this->productRepository->findByIds($variantIds);
 
+        $quarantineItems = [];
+
         foreach ($dto['items'] as $item) {
             // Find RMA Item
             $rmaItem = null;
@@ -88,7 +90,7 @@ class ReceiveRMA
             // Create Quarantine record if quarantined
             if ($disposition === RMADisposition::Quarantine) {
                 $qId = Uuid::uuid4()->toString();
-                $quarantineItem = new QuarantineItem(
+                $quarantineItems[] = new QuarantineItem(
                     $qId,
                     $item['variantId'],
                     $item['quantityReceived'],
@@ -96,7 +98,6 @@ class ReceiveRMA
                     $rma->getLocationId(),
                     $rma->getTenantId()
                 );
-                $this->quarantineRepository->save($quarantineItem);
             }
 
             // Post return journal entries
@@ -145,6 +146,10 @@ class ReceiveRMA
                     }
                 }
             }
+        }
+
+        if (!empty($quarantineItems)) {
+            $this->quarantineRepository->saveBatch($quarantineItems);
         }
 
         $this->rmaRepository->save($rma);

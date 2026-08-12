@@ -223,8 +223,10 @@ class ReceiveRMATest extends TestCase
             );
 
         $this->quarantineRepositoryMock->expects($this->once())
-            ->method('save')
-            ->with($this->isInstanceOf(QuarantineItem::class));
+            ->method('saveBatch')
+            ->with($this->callback(function (array $items) {
+                return count($items) === 1 && $items[0] instanceof QuarantineItem;
+            }));
 
         $this->useCase->execute($dto);
     }

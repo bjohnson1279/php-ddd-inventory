@@ -15,35 +15,11 @@ use Ramsey\Uuid\Uuid;
 
 class ReorderPolicyService
 {
-    private ?array $pendingPoLookup = null;
-
     public function __construct(
         private readonly ReorderPolicyRepositoryInterface $reorderPolicyRepository,
         private readonly PurchaseOrderRepositoryInterface $poRepository,
         private readonly EventDispatcherInterface $events
     ) {}
-
-    private function getPendingPoLookup(): array
-    {
-        if ($this->pendingPoLookup === null) {
-            $allPos = $this->poRepository->findAll();
-            $this->pendingPoLookup = [];
-            foreach ($allPos as $po) {
-                if (
-                    $po->getStatus() === PurchaseOrderStatus::Draft ||
-                    $po->getStatus() === PurchaseOrderStatus::Approved ||
-                    $po->getStatus() === PurchaseOrderStatus::Sent
-                ) {
-                    foreach ($po->getItems() as $item) {
-                        if ($item->getReceivedQuantity() < $item->quantity) {
-                            $this->pendingPoLookup[$po->tenantId][$po->locationId][$item->variantId] = true;
-                        }
-                    }
-                }
-            }
-        }
-        return $this->pendingPoLookup;
-    }
 
     public function evaluatePolicies(
         string $tenantId,
@@ -61,6 +37,10 @@ class ReorderPolicyService
             // The repository's findBySkus method correctly returns an array indexed by SKU string.
             $products = $productRepo->findBySkus($skus);
         }
+
+        // ⚡ Bolt: Lazy-load POs and pending PO lookup only when needed to avoid memory bloat
+        $allPos = null;
+        $pendingPoLookup = null;
 
         $results = [];
 
@@ -97,13 +77,30 @@ class ReorderPolicyService
             $reason = "";
 
             if ($policy->shouldReorder($currentQty)) {
-                $lookup = $this->getPendingPoLookup();
+                if ($pendingPoLookup === null) {
+                    $allPos = $this->poRepository->findAll();
+                    $pendingPoLookup = [];
+                    foreach ($allPos as $po) {
+                        if (
+                            $po->getStatus() === PurchaseOrderStatus::Draft ||
+                            $po->getStatus() === PurchaseOrderStatus::Approved ||
+                            $po->getStatus() === PurchaseOrderStatus::Sent
+                        ) {
+                            foreach ($po->getItems() as $item) {
+                                if ($item->getReceivedQuantity() < $item->quantity) {
+                                    // ⚡ Bolt: Include tenant ID in cache key to safely support multi-tenant processing
+                                    $pendingPoLookup[$po->tenantId][$po->locationId][$item->variantId] = true;
+                                }
+                            }
+                        }
+                    }
+                }
 
-                $alreadyOrdered = isset($lookup[$tenantId][$policy->locationId][$skuStr]);
+                $alreadyOrdered = isset($pendingPoLookup[$tenantId][$policy->locationId][$skuStr]);
 
                 if (!$alreadyOrdered) {
                     // Update our lookup table to prevent multiple POs being drafted in the same run for the same item
-                    $this->pendingPoLookup[$tenantId][$policy->locationId][$skuStr] = true;
+                    $pendingPoLookup[$tenantId][$policy->locationId][$skuStr] = true;
                     $poNumber = 'AUTO-REORDER-' . $skuStr . '-' . strtoupper(base_convert((string)time(), 10, 36));
                     $poId = Uuid::uuid4()->toString();
                     $itemId = Uuid::uuid4()->toString();
@@ -170,12 +167,27 @@ class ReorderPolicyService
             $this->events->dispatch($event);
 
             // 2. Check if a draft/approved/sent purchase order already exists for this vendor/location and includes this sku
-            $lookup = $this->getPendingPoLookup();
-            $alreadyOrdered = isset($lookup[$tenantId][$locationId][$skuStr]);
+            $allPos = $this->poRepository->findAll();
+            $alreadyOrdered = false;
+            foreach ($allPos as $po) {
+                if ($po->tenantId !== $tenantId || $po->locationId !== $locationId) {
+                    continue;
+                }
+                if (
+                    $po->getStatus() === PurchaseOrderStatus::Draft ||
+                    $po->getStatus() === PurchaseOrderStatus::Approved ||
+                    $po->getStatus() === PurchaseOrderStatus::Sent
+                ) {
+                    foreach ($po->getItems() as $item) {
+                        if ($item->variantId === $skuStr && $item->getReceivedQuantity() < $item->quantity) {
+                            $alreadyOrdered = true;
+                            break 2;
+                        }
+                    }
+                }
+            }
 
             if (!$alreadyOrdered) {
-                $this->pendingPoLookup[$tenantId][$locationId][$skuStr] = true;
-
                 // Automatically create a draft purchase order!
                 $poNumber = 'AUTO-REORDER-' . $skuStr . '-' . strtoupper(base_convert((string)time(), 10, 36));
                 $poId = Uuid::uuid4()->toString();

@@ -6,7 +6,6 @@ use InventoryApp\Domain\Inventory\Repositories\ProductRepositoryInterface;
 use InventoryApp\Domain\Inventory\Repositories\WarehouseLocationRepositoryInterface;
 use InventoryApp\Domain\Inventory\ValueObjects\SKU;
 use Illuminate\Database\Capsule\Manager as Capsule;
-use InventoryApp\Infrastructure\Models\ProductLocationModel;
 use Exception;
 
 class PutawaySuggester

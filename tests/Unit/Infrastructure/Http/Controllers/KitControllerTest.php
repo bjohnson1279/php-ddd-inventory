@@ -5,19 +5,31 @@ namespace Tests\Unit\Infrastructure\Http\Controllers;
 use PHPUnit\Framework\TestCase;
 use InventoryApp\Infrastructure\Http\Controllers\KitController;
 use InventoryApp\Infrastructure\Http\RequestInterface;
+<<<<<<< HEAD
 use InventoryApp\Application\Inventory\UseCases\DisassembleKit;
 use Illuminate\Database\Capsule\Manager as Capsule;
 use Exception;
 use InvalidArgumentException;
+=======
+use InventoryApp\Infrastructure\Http\Response;
+use InventoryApp\Domain\Kit\Repositories\KitRepositoryInterface;
+use InventoryApp\Domain\Kit\Aggregates\Kit;
+use Exception;
+>>>>>>> origin/master
 
 class KitControllerTest extends TestCase
 {
     private KitController $controller;
+<<<<<<< HEAD
     private $disassembleKitMock;
+=======
+    private $kitRepositoryMock;
+>>>>>>> origin/master
 
     protected function setUp(): void
     {
         $this->controller = new KitController();
+<<<<<<< HEAD
         $this->disassembleKitMock = $this->createMock(DisassembleKit::class);
 
         // Mock Capsule connection for transactions
@@ -109,5 +121,8 @@ class KitControllerTest extends TestCase
             json_encode(['error' => 'An internal server error occurred.']),
             $response->getContent()
         );
+=======
+        $this->kitRepositoryMock = $this->createMock(KitRepositoryInterface::class);
+>>>>>>> origin/master
     }
 }

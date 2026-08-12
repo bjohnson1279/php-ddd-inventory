@@ -42,6 +42,8 @@ class ReceiveRMA
         $variantIds = array_unique(array_column($dto['items'], 'variantId'));
         $products = $this->productRepository->findByIds($variantIds);
 
+        $costLayers = [];
+
         foreach ($dto['items'] as $item) {
             // Find RMA Item
             $rmaItem = null;
@@ -83,7 +85,7 @@ class ReceiveRMA
                 new \DateTimeImmutable(),
                 "RMA-{$rma->getId()}"
             );
-            $this->costLayerRepository->save($layer);
+            $costLayers[] = $layer;
 
             // Create Quarantine record if quarantined
             if ($disposition === RMADisposition::Quarantine) {
@@ -145,6 +147,10 @@ class ReceiveRMA
                     }
                 }
             }
+        }
+
+        if (!empty($costLayers)) {
+            $this->costLayerRepository->saveBatch($costLayers);
         }
 
         $this->rmaRepository->save($rma);

@@ -121,8 +121,10 @@ class ReceiveRMATest extends TestCase
             ->with($product);
 
         $this->costLayerRepositoryMock->expects($this->once())
-            ->method('save')
-            ->with($this->isInstanceOf(InventoryCostLayer::class));
+            ->method('saveBatch')
+            ->with($this->callback(function ($layers) {
+                return count($layers) === 1 && $layers[0] instanceof InventoryCostLayer;
+            }));
 
         $this->journalServiceMock->expects($this->once())
             ->method('onStockReturned')
@@ -467,7 +469,7 @@ class ReceiveRMATest extends TestCase
             ->willThrowException(new \InvalidArgumentException("Invalid state."));
 
         $this->productRepositoryMock->expects($this->never())->method('save');
-        $this->costLayerRepositoryMock->expects($this->never())->method('save');
+        $this->costLayerRepositoryMock->expects($this->never())->method('saveBatch');
         $this->rmaRepositoryMock->expects($this->never())->method('save');
 
         $this->expectException(\InvalidArgumentException::class);
@@ -496,7 +498,7 @@ class ReceiveRMATest extends TestCase
         $this->rmaRepositoryMock->method('findById')->willReturn($rma);
 
         $this->productRepositoryMock->expects($this->never())->method('save');
-        $this->costLayerRepositoryMock->expects($this->never())->method('save');
+        $this->costLayerRepositoryMock->expects($this->never())->method('saveBatch');
         $this->rmaRepositoryMock->expects($this->never())->method('save');
 
         $this->expectException(\ValueError::class);
@@ -571,9 +573,11 @@ class ReceiveRMATest extends TestCase
             ->method('save')
             ->withConsecutive([$product1], [$product2]);
 
-        $this->costLayerRepositoryMock->expects($this->exactly(2))
-            ->method('save')
-            ->with($this->isInstanceOf(InventoryCostLayer::class));
+        $this->costLayerRepositoryMock->expects($this->once())
+            ->method('saveBatch')
+            ->with($this->callback(function ($layers) {
+                return count($layers) === 2 && $layers[0] instanceof InventoryCostLayer && $layers[1] instanceof InventoryCostLayer;
+            }));
 
         $this->journalServiceMock->expects($this->exactly(2))
             ->method('onStockReturned')

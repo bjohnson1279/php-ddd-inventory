@@ -129,8 +129,10 @@ class ReceiveRMA
 
             // Handle Serialized items transitions
             if (!empty($item['serialNumbers'])) {
+                $serialNumbersObjects = array_map(fn($sn) => new SerialNumber($sn), $item['serialNumbers']);
+                $serialItems = $this->serializedRepository->findBySerials($serialNumbersObjects, $rma->getTenantId()->getValue());
                 foreach ($item['serialNumbers'] as $sn) {
-                    $serialItem = $this->serializedRepository->findBySerial(new SerialNumber($sn), $rma->getTenantId()->getValue());
+                    $serialItem = $serialItems[strtolower($sn)] ?? null;
                     if ($serialItem) {
                         $serialItem->acceptReturn($rma->getId(), 'system');
 

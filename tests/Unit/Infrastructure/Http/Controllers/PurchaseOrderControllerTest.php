@@ -1,0 +1,277 @@
+<?php
+
+namespace Tests\Unit\Infrastructure\Http\Controllers;
+
+use PHPUnit\Framework\TestCase;
+use InventoryApp\Infrastructure\Http\Controllers\PurchaseOrderController;
+<<<<<<< HEAD
+use InventoryApp\Infrastructure\Http\RequestInterface;
+use InventoryApp\Domain\Procurement\Repositories\PurchaseOrderRepositoryInterface;
+use InventoryApp\Domain\Inventory\Repositories\ProductRepositoryInterface;
+use InventoryApp\Domain\Accounting\Repositories\CostLayerRepositoryInterface;
+use InventoryApp\Infrastructure\Http\Response;
+use Psr\EventDispatcher\EventDispatcherInterface;
+use Exception;
+use InvalidArgumentException;
+use InventoryApp\Domain\Procurement\Aggregates\PurchaseOrder;
+use InventoryApp\Domain\Procurement\Entities\PurchaseOrderItem;
+use InventoryApp\Domain\Procurement\Enums\PurchaseOrderStatus;
+use InventoryApp\Domain\Inventory\Entities\Product;
+use InventoryApp\Domain\Inventory\ValueObjects\SKU;
+use InventoryApp\Domain\Inventory\ValueObjects\Department;
+use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
+use InventoryApp\Domain\Inventory\ValueObjects\Quantity;
+=======
+use InventoryApp\Infrastructure\Http\Response;
+use InventoryApp\Infrastructure\Http\RequestInterface;
+use InventoryApp\Domain\Procurement\Repositories\PurchaseOrderRepositoryInterface;
+use InventoryApp\Domain\Procurement\Aggregates\PurchaseOrder;
+use InventoryApp\Domain\Procurement\Enums\PurchaseOrderStatus;
+use InventoryApp\Domain\Procurement\Entities\PurchaseOrderItem;
+use Exception;
+use InvalidArgumentException;
+>>>>>>> origin/master
+
+class PurchaseOrderControllerTest extends TestCase
+{
+    private PurchaseOrderController $controller;
+<<<<<<< HEAD
+    private $requestMock;
+    private $poRepoMock;
+    private $productRepoMock;
+    private $costLayerRepoMock;
+    private $eventsMock;
+=======
+    private $poRepoMock;
+    private $requestMock;
+>>>>>>> origin/master
+
+    protected function setUp(): void
+    {
+        $this->controller = new PurchaseOrderController();
+<<<<<<< HEAD
+        $this->requestMock = $this->createMock(RequestInterface::class);
+        $this->poRepoMock = $this->createMock(PurchaseOrderRepositoryInterface::class);
+        $this->productRepoMock = $this->createMock(ProductRepositoryInterface::class);
+        $this->costLayerRepoMock = $this->createMock(CostLayerRepositoryInterface::class);
+        $this->eventsMock = $this->createMock(EventDispatcherInterface::class);
+    }
+
+    public function testReceiveSuccess(): void
+    {
+        $this->requestMock->expects($this->once())
+            ->method('validate')
+            ->with(['items' => 'required|array'])
+            ->willReturn([
+                'items' => [
+                    ['variantId' => 'VARIANT-1', 'quantityReceived' => 5]
+                ]
+            ]);
+
+        $item1 = new PurchaseOrderItem('item-1', 'VARIANT-1', 10, 500);
+        $po = new PurchaseOrder(
+            'po-123',
+            'PO-NUM-001',
+            'vendor-1',
+            'tenant-1',
+            'LOC-1',
+            PurchaseOrderStatus::Sent,
+            [$item1]
+=======
+        $this->poRepoMock = $this->createMock(PurchaseOrderRepositoryInterface::class);
+        $this->requestMock = $this->createMock(RequestInterface::class);
+    }
+
+    public function testGetReturns200AndFormattedDataWhenPurchaseOrderExists(): void
+    {
+        $poId = 'po-123';
+
+        $item = new PurchaseOrderItem('item-1', 'variant-1', 10, 1000, 5);
+        $po = new PurchaseOrder(
+            $poId,
+            'PO-001',
+            'vendor-1',
+            'tenant-1',
+            'loc-1',
+            PurchaseOrderStatus::PartiallyReceived,
+            [$item]
+>>>>>>> origin/master
+        );
+
+        $this->poRepoMock->expects($this->once())
+            ->method('findById')
+<<<<<<< HEAD
+            ->with('po-123')
+            ->willReturn($po);
+
+        $productMock = Product::create(
+            'prod-1',
+            new SKU('VARIANT-1'),
+            'Product 1',
+            new Department('DEP1'),
+            new LocationId('LOC-1'),
+            new Quantity(0)
+        );
+
+        $this->productRepoMock->expects($this->once())
+            ->method('findBySkus')
+            ->willReturn(['VARIANT-1' => $productMock]);
+
+        $this->productRepoMock->expects($this->once())
+            ->method('saveAll');
+
+        $this->costLayerRepoMock->expects($this->once())
+            ->method('saveBatch');
+
+        $this->poRepoMock->expects($this->once())
+            ->method('save');
+
+        $response = $this->controller->receive(
+            $this->requestMock,
+            'po-123',
+            $this->poRepoMock,
+            $this->productRepoMock,
+            $this->costLayerRepoMock,
+            $this->eventsMock
+        );
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertStringContainsString('Items received successfully', $response->getContent());
+    }
+
+    public function testReceiveValidationFailure(): void
+    {
+        $this->requestMock->expects($this->once())
+            ->method('validate')
+            ->willThrowException(new InvalidArgumentException('Validation failed: items is required'));
+
+        $response = $this->controller->receive(
+            $this->requestMock,
+            'po-123',
+            $this->poRepoMock,
+            $this->productRepoMock,
+            $this->costLayerRepoMock,
+            $this->eventsMock
+        );
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(400, $response->getStatusCode());
+        $this->assertStringContainsString('Validation failed', $response->getContent());
+    }
+
+    public function testReceiveInternalError(): void
+    {
+        $this->requestMock->expects($this->once())
+            ->method('validate')
+            ->willReturn([
+                'items' => [
+                    ['variantId' => 'VARIANT-1', 'quantityReceived' => 5]
+                ]
+            ]);
+
+        $this->poRepoMock->expects($this->once())
+            ->method('findById')
+            ->willThrowException(new Exception('Database connection lost'));
+
+        $response = $this->controller->receive(
+            $this->requestMock,
+            'po-123',
+            $this->poRepoMock,
+            $this->productRepoMock,
+            $this->costLayerRepoMock,
+            $this->eventsMock
+        );
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(500, $response->getStatusCode());
+        $this->assertStringContainsString('An internal server error occurred', $response->getContent());
+=======
+            ->with($poId)
+            ->willReturn($po);
+
+        $response = $this->controller->get($this->requestMock, $poId, $this->poRepoMock);
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(200, $response->getStatusCode());
+
+        $content = json_decode($response->getContent(), true);
+
+        $this->assertEquals($poId, $content['id']);
+        $this->assertEquals('PO-001', $content['purchaseOrderNumber']);
+        $this->assertEquals(PurchaseOrderStatus::PartiallyReceived->value, $content['status']);
+        $this->assertEquals('vendor-1', $content['vendorId']);
+        $this->assertEquals('tenant-1', $content['tenantId']);
+        $this->assertEquals('loc-1', $content['locationId']);
+
+        $this->assertIsArray($content['items']);
+        $this->assertCount(1, $content['items']);
+        $this->assertEquals('item-1', $content['items'][0]['id']);
+        $this->assertEquals('variant-1', $content['items'][0]['variantId']);
+        $this->assertEquals(10, $content['items'][0]['quantity']);
+        $this->assertEquals(5, $content['items'][0]['receivedQuantity']);
+        $this->assertEquals(1000, $content['items'][0]['unitCostCents']);
+    }
+
+    public function testGetReturns404WhenPurchaseOrderNotFound(): void
+    {
+        $poId = 'nonexistent-po';
+
+        $this->poRepoMock->expects($this->once())
+            ->method('findById')
+            ->with($poId)
+            ->willReturn(null);
+
+        $response = $this->controller->get($this->requestMock, $poId, $this->poRepoMock);
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(404, $response->getStatusCode());
+
+        $content = json_decode($response->getContent(), true);
+        $this->assertArrayHasKey('error', $content);
+        $this->assertEquals('Purchase order not found', $content['error']);
+    }
+
+    public function testGetReturns400OnDomainException(): void
+    {
+        $poId = 'po-error';
+        $exceptionMessage = 'Invalid argument provided.';
+
+        $this->poRepoMock->expects($this->once())
+            ->method('findById')
+            ->with($poId)
+            ->willThrowException(new InvalidArgumentException($exceptionMessage));
+
+        $response = $this->controller->get($this->requestMock, $poId, $this->poRepoMock);
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(400, $response->getStatusCode());
+
+        $content = json_decode($response->getContent(), true);
+        $this->assertArrayHasKey('error', $content);
+        $this->assertEquals($exceptionMessage, $content['error']);
+    }
+
+    public function testGetReturns500OnGenericException(): void
+    {
+        $poId = 'po-error';
+
+        $this->poRepoMock->expects($this->once())
+            ->method('findById')
+            ->with($poId)
+            ->willThrowException(new Exception('Database connection failed.'));
+
+        // Output buffer used to suppress error_log during test
+        ob_start();
+        $response = $this->controller->get($this->requestMock, $poId, $this->poRepoMock);
+        ob_end_clean();
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(500, $response->getStatusCode());
+
+        $content = json_decode($response->getContent(), true);
+        $this->assertArrayHasKey('error', $content);
+        $this->assertEquals('An internal server error occurred.', $content['error']);
+>>>>>>> origin/master
+    }
+}

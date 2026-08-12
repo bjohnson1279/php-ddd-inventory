@@ -14,11 +14,14 @@ use InventoryApp\Domain\Accounting\Entities\InventoryCostLayer;
 use InventoryApp\Domain\Inventory\ValueObjects\SKU;
 use InventoryApp\Domain\Inventory\ValueObjects\Quantity;
 use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
+use InventoryApp\Application\Inventory\UseCases\Traits\ValidatesKit;
 use Exception;
 use Ramsey\Uuid\Uuid;
 
 class DisassembleKit
 {
+    use ValidatesKit;
+
     private readonly CostLayerService $costLayerService;
 
     public function __construct(
@@ -45,16 +48,9 @@ class DisassembleKit
         }
 
         // 1. Resolve kit details
-        $kit = $this->kitRepository->findBySku($kitSkuStr);
-        if (!$kit) {
-            throw new Exception("Kit with SKU {$kitSkuStr} not found.");
-        }
-
-        // 2. Resolve kit's product variant
-        $kitProduct = $this->productRepository->findBySku(new SKU($kitSkuStr));
-        if (!$kitProduct) {
-            throw new Exception("Product variant for Kit SKU {$kitSkuStr} not found.");
-        }
+        $resolved = $this->resolveKitDetails($kitSkuStr, $this->kitRepository, $this->productRepository);
+        $kit = $resolved['kit'];
+        $kitProduct = $resolved['product'];
 
         // 3. Validate kit stock level
         $availableKitStock = $this->ledgerRepository->currentQuantity($kitProduct->getId());

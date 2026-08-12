@@ -14,11 +14,14 @@ use InventoryApp\Domain\Accounting\Entities\InventoryCostLayer;
 use InventoryApp\Domain\Inventory\ValueObjects\SKU;
 use InventoryApp\Domain\Inventory\ValueObjects\Quantity;
 use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
+use InventoryApp\Application\Inventory\UseCases\Traits\ValidatesKit;
 use Exception;
 use Ramsey\Uuid\Uuid;
 
 class AssembleKit
 {
+    use ValidatesKit;
+
     private readonly CostLayerService $costLayerService;
 
     public function __construct(
@@ -45,15 +48,9 @@ class AssembleKit
         }
 
         // 1. Resolve kit details
-        $kit = $this->kitRepository->findBySku($kitSkuStr);
-        if (!$kit) {
-            throw new Exception("Kit with SKU {$kitSkuStr} not found.");
-        }
-
-        $kitProduct = $this->productRepository->findBySku(new SKU($kitSkuStr));
-        if (!$kitProduct) {
-            throw new Exception("Product variant for Kit SKU {$kitSkuStr} not found.");
-        }
+        $resolved = $this->resolveKitDetails($kitSkuStr, $this->kitRepository, $this->productRepository);
+        $kit = $resolved['kit'];
+        $kitProduct = $resolved['product'];
 
         // 2. Validate component stock level and pre-fetch products (Optimized N+1 queries)
         $componentVariantIds = [];

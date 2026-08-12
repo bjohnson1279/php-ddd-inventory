@@ -43,7 +43,7 @@ class TenantConnectionPool
             $dbPort = (int)(getenv('DB_PORT') ?: 5432);
             $dbName = getenv('DB_DATABASE') ?: 'ddd_inventory';
             $dbUser = getenv('DB_USERNAME') ?: 'ddd_user';
-            $dbPassword = getenv('DB_PASSWORD') !== false && getenv('DB_PASSWORD') !== '' ? getenv('DB_PASSWORD') : ((!getenv('APP_ENV') || getenv('APP_ENV') === 'testing') ? 'secret' : throw new \RuntimeException('DB_PASSWORD is required'));
+            $dbPassword = getenv('DB_PASSWORD') !== false && getenv('DB_PASSWORD') !== '' ? getenv('DB_PASSWORD') : (getenv('APP_ENV') === 'testing' ? 'secret' : throw new \RuntimeException('DB_PASSWORD is required'));
 
             $entry = new TenantRegistryEntry(
                 $tenantId, $dbHost, $dbPort, $dbName, $dbUser, $dbPassword,

@@ -43,6 +43,33 @@ class RateLimitMiddlewareTest extends TestCase
         $response3 = $middleware->handle('req3', function($req) { return new Response(['msg' => 'ok'], 200); });
         $this->assertEquals(429, $response3->getStatusCode());
 
+        unset($_SERVER['HTTP_X_FORWARDED_FOR']);
+        putenv('TRUSTED_PROXIES'); // Clear env var
+    }
+
+    public function testDoesNotTreatWildcardAsTrustedProxy()
+    {
+        // Mock remote addr (proxy) that is NOT explicitly trusted
+        $untrustedProxyIp = '10.0.0.' . rand(1, 255);
+        $_SERVER['REMOTE_ADDR'] = $untrustedProxyIp;
+        $_SERVER['HTTP_X_FORWARDED_FOR'] = '192.168.1.5'; // Should be ignored because wildcard shouldn't work
+
+        $cacheFile = $this->tempDir . '/rate_limit_' . hash('sha256', $untrustedProxyIp) . '.json';
+        if (file_exists($cacheFile)) {
+            unlink($cacheFile);
+        }
+
+        putenv('TRUSTED_PROXIES=*'); // Wildcard proxy should be ignored now
+
+        $middleware = new RateLimitMiddleware(2, 60);
+
+        // We expect it to be rate limited based on the untrusted proxy IP (REMOTE_ADDR) since the X-Forwarded-For is ignored
+        $middleware->handle('req1', function($req) { return new Response(['msg' => 'ok'], 200); });
+        $middleware->handle('req2', function($req) { return new Response(['msg' => 'ok'], 200); });
+
+        $response3 = $middleware->handle('req3', function($req) { return new Response(['msg' => 'ok'], 200); });
+        $this->assertEquals(429, $response3->getStatusCode());
+
         $content = json_decode($response3->getContent(), true);
         $this->assertEquals('Too Many Requests', $content['error']);
     }

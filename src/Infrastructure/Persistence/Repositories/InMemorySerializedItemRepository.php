@@ -79,6 +79,34 @@ class InMemorySerializedItemRepository implements SerializedItemRepositoryInterf
         ];
     }
 
+    public function saveAll(array $items): void
+    {
+        if (empty($items)) {
+            return;
+        }
+
+        $rows = $this->read();
+
+        // Create a map for faster lookup of existing IDs
+        $rowMap = [];
+        foreach ($rows as $index => $r) {
+            $rowMap[$r['id']] = $index;
+        }
+
+        foreach ($items as $item) {
+            $serialized = $this->serializeItem($item);
+            if (isset($rowMap[$item->id])) {
+                $rows[$rowMap[$item->id]] = $serialized;
+            } else {
+                $rows[] = $serialized;
+                // Update map for any subsequent operations if needed
+                $rowMap[$item->id] = count($rows) - 1;
+            }
+        }
+
+        $this->write($rows);
+    }
+
     public function findBySerialOrFail(SerialNumber $serial, string $tenantId): SerializedItem
     {
         $r = $this->findBySerial($serial, $tenantId);

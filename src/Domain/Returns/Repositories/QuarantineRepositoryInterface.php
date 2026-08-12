@@ -7,6 +7,10 @@ use InventoryApp\Domain\Returns\Aggregates\QuarantineItem;
 interface QuarantineRepositoryInterface
 {
     public function save(QuarantineItem $item): void;
+    /**
+     * @param QuarantineItem[] $items
+     */
+    public function saveBatch(array $items): void;
     public function findById(string $id): ?QuarantineItem;
     /** @return QuarantineItem[] */
     public function findAllByTenant(string $tenantId): array;

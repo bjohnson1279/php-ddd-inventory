@@ -12,6 +12,9 @@ interface SerializedItemRepositoryInterface
 
     public function save(SerializedItem $item): void;
 
+    /** @param SerializedItem[] $items */
+    public function saveAll(array $items): void;
+
     public function findBySerialOrFail(SerialNumber $serial, string $tenantId): SerializedItem;
 
     public function findBySerial(SerialNumber $serial, string $tenantId): ?SerializedItem;

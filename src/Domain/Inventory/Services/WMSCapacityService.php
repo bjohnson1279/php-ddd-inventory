@@ -7,7 +7,6 @@ use InventoryApp\Domain\Inventory\Repositories\WarehouseLocationRepositoryInterf
 use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
 use InventoryApp\Domain\Inventory\ValueObjects\SKU;
 use InventoryApp\Domain\Inventory\Exceptions\CapacityExceededException;
-use InventoryApp\Infrastructure\Models\ProductLocationModel;
 use Illuminate\Database\Capsule\Manager as Capsule;
 
 class WMSCapacityService

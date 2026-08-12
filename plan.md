@@ -1,12 +1,8 @@
-1. **Analyze performance issue**:
-`AssembleKit`, `DisassembleKit`, `InventoryService`, `OpeningBalanceService` processes multiple items in a loop and calls `append(LedgerEntry)` on `LedgerRepositoryInterface` sequentially, resulting in N+1 database queries.
-2. **Update `LedgerRepositoryInterface`**: Add `public function appendAll(array $entries): void;` method.
-3. **Update `EloquentLedgerRepository`**: Implement `appendAll` to execute a single `LedgerEntryModel::insert(...)` and iterate over the entries to log compliance events.
-4. **Update `InMemoryLedgerRepository`**: Implement `appendAll`.
-5. **Update loops in Use Cases / Services**:
-   - `src/Application/Inventory/UseCases/AssembleKit.php`
-   - `src/Application/Inventory/UseCases/DisassembleKit.php`
-   - `src/Domain/Inventory/Services/InventoryService.php` (`decrementForKitSale`)
-   - `src/Domain/Inventory/Services/OpeningBalanceService.php`
-   Collect the `LedgerEntry` objects inside the loop into an array, and call `appendAll` outside the loop.
-6. **Update Mock tests**: As `.jules/bolt.md` notes, ensure the `$this->callback()` closure signature in PHPUnit mock expectations is explicitly updated to accept an `array` parameter for `appendAll`.
+1. Add integration tests for `list` method in `RfidController`.
+   - The method reads data from the `RfidTagModel`.
+   - We will write an integration test checking that tags are ordered by `created_at` in descending order.
+   - Also write a test checking the behavior when no tags exist.
+   - We can add the new test file at `tests/Integration/Http/Controllers/RfidControllerTest.php`.
+2. Run the newly added test using PHPUnit.
+3. Complete pre commit steps to ensure proper testing, verification, review, and reflection are done.
+4. Request code review for the implementation using `request_code_review`.

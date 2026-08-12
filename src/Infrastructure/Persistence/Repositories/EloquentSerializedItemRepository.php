@@ -79,10 +79,8 @@ class EloquentSerializedItemRepository implements SerializedItemRepositoryInterf
         $chunks = array_chunk($serialValues, 500);
 
         foreach ($chunks as $chunk) {
-            $placeholders = implode(', ', array_fill(0, count($chunk), '?'));
-
             $models = SerializedItemModel::where('tenant_id', $tenantId)
-                ->whereRaw("LOWER(serial_number) IN ($placeholders)", $chunk)
+                ->whereIn(new \Illuminate\Database\Query\Expression('LOWER(serial_number)'), $chunk)
                 ->get();
 
             foreach ($models as $model) {

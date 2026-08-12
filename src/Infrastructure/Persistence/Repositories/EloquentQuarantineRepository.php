@@ -42,44 +42,6 @@ class EloquentQuarantineRepository implements QuarantineRepositoryInterface
         );
     }
 
-    public function saveBatch(array $items): void
-    {
-        if (empty($items)) {
-            return;
-        }
-
-        $values = [];
-        foreach ($items as $item) {
-            $dbId = $this->ensureUuid($item->getId());
-            $values[] = [
-                'id' => $dbId,
-                'tenant_id' => $item->getTenantId()->getValue(),
-                'variant_id' => $this->ensureUuid($item->getVariantId()),
-                'quantity' => $item->getQuantity(),
-                'reason' => $item->getReason(),
-                'status' => $item->getStatus()->value,
-                'location_id' => $item->getLocationId()->getValue(),
-                'created_at' => $item->getCreatedAt()->format('Y-m-d H:i:s'),
-                'resolved_at' => $item->getResolvedAt() ? $item->getResolvedAt()->format('Y-m-d H:i:s') : null
-            ];
-        }
-
-        QuarantineItemModel::upsert(
-            $values,
-            ['id'],
-            [
-                'tenant_id',
-                'variant_id',
-                'quantity',
-                'reason',
-                'status',
-                'location_id',
-                'created_at',
-                'resolved_at'
-            ]
-        );
-    }
-
     public function save(QuarantineItem $item): void
     {
         $dbId = $this->ensureUuid($item->getId());

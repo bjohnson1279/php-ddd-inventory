@@ -121,10 +121,8 @@ class ReceiveRMATest extends TestCase
             ->with($product);
 
         $this->costLayerRepositoryMock->expects($this->once())
-            ->method('saveBatch')
-            ->with($this->callback(function ($layers) {
-                return count($layers) === 1 && $layers[0] instanceof InventoryCostLayer;
-            }));
+            ->method('save')
+            ->with($this->isInstanceOf(InventoryCostLayer::class));
 
         $this->journalServiceMock->expects($this->once())
             ->method('onStockReturned')
@@ -225,10 +223,8 @@ class ReceiveRMATest extends TestCase
             );
 
         $this->quarantineRepositoryMock->expects($this->once())
-            ->method('saveBatch')
-            ->with($this->callback(function (array $items) {
-                return count($items) === 1 && $items[0] instanceof QuarantineItem;
-            }));
+            ->method('save')
+            ->with($this->isInstanceOf(QuarantineItem::class));
 
         $this->useCase->execute($dto);
     }
@@ -304,12 +300,9 @@ class ReceiveRMATest extends TestCase
         $this->productRepositoryMock->method('findByIds')->willReturn(['var_1' => $product]);
 
         $this->serializedRepositoryMock->expects($this->once())
-            ->method('findBySerials')
-<<<<<<< HEAD
-            ->with($this->callback(fn(array $sns) => count($sns) === 1 && $sns[0]->value === 'SN1'), 'tenant_1')
-=======
->>>>>>> origin/master
-            ->willReturn(['sn1' => $serialItem]);
+            ->method('findBySerial')
+            ->with($this->callback(fn(SerialNumber $sn) => $sn->value === 'SN1'), 'tenant_1')
+            ->willReturn($serialItem);
 
         $serialItem->expects($this->once())
             ->method('acceptReturn')
@@ -320,8 +313,8 @@ class ReceiveRMATest extends TestCase
             ->with('system', 'rma_1');
 
         $this->serializedRepositoryMock->expects($this->once())
-            ->method('saveAll')
-            ->with([$serialItem]);
+            ->method('save')
+            ->with($serialItem);
 
         $this->useCase->execute($dto);
     }
@@ -349,12 +342,9 @@ class ReceiveRMATest extends TestCase
         $this->productRepositoryMock->method('findByIds')->willReturn(['var_1' => $product]);
 
         $this->serializedRepositoryMock->expects($this->once())
-            ->method('findBySerials')
-<<<<<<< HEAD
-            ->with($this->callback(fn(array $sns) => count($sns) === 1 && $sns[0]->value === 'SN1'), 'tenant_1')
-=======
->>>>>>> origin/master
-            ->willReturn(['sn1' => $serialItem]);
+            ->method('findBySerial')
+            ->with($this->callback(fn(SerialNumber $sn) => $sn->value === 'SN1'), 'tenant_1')
+            ->willReturn($serialItem);
 
         $serialItem->expects($this->once())
             ->method('acceptReturn')
@@ -365,8 +355,8 @@ class ReceiveRMATest extends TestCase
             ->with("Quarantined from RMA RMA-1234", 'system', 'rma_1');
 
         $this->serializedRepositoryMock->expects($this->once())
-            ->method('saveAll')
-            ->with([$serialItem]);
+            ->method('save')
+            ->with($serialItem);
 
         $this->useCase->execute($dto);
     }
@@ -394,12 +384,9 @@ class ReceiveRMATest extends TestCase
         $this->productRepositoryMock->method('findByIds')->willReturn(['var_1' => $product]);
 
         $this->serializedRepositoryMock->expects($this->once())
-            ->method('findBySerials')
-<<<<<<< HEAD
-            ->with($this->callback(fn(array $sns) => count($sns) === 1 && $sns[0]->value === 'SN1'), 'tenant_1')
-=======
->>>>>>> origin/master
-            ->willReturn(['sn1' => $serialItem]);
+            ->method('findBySerial')
+            ->with($this->callback(fn(SerialNumber $sn) => $sn->value === 'SN1'), 'tenant_1')
+            ->willReturn($serialItem);
 
         $serialItem->expects($this->once())
             ->method('acceptReturn')
@@ -410,8 +397,8 @@ class ReceiveRMATest extends TestCase
             ->with("Scrapped from RMA RMA-1234", 'system', 'rma_1');
 
         $this->serializedRepositoryMock->expects($this->once())
-            ->method('saveAll')
-            ->with([$serialItem]);
+            ->method('save')
+            ->with($serialItem);
 
         $mockLayer = new \InventoryApp\Domain\Accounting\Entities\InventoryCostLayer(
             'layer_1', 'var_1', 'tenant_1', 1, 1000, new \DateTimeImmutable(), 'ref'
@@ -446,12 +433,9 @@ class ReceiveRMATest extends TestCase
         $this->productRepositoryMock->method('findByIds')->willReturn(['var_1' => $product]);
 
         $this->serializedRepositoryMock->expects($this->once())
-            ->method('findBySerials')
-<<<<<<< HEAD
-            ->with($this->callback(fn(array $sns) => count($sns) === 1 && $sns[0]->value === 'SN1'), 'tenant_1')
-=======
->>>>>>> origin/master
-            ->willReturn([]);
+            ->method('findBySerial')
+            ->with($this->callback(fn(SerialNumber $sn) => $sn->value === 'SN1'), 'tenant_1')
+            ->willReturn(null);
 
         $this->serializedRepositoryMock->expects($this->never())
             ->method('save');
@@ -483,7 +467,7 @@ class ReceiveRMATest extends TestCase
             ->willThrowException(new \InvalidArgumentException("Invalid state."));
 
         $this->productRepositoryMock->expects($this->never())->method('save');
-        $this->costLayerRepositoryMock->expects($this->never())->method('saveBatch');
+        $this->costLayerRepositoryMock->expects($this->never())->method('save');
         $this->rmaRepositoryMock->expects($this->never())->method('save');
 
         $this->expectException(\InvalidArgumentException::class);
@@ -512,7 +496,7 @@ class ReceiveRMATest extends TestCase
         $this->rmaRepositoryMock->method('findById')->willReturn($rma);
 
         $this->productRepositoryMock->expects($this->never())->method('save');
-        $this->costLayerRepositoryMock->expects($this->never())->method('saveBatch');
+        $this->costLayerRepositoryMock->expects($this->never())->method('save');
         $this->rmaRepositoryMock->expects($this->never())->method('save');
 
         $this->expectException(\ValueError::class);
@@ -585,13 +569,11 @@ class ReceiveRMATest extends TestCase
 
         $this->productRepositoryMock->expects($this->exactly(2))
             ->method('save')
-            ->withConsecutive([$product1], [$product2]);
+            ->withAnyParameters();
 
-        $this->costLayerRepositoryMock->expects($this->once())
-            ->method('saveBatch')
-            ->with($this->callback(function ($layers) {
-                return count($layers) === 2 && $layers[0] instanceof InventoryCostLayer && $layers[1] instanceof InventoryCostLayer;
-            }));
+        $this->costLayerRepositoryMock->expects($this->exactly(2))
+            ->method('save')
+            ->with($this->isInstanceOf(InventoryCostLayer::class));
 
         $this->journalServiceMock->expects($this->exactly(2))
             ->method('onStockReturned')

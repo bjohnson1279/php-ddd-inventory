@@ -6,11 +6,11 @@ use Illuminate\Database\Capsule\Manager as DB;
 
 class AnomalyDetectionService
 {
-    private string $sidecarUrl;
+    private PythonSidecarClient $client;
 
     public function __construct()
     {
-        $this->sidecarUrl = getenv('PYTHON_SIDECAR_URL') ?: 'http://localhost:5005';
+        $this->client = new PythonSidecarClient();
     }
 
     public function analyze(string $tenantId): array
@@ -58,26 +58,9 @@ class AnomalyDetectionService
         ]);
 
         // 4. POST to Python sidecar
-        $url = $this->sidecarUrl . '/anomaly-detect';
-        $options = [
-            'http' => [
-                'method' => 'POST',
-                'header' => "Content-Type: application/json\r\nAccept: application/json\r\n",
-                'content' => $payload,
-                'ignore_errors' => true,
-                'timeout' => 10
-            ]
-        ];
+        $decoded = $this->client->post('/anomaly-detect', $payload);
 
-        $context = stream_context_create($options);
-        $result = @file_get_contents($url, false, $context);
-
-        if ($result === false) {
-            return $this->fallback();
-        }
-
-        $decoded = json_decode($result, true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
+        if ($decoded === null) {
             return $this->fallback();
         }
 

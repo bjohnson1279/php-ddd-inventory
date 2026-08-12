@@ -32,43 +32,6 @@ class InMemoryQuarantineRepository implements QuarantineRepositoryInterface
         file_put_contents($this->path, json_encode(array_values($data), JSON_PRETTY_PRINT), LOCK_EX);
     }
 
-    public function saveBatch(array $items): void
-    {
-        if (empty($items)) {
-            return;
-        }
-
-        $rows = $this->read();
-
-        foreach ($items as $item) {
-            $found = false;
-            $row = [
-                'id' => $item->getId(),
-                'variant_id' => $item->getVariantId(),
-                'quantity' => $item->getQuantity(),
-                'reason' => $item->getReason(),
-                'location_id' => $item->getLocationId()->getValue(),
-                'tenant_id' => $item->getTenantId()->getValue(),
-                'status' => $item->getStatus()->value,
-                'created_at' => $item->getCreatedAt()->format(DATE_ATOM),
-                'resolved_at' => $item->getResolvedAt() ? $item->getResolvedAt()->format(DATE_ATOM) : null
-            ];
-
-            foreach ($rows as &$r) {
-                if ($r['id'] === $item->getId()) {
-                    $r = $row;
-                    $found = true;
-                    break;
-                }
-            }
-            if (!$found) {
-                $rows[] = $row;
-            }
-        }
-
-        $this->write($rows);
-    }
-
     public function save(QuarantineItem $item): void
     {
         $rows = $this->read();

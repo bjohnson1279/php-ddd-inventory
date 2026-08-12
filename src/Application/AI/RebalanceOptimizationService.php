@@ -6,11 +6,11 @@ use Illuminate\Database\Capsule\Manager as DB;
 
 class RebalanceOptimizationService
 {
-    private PythonSidecarClient $client;
+    private string $sidecarUrl;
 
     public function __construct()
     {
-        $this->client = new PythonSidecarClient();
+        $this->sidecarUrl = getenv('PYTHON_SIDECAR_URL') ?: 'http://localhost:5005';
     }
 
     public function getMatrix(string $tenantId): array
@@ -95,9 +95,26 @@ class RebalanceOptimizationService
         ]);
 
         // 4. POST to Python sidecar
-        $decoded = $this->client->post('/rebalance-optimize', $payload);
+        $url = $this->sidecarUrl . '/rebalance-optimize';
+        $options = [
+            'http' => [
+                'method' => 'POST',
+                'header' => "Content-Type: application/json\r\nAccept: application/json\r\n",
+                'content' => $payload,
+                'ignore_errors' => true,
+                'timeout' => 10
+            ]
+        ];
 
-        if ($decoded === null) {
+        $context = stream_context_create($options);
+        $result = @file_get_contents($url, false, $context);
+
+        if ($result === false) {
+            return $this->fallback();
+        }
+
+        $decoded = json_decode($result, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
             return $this->fallback();
         }
 

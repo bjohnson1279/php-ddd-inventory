@@ -303,6 +303,10 @@ class ReceiveRMATest extends TestCase
 
         $this->serializedRepositoryMock->expects($this->once())
             ->method('findBySerials')
+<<<<<<< HEAD
+            ->with($this->callback(fn(array $sns) => count($sns) === 1 && $sns[0]->value === 'SN1'), 'tenant_1')
+=======
+>>>>>>> origin/master
             ->willReturn(['sn1' => $serialItem]);
 
         $serialItem->expects($this->once())
@@ -344,6 +348,10 @@ class ReceiveRMATest extends TestCase
 
         $this->serializedRepositoryMock->expects($this->once())
             ->method('findBySerials')
+<<<<<<< HEAD
+            ->with($this->callback(fn(array $sns) => count($sns) === 1 && $sns[0]->value === 'SN1'), 'tenant_1')
+=======
+>>>>>>> origin/master
             ->willReturn(['sn1' => $serialItem]);
 
         $serialItem->expects($this->once())
@@ -385,6 +393,10 @@ class ReceiveRMATest extends TestCase
 
         $this->serializedRepositoryMock->expects($this->once())
             ->method('findBySerials')
+<<<<<<< HEAD
+            ->with($this->callback(fn(array $sns) => count($sns) === 1 && $sns[0]->value === 'SN1'), 'tenant_1')
+=======
+>>>>>>> origin/master
             ->willReturn(['sn1' => $serialItem]);
 
         $serialItem->expects($this->once())
@@ -433,6 +445,10 @@ class ReceiveRMATest extends TestCase
 
         $this->serializedRepositoryMock->expects($this->once())
             ->method('findBySerials')
+<<<<<<< HEAD
+            ->with($this->callback(fn(array $sns) => count($sns) === 1 && $sns[0]->value === 'SN1'), 'tenant_1')
+=======
+>>>>>>> origin/master
             ->willReturn([]);
 
         $this->serializedRepositoryMock->expects($this->never())

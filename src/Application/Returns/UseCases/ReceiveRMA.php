@@ -130,6 +130,13 @@ class ReceiveRMA
 
             // Handle Serialized items transitions
             if (!empty($item['serialNumbers'])) {
+<<<<<<< HEAD
+                $serialNumbersObjects = array_map(fn($sn) => new SerialNumber($sn), $item['serialNumbers']);
+                $serialItems = $this->serializedRepository->findBySerials($serialNumbersObjects, $rma->getTenantId()->getValue());
+                foreach ($item['serialNumbers'] as $sn) {
+                    $serialItem = $serialItems[strtolower($sn)] ?? null;
+                    if ($serialItem) {
+=======
                 $serialItemsToSave = [];
                 // N+1 Fetch can also be optimized but the task specifically calls out N+1 Save
                 // Actually we could use findBySerials to fix N+1 fetch as well!
@@ -142,6 +149,7 @@ class ReceiveRMA
                     $lowerSn = strtolower(trim($sn));
                     if (isset($serialItems[$lowerSn])) {
                         $serialItem = $serialItems[$lowerSn];
+>>>>>>> origin/master
                         $serialItem->acceptReturn($rma->getId(), 'system');
 
                         if ($disposition === RMADisposition::Restock) {

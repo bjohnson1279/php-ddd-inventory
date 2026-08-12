@@ -44,6 +44,48 @@ class EloquentSerializedItemRepository implements SerializedItemRepositoryInterf
         );
     }
 
+    public function saveAll(array $items): void
+    {
+        if (empty($items)) {
+            return;
+        }
+
+        $data = [];
+        foreach ($items as $item) {
+            $history = array_map(function ($t) {
+                return [
+                    'from'        => $t->from->value,
+                    'to'          => $t->to->value,
+                    'reason'      => $t->reason,
+                    'actorId'     => $t->actorId,
+                    'referenceId' => $t->referenceId,
+                    'occurredAt'  => $t->occurredAt->format(\DateTimeInterface::ATOM),
+                ];
+            }, $item->history());
+
+            $data[] = [
+                'id'            => $item->id,
+                'variant_id'    => $item->variantId,
+                'serial_number' => $item->serialNumber->value,
+                'tenant_id'     => $item->tenantId,
+                'location_id'   => $item->locationId(),
+                'status'        => $item->status()->value,
+                'history'       => json_encode($history), // Upsert requires raw values for JSON columns usually in this setup
+            ];
+        }
+
+        // Chunking the upsert to avoid hitting parameter limits
+        $chunks = array_chunk($data, 500);
+
+        foreach ($chunks as $chunk) {
+            SerializedItemModel::upsert(
+                $chunk,
+                ['id'],
+                ['variant_id', 'serial_number', 'tenant_id', 'location_id', 'status', 'history']
+            );
+        }
+    }
+
     public function findBySerialOrFail(SerialNumber $serial, string $tenantId): SerializedItem
     {
         $item = $this->findBySerial($serial, $tenantId);

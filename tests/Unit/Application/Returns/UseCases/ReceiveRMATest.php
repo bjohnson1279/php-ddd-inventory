@@ -225,8 +225,10 @@ class ReceiveRMATest extends TestCase
             );
 
         $this->quarantineRepositoryMock->expects($this->once())
-            ->method('save')
-            ->with($this->isInstanceOf(QuarantineItem::class));
+            ->method('saveBatch')
+            ->with($this->callback(function (array $items) {
+                return count($items) === 1 && $items[0] instanceof QuarantineItem;
+            }));
 
         $this->useCase->execute($dto);
     }
@@ -302,9 +304,12 @@ class ReceiveRMATest extends TestCase
         $this->productRepositoryMock->method('findByIds')->willReturn(['var_1' => $product]);
 
         $this->serializedRepositoryMock->expects($this->once())
-            ->method('findBySerial')
-            ->with($this->callback(fn(SerialNumber $sn) => $sn->value === 'SN1'), 'tenant_1')
-            ->willReturn($serialItem);
+            ->method('findBySerials')
+<<<<<<< HEAD
+            ->with($this->callback(fn(array $sns) => count($sns) === 1 && $sns[0]->value === 'SN1'), 'tenant_1')
+=======
+>>>>>>> origin/master
+            ->willReturn(['sn1' => $serialItem]);
 
         $serialItem->expects($this->once())
             ->method('acceptReturn')
@@ -315,8 +320,8 @@ class ReceiveRMATest extends TestCase
             ->with('system', 'rma_1');
 
         $this->serializedRepositoryMock->expects($this->once())
-            ->method('save')
-            ->with($serialItem);
+            ->method('saveAll')
+            ->with([$serialItem]);
 
         $this->useCase->execute($dto);
     }
@@ -344,9 +349,12 @@ class ReceiveRMATest extends TestCase
         $this->productRepositoryMock->method('findByIds')->willReturn(['var_1' => $product]);
 
         $this->serializedRepositoryMock->expects($this->once())
-            ->method('findBySerial')
-            ->with($this->callback(fn(SerialNumber $sn) => $sn->value === 'SN1'), 'tenant_1')
-            ->willReturn($serialItem);
+            ->method('findBySerials')
+<<<<<<< HEAD
+            ->with($this->callback(fn(array $sns) => count($sns) === 1 && $sns[0]->value === 'SN1'), 'tenant_1')
+=======
+>>>>>>> origin/master
+            ->willReturn(['sn1' => $serialItem]);
 
         $serialItem->expects($this->once())
             ->method('acceptReturn')
@@ -357,8 +365,8 @@ class ReceiveRMATest extends TestCase
             ->with("Quarantined from RMA RMA-1234", 'system', 'rma_1');
 
         $this->serializedRepositoryMock->expects($this->once())
-            ->method('save')
-            ->with($serialItem);
+            ->method('saveAll')
+            ->with([$serialItem]);
 
         $this->useCase->execute($dto);
     }
@@ -386,9 +394,12 @@ class ReceiveRMATest extends TestCase
         $this->productRepositoryMock->method('findByIds')->willReturn(['var_1' => $product]);
 
         $this->serializedRepositoryMock->expects($this->once())
-            ->method('findBySerial')
-            ->with($this->callback(fn(SerialNumber $sn) => $sn->value === 'SN1'), 'tenant_1')
-            ->willReturn($serialItem);
+            ->method('findBySerials')
+<<<<<<< HEAD
+            ->with($this->callback(fn(array $sns) => count($sns) === 1 && $sns[0]->value === 'SN1'), 'tenant_1')
+=======
+>>>>>>> origin/master
+            ->willReturn(['sn1' => $serialItem]);
 
         $serialItem->expects($this->once())
             ->method('acceptReturn')
@@ -399,8 +410,8 @@ class ReceiveRMATest extends TestCase
             ->with("Scrapped from RMA RMA-1234", 'system', 'rma_1');
 
         $this->serializedRepositoryMock->expects($this->once())
-            ->method('save')
-            ->with($serialItem);
+            ->method('saveAll')
+            ->with([$serialItem]);
 
         $mockLayer = new \InventoryApp\Domain\Accounting\Entities\InventoryCostLayer(
             'layer_1', 'var_1', 'tenant_1', 1, 1000, new \DateTimeImmutable(), 'ref'
@@ -435,9 +446,12 @@ class ReceiveRMATest extends TestCase
         $this->productRepositoryMock->method('findByIds')->willReturn(['var_1' => $product]);
 
         $this->serializedRepositoryMock->expects($this->once())
-            ->method('findBySerial')
-            ->with($this->callback(fn(SerialNumber $sn) => $sn->value === 'SN1'), 'tenant_1')
-            ->willReturn(null);
+            ->method('findBySerials')
+<<<<<<< HEAD
+            ->with($this->callback(fn(array $sns) => count($sns) === 1 && $sns[0]->value === 'SN1'), 'tenant_1')
+=======
+>>>>>>> origin/master
+            ->willReturn([]);
 
         $this->serializedRepositoryMock->expects($this->never())
             ->method('save');

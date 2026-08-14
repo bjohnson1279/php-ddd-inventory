@@ -32,7 +32,7 @@ class InternalBarcodeGenerator
     private function buildValue(string $variantId, string $tenantId, int $salt): string
     {
         $tenantFragment  = strtoupper(substr(hash('sha256', $tenantId), 0, 4));
-        $variantFragment = strtoupper(substr(hash('sha256', $variantId . $salt), 0, 8));
+        $variantFragment = strtoupper(substr(hash('sha256', $variantId . $salt), 0, 12));
 
         return self::PREFIX . '-' . $tenantFragment . '-' . $variantFragment;
         // e.g. INV-A3F2-0C8E4B1D

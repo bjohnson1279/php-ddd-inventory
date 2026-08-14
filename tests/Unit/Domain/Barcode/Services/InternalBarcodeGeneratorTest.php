@@ -18,7 +18,7 @@ class InternalBarcodeGeneratorTest extends TestCase
 
         $this->assertEquals(BarcodeSymbology::CODE_128, $barcode->symbology);
         $this->assertStringStartsWith('INV-', $barcode->value);
-        $this->assertEquals(17, strlen($barcode->value)); // INV + '-' + 4 chars + '-' + 8 chars = 17 chars
+        $this->assertEquals(21, strlen($barcode->value)); // INV + '-' + 4 chars + '-' + 12 chars = 21 chars
     }
 
     public function testAvoidsCollisions()

@@ -131,13 +131,8 @@ class ReportController
             $data['total_valuation_wac_cents'] += ($totalStock * $wacUnitCents);
             $this->addLocationValuations($stocks, $wacUnitCents, $locationValuations);
 
-            // Sort layers by received_at DESC (newest first) for FIFO
-            usort($layers, fn($a, $b) => strcmp($b->received_at, $a->received_at));
             $data['total_valuation_fifo_cents'] += $this->calculateFifoValuation($layers, $totalStock, $wacUnitCents);
-
-            // Reverse for LIFO (oldest first)
-            $lifoLayers = array_reverse($layers);
-            $data['total_valuation_lifo_cents'] += $this->calculateLifoValuation($lifoLayers, $totalStock, $wacUnitCents);
+            $data['total_valuation_lifo_cents'] += $this->calculateLifoValuation($layers, $totalStock, $wacUnitCents);
         }
 
         $data['valuation_by_location'] = array_values($locationValuations);
@@ -213,6 +208,9 @@ class ReportController
     {
         // 2. Compute FIFO Valuation (valuation of remaining inventory)
         // Since FIFO consumes the oldest first, the remaining stock belongs to the newest layers.
+        // Sort layers by received_at DESC (newest first)
+        usort($layers, fn($a, $b) => strcmp($b->received_at, $a->received_at));
+
         $remainingToVal = $totalStock;
         $fifoValuation = 0;
         foreach ($layers as $l) {
@@ -232,6 +230,9 @@ class ReportController
     {
         // 3. Compute LIFO Valuation (valuation of remaining inventory)
         // Since LIFO consumes the newest first, the remaining stock belongs to the oldest layers.
+        // Sort layers by received_at ASC (oldest first)
+        usort($layers, fn($a, $b) => strcmp($a->received_at, $b->received_at));
+
         $remainingToVal = $totalStock;
         $lifoValuation = 0;
         foreach ($layers as $l) {

@@ -5,7 +5,3 @@
 ## 2024-08-11 - Instance Caching Over Static Caching
 **Learning:** Using `static` variables inside methods to cache data eliminates N+1 queries but can introduce test bleed in PHPUnit and serve stale data in long-running processes (like Laravel Octane).
 **Action:** Always prefer instance-level properties (e.g., `private ?array $cache`) over method-level `static` variables for caching state during object lifecycles in this application architecture.
-
-## 2026-08-12 - Copy-on-Write Sorting Overhead
-**Learning:** In PHP, `usort()` operates in-place. Because arrays in PHP use copy-on-write, passing an array to a method that performs `usort()` on it implicitly triggers an $O(N)$ copy of the array *before* the $O(N \log N)$ sort begins. In multi-method valuation algorithms (like FIFO + LIFO), sorting the same array inside multiple helper functions causes massive duplicated overhead for both CPU and memory.
-**Action:** When a dataset needs to be evaluated in multiple sorted orders, sort it exactly once at the controller/caller level and use $O(N)$ operations like `array_reverse()` to pass variations to helper methods, preventing implicit array cloning.

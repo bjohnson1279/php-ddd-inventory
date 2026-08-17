@@ -46,6 +46,9 @@ class ReorderPolicyService
 
         foreach ($policies as $policy) {
             $rop = $policy->reorderPoint;
+            $skuStr = $policy->sku->getValue();
+            $product = $products[$skuStr] ?? null;
+
             if ($policy->dynamicRopEnabled) {
                 try {
                     $newRop = $forecaster->forecastReorderPoint(
@@ -54,7 +57,8 @@ class ReorderPolicyService
                         5, // default leadTimeDays
                         $policy->safetyStock,
                         $windowDays,
-                        $tenantId
+                        $tenantId,
+                        $product
                     );
                     $policy->updateReorderPoint($newRop);
                     $this->reorderPolicyRepository->save($policy);
@@ -63,9 +67,6 @@ class ReorderPolicyService
                     error_log("Error forecasting ROP for SKU {$policy->sku->getValue()}: " . $e->getMessage());
                 }
             }
-
-            $skuStr = $policy->sku->getValue();
-            $product = $products[$skuStr] ?? null;
 
             $currentQty = 0;
             if ($product) {

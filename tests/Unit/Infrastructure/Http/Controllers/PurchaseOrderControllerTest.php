@@ -146,15 +146,21 @@ class PurchaseOrderControllerTest extends TestCase
         $costLayerRepoMock = $this->createMock(CostLayerRepositoryInterface::class);
         $eventsMock = $this->createMock(EventDispatcherInterface::class);
 
+        $productMock = $this->createMock(\InventoryApp\Domain\Inventory\Entities\Product::class);
+        $productMock->method('getId')->willReturn('prod-1');
+        $productMock->method('releaseEvents')->willReturn([]);
+        $productRepoMock->method('findBySkus')
+            ->willReturn(['var-1' => $productMock]);
+
         $this->requestMock->expects($this->once())
             ->method('validate')
             ->willReturn([
                 'items' => [
-                    ['id' => 'item-1', 'quantity' => 5]
+                    ['variantId' => 'var-1', 'quantityReceived' => 5]
                 ]
             ]);
 
-        $po = new PurchaseOrder('po-123', 'PO-123', 'v-1', 't-1', 'loc-1', PurchaseOrderStatus::Sent);
+        $po = new PurchaseOrder('po-123', 'PO-123', 'v-1', 't-1', 'LOC-1', PurchaseOrderStatus::Sent);
         $po->addItem(new PurchaseOrderItem('item-1', 'var-1', 10, 500, 0));
 
         $this->poRepoMock->expects($this->atLeastOnce())
@@ -171,6 +177,7 @@ class PurchaseOrderControllerTest extends TestCase
             $eventsMock
         );
 
+        $this->assertEquals('{"message":"Items received successfully"}', $response->getContent());
         $this->assertInstanceOf(Response::class, $response);
         $this->assertEquals(200, $response->getStatusCode());
     }

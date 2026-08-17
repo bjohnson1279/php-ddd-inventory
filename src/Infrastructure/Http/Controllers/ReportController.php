@@ -35,7 +35,7 @@ class ReportController
             $catalogVariants = $this->fetchCatalogVariantsMap($productSkus);
 
             $reportData = $this->buildReportData($products, $locations, $allStocks, $allLayers, $catalogVariants);
-            $reportData['recent_activity'] = $this->getRecentActivity($tenantId);
+            $reportData['recent_activity'] = $this->getRecentActivity($tenantId, $products->keyBy('id'));
 
             return new Response($reportData, 200);
         } catch (Exception $e) {
@@ -246,7 +246,7 @@ class ReportController
         return $lifoValuation;
     }
 
-    private function getRecentActivity(string $tenantId): array
+    private function getRecentActivity(string $tenantId, \Illuminate\Support\Collection $products): array
     {
         // Fetch recent transaction activity
         $transactions = DB::table('inventory_transactions')
@@ -259,12 +259,9 @@ class ReportController
             return [];
         }
 
-        // Bolt optimization: Extract product fetching out of the loop.
-        // Instead of executing `DB::table('products')->where('id', ...)->first()` 5 times,
-        // we extract the unique product IDs and perform a single O(1) batched query.
-        // This solves an N+1 query issue for the activity feed.
-        $productIds = $transactions->pluck('product_id')->unique()->toArray();
-        $products = DB::table('products')->whereIn('id', $productIds)->get(['id', 'name', 'sku'])->keyBy('id');
+        // Bolt optimization: Re-use the already-fetched products collection from the parent
+        // valuation method instead of executing a redundant database query here.
+        // This completely eliminates the product query.
 
         $activity = [];
         foreach ($transactions as $t) {

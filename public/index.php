@@ -172,6 +172,12 @@ $uri    = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 
 header('Content-Type: application/json');
 
+if ($uri === '/api/health' || $uri === '/health') {
+    http_response_code(200);
+    echo json_encode(['status' => 'ok', 'timestamp' => date('c')]);
+    exit;
+}
+
 // ── Request adapter ───────────────────────────────────────────────────────────
 use InventoryApp\Infrastructure\Http\RequestInterface;
 

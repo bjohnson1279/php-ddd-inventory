@@ -60,7 +60,6 @@ class RequirePermissionTest extends TestCase
         
         $requestMock = $this->createMock(\InventoryApp\Infrastructure\Http\Request::class);
         $requestMock->method('input')
-            ->with('_auth_permissions')
             ->willReturn(null);
 
         $nextCalled = false;
@@ -73,5 +72,53 @@ class RequirePermissionTest extends TestCase
 
         $this->assertFalse($nextCalled);
         $this->assertEquals(403, $response->getStatusCode());
+    }
+
+    public function test_allows_request_with_global_wildcard()
+    {
+        $middleware = new RequirePermission('purchase_order', 'place');
+        
+        $requestMock = $this->createMock(\InventoryApp\Infrastructure\Http\Request::class);
+        $requestMock->method('input')
+            ->with('_auth_permissions')
+            ->willReturn(['*:*']);
+
+        $nextCalled = false;
+        $next = function ($req) use (&$nextCalled) {
+            $nextCalled = true;
+            return new Response(['data' => 'success']);
+        };
+
+        $response = $middleware->handle($requestMock, $next);
+
+        $this->assertTrue($nextCalled);
+    }
+
+    public function test_blocks_cross_tenant_request()
+    {
+        $middleware = new RequirePermission('purchase_order', 'place');
+        
+        $requestMock = $this->createMock(\InventoryApp\Infrastructure\Http\Request::class);
+        $requestMock->method('input')
+            ->willReturnCallback(function($key) {
+                if ($key === '_auth_permissions') return ['purchase_order:place'];
+                if ($key === '_auth_tenant_id') return 'tenant-1';
+                if ($key === 'tenantId') return 'tenant-2';
+                return null;
+            });
+
+        $nextCalled = false;
+        $next = function ($req) use (&$nextCalled) {
+            $nextCalled = true;
+            return new Response(['data' => 'success']);
+        };
+
+        $response = $middleware->handle($requestMock, $next);
+
+        $this->assertFalse($nextCalled);
+        $this->assertEquals(403, $response->getStatusCode());
+        
+        $body = json_decode($response->getBody(), true);
+        $this->assertStringContainsString('Cross-tenant', $body['error']);
     }
 }

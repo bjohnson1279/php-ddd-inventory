@@ -39,13 +39,38 @@ class RequirePermission
             $permissions = $request->input('_auth_permissions', []);
         }
 
-        $required = "{$this->resource}:{$this->action}";
+        $reqRes = strtolower($this->resource);
+        $reqAct = strtolower($this->action);
+        $required = "{$reqRes}:{$reqAct}";
+        
+        $permissions = array_map('strtolower', $permissions);
 
-        if (!in_array($required, $permissions, true)) {
+        $hasPermission = in_array($required, $permissions, true)
+            || in_array('*:*', $permissions, true)
+            || in_array("{$reqRes}:*", $permissions, true);
+
+        if (!$hasPermission) {
             return new Response(
-                ['error' => "Forbidden: Missing permission '{$required}'."],
+                ['error' => "Forbidden: Missing permission '{$this->resource}:{$this->action}'."],
                 403
             );
+        }
+
+        // Tenant boundary guard
+        $userTenant = null;
+        if (isset($request->attributes)) {
+            $userTenant = $request->attributes->get('auth.tenantId');
+        } elseif (method_exists($request, 'input')) {
+            $userTenant = $request->input('_auth_tenant_id');
+        }
+
+        $requestedTenant = null;
+        if (method_exists($request, 'input')) {
+            $requestedTenant = $request->input('tenantId');
+        }
+        
+        if ($requestedTenant && $userTenant && $requestedTenant !== $userTenant) {
+            return new Response(['error' => 'Forbidden: Cross-tenant access is not allowed.'], 403);
         }
 
         return $next($request);

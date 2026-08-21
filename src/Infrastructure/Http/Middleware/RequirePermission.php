@@ -67,6 +67,9 @@ class RequirePermission
         $requestedTenant = null;
         if (method_exists($request, 'input')) {
             $requestedTenant = $request->input('tenantId');
+            if (is_array($requestedTenant)) {
+                $requestedTenant = $requestedTenant[0] ?? null;
+            }
         }
         
         if ($requestedTenant && $userTenant && $requestedTenant !== $userTenant) {

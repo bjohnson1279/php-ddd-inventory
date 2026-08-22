@@ -12,10 +12,12 @@ class RequirePermissionTest extends TestCase
     {
         $middleware = new RequirePermission('purchase_order', 'place');
         
-        $requestMock = $this->createMock(\InventoryApp\Infrastructure\Http\Request::class);
+        $requestMock = $this->getMockBuilder(\stdClass::class)->addMethods(['input'])->getMock();
         $requestMock->method('input')
-            ->with('_auth_permissions')
-            ->willReturn(['purchase_order:place', 'inventory:view']);
+            ->willReturnCallback(function($key) {
+                if ($key === '_auth_permissions') return ['purchase_order:place', 'inventory:view'];
+                return null;
+            });
 
         $nextCalled = false;
         $next = function ($req) use (&$nextCalled) {
@@ -33,10 +35,12 @@ class RequirePermissionTest extends TestCase
     {
         $middleware = new RequirePermission('purchase_order', 'place');
         
-        $requestMock = $this->createMock(\InventoryApp\Infrastructure\Http\Request::class);
+        $requestMock = $this->getMockBuilder(\stdClass::class)->addMethods(['input'])->getMock();
         $requestMock->method('input')
-            ->with('_auth_permissions')
-            ->willReturn(['inventory:view']);
+            ->willReturnCallback(function($key) {
+                if ($key === '_auth_permissions') return ['inventory:view'];
+                return null;
+            });
 
         $nextCalled = false;
         $next = function ($req) use (&$nextCalled) {
@@ -49,7 +53,7 @@ class RequirePermissionTest extends TestCase
         $this->assertFalse($nextCalled);
         $this->assertEquals(403, $response->getStatusCode());
         
-        $body = json_decode($response->getBody(), true);
+        $body = json_decode($response->getContent(), true);
         $this->assertArrayHasKey('error', $body);
         $this->assertStringContainsString('Forbidden', $body['error']);
     }
@@ -58,9 +62,12 @@ class RequirePermissionTest extends TestCase
     {
         $middleware = new RequirePermission('purchase_order', 'place');
         
-        $requestMock = $this->createMock(\InventoryApp\Infrastructure\Http\Request::class);
+        $requestMock = $this->getMockBuilder(\stdClass::class)->addMethods(['input'])->getMock();
         $requestMock->method('input')
-            ->willReturn(null);
+            ->willReturnCallback(function($key) {
+                if ($key === '_auth_permissions') return [];
+                return null;
+            });
 
         $nextCalled = false;
         $next = function ($req) use (&$nextCalled) {
@@ -78,10 +85,12 @@ class RequirePermissionTest extends TestCase
     {
         $middleware = new RequirePermission('purchase_order', 'place');
         
-        $requestMock = $this->createMock(\InventoryApp\Infrastructure\Http\Request::class);
+        $requestMock = $this->getMockBuilder(\stdClass::class)->addMethods(['input'])->getMock();
         $requestMock->method('input')
-            ->with('_auth_permissions')
-            ->willReturn(['*:*']);
+            ->willReturnCallback(function($key) {
+                if ($key === '_auth_permissions') return ['*:*'];
+                return null;
+            });
 
         $nextCalled = false;
         $next = function ($req) use (&$nextCalled) {
@@ -98,7 +107,7 @@ class RequirePermissionTest extends TestCase
     {
         $middleware = new RequirePermission('purchase_order', 'place');
         
-        $requestMock = $this->createMock(\InventoryApp\Infrastructure\Http\Request::class);
+        $requestMock = $this->getMockBuilder(\stdClass::class)->addMethods(['input'])->getMock();
         $requestMock->method('input')
             ->willReturnCallback(function($key) {
                 if ($key === '_auth_permissions') return ['purchase_order:place'];
@@ -118,7 +127,7 @@ class RequirePermissionTest extends TestCase
         $this->assertFalse($nextCalled);
         $this->assertEquals(403, $response->getStatusCode());
         
-        $body = json_decode($response->getBody(), true);
+        $body = json_decode($response->getContent(), true);
         $this->assertStringContainsString('Cross-tenant', $body['error']);
     }
 }

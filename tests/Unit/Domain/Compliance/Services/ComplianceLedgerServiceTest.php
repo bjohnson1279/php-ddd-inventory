@@ -153,9 +153,11 @@ class ComplianceLedgerServiceTest extends TestCase
 
     public function testExceptionIsThrownWhenPrivateKeyIsNotSet()
     {
+        $originalPrivateKey = getenv('COMPLIANCE_PRIVATE_KEY');
+        $originalKey = getenv('COMPLIANCE_KEY');
+
         putenv('COMPLIANCE_PRIVATE_KEY=');
         putenv('COMPLIANCE_KEY=');
-        putenv('APP_ENV=production');
 
         try {
             $this->expectException(\RuntimeException::class);
@@ -164,7 +166,8 @@ class ComplianceLedgerServiceTest extends TestCase
             $payload = ['sku' => 'SKU-TEST-1'];
             ComplianceLedgerService::logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
         } finally {
-            putenv('APP_ENV=testing');
+            putenv('COMPLIANCE_PRIVATE_KEY=' . ($originalPrivateKey !== false ? $originalPrivateKey : ''));
+            putenv('COMPLIANCE_KEY=' . ($originalKey !== false ? $originalKey : ''));
         }
     }
 }

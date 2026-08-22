@@ -29,7 +29,7 @@ class TenantConnectionManager
             'port'      => env('DB_PORT', '5432'),
             'database'  => 'inventory_' . $tenantId,
             'username'  => env('DB_USERNAME', 'postgres'),
-            'password'  => env('DB_PASSWORD', 'postgres'),
+            'password'  => env('DB_PASSWORD') !== null && env('DB_PASSWORD') !== '' ? env('DB_PASSWORD') : (env('APP_ENV') === 'testing' ? 'postgres' : throw new \RuntimeException('DB_PASSWORD is required')),
             'charset'   => 'utf8',
             'prefix'    => '',
             'schema'    => 'public',

@@ -31,6 +31,17 @@ set_error_handler(function (int $errno, string $errstr, string $errfile, int $er
     throw new \ErrorException($errstr, 0, $errno, $errfile, $errline);
 });
 
+// ── Health Check Fast Path ───────────────────────────────────────────────────
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+$uri    = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+
+if ($method === 'GET' && ($uri === '/api/health' || $uri === '/health')) {
+    http_response_code(200);
+    header('Content-Type: application/json');
+    echo json_encode(['status' => 'ok', 'timestamp' => date('c')]);
+    exit;
+}
+
 use Illuminate\Database\Capsule\Manager as Capsule;
 use InventoryApp\Infrastructure\ServiceContainer;
 
@@ -165,18 +176,9 @@ $dispatcher->subscribe(StockReceived::class, [$costLayerListener, 'handleStockRe
 $dispatcher->subscribe(\InventoryApp\Domain\Inventory\Events\OpeningBalancePosted::class, [$costLayerListener, 'handleOpeningBalancePosted']);
 
 // ── Request parsing ───────────────────────────────────────────────────────────
-$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-$uri    = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
-
 \InventoryApp\Infrastructure\Http\Middleware\TraceMiddleware::handle();
 
 header('Content-Type: application/json');
-
-if ($uri === '/api/health' || $uri === '/health') {
-    http_response_code(200);
-    echo json_encode(['status' => 'ok', 'timestamp' => date('c')]);
-    exit;
-}
 
 // ── Request adapter ───────────────────────────────────────────────────────────
 use InventoryApp\Infrastructure\Http\RequestInterface;

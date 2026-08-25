@@ -12,6 +12,7 @@ class RequirePermissionTest extends TestCase
     {
         $middleware = new RequirePermission('purchase_order', 'place');
 
+        
         $requestMock = $this->getMockBuilder(\stdClass::class)->addMethods(['input'])->getMock();
         $requestMock->method('input')
             ->willReturnCallback(function($key) {
@@ -35,6 +36,7 @@ class RequirePermissionTest extends TestCase
     {
         $middleware = new RequirePermission('purchase_order', 'place');
 
+        
         $requestMock = $this->getMockBuilder(\stdClass::class)->addMethods(['input'])->getMock();
         $requestMock->method('input')
             ->willReturnCallback(function($key) {
@@ -53,6 +55,7 @@ class RequirePermissionTest extends TestCase
         $this->assertFalse($nextCalled);
         $this->assertEquals(403, $response->getStatusCode());
 
+        
         $body = json_decode($response->getContent(), true);
         $this->assertArrayHasKey('error', $body);
         $this->assertStringContainsString('Forbidden', $body['error']);
@@ -62,6 +65,9 @@ class RequirePermissionTest extends TestCase
     {
         $middleware = new RequirePermission('purchase_order', 'place');
 
+    
+    {
+        
         $requestMock = $this->getMockBuilder(\stdClass::class)->addMethods(['input'])->getMock();
         $requestMock->method('input')
             ->willReturnCallback(function($key) {
@@ -85,6 +91,7 @@ class RequirePermissionTest extends TestCase
     {
         $middleware = new RequirePermission('purchase_order', 'place');
 
+        
         $requestMock = $this->getMockBuilder(\stdClass::class)->addMethods(['input'])->getMock();
         $requestMock->method('input')
             ->willReturnCallback(function($key) {
@@ -107,6 +114,7 @@ class RequirePermissionTest extends TestCase
     {
         $middleware = new RequirePermission('purchase_order', 'place');
 
+        
         $requestMock = $this->getMockBuilder(\stdClass::class)->addMethods(['input'])->getMock();
         $requestMock->method('input')
             ->willReturnCallback(function($key) {
@@ -127,6 +135,7 @@ class RequirePermissionTest extends TestCase
         $this->assertFalse($nextCalled);
         $this->assertEquals(403, $response->getStatusCode());
 
+        
         $body = json_decode($response->getContent(), true);
         $this->assertStringContainsString('Cross-tenant', $body['error']);
     }

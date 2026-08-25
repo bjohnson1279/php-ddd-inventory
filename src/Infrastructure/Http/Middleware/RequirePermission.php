@@ -43,7 +43,6 @@ class RequirePermission
         $reqAct = strtolower($this->action);
         $required = "{$reqRes}:{$reqAct}";
 
-        
         $permissions = array_map('strtolower', $permissions);
 
         $hasPermission = in_array($required, $permissions, true)
@@ -73,7 +72,6 @@ class RequirePermission
             }
         }
 
-        
         if ($requestedTenant && $userTenant && $requestedTenant !== $userTenant) {
             return new Response(['error' => 'Forbidden: Cross-tenant access is not allowed.'], 403);
         }

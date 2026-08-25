@@ -16,7 +16,7 @@ class RebalanceOptimizationService
     public function getMatrix(string $tenantId): array
     {
         // 1. Fetch warehouse locations and derive unique warehouses
-        $locations = DB::table('warehouse_locations')->get()->toArray();
+        $locations = DB::table('warehouse_locations')->get(['id', 'warehouse_id', 'zone'])->toArray();
         $warehouseMap = [];
         $locToWarehouse = [];
         foreach ($locations as $loc) {
@@ -37,7 +37,12 @@ class RebalanceOptimizationService
         }
 
         // 2. Fetch inventory and aggregate by SKU × warehouse
-        $inventory = DB::table('inventory_items')->get()->toArray();
+        $inventory = DB::table('inventory_items')
+            ->select('sku', 'location_id', DB::raw('SUM(quantity) as quantity, SUM(allocated) as allocated, SUM(in_transit) as in_transit'))
+            ->groupBy('sku', 'location_id')
+            ->get()
+            ->toArray();
+
         $stockAgg = [];
         foreach ($inventory as $item) {
             $whId = $locToWarehouse[$item->location_id] ?? 'unknown';
@@ -45,9 +50,10 @@ class RebalanceOptimizationService
             if (!isset($stockAgg[$key])) {
                 $stockAgg[$key] = ['on_hand' => 0, 'allocated' => 0, 'in_transit' => 0];
             }
-            $stockAgg[$key]['on_hand'] += $item->quantity ?? 0;
-            $stockAgg[$key]['allocated'] += $item->allocated ?? 0;
-            $stockAgg[$key]['in_transit'] += $item->in_transit ?? 0;
+            // ⚡ Bolt Optimization: Aggregation offloaded to DB level for massive O(N) memory/cpu win
+            $stockAgg[$key]['on_hand'] += (int) ($item->quantity ?? 0);
+            $stockAgg[$key]['allocated'] += (int) ($item->allocated ?? 0);
+            $stockAgg[$key]['in_transit'] += (int) ($item->in_transit ?? 0);
         }
 
         $stockLevels = [];

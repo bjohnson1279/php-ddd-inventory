@@ -60,40 +60,6 @@ class EloquentWarehouseLocationRepository implements WarehouseLocationRepository
     }
 
     /**
-     * @param LocationId[] $ids
-     * @return WarehouseLocation[]
-     */
-    public function findByIds(array $ids): array
-    {
-        if (empty($ids)) {
-            return [];
-        }
-
-        $idStrings = array_map(fn($id) => $id->getValue(), $ids);
-        $models = WarehouseLocationModel::whereIn('id', $idStrings)->get();
-
-        $results = [];
-        foreach ($models as $model) {
-            $results[$model->id] = new WarehouseLocation(
-                new LocationId($model->id),
-                $model->warehouse_id,
-                $model->zone,
-                $model->aisle,
-                $model->rack,
-                $model->shelf,
-                $model->bin,
-                $model->max_weight_grams,
-                $model->max_volume_cubic_meters,
-                (int) ($model->grid_x ?? 0),
-                (int) ($model->grid_y ?? 0),
-                (int) ($model->width ?? 1),
-                (int) ($model->height ?? 1)
-            );
-        }
-        return $results;
-    }
-
-    /**
      * @return WarehouseLocation[]
      */
     public function findAll(): array

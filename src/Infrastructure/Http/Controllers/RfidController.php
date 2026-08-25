@@ -13,11 +13,6 @@ class RfidController
     public function list(RequestInterface $request, string $tenantId)
     {
         try {
-            $authUserTenantId = $_SERVER['auth.tenant_id'] ?? null;
-            if ($authUserTenantId === null || ($authUserTenantId !== 'system' && $authUserTenantId !== $tenantId)) {
-                return new Response(['error' => 'Unauthorized'], 403);
-            }
-
             $tags = RfidTagModel::orderBy('created_at', 'desc')->get()->toArray();
             return new Response(['tags' => $tags], 200);
         } catch (Exception $e) {
@@ -28,11 +23,6 @@ class RfidController
     public function assign(RequestInterface $request, string $tenantId)
     {
         try {
-            $authUserTenantId = $_SERVER['auth.tenant_id'] ?? null;
-            if ($authUserTenantId === null || ($authUserTenantId !== 'system' && $authUserTenantId !== $tenantId)) {
-                return new Response(['error' => 'Unauthorized'], 403);
-            }
-
             $body = json_decode($request->getBody(), true) ?? [];
             $epc = $body['epc'] ?? '';
             $sku = $body['sku'] ?? '';
@@ -63,11 +53,6 @@ class RfidController
     public function simulateScan(RequestInterface $request, string $tenantId)
     {
         try {
-            $authUserTenantId = $_SERVER['auth.tenant_id'] ?? null;
-            if ($authUserTenantId === null || ($authUserTenantId !== 'system' && $authUserTenantId !== $tenantId)) {
-                return new Response(['error' => 'Unauthorized'], 403);
-            }
-
             $body = json_decode($request->getBody(), true) ?? [];
             $locationId = $body['locationId'] ?? $body['location_id'] ?? '';
             $tags = $body['tags'] ?? [];

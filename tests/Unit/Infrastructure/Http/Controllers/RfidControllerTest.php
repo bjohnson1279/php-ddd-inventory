@@ -31,15 +31,33 @@ class RfidControllerTest extends TestCase
 
     public static function setUpBeforeClass(): void
     {
-        $capsule = new Capsule;
-        $capsule->addConnection([
-            'driver' => 'sqlite',
-            'database' => ':memory:',
-        ]);
-        $capsule->setAsGlobal();
-        $capsule->bootEloquent();
+        // For standalone execution
+        try {
+            Capsule::connection();
+        } catch (\Throwable $e) {
+            $capsule = new Capsule;
+            $capsule->addConnection([
+                'driver' => 'sqlite',
+                'database' => ':memory:',
+                'prefix' => '',
+            ], 'default');
+            $capsule->setAsGlobal();
+            $capsule->bootEloquent();
+        }
+    }
 
-        Capsule::schema()->create('rfid_tags', function ($table) {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->controller = new RfidController();
+
+        // Avoid schema manipulation if we are running in full integration suite where tables exist
+        try {
+            Capsule::table('rfid_tags')->delete();
+        } catch (\Exception $e) {
+            // Probably sqlite memory without schema
+            if (!Capsule::schema()->hasTable('rfid_tags')) {
+                Capsule::schema()->create('rfid_tags', function ($table) {
             $table->string('epc')->primary();
             $table->string('sku');
             $table->string('serial_number');
@@ -47,16 +65,9 @@ class RfidControllerTest extends TestCase
             $table->string('last_seen_at')->nullable();
             $table->string('last_location')->nullable();
             $table->string('created_at');
-        });
-    }
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->controller = new RfidController();
-        try {
-            Capsule::table('rfid_tags')->delete();
-        } catch (\Exception $e) {}
+                });
+            }
+        }
     }
 
     public function testAssignReturns400OnMissingFields(): void
@@ -103,15 +114,17 @@ class RfidControllerTest extends TestCase
         $this->assertStringContainsString('no such table: rfid_tags', $response->getContent());
 
         // Recreate it for subsequent tests
-        Capsule::schema()->create('rfid_tags', function ($table) {
-            $table->string('epc')->primary();
-            $table->string('sku');
-            $table->string('serial_number');
-            $table->string('status');
-            $table->string('last_seen_at')->nullable();
-            $table->string('last_location')->nullable();
-            $table->string('created_at');
-        });
+        if (!Capsule::schema()->hasTable('rfid_tags')) {
+            Capsule::schema()->create('rfid_tags', function ($table) {
+                $table->string('epc')->primary();
+                $table->string('sku');
+                $table->string('serial_number');
+                $table->string('status');
+                $table->string('last_seen_at')->nullable();
+                $table->string('last_location')->nullable();
+                $table->string('created_at');
+            });
+        }
     }
 
     public function testAssignSuccessReturns201AndCreatesRecord(): void

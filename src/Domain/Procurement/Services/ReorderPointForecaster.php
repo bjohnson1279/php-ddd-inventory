@@ -9,8 +9,6 @@ use InventoryApp\Domain\Procurement\Enums\PurchaseOrderStatus;
 
 class ReorderPointForecaster
 {
-    private ?array $posCache = null;
-
     public function __construct(
         private readonly DemandVelocityCalculator $velocityCalculator,
         private readonly ProductRepositoryInterface $productRepo,
@@ -23,24 +21,20 @@ class ReorderPointForecaster
         int $leadTimeDays,
         int $safetyStock,
         int $windowDays,
-        ?string $tenantId = null,
-        ?\InventoryApp\Domain\Inventory\Entities\Product $product = null
+        ?string $tenantId = null
     ): int {
-        $stats = $this->velocityCalculator->calculateDailySalesStats($skuStr, $locationId, $windowDays, $product);
+        $stats = $this->velocityCalculator->calculateDailySalesStats($skuStr, $locationId, $windowDays);
         $meanSales = $stats['average'];
         $stdDevSales = $stats['stdDev'];
 
         $leadTimeDaysAvg = $leadTimeDays;
         $leadTimeDaysStdDev = 0.0;
 
-        $sku = new SKU($skuStr);
-        $product = $product ?? $this->productRepo->findBySku($sku);
-
         if ($tenantId !== null) {
+            $sku = new SKU($skuStr);
+            $product = $this->productRepo->findBySku($sku);
             if ($product) {
-                // ⚡ Bolt: Cache POs to eliminate N+1 queries during multi-policy forecasting
-                $this->posCache = $this->posCache ?? $this->poRepo->findAll();
-                $allPos = $this->posCache;
+                $allPos = $this->poRepo->findAll();
                 $receivedPos = [];
 
                 foreach ($allPos as $po) {

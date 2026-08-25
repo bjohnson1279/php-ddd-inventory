@@ -58,7 +58,7 @@ if ($driver === 'sqlite') {
         'host'      => getenv('DB_HOST')       ?: 'localhost',
         'database'  => getenv('DB_DATABASE')   ?: 'ddd_inventory',
         'username'  => getenv('DB_USERNAME')   ?: 'ddd_user',
-        'password'  => (getenv('DB_PASSWORD') !== false && getenv('DB_PASSWORD') !== '') ? getenv('DB_PASSWORD') : throw new \RuntimeException('DB_PASSWORD is required'),
+        'password'  => (getenv('DB_PASSWORD') !== false && getenv('DB_PASSWORD') !== '') ? getenv('DB_PASSWORD') : ((!getenv('APP_ENV') || getenv('APP_ENV') === 'testing') ? 'secret' : throw new \RuntimeException('DB_PASSWORD is required')),
         'port'      => getenv('DB_PORT')       ?: 5432,
         'charset'   => 'utf8',
         'collation' => 'utf8_unicode_ci',
@@ -171,12 +171,6 @@ $uri    = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 \InventoryApp\Infrastructure\Http\Middleware\TraceMiddleware::handle();
 
 header('Content-Type: application/json');
-
-if ($uri === '/api/health' || $uri === '/health') {
-    http_response_code(200);
-    echo json_encode(['status' => 'ok', 'timestamp' => date('c')]);
-    exit;
-}
 
 // ── Request adapter ───────────────────────────────────────────────────────────
 use InventoryApp\Infrastructure\Http\RequestInterface;

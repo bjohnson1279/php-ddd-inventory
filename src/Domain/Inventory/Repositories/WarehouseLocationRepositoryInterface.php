@@ -11,11 +11,6 @@ interface WarehouseLocationRepositoryInterface
     public function findById(LocationId $id): ?WarehouseLocation;
     public function delete(LocationId $id): void;
     /**
-     * @param LocationId[] $ids
-     * @return WarehouseLocation[]
-     */
-    public function findByIds(array $ids): array;
-    /**
      * @return WarehouseLocation[]
      */
     public function findAll(): array;

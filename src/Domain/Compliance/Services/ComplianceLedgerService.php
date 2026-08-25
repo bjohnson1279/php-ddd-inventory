@@ -101,7 +101,7 @@ class ComplianceLedgerService
 
             // 3. Verify signature
             $expectedSignature = hash_hmac('sha256', $entry->getCurrentHash(), $privateKey);
-            if (!hash_equals($expectedSignature, $entry->getSignature())) {
+            if ($entry->getSignature() !== $expectedSignature) {
                 return [
                     'isValid' => false,
                     'failedSequenceNumber' => $entry->getSequenceNumber(),

@@ -51,11 +51,6 @@ class ShippingController
             $locationId = $body['locationId'] ?? 'default';
             $tenantId = $body['tenantId'] ?? ($_SERVER['auth.tenant_id'] ?? 'system');
 
-            $authUserTenantId = $_SERVER['auth.tenant_id'] ?? null;
-            if (isset($body['tenantId']) && $authUserTenantId !== 'system' && $authUserTenantId !== $body['tenantId']) {
-                return new Response(['error' => 'Unauthorized'], 403);
-            }
-
             if (empty($sku) || $quantity === null || empty($destinationAddress) || empty($carrier)) {
                 return new Response(['error' => 'Missing required parameters for shipping label purchase.'], 400);
             }

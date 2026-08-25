@@ -68,23 +68,6 @@ class EloquentPurchaseOrderRepository implements PurchaseOrderRepositoryInterfac
         return $results;
     }
 
-    public function findActiveByTenant(string $tenantId): array
-    {
-        $models = PurchaseOrderModel::with('items')
-            ->where('tenant_id', $tenantId)
-            ->whereIn('status', [
-                PurchaseOrderStatus::Draft->value,
-                PurchaseOrderStatus::Approved->value,
-                PurchaseOrderStatus::Sent->value
-            ])
-            ->get();
-        $results = [];
-        foreach ($models as $model) {
-            $results[] = $this->mapToDomain($model);
-        }
-        return $results;
-    }
-
     public function save(PurchaseOrder $po): void
     {
         DB::transaction(function () use ($po) {

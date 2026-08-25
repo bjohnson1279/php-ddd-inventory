@@ -18,7 +18,7 @@ class RoleController
     public function listRoles($request): Response
     {
         $tenantId = $request->input('_auth_tenant_id');
-        
+
         try {
             // TODO: Wire to underlying PHP use case or directly to database layer
             // For now we'll stub this out to match the Express / GraphQL behavior
@@ -43,9 +43,9 @@ class RoleController
     {
         $tenantId = $request->input('_auth_tenant_id');
         $data = $request->input();
-        
+
         // Expected payload: { "name": "...", "description": "...", "permissionIds": [...] }
-        
+
         try {
             // TODO: Implement actual logic
             return new Response([
@@ -67,7 +67,7 @@ class RoleController
     {
         $tenantId = $request->input('_auth_tenant_id');
         $permissionIds = $request->input('permissionIds', []);
-        
+
         try {
             // TODO: Implement actual logic
             return new Response(['message' => 'Role permissions updated successfully.']);
@@ -82,7 +82,7 @@ class RoleController
     public function deleteCustomRole($request, $roleId): Response
     {
         $tenantId = $request->input('_auth_tenant_id');
-        
+
         try {
             // TODO: Implement actual logic
             return new Response(['message' => 'Role deleted successfully.']);

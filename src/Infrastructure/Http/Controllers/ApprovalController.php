@@ -96,7 +96,7 @@ class ApprovalController
     public function submitDecision($request, $requestId): Response
     {
         $data = $request->input();
-        
+
         try {
             // TODO: Wire to use case
             return new Response(['message' => 'Decision submitted successfully.']);

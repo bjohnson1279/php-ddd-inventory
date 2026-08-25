@@ -179,8 +179,14 @@ class ReportController
 
     private function calculateWacUnitCents(array $layers, string $sku, $catalogVariants = null): int
     {
-        $totalLayersQty = array_sum(array_column($layers, 'remaining_quantity'));
-        $totalLayersCost = array_sum(array_map(fn($l) => $l->remaining_quantity * $l->unit_cost_cents, $layers));
+        // ⚡ Bolt: Use a single foreach loop to calculate total quantity and cost instead of
+        // array_sum/array_column/array_map to avoid multiple O(N) passes and intermediate array allocations.
+        $totalLayersQty = 0;
+        $totalLayersCost = 0;
+        foreach ($layers as $l) {
+            $totalLayersQty += $l->remaining_quantity;
+            $totalLayersCost += ($l->remaining_quantity * $l->unit_cost_cents);
+        }
 
         // 1. Compute WAC (Weighted Average Cost)
         $wacUnitCents = 1000; // default $10.00

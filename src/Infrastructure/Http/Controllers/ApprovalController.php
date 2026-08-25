@@ -97,7 +97,6 @@ class ApprovalController
     {
         $data = $request->input();
 
-        
         try {
             // TODO: Wire to use case
             return new Response(['message' => 'Decision submitted successfully.']);

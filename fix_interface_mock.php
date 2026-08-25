@@ -1,5 +1,14 @@
 <?php
 
+$file = 'tests/Unit/Http/Middleware/RequirePermissionTest.php';
+$contents = file_get_contents($file);
+
+// In earlier versions (or PHP 8.2), dynamic properties on stdClass were allowed but sometimes caused issues in mock builders depending on PHPUnit version.
+// Instead, let's create a stub class inline and use it.
+
+$contents = <<< 'EOD'
+<?php
+
 namespace Tests\Unit\Http\Middleware;
 
 use PHPUnit\Framework\TestCase;
@@ -120,3 +129,7 @@ class RequirePermissionTest extends TestCase
         $this->assertStringContainsString('Cross-tenant', $body['error']);
     }
 }
+EOD;
+
+file_put_contents($file, $contents);
+echo "Rewrote RequirePermissionTest.php completely.";

@@ -25,17 +25,19 @@ class ReorderPointForecaster
         int $windowDays,
         ?string $tenantId = null,
         ?array $allPosPreloaded = null
+        ?\InventoryApp\Domain\Inventory\Entities\Product $product = null
     ): int {
-        $stats = $this->velocityCalculator->calculateDailySalesStats($skuStr, $locationId, $windowDays);
+        $stats = $this->velocityCalculator->calculateDailySalesStats($skuStr, $locationId, $windowDays, $product);
         $meanSales = $stats['average'];
         $stdDevSales = $stats['stdDev'];
 
         $leadTimeDaysAvg = $leadTimeDays;
         $leadTimeDaysStdDev = 0.0;
 
+        $sku = new SKU($skuStr);
+        $product = $product ?? $this->productRepo->findBySku($sku);
+
         if ($tenantId !== null) {
-            $sku = new SKU($skuStr);
-            $product = $this->productRepo->findBySku($sku);
             if ($product) {
                 // ⚡ Bolt: Use preloaded POs from outside the loop to eliminate N+1 queries safely
                 $allPos = $allPosPreloaded ?? $this->poRepo->findAll();

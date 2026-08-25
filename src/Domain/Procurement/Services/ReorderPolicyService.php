@@ -52,6 +52,9 @@ class ReorderPolicyService
 
         foreach ($policies as $policy) {
             $rop = $policy->reorderPoint;
+            $skuStr = $policy->sku->getValue();
+            $product = $products[$skuStr] ?? null;
+
             if ($policy->dynamicRopEnabled) {
                 try {
                     $newRop = $forecaster->forecastReorderPoint(
@@ -62,6 +65,7 @@ class ReorderPolicyService
                         $windowDays,
                         $tenantId,
                         $allPosPreloaded
+                        $product
                     );
                     $policy->updateReorderPoint($newRop);
                     $this->reorderPolicyRepository->save($policy);
@@ -70,9 +74,6 @@ class ReorderPolicyService
                     error_log("Error forecasting ROP for SKU {$policy->sku->getValue()}: " . $e->getMessage());
                 }
             }
-
-            $skuStr = $policy->sku->getValue();
-            $product = $products[$skuStr] ?? null;
 
             $currentQty = 0;
             if ($product) {
@@ -85,19 +86,13 @@ class ReorderPolicyService
 
             if ($policy->shouldReorder($currentQty)) {
                 if ($pendingPoLookup === null) {
-                    $allPos = $this->poRepository->findAll();
+                    $allPos = $this->poRepository->findActiveByTenant($tenantId);
                     $pendingPoLookup = [];
                     foreach ($allPos as $po) {
-                        if (
-                            $po->getStatus() === PurchaseOrderStatus::Draft ||
-                            $po->getStatus() === PurchaseOrderStatus::Approved ||
-                            $po->getStatus() === PurchaseOrderStatus::Sent
-                        ) {
-                            foreach ($po->getItems() as $item) {
-                                if ($item->getReceivedQuantity() < $item->quantity) {
-                                    // ⚡ Bolt: Include tenant ID in cache key to safely support multi-tenant processing
-                                    $pendingPoLookup[$po->tenantId][$po->locationId][$item->variantId] = true;
-                                }
+                        foreach ($po->getItems() as $item) {
+                            if ($item->getReceivedQuantity() < $item->quantity) {
+                                // ⚡ Bolt: Include tenant ID in cache key to safely support multi-tenant processing
+                                $pendingPoLookup[$po->tenantId][$po->locationId][$item->variantId] = true;
                             }
                         }
                     }
@@ -174,22 +169,16 @@ class ReorderPolicyService
             $this->events->dispatch($event);
 
             // 2. Check if a draft/approved/sent purchase order already exists for this vendor/location and includes this sku
-            $allPos = $this->poRepository->findAll();
+            $allPos = $this->poRepository->findActiveByTenant($tenantId);
             $alreadyOrdered = false;
             foreach ($allPos as $po) {
                 if ($po->tenantId !== $tenantId || $po->locationId !== $locationId) {
                     continue;
                 }
-                if (
-                    $po->getStatus() === PurchaseOrderStatus::Draft ||
-                    $po->getStatus() === PurchaseOrderStatus::Approved ||
-                    $po->getStatus() === PurchaseOrderStatus::Sent
-                ) {
-                    foreach ($po->getItems() as $item) {
-                        if ($item->variantId === $skuStr && $item->getReceivedQuantity() < $item->quantity) {
-                            $alreadyOrdered = true;
-                            break 2;
-                        }
+                foreach ($po->getItems() as $item) {
+                    if ($item->variantId === $skuStr && $item->getReceivedQuantity() < $item->quantity) {
+                        $alreadyOrdered = true;
+                        break 2;
                     }
                 }
             }

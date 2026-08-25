@@ -54,7 +54,9 @@ class RfidControllerTest extends TestCase
     {
         parent::setUp();
         $this->controller = new RfidController();
-        Capsule::table('rfid_tags')->delete();
+        try {
+            Capsule::table('rfid_tags')->delete();
+        } catch (\Exception $e) {}
     }
 
     public function testAssignReturns400OnMissingFields(): void

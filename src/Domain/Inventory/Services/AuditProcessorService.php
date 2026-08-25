@@ -63,14 +63,13 @@ class AuditProcessorService
                 }
             }
 
-            // Bolt optimization: array_flip allows O(1) hash map lookups instead of O(n) in_array
             $existingShopifyDiscrepancies = [];
             if (!empty($possibleReferenceIds)) {
-                $existingShopifyDiscrepancies = array_flip(AuditDiscrepancyModel::where('tenant_id', $tenantId)
+                $existingShopifyDiscrepancies = AuditDiscrepancyModel::where('tenant_id', $tenantId)
                     ->where('type', 'SHOPIFY_STOCK_MISMATCH')
                     ->whereIn('reference_id', $possibleReferenceIds)
                     ->where('status', 'OPEN')
-                    ->pluck('reference_id')->toArray());
+                    ->pluck('reference_id')->toArray();
             }
 
             foreach ($skuMappings as $skuMap) {
@@ -147,7 +146,7 @@ class AuditProcessorService
 
                     if ($localQty !== $shopifyQty) {
                         $referenceId = "{$sku}:{$ourLocationId}";
-                        $existingOpen = isset($existingShopifyDiscrepancies[$referenceId]);
+                        $existingOpen = in_array($referenceId, $existingShopifyDiscrepancies ?? []);
 
                         if (!$existingOpen) {
                             $discrepancy = new AuditDiscrepancy(
@@ -181,49 +180,48 @@ class AuditProcessorService
                 // Bolt optimization: Pre-fetch mapped journals to avoid N+1 queries
                 $journalIds = $journals->pluck('id')->toArray();
 
-                // Bolt optimization: array_flip allows O(1) hash map lookups instead of O(n) in_array
                 $qboMappings = [];
                 if ($hasQbo) {
-                    $qboMappings = array_flip(Capsule::table('quickbooks_journal_mappings')
+                    $qboMappings = Capsule::table('quickbooks_journal_mappings')
                         ->whereIn('journal_entry_id', $journalIds)
-                        ->pluck('journal_entry_id')->toArray());
+                        ->pluck('journal_entry_id')->toArray();
                 }
 
                 $xeroMappings = [];
                 if ($hasXero) {
-                    $xeroMappings = array_flip(Capsule::table('xero_journal_mappings')
+                    $xeroMappings = Capsule::table('xero_journal_mappings')
                         ->whereIn('journal_entry_id', $journalIds)
-                        ->pluck('journal_entry_id')->toArray());
+                        ->pluck('journal_entry_id')->toArray();
                 }
 
                 $netsuiteMappings = [];
                 if ($hasNetsuite) {
-                    $netsuiteMappings = array_flip(Capsule::table('netsuite_journal_mappings')
+                    $netsuiteMappings = Capsule::table('netsuite_journal_mappings')
                         ->whereIn('journal_entry_id', $journalIds)
-                        ->pluck('journal_entry_id')->toArray());
+                        ->pluck('journal_entry_id')->toArray();
                 }
 
-                // Bolt optimization: Pre-fetch existing discrepancies to avoid N+1 queries and array_flip for O(1) hash map lookups
-                $existingDiscrepancies = array_flip(AuditDiscrepancyModel::where('tenant_id', $tenantId)
+                // Bolt optimization: Pre-fetch existing discrepancies to avoid N+1 queries
+                $existingDiscrepancies = AuditDiscrepancyModel::where('tenant_id', $tenantId)
                     ->where('type', 'ACCOUNTING_JOURNAL_MISSING')
                     ->whereIn('reference_id', $journalIds)
                     ->where('status', 'OPEN')
-                    ->pluck('reference_id')->toArray());
+                    ->pluck('reference_id')->toArray();
 
                 foreach ($journals as $journal) {
                     $hasMapping = false;
-                    if ($hasQbo && isset($qboMappings[$journal->id])) {
+                    if ($hasQbo && in_array($journal->id, $qboMappings)) {
                         $hasMapping = true;
                     }
-                    if ($hasXero && !$hasMapping && isset($xeroMappings[$journal->id])) {
+                    if ($hasXero && !$hasMapping && in_array($journal->id, $xeroMappings)) {
                         $hasMapping = true;
                     }
-                    if ($hasNetsuite && !$hasMapping && isset($netsuiteMappings[$journal->id])) {
+                    if ($hasNetsuite && !$hasMapping && in_array($journal->id, $netsuiteMappings)) {
                         $hasMapping = true;
                     }
 
                     if (!$hasMapping) {
-                        $existingOpen = isset($existingDiscrepancies[$journal->id]);
+                        $existingOpen = in_array($journal->id, $existingDiscrepancies);
 
                         if (!$existingOpen) {
                             $discrepancy = new AuditDiscrepancy(

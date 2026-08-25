@@ -305,12 +305,9 @@ CREATE TABLE IF NOT EXISTS outbox_messages (
 
 CREATE TABLE IF NOT EXISTS outbox_events (
   id VARCHAR(100) PRIMARY KEY DEFAULT uuid_generate_v4()::text,
-  event_name VARCHAR(255),
-  event_type VARCHAR(255),
+  event_name VARCHAR(255) NOT NULL,
   payload TEXT NOT NULL,
-  status VARCHAR(50) DEFAULT 'Pending',
   occurred_on TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   processed_at TIMESTAMP WITH TIME ZONE,
   attempts INTEGER NOT NULL DEFAULT 0,
   last_error TEXT,

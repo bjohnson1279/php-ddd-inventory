@@ -17,11 +17,10 @@ class DemandVelocityCalculator
     public function calculateDailySalesStats(
         string $skuStr,
         string $locationId,
-        int $windowDays = 30,
-        ?\InventoryApp\Domain\Inventory\Entities\Product $product = null
+        int $windowDays = 30
     ): array {
         $sku = new SKU($skuStr);
-        $product = $product ?? $this->productRepo->findBySku($sku);
+        $product = $this->productRepo->findBySku($sku);
         if (!$product) {
             return ['average' => 0.0, 'stdDev' => 0.0];
         }

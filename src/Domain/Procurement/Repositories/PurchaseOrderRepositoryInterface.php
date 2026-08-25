@@ -9,6 +9,5 @@ interface PurchaseOrderRepositoryInterface
     public function findById(string $id): ?PurchaseOrder;
     public function findByNumber(string $poNumber): ?PurchaseOrder;
     public function findAll(): array;
-    public function findActiveByTenant(string $tenantId): array;
     public function save(PurchaseOrder $po): void;
 }

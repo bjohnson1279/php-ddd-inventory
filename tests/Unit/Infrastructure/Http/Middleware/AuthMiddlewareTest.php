@@ -55,9 +55,7 @@ class AuthMiddlewareTest extends TestCase
 
         $request->expects($this->once())->method('merge')->with([
             '_auth_user_id' => 'u1',
-            '_auth_tenant_id' => 't1',
-            '_auth_roles' => [],
-            '_auth_permissions' => []
+            '_auth_tenant_id' => 't1'
         ]);
 
         $called = false;

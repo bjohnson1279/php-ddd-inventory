@@ -35,7 +35,7 @@ class ReportController
             $catalogVariants = $this->fetchCatalogVariantsMap($productSkus);
 
             $reportData = $this->buildReportData($products, $locations, $allStocks, $allLayers, $catalogVariants);
-            $reportData['recent_activity'] = $this->getRecentActivity($tenantId, $products->keyBy('id'));
+            $reportData['recent_activity'] = $this->getRecentActivity($tenantId);
 
             return new Response($reportData, 200);
         } catch (Exception $e) {
@@ -131,13 +131,8 @@ class ReportController
             $data['total_valuation_wac_cents'] += ($totalStock * $wacUnitCents);
             $this->addLocationValuations($stocks, $wacUnitCents, $locationValuations);
 
-            // Sort layers by received_at DESC (newest first) for FIFO
-            usort($layers, fn($a, $b) => strcmp($b->received_at, $a->received_at));
             $data['total_valuation_fifo_cents'] += $this->calculateFifoValuation($layers, $totalStock, $wacUnitCents);
-
-            // Reverse for LIFO (oldest first)
-            $lifoLayers = array_reverse($layers);
-            $data['total_valuation_lifo_cents'] += $this->calculateLifoValuation($lifoLayers, $totalStock, $wacUnitCents);
+            $data['total_valuation_lifo_cents'] += $this->calculateLifoValuation($layers, $totalStock, $wacUnitCents);
         }
 
         $data['valuation_by_location'] = array_values($locationValuations);
@@ -179,14 +174,8 @@ class ReportController
 
     private function calculateWacUnitCents(array $layers, string $sku, $catalogVariants = null): int
     {
-        // ⚡ Bolt: Use a single foreach loop to calculate total quantity and cost instead of
-        // array_sum/array_column/array_map to avoid multiple O(N) passes and intermediate array allocations.
-        $totalLayersQty = 0;
-        $totalLayersCost = 0;
-        foreach ($layers as $l) {
-            $totalLayersQty += $l->remaining_quantity;
-            $totalLayersCost += ($l->remaining_quantity * $l->unit_cost_cents);
-        }
+        $totalLayersQty = array_sum(array_column($layers, 'remaining_quantity'));
+        $totalLayersCost = array_sum(array_map(fn($l) => $l->remaining_quantity * $l->unit_cost_cents, $layers));
 
         // 1. Compute WAC (Weighted Average Cost)
         $wacUnitCents = 1000; // default $10.00
@@ -219,6 +208,9 @@ class ReportController
     {
         // 2. Compute FIFO Valuation (valuation of remaining inventory)
         // Since FIFO consumes the oldest first, the remaining stock belongs to the newest layers.
+        // Sort layers by received_at DESC (newest first)
+        usort($layers, fn($a, $b) => strcmp($b->received_at, $a->received_at));
+
         $remainingToVal = $totalStock;
         $fifoValuation = 0;
         foreach ($layers as $l) {
@@ -238,6 +230,9 @@ class ReportController
     {
         // 3. Compute LIFO Valuation (valuation of remaining inventory)
         // Since LIFO consumes the newest first, the remaining stock belongs to the oldest layers.
+        // Sort layers by received_at ASC (oldest first)
+        usort($layers, fn($a, $b) => strcmp($a->received_at, $b->received_at));
+
         $remainingToVal = $totalStock;
         $lifoValuation = 0;
         foreach ($layers as $l) {
@@ -252,7 +247,7 @@ class ReportController
         return $lifoValuation;
     }
 
-    private function getRecentActivity(string $tenantId, \Illuminate\Support\Collection $products): array
+    private function getRecentActivity(string $tenantId): array
     {
         // Fetch recent transaction activity
         $transactions = DB::table('inventory_transactions')
@@ -265,9 +260,12 @@ class ReportController
             return [];
         }
 
-        // Bolt optimization: Re-use the already-fetched products collection from the parent
-        // valuation method instead of executing a redundant database query here.
-        // This completely eliminates the product query.
+        // Bolt optimization: Extract product fetching out of the loop.
+        // Instead of executing `DB::table('products')->where('id', ...)->first()` 5 times,
+        // we extract the unique product IDs and perform a single O(1) batched query.
+        // This solves an N+1 query issue for the activity feed.
+        $productIds = $transactions->pluck('product_id')->unique()->toArray();
+        $products = DB::table('products')->whereIn('id', $productIds)->get(['id', 'name', 'sku'])->keyBy('id');
 
         $activity = [];
         foreach ($transactions as $t) {

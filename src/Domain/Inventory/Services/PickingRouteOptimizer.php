@@ -21,15 +21,10 @@ class PickingRouteOptimizer
             return [];
         }
 
-        $locationIds = [];
-        foreach ($items as $item) {
-            $locationIds[$item['locationId']] = new LocationId($item['locationId']);
-        }
-        $locations = $this->locationRepo->findByIds(array_values($locationIds));
-
         $routeItems = [];
         foreach ($items as $item) {
-            $loc = $locations[$item['locationId']] ?? null;
+            $locId = new LocationId($item['locationId']);
+            $loc = $this->locationRepo->findById($locId);
             if (!$loc) {
                 throw new Exception("Warehouse location with ID {$item['locationId']} not found.");
             }

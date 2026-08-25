@@ -45,15 +45,19 @@ class AuthMiddleware
 
         // Expose the identity on the request for use by controllers
         if (isset($request->attributes)) {
-            $request->attributes->set('auth.user_id',   $tokenData->user_id);
+            $request->attributes->set('auth.user_id',    $tokenData->user_id);
             $request->attributes->set('auth.tenant_id',  $tokenData->tenant_id);
+            $request->attributes->set('auth.roles',      $tokenData->roles ?? []);
+            $request->attributes->set('auth.permissions', $tokenData->permissions ?? []);
         }
 
         // Laravel-style: merge into request for easy access via $request->user_id etc.
         if (method_exists($request, 'merge')) {
             $request->merge([
-                '_auth_user_id'   => $tokenData->user_id,
-                '_auth_tenant_id' => $tokenData->tenant_id,
+                '_auth_user_id'     => $tokenData->user_id,
+                '_auth_tenant_id'   => $tokenData->tenant_id,
+                '_auth_roles'       => $tokenData->roles ?? [],
+                '_auth_permissions' => $tokenData->permissions ?? [],
             ]);
         }
 

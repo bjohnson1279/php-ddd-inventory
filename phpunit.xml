@@ -14,4 +14,9 @@
             <directory suffix=".php">src</directory>
         </include>
     </coverage>
+    <php>
+        <env name="APP_ENV" value="testing"/>
+        <env name="COMPLIANCE_KEY" value="compliance-fallback-secret-key-12345!@#"/>
+        <env name="DB_PASSWORD" value="secret"/>
+    </php>
 </phpunit>

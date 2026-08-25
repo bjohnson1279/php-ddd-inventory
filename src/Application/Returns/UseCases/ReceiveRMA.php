@@ -43,6 +43,19 @@ class ReceiveRMA
         $products = $this->productRepository->findByIds($variantIds);
 
         $productsToSave = [];
+        // Pre-fetch all serialized items
+        $allSerialNumbers = [];
+        foreach ($dto['items'] as $item) {
+            if (!empty($item['serialNumbers'])) {
+                $allSerialNumbers = array_merge($allSerialNumbers, $item['serialNumbers']);
+            }
+        }
+
+        $prefetchedSerials = [];
+        if (!empty($allSerialNumbers)) {
+            $serialObjects = array_map(fn($sn) => new SerialNumber($sn), $allSerialNumbers);
+            $prefetchedSerials = $this->serializedRepository->findBySerials($serialObjects, $rma->getTenantId()->getValue());
+        }
 
         foreach ($dto['items'] as $item) {
             // Find RMA Item
@@ -132,7 +145,8 @@ class ReceiveRMA
             // Handle Serialized items transitions
             if (!empty($item['serialNumbers'])) {
                 foreach ($item['serialNumbers'] as $sn) {
-                    $serialItem = $this->serializedRepository->findBySerial(new SerialNumber($sn), $rma->getTenantId()->getValue());
+                    $snLower = strtolower(trim($sn));
+                    $serialItem = $prefetchedSerials[$snLower] ?? null;
                     if ($serialItem) {
                         $serialItem->acceptReturn($rma->getId(), 'system');
 

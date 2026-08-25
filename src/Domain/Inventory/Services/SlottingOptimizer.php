@@ -149,13 +149,14 @@ class SlottingOptimizer
         });
 
         $suggestions = [];
+        // Bolt optimization: use a hash map for matchedLocations to replace O(N^2) in_array lookups with O(1) isset lookups
         $matchedLocations = [];
 
         foreach ($itemRecords as $item) {
             if ($item['velocity'] === 0) {
                 continue;
             }
-            if (in_array($item['locationId'], $matchedLocations, true)) {
+            if (isset($matchedLocations[$item['locationId']])) {
                 continue;
             }
 
@@ -167,7 +168,7 @@ class SlottingOptimizer
                 if ($target['locationId'] === $item['locationId']) {
                     continue;
                 }
-                if (in_array($target['locationId'], $matchedLocations, true)) {
+                if (isset($matchedLocations[$target['locationId']])) {
                     continue;
                 }
 
@@ -196,8 +197,8 @@ class SlottingOptimizer
                     'estimatedSavings' => $travelSavings
                 ];
 
-                $matchedLocations[] = $item['locationId'];
-                $matchedLocations[] = $bestSwapTarget['locationId'];
+                $matchedLocations[$item['locationId']] = true;
+                $matchedLocations[$bestSwapTarget['locationId']] = true;
             }
         }
 

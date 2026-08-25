@@ -44,6 +44,12 @@ class ReorderPolicyService
 
         $results = [];
 
+        // ⚡ Bolt: Preload POs to pass to the forecaster
+        $allPosPreloaded = null;
+        if (!empty($policies)) {
+            $allPosPreloaded = $this->poRepository->findAll();
+        }
+
         foreach ($policies as $policy) {
             $rop = $policy->reorderPoint;
             if ($policy->dynamicRopEnabled) {
@@ -54,7 +60,8 @@ class ReorderPolicyService
                         5, // default leadTimeDays
                         $policy->safetyStock,
                         $windowDays,
-                        $tenantId
+                        $tenantId,
+                        $allPosPreloaded
                     );
                     $policy->updateReorderPoint($newRop);
                     $this->reorderPolicyRepository->save($policy);

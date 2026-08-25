@@ -47,6 +47,7 @@ class RoleControllerTest extends TestCase
         $request = new RoleRequestStub('GET', '/api/roles', [], [], ['_auth_tenant_id' => 'test-tenant']);
         $response = $this->controller->listRoles($request);
 
+        
         $this->assertEquals(200, $response->getStatusCode());
         $body = json_decode($response->getContent(), true);
         $this->assertIsArray($body['data']);
@@ -59,6 +60,7 @@ class RoleControllerTest extends TestCase
         $request = new RoleRequestStub('POST', '/api/roles', [], ['name' => 'Custom Manager', 'permissionIds' => ['inv:view']], ['_auth_tenant_id' => 'test-tenant']);
         $response = $this->controller->createCustomRole($request);
 
+        
         $this->assertEquals(201, $response->getStatusCode());
         $body = json_decode($response->getContent(), true);
         $this->assertTrue($body['data']['isCustom']);
@@ -71,6 +73,7 @@ class RoleControllerTest extends TestCase
         $request = new RoleRequestStub('PUT', '/api/roles/custom_1/permissions', [], ['permissionIds' => ['inv:edit']], ['_auth_tenant_id' => 'test-tenant']);
         $response = $this->controller->updateRolePermissions($request, 'custom_1');
 
+        
         $this->assertEquals(200, $response->getStatusCode());
         $body = json_decode($response->getContent(), true);
         $this->assertEquals('Role permissions updated successfully.', $body['message']);
@@ -81,6 +84,7 @@ class RoleControllerTest extends TestCase
         $request = new RoleRequestStub('DELETE', '/api/roles/custom_1', [], [], ['_auth_tenant_id' => 'test-tenant']);
         $response = $this->controller->deleteCustomRole($request, 'custom_1');
 
+        
         $this->assertEquals(200, $response->getStatusCode());
         $body = json_decode($response->getContent(), true);
         $this->assertEquals('Role deleted successfully.', $body['message']);

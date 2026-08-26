@@ -48,7 +48,11 @@ class TenantRegistry
 
         $password = $dbPassword ?? getenv('DB_PASSWORD');
         if (!$password) {
-            throw new \RuntimeException('DB_PASSWORD environment variable must be set.');
+            if (getenv('APP_ENV') === 'testing') {
+                $password = 'postgres';
+            } else {
+                throw new \RuntimeException('DB_PASSWORD environment variable must be set.');
+            }
         }
 
         $existing = $this->lookupTenant($tenantId);

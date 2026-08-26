@@ -9,8 +9,14 @@ class WeightedAverageCostingStrategy implements CostingStrategyInterface
 {
     public function calculateCost(array $layers, int $quantity, string $variantId): CostBreakdown
     {
-        $totalUnits = array_sum(array_map(fn($l) => $l->remainingQuantity(), $layers));
-        $totalValue = array_sum(array_map(fn($l) => $l->remainingCostCents(), $layers));
+        // Bolt ⚡ Optimization: Replace array_sum(array_map) with single pass loop
+        // CPU/Mem metric: Eliminates 2 intermediate array allocations and O(N) traversals.
+        $totalUnits = 0;
+        $totalValue = 0;
+        foreach ($layers as $l) {
+            $totalUnits += $l->remainingQuantity();
+            $totalValue += $l->remainingCostCents();
+        }
 
         if ($totalUnits === 0 || $totalUnits < $quantity) {
             throw new DomainException("Insufficient cost layers to cover quantity {$quantity}");

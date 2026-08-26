@@ -160,6 +160,15 @@ class PurchaseOrderControllerTest extends TestCase
                 ]
             ]);
 
+        $po = new PurchaseOrder(
+            'po-123',
+            'PO-123',
+            'v-1',
+            't-1',
+            'LOC-1',
+            PurchaseOrderStatus::Sent,
+            [new PurchaseOrderItem('item-1', 'var-1', 10, 500, 0)]
+        );
         $po = new PurchaseOrder('po-123', 'PO-123', 'v-1', 't-1', 'LOC-1', PurchaseOrderStatus::Sent);
         $po->addItem(new PurchaseOrderItem('item-1', 'var-1', 10, 500, 0));
 

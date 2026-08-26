@@ -24,8 +24,17 @@ class JournalEntry
 
     public function assertBalanced(): void
     {
-        $totalDebits = array_sum(array_map(fn(JournalLine $l) => $l->type === DebitCredit::Debit ? $l->amountCents : 0, $this->lines));
-        $totalCredits = array_sum(array_map(fn(JournalLine $l) => $l->type === DebitCredit::Credit ? $l->amountCents : 0, $this->lines));
+        // Bolt ⚡ Optimization: Replace array_sum(array_map) with single pass loop
+        // CPU/Mem metric: Eliminates 2 intermediate array allocations and O(N) traversals per check.
+        $totalDebits = 0;
+        $totalCredits = 0;
+        foreach ($this->lines as $l) {
+            if ($l->type === DebitCredit::Debit) {
+                $totalDebits += $l->amountCents;
+            } else {
+                $totalCredits += $l->amountCents;
+            }
+        }
         if ($totalDebits !== $totalCredits) throw new \DomainException('Unbalanced journal entry');
     }
 

@@ -21,7 +21,7 @@ final class ComplianceE2ETest extends TestCase
     public static function setUpBeforeClass(): void
     {
         $output = [];
-        putenv('COMPLIANCE_PRIVATE_KEY=test-integration-secret-key-123');
+        putenv('COMPLIANCE_PRIVATE_KEY=test-integration-secret-key-123'); putenv('APP_ENV=testing');
         $dbConn = escapeshellarg(getenv('DB_CONNECTION') ?: 'pgsql');
         $dbDb = escapeshellarg(getenv('DB_DATABASE') ?: '');
         $dbHost = escapeshellarg(getenv('DB_HOST') ?: '');
@@ -37,7 +37,7 @@ final class ComplianceE2ETest extends TestCase
 
         $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8096 public/index.php > tests/Integration/Http/server_compliance.log 2>&1 & echo $!";
         // Assign a unique non-overlapping port number for this test file
-        $command = "COMPLIANCE_PRIVATE_KEY=test-integration-secret-key-123 DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8100 public/index.php > tests/Integration/Http/server_compliance.log 2>&1 & echo $!";
+        $command = "COMPLIANCE_PRIVATE_KEY=test-integration-secret-key-123 APP_ENV=testing DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8100 public/index.php > tests/Integration/Http/server_compliance.log 2>&1 & echo $!";
 
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
@@ -176,6 +176,9 @@ final class ComplianceE2ETest extends TestCase
         $result = @file_get_contents($url, false, $context);
 
         $statusCode = 500;
+        if ($result === false) {
+            $result = "{}";
+        }
         if (isset($http_response_header) && isset($http_response_header[0])) {
             preg_match('{HTTP\/\S*\s(\d{3})}', $http_response_header[0], $match);
             $statusCode = (int)$match[1];

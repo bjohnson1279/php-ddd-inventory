@@ -12,10 +12,6 @@ class ComplianceLedgerService
     {
         $key = getenv('COMPLIANCE_PRIVATE_KEY') ?: getenv('COMPLIANCE_KEY');
         if (!$key || empty(trim($key))) {
-            $env = getenv('APP_ENV');
-            if ($env === 'testing' || !$env || $env === 'development') {
-                return 'compliance-fallback-secret-key-12345!@#';
-            }
             throw new \RuntimeException('Compliance private key environment variable is not set.');
         }
         return $key;
@@ -102,7 +98,7 @@ class ComplianceLedgerService
 
             // 3. Verify signature
             $expectedSignature = hash_hmac('sha256', $entry->getCurrentHash(), $privateKey);
-            if ($entry->getSignature() !== $expectedSignature) {
+            if (!hash_equals($expectedSignature, $entry->getSignature())) {
                 return [
                     'isValid' => false,
                     'failedSequenceNumber' => $entry->getSequenceNumber(),

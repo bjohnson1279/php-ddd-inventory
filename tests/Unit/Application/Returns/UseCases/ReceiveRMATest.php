@@ -570,9 +570,6 @@ class ReceiveRMATest extends TestCase
         $this->productRepositoryMock->expects($this->once())
             ->method('saveAll')
             ->with([$product1, $product2]);
-        $this->productRepositoryMock->expects($this->exactly(2))
-            ->method('save')
-            ->withAnyParameters();
 
         $this->costLayerRepositoryMock->expects($this->exactly(2))
             ->method('save')

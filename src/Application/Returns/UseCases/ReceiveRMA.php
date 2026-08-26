@@ -42,6 +42,10 @@ class ReceiveRMA
         $variantIds = array_unique(array_column($dto['items'], 'variantId'));
         $products = $this->productRepository->findByIds($variantIds);
 
+        $productsToSave = [];
+
+
+
         foreach ($dto['items'] as $item) {
             // Find RMA Item
             $rmaItem = null;
@@ -70,7 +74,7 @@ class ReceiveRMA
                 throw new Exception("Product not found for variant {$item['variantId']}");
             }
             $product->receiveStockAt(new LocationId($targetLocationId), new Quantity($item['quantityReceived']), "RMA-{$rma->getId()}");
-            $this->productRepository->save($product);
+            $productsToSave[$product->getId()] = $product;
 
             // Create Cost Layer
             $layerId = Uuid::uuid4()->toString();
@@ -113,7 +117,7 @@ class ReceiveRMA
             if ($disposition === RMADisposition::Scrap) {
                 // Decrement stock level
                 $product->dispatchStockAt(new LocationId($targetLocationId), new Quantity($item['quantityReceived']), "RMA-{$rma->getId()}-SCRAP");
-                $this->productRepository->save($product);
+                $productsToSave[$product->getId()] = $product;
 
                 // Consume cost layer
                 $this->costLayerService->consumeFifoLayers($item['variantId'], $item['quantityReceived']);
@@ -145,6 +149,10 @@ class ReceiveRMA
                     }
                 }
             }
+        }
+
+        if (!empty($productsToSave)) {
+            $this->productRepository->saveAll(array_values($productsToSave));
         }
 
         $this->rmaRepository->save($rma);

@@ -73,7 +73,9 @@ class ReceiveRMATest extends TestCase
 
     private function createProductMock(): Product
     {
-        return $this->createMock(Product::class);
+        $p = $this->createMock(Product::class);
+        $p->method('getId')->willReturn(uniqid());
+        return $p;
     }
 
     public function testExecuteSuccessfullyReceivesRMAForRestock(): void
@@ -117,8 +119,8 @@ class ReceiveRMATest extends TestCase
             );
 
         $this->productRepositoryMock->expects($this->once())
-            ->method('save')
-            ->with($product);
+            ->method('saveAll')
+            ->with([$product]);
 
         $this->costLayerRepositoryMock->expects($this->once())
             ->method('save')
@@ -301,7 +303,7 @@ class ReceiveRMATest extends TestCase
 
         $this->serializedRepositoryMock->expects($this->once())
             ->method('findBySerial')
-            ->with($this->callback(fn(SerialNumber $sn) => $sn->value === 'SN1'), 'tenant_1')
+            ->with($this->callback(fn($sn) => $sn->value === 'SN1'), 'tenant_1')
             ->willReturn($serialItem);
 
         $serialItem->expects($this->once())
@@ -343,7 +345,7 @@ class ReceiveRMATest extends TestCase
 
         $this->serializedRepositoryMock->expects($this->once())
             ->method('findBySerial')
-            ->with($this->callback(fn(SerialNumber $sn) => $sn->value === 'SN1'), 'tenant_1')
+            ->with($this->callback(fn($sn) => $sn->value === 'SN1'), 'tenant_1')
             ->willReturn($serialItem);
 
         $serialItem->expects($this->once())
@@ -385,7 +387,7 @@ class ReceiveRMATest extends TestCase
 
         $this->serializedRepositoryMock->expects($this->once())
             ->method('findBySerial')
-            ->with($this->callback(fn(SerialNumber $sn) => $sn->value === 'SN1'), 'tenant_1')
+            ->with($this->callback(fn($sn) => $sn->value === 'SN1'), 'tenant_1')
             ->willReturn($serialItem);
 
         $serialItem->expects($this->once())
@@ -434,7 +436,7 @@ class ReceiveRMATest extends TestCase
 
         $this->serializedRepositoryMock->expects($this->once())
             ->method('findBySerial')
-            ->with($this->callback(fn(SerialNumber $sn) => $sn->value === 'SN1'), 'tenant_1')
+            ->with($this->callback(fn($sn) => $sn->value === 'SN1'), 'tenant_1')
             ->willReturn(null);
 
         $this->serializedRepositoryMock->expects($this->never())
@@ -567,9 +569,9 @@ class ReceiveRMATest extends TestCase
                 'RMA-rma_1'
             );
 
-        $this->productRepositoryMock->expects($this->exactly(2))
-            ->method('save')
-            ->withConsecutive([$product1], [$product2]);
+        $this->productRepositoryMock->expects($this->once())
+            ->method('saveAll')
+            ->with([$product1, $product2]);
 
         $this->costLayerRepositoryMock->expects($this->exactly(2))
             ->method('save')

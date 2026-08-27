@@ -36,9 +36,11 @@ class CreateCostLayerListener
         }
 
         foreach (array_chunk($uncached, 500) as $chunk) {
-            $variants = DB::table('catalog_variants')->whereIn('sku', $chunk)->get(['sku', 'price']);
-            foreach ($variants as $variant) {
-                self::$priceCache[$variant->sku] = $variant->price;
+            // ⚡ Bolt Optimization: Use pluck() instead of get() to retrieve key-value pairs directly,
+            // avoiding the CPU and memory overhead of hydrating standard objects for each row.
+            $variants = DB::table('catalog_variants')->whereIn('sku', $chunk)->pluck('price', 'sku');
+            foreach ($variants as $sku => $price) {
+                self::$priceCache[$sku] = (float) $price;
             }
         }
 

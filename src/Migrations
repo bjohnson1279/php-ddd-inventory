@@ -1,0 +1,97 @@
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void
+    {
+        // Inventory Audit Cycle (Cycle Count) table
+        Schema::create('inventory_audit_cycles', function (Blueprint $table) {
+            $table->id();
+            $table->string('cycle_number')->unique()->comment('Unique cycle number for this audit');
+            $table->string('name')->default($this->generateCycleName());
+            $table->string('warehouse_id')->foreignId()->constrained()->cascadeOnDelete();
+            $table->dateTime('scheduled_date')
+                ->nullable()
+                ->comment('Planned start time for the cycle count');
+            $table->string('status')
+                ->default('planned') // planned, in_progress, completed, cancelled
+                ->comment('Cycle status');
+            $table->timestamps();
+
+            $table->index(['warehouse_id', 'status']);
+        });
+
+        Schema::create('inventory_audit_lot_results', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('audit_cycle_id')->constrained()->cascadeOnDelete();
+            $table->string('lot_number'); // or sku_id
+            $table->decimal('quantity_found', 12, 4);
+            $table->decimal('quantity_expected', 12, 4)
+                ->default(0.0)
+                ->comment('Quantity expected from previous cycle');
+            $table->string('discrepancy_type')
+                ->nullable()
+                ->comment('variance (positive = shortage), variance (negative = overage)');
+            $table->timestamps();
+
+            $table->index(['audit_cycle_id', 'lot_number']);
+        });
+
+        // Forecasting Report table
+        Schema::create('forecasting_reports', function (Blueprint $table) {
+            $table->id();
+            $table->string('report_name')
+                ->nullable()
+                ->comment('User-defined report name, or auto-generated');
+            $table->dateTime('start_date')->comment('Report date range start');
+            $table->dateTime('end_date')->comment('Report date range end');
+            $table->string('warehouse_id')->foreignId()->constrained()->cascadeOnDelete();
+            $table->decimal('total_sold', 12, 4)
+                ->comment('Total quantity sold during report period');
+            $table->decimal('total_received', 12, 4)
+                ->comment('Total quantity received during report period');
+            $table->dateTime('generated_at')->nullable();
+
+            // Forecast entries table (one per SKU/lot)
+            Schema::create('forecasting_forecasts', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('report_id')->constrained()->cascadeOnDelete();
+                $table->string('sku_number');
+                $table->decimal('avg_daily_demand', 12, 4);
+                $table->integer('forecast_days')->default(7);
+                $table->decimal('predicted_quantity', 12, 4)->comment('quantity to order (rounded up)');
+                $table->timestamps();
+
+                // Reorder policy table
+                Schema::create('reorder_policies', function (Blueprint $table) {
+                    $table->id();
+                    $table->foreignId('sku_number')->unique()->constrained();
+                    $table->decimal('min_stock_level', 12, 4);
+                    $table->decimal('max_stock_level', 12, 4);
+                    $table->integer('forecast_days')->default(7);
+                    $table->timestamps();
+                });
+
+            }));
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('forecasting_forecasts');
+        Schema::dropIfExists('reorder_policies');
+        Schema::dropIfExists('forecasting_reports');
+        Schema::dropIfExists('inventory_audit_lot_results');
+        Schema::dropIfExists('inventory_audit_cycles');
+    }
+
+    private function generateCycleName(): string
+    {
+        $now = (new DateTime())->format('Y-m-d H:i:s');
+        return "Cycle {$now}";
+    }
+};

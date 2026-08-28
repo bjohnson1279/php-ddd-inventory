@@ -1,0 +1,43 @@
+// Repository interfaces for reporting and analytics feature
+
+/**
+ * Interface for Inventory Audit cycle management.
+ * Supports start, record results, complete, reconcile workflows.
+ */
+interface InventoryAuditRepository {
+    /** Create a new inventory audit cycle (cycle count) */
+    function create(InventoryAudit $audit): string;
+
+    /** Find audit cycle by ID */
+    function find(string $id): ?InventoryAudit;
+
+    /** Start counting for specific lots in an audit cycle */
+    function startCount(string $cycleId, int $userId): array;
+
+    /** Record count results for a lot within the audit cycle */
+    function recordCount(
+        string $cycleId,
+        InventoryLotResult $results
+    ): bool;
+
+    /** Complete the audit cycle and reconcile with journals */
+    function complete(string $cycleId): bool;
+
+    /** Reconcile specific lot against journal entries */
+    function reconcile(string $cycleId, string $lotId): bool;
+}
+
+/**
+ * Interface for demand forecasting reports.
+ * Supports report generation and individual forecast retrieval.
+ */
+interface ForecastingRepository {
+    /** Generate a comprehensive demand forecast report */
+    function generateReport(
+        DateTime $startDate,
+        DateTime $endDate
+    ): Report;
+
+    /** Get forecast for specific SKU/lot */
+    function getForecast(string $skuId): ?Forecast;
+}

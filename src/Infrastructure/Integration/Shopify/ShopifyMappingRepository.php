@@ -44,15 +44,15 @@ class ShopifyMappingRepository
         $missing = array_unique($missing);
         $rows = DB::table('shopify_sku_mappings')
             ->whereIn('sku', $missing)
-            ->get(['sku', 'shopify_inventory_item_id']);
+            ->pluck('shopify_inventory_item_id', 'sku');
 
         // Mark missing as null initially, so we cache negative lookups too
         foreach ($missing as $sku) {
             $this->skuCache[$sku] = null;
         }
 
-        foreach ($rows as $row) {
-            $this->skuCache[$row->sku] = $row->shopify_inventory_item_id;
+        foreach ($rows as $sku => $inventoryItemId) {
+            $this->skuCache[$sku] = $inventoryItemId;
         }
     }
 
@@ -81,15 +81,15 @@ class ShopifyMappingRepository
         $missing = array_unique($missing);
         $rows = DB::table('shopify_location_mappings')
             ->whereIn('shopify_location_id', $missing)
-            ->get(['shopify_location_id', 'our_location_id']);
+            ->pluck('our_location_id', 'shopify_location_id');
 
         // Mark missing as null initially, so we cache negative lookups too
         foreach ($missing as $id) {
             $this->locationCache[$id] = null;
         }
 
-        foreach ($rows as $row) {
-            $this->locationCache[$row->shopify_location_id] = $row->our_location_id;
+        foreach ($rows as $shopifyLocId => $ourLocId) {
+            $this->locationCache[$shopifyLocId] = $ourLocId;
         }
     }
 
@@ -114,10 +114,10 @@ class ShopifyMappingRepository
         foreach (array_chunk($missingSkus, 500) as $chunk) {
             $rows = DB::table('shopify_sku_mappings')
                 ->whereIn('sku', $chunk)
-                ->get(['sku', 'shopify_inventory_item_id']);
+                ->pluck('shopify_inventory_item_id', 'sku');
 
-            foreach ($rows as $row) {
-                $this->skuCache[$row->sku] = $row->shopify_inventory_item_id;
+            foreach ($rows as $sku => $inventoryItemId) {
+                $this->skuCache[$sku] = $inventoryItemId;
             }
         }
 
@@ -151,11 +151,11 @@ class ShopifyMappingRepository
         foreach (array_chunk($missingIds, 500) as $chunk) {
             $rows = DB::table('shopify_location_mappings')
                 ->whereIn('our_location_id', $chunk)
-                ->get(['shopify_location_id', 'our_location_id']);
+                ->pluck('shopify_location_id', 'our_location_id');
 
-            foreach ($rows as $row) {
-                $cacheKey = 'reverse_' . $row->our_location_id;
-                $this->locationCache[$cacheKey] = $row->shopify_location_id;
+            foreach ($rows as $ourLocId => $shopifyLocId) {
+                $cacheKey = 'reverse_' . $ourLocId;
+                $this->locationCache[$cacheKey] = $shopifyLocId;
             }
         }
 

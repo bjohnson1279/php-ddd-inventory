@@ -279,7 +279,17 @@ function requireAuth(?string $resource = null, ?string $action = null): void
     // Make the resolved identity available to the rest of the request
     $_SERVER['auth.user_id']   = $tokenData->user_id;
     $_SERVER['auth.tenant_id'] = $tokenData->tenant_id;
-    $permissions = $tokenData->permissions ?? [];
+    $permissions = (array)($tokenData->permissions ?? []);
+    if (isset($tokenData->user_id)) {
+        $userModel = \Illuminate\Database\Capsule\Manager::table('users')->where('id', $tokenData->user_id)->first();
+        if ($userModel) {
+            $roleIds = \Illuminate\Database\Capsule\Manager::table('user_roles')->where('user_id', $userModel->id)->pluck('role_id')->toArray();
+            $permissions = \Illuminate\Database\Capsule\Manager::table('role_permissions')->whereIn('role_id', $roleIds)->pluck('permission')->toArray();
+            if (in_array('admin', $roleIds) || in_array('manager', $roleIds)) {
+                $permissions = array_merge($permissions, ['inventory:allocate', 'inventory:receive', 'rma:create', 'product:manage']);
+            }
+        }
+    }
     $_SERVER['auth.permissions'] = $permissions;
 
     if ($resource !== null && $action !== null) {

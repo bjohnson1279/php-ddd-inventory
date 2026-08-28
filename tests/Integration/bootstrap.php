@@ -271,6 +271,41 @@ $connection->table('roles')->insertOrIgnore([
     ['id' => 'staff',   'name' => 'Staff']
 ]);
 
+$connection->table('role_permissions')->insertOrIgnore([
+    ['role_id' => 'admin', 'permission' => 'inventory:allocate'],
+    ['role_id' => 'admin', 'permission' => 'inventory:receive'],
+    ['role_id' => 'admin', 'permission' => 'inventory:dispatch'],
+    ['role_id' => 'admin', 'permission' => 'inventory:transfer'],
+    ['role_id' => 'admin', 'permission' => 'inventory:reconcile'],
+    ['role_id' => 'admin', 'permission' => 'inventory:read'],
+    ['role_id' => 'admin', 'permission' => 'sales:process'],
+    ['role_id' => 'admin', 'permission' => 'returns:process'],
+    ['role_id' => 'admin', 'permission' => 'catalog:manage'],
+    ['role_id' => 'admin', 'permission' => 'catalog:read'],
+    ['role_id' => 'admin', 'permission' => 'reports:view'],
+    ['role_id' => 'admin', 'permission' => 'integrations:manage'],
+    ['role_id' => 'admin', 'permission' => 'users:manage'],
+    ['role_id' => 'admin', 'permission' => 'rma:create'],
+    ['role_id' => 'admin', 'permission' => 'product:manage'],
+    ['role_id' => 'admin', 'permission' => 'compliance:manage'],
+    ['role_id' => 'manager', 'permission' => 'inventory:allocate'],
+    ['role_id' => 'manager', 'permission' => 'inventory:receive'],
+    ['role_id' => 'manager', 'permission' => 'inventory:dispatch'],
+    ['role_id' => 'manager', 'permission' => 'inventory:transfer'],
+    ['role_id' => 'manager', 'permission' => 'inventory:reconcile'],
+    ['role_id' => 'manager', 'permission' => 'inventory:read'],
+    ['role_id' => 'manager', 'permission' => 'sales:process'],
+    ['role_id' => 'manager', 'permission' => 'returns:process'],
+    ['role_id' => 'manager', 'permission' => 'catalog:manage'],
+    ['role_id' => 'manager', 'permission' => 'catalog:read'],
+    ['role_id' => 'manager', 'permission' => 'reports:view'],
+    ['role_id' => 'manager', 'permission' => 'rma:create'],
+    ['role_id' => 'manager', 'permission' => 'product:manage'],
+    ['role_id' => 'manager', 'permission' => 'compliance:manage']
+]);
+
+
+
 function uuidv4(): string {
     return \Ramsey\Uuid\Uuid::uuid4()->toString();
 }

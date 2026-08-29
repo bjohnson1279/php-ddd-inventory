@@ -325,6 +325,7 @@ use InventoryApp\Infrastructure\Http\Controllers\StockOnboardingController;
 use InventoryApp\Infrastructure\Http\Controllers\JournalController;
 use InventoryApp\Infrastructure\Http\Controllers\UomController;
 use InventoryApp\Infrastructure\Http\Controllers\KitController;
+use InventoryApp\Infrastructure\Http\Controllers\IntegrationController;
 use InventoryApp\Application\Identity\UseCases\RegisterUser;
 use InventoryApp\Application\Identity\UseCases\AuthenticateUser;
 use InventoryApp\Application\Catalog\UseCases\CreateProductCatalog;
@@ -2139,6 +2140,33 @@ if ($method === 'POST' && $uri === '/api/warehouse-locations/optimize-pick-route
     requireAuth();
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\WarehouseLocationController())
         ->optimizePickRoute($request, ServiceContainer::warehouseLocationRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/integrations/amazon/connect ────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/integrations/amazon/connect') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\IntegrationController())->connectAmazon($request);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/integrations/woocommerce/connect ─────────────────────────────
+if ($method === 'POST' && $uri === '/api/integrations/woocommerce/connect') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\IntegrationController())->connectWooCommerce($request);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: GET /api/integrations/connections ────────────────────────────────────
+if ($method === 'GET' && $uri === '/api/integrations/connections') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\IntegrationController())->getConnections($request);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;

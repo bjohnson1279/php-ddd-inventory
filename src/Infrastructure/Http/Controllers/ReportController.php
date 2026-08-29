@@ -23,7 +23,8 @@ class ReportController
             $productSkus = $products->pluck('sku')->toArray();
 
             // Fetch all locations to initialize location names
-            $locations = DB::table('locations')->get(['id', 'name'])->keyBy('id')->toArray();
+            /* ⚡ Bolt: Use pluck() instead of get() to retrieve key-value pairs directly, avoiding the CPU and memory overhead of hydrating standard objects for each row */
+            $locations = DB::table('locations')->pluck('name', 'id')->toArray();
 
             // Fetch ALL stock locations for these products once (to avoid N+1)
             $allStocks = $this->fetchStocksMap($productIds);
@@ -152,7 +153,7 @@ class ReportController
 
             // Initialize location valuation tracking
             if (!isset($locationValuations[$s->location_id])) {
-                $locName = $locations[$s->location_id]->name ?? $s->location_id;
+                $locName = $locations[$s->location_id] ?? $s->location_id;
                 $locationValuations[$s->location_id] = [
                     'location_id' => $s->location_id,
                     'name'        => $locName,

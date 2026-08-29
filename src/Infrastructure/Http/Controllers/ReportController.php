@@ -285,4 +285,90 @@ class ReportController
 
         return $activity;
     }
+
+    public function createReportDefinition(RequestInterface $request, string $tenantId)
+    {
+        try {
+            $body = json_decode($request->getBody(), true);
+            $id = \Ramsey\Uuid\Uuid::uuid4()->toString();
+            DB::table('report_definitions')->insert([
+                'id' => $id,
+                'tenant_id' => $tenantId,
+                'name' => $body['name'] ?? 'Unnamed Report',
+                'description' => $body['description'] ?? null,
+                'type' => $body['type'] ?? 'CUSTOM',
+                'filters' => json_encode($body['filters'] ?? []),
+                'grouping' => json_encode($body['grouping'] ?? []),
+                'created_by' => 'system',
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
+            return new Response(['success' => true, 'id' => $id], 201);
+        } catch (Exception $e) {
+            return new Response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function listReportDefinitions(RequestInterface $request, string $tenantId)
+    {
+        try {
+            $reports = DB::table('report_definitions')->where('tenant_id', $tenantId)->get();
+            return new Response(['reports' => $reports], 200);
+        } catch (Exception $e) {
+            return new Response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function scheduleReport(RequestInterface $request, string $tenantId, string $reportId)
+    {
+        try {
+            $body = json_decode($request->getBody(), true);
+            $id = \Ramsey\Uuid\Uuid::uuid4()->toString();
+            DB::table('report_schedules')->insert([
+                'id' => $id,
+                'report_definition_id' => $reportId,
+                'cron_expression' => $body['cronExpression'] ?? '0 0 * * *',
+                'delivery_method' => $body['deliveryMethod'] ?? 'INTERNAL',
+                'next_run_at' => date('Y-m-d H:i:s', strtotime('+1 hour')),
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
+            return new Response(['success' => true, 'schedule_id' => $id], 201);
+        } catch (Exception $e) {
+            return new Response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function executeReport(RequestInterface $request, string $tenantId, string $reportId)
+    {
+        try {
+            $body = json_decode($request->getBody(), true);
+            $id = \Ramsey\Uuid\Uuid::uuid4()->toString();
+            DB::table('report_executions')->insert([
+                'id' => $id,
+                'report_definition_id' => $reportId,
+                'status' => 'PENDING',
+                'format' => $body['format'] ?? 'csv',
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
+            return new Response(['success' => true, 'executionId' => $id], 202);
+        } catch (Exception $e) {
+            return new Response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function getSharedLink(RequestInterface $request, string $token)
+    {
+        try {
+            $link = DB::table('shared_report_links')->where('token', $token)->first();
+            if (!$link) return new Response(['error' => 'Link not found'], 404);
+            if (strtotime($link->expires_at) < time()) return new Response(['error' => 'Link expired'], 403);
+            
+            $execution = DB::table('report_executions')->where('id', $link->report_execution_id)->first();
+            return new Response(['success' => true, 'fileUrl' => $execution->file_url], 200);
+        } catch (Exception $e) {
+            return new Response(['error' => $e->getMessage()], 500);
+        }
+    }
 }

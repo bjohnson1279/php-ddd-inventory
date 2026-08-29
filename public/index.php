@@ -1611,6 +1611,48 @@ if ($method === 'GET' && $uri === '/api/reports/valuation') {
     exit;
 }
 
+// ── Reporting & Analytics ───────────────────────────────────────────────────
+if ($method === 'GET' && $uri === '/api/reports') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReportController())->listReportDefinitions($request, tenantId());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+if ($method === 'POST' && $uri === '/api/reports') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReportController())->createReportDefinition($request, tenantId());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+if ($method === 'POST' && preg_match('#^/api/reports/([^/]+)/schedule$#', $uri, $m)) {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReportController())->scheduleReport($request, tenantId(), urldecode($m[1]));
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+if ($method === 'POST' && preg_match('#^/api/reports/([^/]+)/execute$#', $uri, $m)) {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReportController())->executeReport($request, tenantId(), urldecode($m[1]));
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+if ($method === 'GET' && preg_match('#^/api/reports/shared/([^/]+)$#', $uri, $m)) {
+    // Shared links do not require auth usually, handled inside controller
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReportController())->getSharedLink($request, urldecode($m[1]));
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+
 // ── Shipping Carrier Integration ────────────────────────────────────────────────
 // Route: GET /api/shipping/rates
 if ($method === 'GET' && $uri === '/api/shipping/rates') {

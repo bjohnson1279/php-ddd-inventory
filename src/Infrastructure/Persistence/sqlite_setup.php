@@ -19,7 +19,8 @@ class SqliteSetup
             self::getShippingQueries(),
             self::getComplianceQueries(),
             self::getRfidQueries(),
-            self::getLogisticsErpQueries()
+            self::getLogisticsErpQueries(),
+            self::getReportingQueries()
         );
 
         foreach ($queries as $q) {
@@ -609,6 +610,63 @@ class SqliteSetup
               ton_km NUMERIC NOT NULL,
               co2e_kg NUMERIC NOT NULL,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )"
+        ];
+    }
+
+    private static function getReportingQueries(): array
+    {
+        return [
+            "CREATE TABLE IF NOT EXISTS report_definitions (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              name TEXT NOT NULL,
+              description TEXT,
+              type VARCHAR(50) NOT NULL,
+              filters TEXT NOT NULL,
+              grouping TEXT NOT NULL,
+              created_by TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS report_schedules (
+              id TEXT PRIMARY KEY,
+              report_definition_id TEXT NOT NULL,
+              cron_expression VARCHAR(100) NOT NULL,
+              delivery_method VARCHAR(50) NOT NULL,
+              next_run_at DATETIME NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (report_definition_id) REFERENCES report_definitions(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS report_executions (
+              id TEXT PRIMARY KEY,
+              report_definition_id TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              format VARCHAR(20) NOT NULL,
+              file_url TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (report_definition_id) REFERENCES report_definitions(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS shared_report_links (
+              id TEXT PRIMARY KEY,
+              report_execution_id TEXT NOT NULL,
+              token VARCHAR(255) NOT NULL UNIQUE,
+              expires_at DATETIME NOT NULL,
+              viewer_permissions TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (report_execution_id) REFERENCES report_executions(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS dashboard_widgets (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              type VARCHAR(50) NOT NULL,
+              config TEXT NOT NULL,
+              layout_x INTEGER NOT NULL DEFAULT 0,
+              layout_y INTEGER NOT NULL DEFAULT 0,
+              width INTEGER NOT NULL DEFAULT 1,
+              height INTEGER NOT NULL DEFAULT 1
             )"
         ];
     }

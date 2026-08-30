@@ -23,8 +23,12 @@ class ReportController
             $productSkus = $products->pluck('sku')->toArray();
 
             // Fetch all locations to initialize location names
-            // ⚡ Bolt: Use pluck() directly to retrieve key-value pairs without hydrating intermediate stdClass objects
-            $locations = DB::table('locations')->pluck('name', 'id')->toArray();
+            $locations = DB::table('locations')->pluck('name', 'id');
+            if ($locations instanceof \Illuminate\Support\Collection) {
+                $locations = $locations->mapWithKeys(function ($name, $id) { return [(string)$id => $name]; })->toArray();
+            } else {
+                $locations = $locations->toArray();
+            }
 
             // Fetch ALL stock locations for these products once (to avoid N+1)
             $allStocks = $this->fetchStocksMap($productIds);
@@ -95,7 +99,7 @@ class ReportController
                 ->pluck('price', 'sku')
                 ->all();
             foreach ($chunkResults as $sku => $price) {
-                $results[$sku] = (object)['sku' => $sku, 'price' => $price];
+                $results[(string)$sku] = (object)['sku' => (string)$sku, 'price' => (float)$price];
             }
         }
         return collect($results);

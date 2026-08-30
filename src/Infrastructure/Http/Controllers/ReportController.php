@@ -289,6 +289,10 @@ class ReportController
     public function createReportDefinition(RequestInterface $request, string $tenantId)
     {
         try {
+            $authUserTenantId = $_SERVER['auth.tenant_id'] ?? null;
+            if ($authUserTenantId === null || ($authUserTenantId !== 'system' && $authUserTenantId !== $tenantId)) {
+                return new Response(['error' => 'Unauthorized access to tenant report'], 403);
+            }
             $body = json_decode($request->getBody(), true);
             $id = \Ramsey\Uuid\Uuid::uuid4()->toString();
             DB::table('report_definitions')->insert([
@@ -312,6 +316,10 @@ class ReportController
     public function listReportDefinitions(RequestInterface $request, string $tenantId)
     {
         try {
+            $authUserTenantId = $_SERVER['auth.tenant_id'] ?? null;
+            if ($authUserTenantId === null || ($authUserTenantId !== 'system' && $authUserTenantId !== $tenantId)) {
+                return new Response(['error' => 'Unauthorized access to tenant report'], 403);
+            }
             $reports = DB::table('report_definitions')->where('tenant_id', $tenantId)->get();
             return new Response(['reports' => $reports], 200);
         } catch (Exception $e) {
@@ -322,6 +330,15 @@ class ReportController
     public function scheduleReport(RequestInterface $request, string $tenantId, string $reportId)
     {
         try {
+            $authUserTenantId = $_SERVER['auth.tenant_id'] ?? null;
+            if ($authUserTenantId === null || ($authUserTenantId !== 'system' && $authUserTenantId !== $tenantId)) {
+                return new Response(['error' => 'Unauthorized access to tenant report'], 403);
+            }
+
+            $report = DB::table('report_definitions')->where('id', $reportId)->where('tenant_id', $tenantId)->first();
+            if (!$report) {
+                return new Response(['error' => 'Report not found or unauthorized'], 404);
+            }
             $body = json_decode($request->getBody(), true);
             $id = \Ramsey\Uuid\Uuid::uuid4()->toString();
             DB::table('report_schedules')->insert([
@@ -342,6 +359,15 @@ class ReportController
     public function executeReport(RequestInterface $request, string $tenantId, string $reportId)
     {
         try {
+            $authUserTenantId = $_SERVER['auth.tenant_id'] ?? null;
+            if ($authUserTenantId === null || ($authUserTenantId !== 'system' && $authUserTenantId !== $tenantId)) {
+                return new Response(['error' => 'Unauthorized access to tenant report'], 403);
+            }
+
+            $report = DB::table('report_definitions')->where('id', $reportId)->where('tenant_id', $tenantId)->first();
+            if (!$report) {
+                return new Response(['error' => 'Report not found or unauthorized'], 404);
+            }
             $body = json_decode($request->getBody(), true);
             $id = \Ramsey\Uuid\Uuid::uuid4()->toString();
             DB::table('report_executions')->insert([

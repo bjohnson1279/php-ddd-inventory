@@ -2903,3 +2903,28 @@ http_response_code(200);
 echo json_encode(['message' => 'DDD Inventory API is running', 'uri' => $uri]);
 
 
+
+// --- Item 15: Operational Depth ---
+
+// ── Route: POST /api/cycle-count/start ───────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/cycle-count/start') {
+    requireAuth();
+    // Simulate Request and Response
+    $request = new \Nyholm\Psr7\ServerRequest('POST', '/api/cycle-count/start');
+    $response = new \Nyholm\Psr7\Response();
+    $response = (new \App\Infrastructure\Http\Controllers\CycleCountController())->start($request, $response);
+    http_response_code($response->getStatusCode());
+    echo $response->getBody()->__toString();
+    exit;
+}
+
+// ── Route: GET /api/supplier/asn ───────────────────────────────────────
+if ($method === 'GET' && $uri === '/api/supplier/asn') {
+    requireAuth();
+    $request = new \Nyholm\Psr7\ServerRequest('GET', '/api/supplier/asn');
+    $response = new \Nyholm\Psr7\Response();
+    $response = (new \App\Infrastructure\Http\Controllers\SupplierPortalController())->listASNs($request, $response);
+    http_response_code($response->getStatusCode());
+    echo $response->getBody()->__toString();
+    exit;
+}

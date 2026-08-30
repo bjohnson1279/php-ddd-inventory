@@ -325,6 +325,7 @@ use InventoryApp\Infrastructure\Http\Controllers\StockOnboardingController;
 use InventoryApp\Infrastructure\Http\Controllers\JournalController;
 use InventoryApp\Infrastructure\Http\Controllers\UomController;
 use InventoryApp\Infrastructure\Http\Controllers\KitController;
+use InventoryApp\Infrastructure\Http\Controllers\IntegrationController;
 use InventoryApp\Application\Identity\UseCases\RegisterUser;
 use InventoryApp\Application\Identity\UseCases\AuthenticateUser;
 use InventoryApp\Application\Catalog\UseCases\CreateProductCatalog;
@@ -1144,7 +1145,7 @@ if ($method === 'POST' && $uri === '/api/inventory/allocate') {
     requireAuth('inventory', 'allocate');
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:allocate')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
         exit;
@@ -1161,7 +1162,7 @@ if ($method === 'POST' && $uri === '/api/inventory/release-allocation') {
     requireAuth();
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:allocate')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
         exit;
@@ -1178,7 +1179,7 @@ if ($method === 'POST' && $uri === '/api/inventory/fulfill-allocation') {
     requireAuth();
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:allocate')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
         exit;
@@ -1195,7 +1196,7 @@ if ($method === 'POST' && $uri === '/api/inventory/create-in-transit') {
     requireAuth();
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:transfer')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
         exit;
@@ -1611,6 +1612,48 @@ if ($method === 'GET' && $uri === '/api/reports/valuation') {
     exit;
 }
 
+// ── Reporting & Analytics ───────────────────────────────────────────────────
+if ($method === 'GET' && $uri === '/api/reports') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReportController())->listReportDefinitions($request, tenantId());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+if ($method === 'POST' && $uri === '/api/reports') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReportController())->createReportDefinition($request, tenantId());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+if ($method === 'POST' && preg_match('#^/api/reports/([^/]+)/schedule$#', $uri, $m)) {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReportController())->scheduleReport($request, tenantId(), urldecode($m[1]));
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+if ($method === 'POST' && preg_match('#^/api/reports/([^/]+)/execute$#', $uri, $m)) {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReportController())->executeReport($request, tenantId(), urldecode($m[1]));
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+if ($method === 'GET' && preg_match('#^/api/reports/shared/([^/]+)$#', $uri, $m)) {
+    // Shared links do not require auth usually, handled inside controller
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReportController())->getSharedLink($request, urldecode($m[1]));
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+
 // ── Shipping Carrier Integration ────────────────────────────────────────────────
 // Route: GET /api/shipping/rates
 if ($method === 'GET' && $uri === '/api/shipping/rates') {
@@ -1634,7 +1677,7 @@ if ($method === 'POST' && $uri === '/api/shipping/labels') {
     requireAuth();
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:dispatch')) {
         http_response_code(403);
         echo json_encode(['error' => 'Forbidden: You do not have permission to purchase shipping labels.']);
         exit;
@@ -1675,7 +1718,7 @@ if ($method === 'POST' && preg_match('#^/api/shipping/shipments/([^/]+)/track$#'
     requireAuth();
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:dispatch')) {
         http_response_code(403);
         echo json_encode(['error' => 'Forbidden: You do not have permission to track shipments.']);
         exit;
@@ -1749,7 +1792,7 @@ if ($method === 'POST' && preg_match('#^/api/outbox/([^/]+)/retry$#', $uri, $m))
     requireAuth();
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('integrations:manage')) {
         http_response_code(403);
         echo json_encode(['error' => 'Forbidden']);
         exit;
@@ -1916,7 +1959,7 @@ if ($method === 'POST' && $uri === '/api/kits/assemble') {
     requireAuth();
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:transfer')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized: you do not have permission to assemble kits.']);
         exit;
@@ -1942,7 +1985,7 @@ if ($method === 'POST' && $uri === '/api/kits/disassemble') {
     requireAuth();
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:transfer')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized: you do not have permission to disassemble kits.']);
         exit;
@@ -1968,7 +2011,7 @@ if ($method === 'POST' && $uri === '/api/warehouse-locations') {
     requireAuth();
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('catalog:manage')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized: you do not have permission to manage warehouse locations.']);
         exit;
@@ -1986,7 +2029,7 @@ if ($method === 'DELETE' && preg_match('#^/api/warehouse-locations/([^/]+)$#', $
     $id = urldecode($m[1]);
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('catalog:manage')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized: you do not have permission to manage warehouse locations.']);
         exit;
@@ -2097,6 +2140,33 @@ if ($method === 'POST' && $uri === '/api/warehouse-locations/optimize-pick-route
     requireAuth();
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\WarehouseLocationController())
         ->optimizePickRoute($request, ServiceContainer::warehouseLocationRepo());
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/integrations/amazon/connect ────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/integrations/amazon/connect') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\IntegrationController())->connectAmazon($request);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: POST /api/integrations/woocommerce/connect ─────────────────────────────
+if ($method === 'POST' && $uri === '/api/integrations/woocommerce/connect') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\IntegrationController())->connectWooCommerce($request);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+// ── Route: GET /api/integrations/connections ────────────────────────────────────
+if ($method === 'GET' && $uri === '/api/integrations/connections') {
+    requireAuth();
+    $response = (new \InventoryApp\Infrastructure\Http\Controllers\IntegrationController())->getConnections($request);
     http_response_code($response->getStatusCode());
     echo $response->getContent();
     exit;
@@ -2347,7 +2417,7 @@ if ($method === 'POST' && $uri === '/api/reorder-policies') {
     requireAuth();
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('catalog:manage')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
         exit;
@@ -2364,7 +2434,7 @@ if ($method === 'POST' && $uri === '/api/reorder-policies/evaluate') {
     requireAuth();
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('catalog:manage')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
         exit;
@@ -2442,7 +2512,7 @@ if ($method === 'POST' && $uri === '/api/forecasting/forecast') {
     requireAuth();
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('reports:view')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
         exit;

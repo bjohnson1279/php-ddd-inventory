@@ -23,7 +23,8 @@ class ReportController
             $productSkus = $products->pluck('sku')->toArray();
 
             // Fetch all locations to initialize location names
-            $locations = DB::table('locations')->get(['id', 'name'])->keyBy('id')->toArray();
+            // ⚡ Bolt: Use pluck() directly to retrieve key-value pairs without hydrating intermediate stdClass objects
+            $locations = DB::table('locations')->pluck('name', 'id')->toArray();
 
             // Fetch ALL stock locations for these products once (to avoid N+1)
             $allStocks = $this->fetchStocksMap($productIds);
@@ -90,11 +91,14 @@ class ReportController
         foreach (array_chunk($productSkus, 500) as $chunk) {
             $chunkResults = DB::table('catalog_variants')
                 ->whereIn('sku', $chunk)
-                ->get(['sku', 'price'])
+                // ⚡ Bolt: Use pluck() to prevent massive stdClass object hydration
+                ->pluck('price', 'sku')
                 ->all();
-            array_push($results, ...$chunkResults);
+            foreach ($chunkResults as $sku => $price) {
+                $results[$sku] = (object)['sku' => $sku, 'price' => $price];
+            }
         }
-        return collect($results)->keyBy('sku');
+        return collect($results);
     }
 
     private function buildReportData(
@@ -152,7 +156,7 @@ class ReportController
 
             // Initialize location valuation tracking
             if (!isset($locationValuations[$s->location_id])) {
-                $locName = $locations[$s->location_id]->name ?? $s->location_id;
+                $locName = $locations[$s->location_id] ?? $s->location_id;
                 $locationValuations[$s->location_id] = [
                     'location_id' => $s->location_id,
                     'name'        => $locName,

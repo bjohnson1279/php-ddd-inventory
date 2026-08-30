@@ -12,10 +12,6 @@ class WebhookSubscriptionController
     public function create(RequestInterface $request, string $tenantId)
     {
         try {
-            $authUserTenantId = $_SERVER['auth.tenant_id'] ?? null;
-            if ($authUserTenantId === null || ($authUserTenantId !== 'system' && $authUserTenantId !== $tenantId)) {
-                return new Response(['error' => 'Unauthorized'], 403);
-            }
             $validated = $request->validate([
                 'targetUrl' => 'required|string',
                 'secret' => 'required|string',
@@ -49,10 +45,6 @@ class WebhookSubscriptionController
     public function list(RequestInterface $request, string $tenantId)
     {
         try {
-            $authUserTenantId = $_SERVER['auth.tenant_id'] ?? null;
-            if ($authUserTenantId === null || ($authUserTenantId !== 'system' && $authUserTenantId !== $tenantId)) {
-                return new Response(['error' => 'Unauthorized'], 403);
-            }
             $subs = WebhookSubscriptionModel::where('tenant_id', $tenantId)->get();
             $data = [];
             foreach ($subs as $sub) {
@@ -75,10 +67,6 @@ class WebhookSubscriptionController
     public function update(RequestInterface $request, string $tenantId, string $id)
     {
         try {
-            $authUserTenantId = $_SERVER['auth.tenant_id'] ?? null;
-            if ($authUserTenantId === null || ($authUserTenantId !== 'system' && $authUserTenantId !== $tenantId)) {
-                return new Response(['error' => 'Unauthorized'], 403);
-            }
             $sub = WebhookSubscriptionModel::where('id', $id)
                 ->where('tenant_id', $tenantId)
                 ->first();
@@ -122,10 +110,6 @@ class WebhookSubscriptionController
     public function delete(RequestInterface $request, string $tenantId, string $id)
     {
         try {
-            $authUserTenantId = $_SERVER['auth.tenant_id'] ?? null;
-            if ($authUserTenantId === null || ($authUserTenantId !== 'system' && $authUserTenantId !== $tenantId)) {
-                return new Response(['error' => 'Unauthorized'], 403);
-            }
             $sub = WebhookSubscriptionModel::where('id', $id)
                 ->where('tenant_id', $tenantId)
                 ->first();

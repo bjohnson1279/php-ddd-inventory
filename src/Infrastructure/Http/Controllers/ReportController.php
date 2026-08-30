@@ -28,7 +28,11 @@ class ReportController
             if ($locations instanceof \Illuminate\Support\Collection) {
                 $locations = $locations->mapWithKeys(function ($name, $id) { return [(string)$id => $name]; })->toArray();
             } else {
-                $locations = $locations->toArray();
+                $arr = [];
+                foreach ($locations as $id => $name) {
+                    $arr[(string)$id] = $name;
+                }
+                $locations = $arr;
             }
 
             // Fetch ALL stock locations for these products once (to avoid N+1)
@@ -161,7 +165,8 @@ class ReportController
 
             // Initialize location valuation tracking
             if (!isset($locationValuations[$s->location_id])) {
-                $locName = $locations[$s->location_id] ?? $s->location_id;
+                // Ensure key is cast to string as arrays keyed by integer strings are converted to integers in PHP
+                $locName = $locations[(string)$s->location_id] ?? $s->location_id;
                 $locationValuations[$s->location_id] = [
                     'location_id' => $s->location_id,
                     'name'        => $locName,

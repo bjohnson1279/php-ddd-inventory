@@ -3,7 +3,7 @@
         'name' => 'ddd/inventory',
         'pretty_version' => 'dev-master',
         'version' => 'dev-master',
-        'reference' => '44a59db8c6c21dd4b0bb0cfc8b69dd98fa92d490',
+        'reference' => '0d2f735ea27bc13cb31c5bcced3ef3ab181ea813',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -31,7 +31,7 @@
         'ddd/inventory' => array(
             'pretty_version' => 'dev-master',
             'version' => 'dev-master',
-            'reference' => '44a59db8c6c21dd4b0bb0cfc8b69dd98fa92d490',
+            'reference' => '0d2f735ea27bc13cb31c5bcced3ef3ab181ea813',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

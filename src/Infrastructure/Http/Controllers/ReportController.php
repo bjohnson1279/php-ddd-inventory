@@ -23,6 +23,7 @@ class ReportController
             $productSkus = $products->pluck('sku')->toArray();
 
             // Fetch all locations to initialize location names
+            // ⚡ Bolt: Use pluck() directly to retrieve key-value pairs without hydrating intermediate stdClass objects
             $locations = DB::table('locations')->pluck('name', 'id');
             if ($locations instanceof \Illuminate\Support\Collection) {
                 $locations = $locations->mapWithKeys(function ($name, $id) { return [(string)$id => $name]; })->toArray();

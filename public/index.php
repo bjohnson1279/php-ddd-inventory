@@ -1145,7 +1145,7 @@ if ($method === 'POST' && $uri === '/api/inventory/allocate') {
     requireAuth('inventory', 'allocate');
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:allocate')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
         exit;
@@ -1159,10 +1159,10 @@ if ($method === 'POST' && $uri === '/api/inventory/allocate') {
 
 // ── Route: POST /api/inventory/release-allocation ────────────────────────────
 if ($method === 'POST' && $uri === '/api/inventory/release-allocation') {
-    requireAuth();
+    requireAuth('inventory', 'allocate');
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:allocate')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
         exit;
@@ -1176,10 +1176,10 @@ if ($method === 'POST' && $uri === '/api/inventory/release-allocation') {
 
 // ── Route: POST /api/inventory/fulfill-allocation ────────────────────────────
 if ($method === 'POST' && $uri === '/api/inventory/fulfill-allocation') {
-    requireAuth();
+    requireAuth('inventory', 'allocate');
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:allocate')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
         exit;

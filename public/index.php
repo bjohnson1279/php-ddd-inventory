@@ -276,6 +276,17 @@ function requireAuth(?string $resource = null, ?string $action = null): void
         exit;
     }
 
+    $user = \InventoryApp\Infrastructure\ServiceContainer::userRepo()->findById($tokenData->user_id);
+    if ($user) {
+        $perms = [];
+        foreach ($user->getRoles() as $role) {
+            foreach ($role->getPermissions() as $p) {
+                $perms[] = $p;
+            }
+        }
+        $tokenData->permissions = array_unique($perms);
+    }
+
     // Make the resolved identity available to the rest of the request
     $_SERVER['auth.user_id']   = $tokenData->user_id;
     $_SERVER['auth.tenant_id'] = $tokenData->tenant_id;

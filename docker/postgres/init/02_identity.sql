@@ -59,6 +59,8 @@ INSERT INTO role_permissions (role_id, permission) VALUES
   ('manager', 'inventory:read'),      ('manager', 'sales:process'),
   ('manager', 'returns:process'),     ('manager', 'catalog:manage'),
   ('manager', 'catalog:read'),        ('manager', 'reports:view'),
+  ('manager', 'inventory:allocate'),  ('manager', 'product:manage'),
+  ('manager', 'rma:create'),
   ('staff',   'inventory:read'),      ('staff',   'sales:process'),
   ('staff',   'returns:process'),     ('staff',   'catalog:read')
 ON CONFLICT DO NOTHING;

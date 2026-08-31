@@ -52,6 +52,8 @@ INSERT INTO role_permissions (role_id, permission) VALUES
   ('admin',   'returns:process'),     ('admin',   'catalog:manage'),
   ('admin',   'catalog:read'),        ('admin',   'reports:view'),
   ('admin',   'integrations:manage'), ('admin',   'users:manage'),
+  ('admin',   'inventory:allocate'),  ('admin',   'product:manage'),
+  ('admin',   'rma:create'),
   ('manager', 'inventory:receive'),   ('manager', 'inventory:dispatch'),
   ('manager', 'inventory:transfer'),  ('manager', 'inventory:reconcile'),
   ('manager', 'inventory:read'),      ('manager', 'sales:process'),

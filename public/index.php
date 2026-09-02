@@ -893,7 +893,7 @@ if ($method === 'POST' && preg_match('#^/api/returns/rma/([^/]+)/receive$#', $ur
 
 // ── Route: GET /api/returns/rma/{id} ───────────────────────────────────────
 if ($method === 'GET' && preg_match('#^/api/returns/rma/([^/]+)$#', $uri, $m)) {
-    requireAuth('rma', 'create');
+    requireAuth('returns', 'process');
     try {
         $rmaId = $m[1];
         $rma = ServiceContainer::rmaRepo()->findById($rmaId);
@@ -943,7 +943,7 @@ if ($method === 'GET' && preg_match('#^/api/returns/rma/([^/]+)$#', $uri, $m)) {
 
 // ── Route: GET /api/returns/quarantine ───────────────────────────────────────
 if ($method === 'GET' && $uri === '/api/returns/quarantine') {
-    requireAuth('rma', 'create');
+    requireAuth('returns', 'process');
     try {
         $items = ServiceContainer::quarantineRepo()->findAllByTenant(tenantId());
         $results = [];

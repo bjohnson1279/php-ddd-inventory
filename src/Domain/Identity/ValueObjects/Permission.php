@@ -18,14 +18,22 @@ class Permission
     public const INVENTORY_TRANSFER  = 'inventory:transfer';
     public const INVENTORY_RECONCILE = 'inventory:reconcile';
     public const INVENTORY_READ      = 'inventory:read';
+    public const INVENTORY_ALLOCATE  = 'inventory:allocate';
+    public const INVENTORY_ADJUST    = 'inventory:adjust';
 
     // POS / Sales operations
     public const SALES_PROCESS       = 'sales:process';
     public const RETURNS_PROCESS     = 'returns:process';
+    public const RMA_CREATE          = 'rma:create';
 
     // Catalog management
     public const CATALOG_MANAGE      = 'catalog:manage';
     public const CATALOG_READ        = 'catalog:read';
+    public const PRODUCT_MANAGE      = 'product:manage';
+
+    // Compliance
+    public const COMPLIANCE_READ     = 'compliance:read';
+    public const COMPLIANCE_WRITE    = 'compliance:write';
 
     // Reporting
     public const REPORTS_VIEW        = 'reports:view';

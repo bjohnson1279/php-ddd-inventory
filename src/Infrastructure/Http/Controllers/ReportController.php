@@ -336,6 +336,9 @@ class ReportController
     public function scheduleReport(RequestInterface $request, string $tenantId, string $reportId)
     {
         try {
+            if (!DB::table('report_definitions')->where('id', $reportId)->where('tenant_id', $tenantId)->exists()) {
+                return new Response(['error' => 'Report not found or unauthorized'], 404);
+            }
             $body = json_decode($request->getBody(), true);
             $id = \Ramsey\Uuid\Uuid::uuid4()->toString();
             DB::table('report_schedules')->insert([
@@ -356,6 +359,9 @@ class ReportController
     public function executeReport(RequestInterface $request, string $tenantId, string $reportId)
     {
         try {
+            if (!DB::table('report_definitions')->where('id', $reportId)->where('tenant_id', $tenantId)->exists()) {
+                return new Response(['error' => 'Report not found or unauthorized'], 404);
+            }
             $body = json_decode($request->getBody(), true);
             $id = \Ramsey\Uuid\Uuid::uuid4()->toString();
             DB::table('report_executions')->insert([

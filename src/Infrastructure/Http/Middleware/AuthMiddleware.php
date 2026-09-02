@@ -43,6 +43,20 @@ class AuthMiddleware
             return new Response(['error' => 'Invalid or expired token'], 401);
         }
 
+        $user = \InventoryApp\Infrastructure\ServiceContainer::userRepo()->findById($tokenData->user_id);
+        if ($user) {
+            $roles = [];
+            $perms = [];
+            foreach ($user->getRoles() as $r) {
+                $roles[] = $r->getId();
+                foreach ($r->getPermissions() as $p) {
+                    $perms[] = $p;
+                }
+            }
+            $tokenData->roles = array_unique($roles);
+            $tokenData->permissions = array_unique($perms);
+        }
+
         // Expose the identity on the request for use by controllers
         if (isset($request->attributes)) {
             $request->attributes->set('auth.user_id',    $tokenData->user_id);

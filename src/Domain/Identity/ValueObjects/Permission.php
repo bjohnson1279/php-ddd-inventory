@@ -19,7 +19,6 @@ class Permission
     public const INVENTORY_RECONCILE = 'inventory:reconcile';
     public const INVENTORY_ALLOCATE  = 'inventory:allocate';
     public const INVENTORY_READ      = 'inventory:read';
-    public const INVENTORY_ALLOCATE  = 'inventory:allocate';
 
     // POS / Sales operations
     public const SALES_PROCESS       = 'sales:process';

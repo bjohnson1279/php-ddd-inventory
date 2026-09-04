@@ -170,6 +170,13 @@ $uri    = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 
 \InventoryApp\Infrastructure\Http\Middleware\TraceMiddleware::handle();
 
+// ── Security Headers ─────────────────────────────────────────────────────────
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: DENY');
+header('X-XSS-Protection: 1; mode=block');
+header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+header("Content-Security-Policy: default-src 'self'; script-src 'self'; object-src 'none'; frame-ancestors 'none';");
+
 header('Content-Type: application/json');
 
 if ($uri === '/api/health' || $uri === '/health') {

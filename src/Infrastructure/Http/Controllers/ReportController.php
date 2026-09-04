@@ -339,6 +339,10 @@ class ReportController
         try {
             $rawBody = json_decode(file_get_contents('php://input'), true);
             if (!is_array($rawBody)) { $rawBody = []; }
+            if (!DB::table('report_definitions')->where('id', $reportId)->where('tenant_id', $tenantId)->exists()) {
+                return new Response(['error' => 'Report not found or unauthorized'], 404);
+            }
+            $body = json_decode($request->getBody(), true);
             $id = \Ramsey\Uuid\Uuid::uuid4()->toString();
             DB::table('report_schedules')->insert([
                 'id' => $id,
@@ -360,6 +364,10 @@ class ReportController
         try {
             $rawBody = json_decode(file_get_contents('php://input'), true);
             if (!is_array($rawBody)) { $rawBody = []; }
+            if (!DB::table('report_definitions')->where('id', $reportId)->where('tenant_id', $tenantId)->exists()) {
+                return new Response(['error' => 'Report not found or unauthorized'], 404);
+            }
+            $body = json_decode($request->getBody(), true);
             $id = \Ramsey\Uuid\Uuid::uuid4()->toString();
             DB::table('report_executions')->insert([
                 'id' => $id,

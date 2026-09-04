@@ -17,15 +17,18 @@ class Permission
     public const INVENTORY_DISPATCH  = 'inventory:dispatch';
     public const INVENTORY_TRANSFER  = 'inventory:transfer';
     public const INVENTORY_RECONCILE = 'inventory:reconcile';
+    public const INVENTORY_ALLOCATE  = 'inventory:allocate';
     public const INVENTORY_READ      = 'inventory:read';
 
     // POS / Sales operations
     public const SALES_PROCESS       = 'sales:process';
     public const RETURNS_PROCESS     = 'returns:process';
+    public const RMA_CREATE          = 'rma:create';
 
     // Catalog management
     public const CATALOG_MANAGE      = 'catalog:manage';
     public const CATALOG_READ        = 'catalog:read';
+    public const PRODUCT_MANAGE      = 'product:manage';
 
     // Reporting
     public const REPORTS_VIEW        = 'reports:view';

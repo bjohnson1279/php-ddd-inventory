@@ -170,6 +170,13 @@ $uri    = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 
 \InventoryApp\Infrastructure\Http\Middleware\TraceMiddleware::handle();
 
+// ── Security Headers ─────────────────────────────────────────────────────────
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: DENY');
+header('X-XSS-Protection: 1; mode=block');
+header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+header("Content-Security-Policy: default-src 'self'; script-src 'self'; object-src 'none'; frame-ancestors 'none';");
+
 header('Content-Type: application/json');
 
 if ($uri === '/api/health' || $uri === '/health') {
@@ -274,6 +281,17 @@ function requireAuth(?string $resource = null, ?string $action = null): void
         http_response_code(401);
         echo json_encode(['error' => 'Invalid or expired token']);
         exit;
+    }
+
+    $user = \InventoryApp\Infrastructure\ServiceContainer::userRepo()->findById($tokenData->user_id);
+    if ($user) {
+        $perms = [];
+        foreach ($user->getRoles() as $role) {
+            foreach ($role->getPermissions() as $p) {
+                $perms[] = $p;
+            }
+        }
+        $tokenData->permissions = array_unique($perms);
     }
 
     // Make the resolved identity available to the rest of the request
@@ -882,7 +900,7 @@ if ($method === 'POST' && preg_match('#^/api/returns/rma/([^/]+)/receive$#', $ur
 
 // ── Route: GET /api/returns/rma/{id} ───────────────────────────────────────
 if ($method === 'GET' && preg_match('#^/api/returns/rma/([^/]+)$#', $uri, $m)) {
-    requireAuth('rma', 'create');
+    requireAuth();
     try {
         $rmaId = $m[1];
         $rma = ServiceContainer::rmaRepo()->findById($rmaId);
@@ -932,7 +950,7 @@ if ($method === 'GET' && preg_match('#^/api/returns/rma/([^/]+)$#', $uri, $m)) {
 
 // ── Route: GET /api/returns/quarantine ───────────────────────────────────────
 if ($method === 'GET' && $uri === '/api/returns/quarantine') {
-    requireAuth('rma', 'create');
+    requireAuth();
     try {
         $items = ServiceContainer::quarantineRepo()->findAllByTenant(tenantId());
         $results = [];
@@ -1145,7 +1163,7 @@ if ($method === 'POST' && $uri === '/api/inventory/allocate') {
     requireAuth('inventory', 'allocate');
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:allocate')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
         exit;
@@ -1159,10 +1177,10 @@ if ($method === 'POST' && $uri === '/api/inventory/allocate') {
 
 // ── Route: POST /api/inventory/release-allocation ────────────────────────────
 if ($method === 'POST' && $uri === '/api/inventory/release-allocation') {
-    requireAuth();
+    requireAuth('inventory', 'allocate');
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:allocate')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
         exit;
@@ -1176,10 +1194,10 @@ if ($method === 'POST' && $uri === '/api/inventory/release-allocation') {
 
 // ── Route: POST /api/inventory/fulfill-allocation ────────────────────────────
 if ($method === 'POST' && $uri === '/api/inventory/fulfill-allocation') {
-    requireAuth();
+    requireAuth('inventory', 'allocate');
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:allocate')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
         exit;

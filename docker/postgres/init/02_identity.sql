@@ -47,16 +47,22 @@ INSERT INTO roles (id, name) VALUES ('staff',   'Staff')         ON CONFLICT DO 
 
 INSERT INTO role_permissions (role_id, permission) VALUES
   ('admin',   'inventory:receive'),   ('admin',   'inventory:dispatch'),
+  ('admin',   'inventory:allocate'),
   ('admin',   'inventory:transfer'),  ('admin',   'inventory:reconcile'),
   ('admin',   'inventory:read'),      ('admin',   'sales:process'),
   ('admin',   'returns:process'),     ('admin',   'catalog:manage'),
   ('admin',   'catalog:read'),        ('admin',   'reports:view'),
   ('admin',   'integrations:manage'), ('admin',   'users:manage'),
+  ('admin',   'inventory:allocate'),  ('admin',   'product:manage'),
+  ('admin',   'rma:create'),
   ('manager', 'inventory:receive'),   ('manager', 'inventory:dispatch'),
+  ('manager', 'inventory:allocate'),
   ('manager', 'inventory:transfer'),  ('manager', 'inventory:reconcile'),
   ('manager', 'inventory:read'),      ('manager', 'sales:process'),
   ('manager', 'returns:process'),     ('manager', 'catalog:manage'),
   ('manager', 'catalog:read'),        ('manager', 'reports:view'),
+  ('manager', 'inventory:allocate'),  ('manager', 'product:manage'),
+  ('manager', 'rma:create'),
   ('staff',   'inventory:read'),      ('staff',   'sales:process'),
   ('staff',   'returns:process'),     ('staff',   'catalog:read')
 ON CONFLICT DO NOTHING;

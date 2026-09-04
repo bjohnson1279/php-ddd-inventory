@@ -23,9 +23,13 @@ class AnomalyDetectionService
             ->get()
             ->toArray();
 
-        // 2. Format for sidecar
-        $sidecarLedger = array_map(function ($e) {
-            return [
+        // 2. Format for sidecar and derive cycle counts in one pass
+        $sidecarLedger = [];
+        $cycleCounts = [];
+        foreach ($ledgerEntries as $e) {
+            // ⚡ Bolt Optimization: Replace chained array_map/array_filter with a single pass
+            // to eliminate multiple O(N) traversals and intermediate array allocations.
+            $sidecarLedger[] = [
                 'sku' => $e->variant_id ?? '',
                 'location_id' => $e->location_id ?? '',
                 'quantity' => $e->quantity ?? 0,
@@ -34,12 +38,9 @@ class AnomalyDetectionService
                 'occurred_at' => $e->occurred_at ?? date('c'),
                 'reference_id' => $e->reference_id ?? null,
             ];
-        }, $ledgerEntries);
 
-        // 3. Derive cycle counts from count_adjustment entries
-        $cycleCounts = array_values(array_filter(array_map(function ($e) {
             if (($e->reason ?? '') === 'count_adjustment') {
-                return [
+                $cycleCounts[] = [
                     'sku' => $e->variant_id ?? '',
                     'location_id' => $e->location_id ?? '',
                     'expected_quantity' => 0,
@@ -48,8 +49,7 @@ class AnomalyDetectionService
                     'actor_id' => $e->actor_id ?? 'system',
                 ];
             }
-            return null;
-        }, $ledgerEntries)));
+        }
 
         $payload = json_encode([
             'ledger_entries' => $sidecarLedger,

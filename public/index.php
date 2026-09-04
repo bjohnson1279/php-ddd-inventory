@@ -15,11 +15,16 @@ set_exception_handler(function (Throwable $e): void {
         . ' in ' . $e->getFile() . ':' . $e->getLine());
     $payload = [
         'error' => 'Internal server error',
-        'message' => $e->getMessage(),
-        'file' => $e->getFile() . ':' . $e->getLine(),
-        'exception' => get_class($e),
-        'trace' => explode("\n", $e->getTraceAsString())
     ];
+
+    $env = getenv('APP_ENV');
+    if ($env === 'development' || $env === 'testing') {
+        $payload['message'] = $e->getMessage();
+        $payload['file'] = $e->getFile() . ':' . $e->getLine();
+        $payload['exception'] = get_class($e);
+        $payload['trace'] = explode("\n", $e->getTraceAsString());
+    }
+
     echo json_encode($payload, JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR);
     exit;
 });

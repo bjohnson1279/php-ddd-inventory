@@ -303,16 +303,17 @@ class ReportController
     public function createReportDefinition(RequestInterface $request, string $tenantId)
     {
         try {
-            $body = json_decode($request->getBody(), true);
+            $rawBody = json_decode(file_get_contents('php://input'), true);
+            if (!is_array($rawBody)) { $rawBody = []; }
             $id = \Ramsey\Uuid\Uuid::uuid4()->toString();
             DB::table('report_definitions')->insert([
                 'id' => $id,
                 'tenant_id' => $tenantId,
-                'name' => $body['name'] ?? 'Unnamed Report',
-                'description' => $body['description'] ?? null,
-                'type' => $body['type'] ?? 'CUSTOM',
-                'filters' => json_encode($body['filters'] ?? []),
-                'grouping' => json_encode($body['grouping'] ?? []),
+                'name' => $rawBody['name'] ?? 'Unnamed Report',
+                'description' => $rawBody['description'] ?? null,
+                'type' => $rawBody['type'] ?? 'CUSTOM',
+                'filters' => json_encode($rawBody['filters'] ?? []),
+                'grouping' => json_encode($rawBody['grouping'] ?? []),
                 'created_by' => 'system',
                 'created_at' => date('Y-m-d H:i:s'),
                 'updated_at' => date('Y-m-d H:i:s')
@@ -336,13 +337,14 @@ class ReportController
     public function scheduleReport(RequestInterface $request, string $tenantId, string $reportId)
     {
         try {
-            $body = json_decode($request->getBody(), true);
+            $rawBody = json_decode(file_get_contents('php://input'), true);
+            if (!is_array($rawBody)) { $rawBody = []; }
             $id = \Ramsey\Uuid\Uuid::uuid4()->toString();
             DB::table('report_schedules')->insert([
                 'id' => $id,
                 'report_definition_id' => $reportId,
-                'cron_expression' => $body['cronExpression'] ?? '0 0 * * *',
-                'delivery_method' => $body['deliveryMethod'] ?? 'INTERNAL',
+                'cron_expression' => $rawBody['cronExpression'] ?? '0 0 * * *',
+                'delivery_method' => $rawBody['deliveryMethod'] ?? 'INTERNAL',
                 'next_run_at' => date('Y-m-d H:i:s', strtotime('+1 hour')),
                 'created_at' => date('Y-m-d H:i:s'),
                 'updated_at' => date('Y-m-d H:i:s')
@@ -356,13 +358,14 @@ class ReportController
     public function executeReport(RequestInterface $request, string $tenantId, string $reportId)
     {
         try {
-            $body = json_decode($request->getBody(), true);
+            $rawBody = json_decode(file_get_contents('php://input'), true);
+            if (!is_array($rawBody)) { $rawBody = []; }
             $id = \Ramsey\Uuid\Uuid::uuid4()->toString();
             DB::table('report_executions')->insert([
                 'id' => $id,
                 'report_definition_id' => $reportId,
                 'status' => 'PENDING',
-                'format' => $body['format'] ?? 'csv',
+                'format' => $rawBody['format'] ?? 'csv',
                 'created_at' => date('Y-m-d H:i:s'),
                 'updated_at' => date('Y-m-d H:i:s')
             ]);

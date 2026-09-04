@@ -170,13 +170,6 @@ $uri    = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 
 \InventoryApp\Infrastructure\Http\Middleware\TraceMiddleware::handle();
 
-// ── Security Headers ─────────────────────────────────────────────────────────
-header('X-Content-Type-Options: nosniff');
-header('X-Frame-Options: DENY');
-header('X-XSS-Protection: 1; mode=block');
-header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
-header("Content-Security-Policy: default-src 'self'; script-src 'self'; object-src 'none'; frame-ancestors 'none';");
-
 header('Content-Type: application/json');
 
 if ($uri === '/api/health' || $uri === '/health') {
@@ -281,17 +274,6 @@ function requireAuth(?string $resource = null, ?string $action = null): void
         http_response_code(401);
         echo json_encode(['error' => 'Invalid or expired token']);
         exit;
-    }
-
-    $user = \InventoryApp\Infrastructure\ServiceContainer::userRepo()->findById($tokenData->user_id);
-    if ($user) {
-        $perms = [];
-        foreach ($user->getRoles() as $role) {
-            foreach ($role->getPermissions() as $p) {
-                $perms[] = $p;
-            }
-        }
-        $tokenData->permissions = array_unique($perms);
     }
 
     // Make the resolved identity available to the rest of the request
@@ -900,7 +882,7 @@ if ($method === 'POST' && preg_match('#^/api/returns/rma/([^/]+)/receive$#', $ur
 
 // ── Route: GET /api/returns/rma/{id} ───────────────────────────────────────
 if ($method === 'GET' && preg_match('#^/api/returns/rma/([^/]+)$#', $uri, $m)) {
-    requireAuth();
+    requireAuth('rma', 'create');
     try {
         $rmaId = $m[1];
         $rma = ServiceContainer::rmaRepo()->findById($rmaId);
@@ -950,7 +932,7 @@ if ($method === 'GET' && preg_match('#^/api/returns/rma/([^/]+)$#', $uri, $m)) {
 
 // ── Route: GET /api/returns/quarantine ───────────────────────────────────────
 if ($method === 'GET' && $uri === '/api/returns/quarantine') {
-    requireAuth();
+    requireAuth('rma', 'create');
     try {
         $items = ServiceContainer::quarantineRepo()->findAllByTenant(tenantId());
         $results = [];
@@ -1065,7 +1047,7 @@ if ($method === 'POST' && preg_match('#^/api/returns/quarantine/([^/]+)/resolve$
 
 // ── Route: POST /api/inventory/receive ───────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/inventory/receive') {
-    requireAuth('inventory', 'receive');
+    requireAuth(\InventoryApp\Domain\Identity\ValueObjects\Permission::INVENTORY_RECEIVE);
     $capacityService = new \InventoryApp\Domain\Inventory\Services\WMSCapacityService(
         ServiceContainer::productRepo(tenantId()),
         ServiceContainer::warehouseLocationRepo()
@@ -1163,7 +1145,7 @@ if ($method === 'POST' && $uri === '/api/inventory/allocate') {
     requireAuth('inventory', 'allocate');
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:allocate')) {
+    if (!$actor || !$actor->canDo('inventory:receive')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
         exit;
@@ -1177,10 +1159,10 @@ if ($method === 'POST' && $uri === '/api/inventory/allocate') {
 
 // ── Route: POST /api/inventory/release-allocation ────────────────────────────
 if ($method === 'POST' && $uri === '/api/inventory/release-allocation') {
-    requireAuth('inventory', 'allocate');
+    requireAuth();
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:allocate')) {
+    if (!$actor || !$actor->canDo('inventory:receive')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
         exit;
@@ -1194,10 +1176,10 @@ if ($method === 'POST' && $uri === '/api/inventory/release-allocation') {
 
 // ── Route: POST /api/inventory/fulfill-allocation ────────────────────────────
 if ($method === 'POST' && $uri === '/api/inventory/fulfill-allocation') {
-    requireAuth('inventory', 'allocate');
+    requireAuth();
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:allocate')) {
+    if (!$actor || !$actor->canDo('inventory:receive')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
         exit;
@@ -1228,7 +1210,7 @@ if ($method === 'POST' && $uri === '/api/inventory/create-in-transit') {
 
 // ── Route: POST /api/inventory/receive-in-transit ────────────────────────────
 if ($method === 'POST' && $uri === '/api/inventory/receive-in-transit') {
-    requireAuth('inventory', 'receive');
+    requireAuth(\InventoryApp\Domain\Identity\ValueObjects\Permission::INVENTORY_RECEIVE);
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
     if (!$actor || !$actor->canDo('inventory:receive')) {
@@ -1281,7 +1263,7 @@ if ($method === 'POST' && preg_match('#^/api/inventory/counts/([^/]+)/complete$#
 
 // ── Route: POST /api/catalog/products ────────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/catalog/products') {
-    requireAuth('inventory', 'adjust');
+    requireAuth(\InventoryApp\Domain\Identity\ValueObjects\Permission::CATALOG_MANAGE);
     $useCase  = new CreateProductCatalog(ServiceContainer::catalogProductRepo());
     $response = (new CatalogController())->createProduct($request, $useCase);
     http_response_code($response->getStatusCode());
@@ -1291,7 +1273,7 @@ if ($method === 'POST' && $uri === '/api/catalog/products') {
 
 // ── Route: GET /api/catalog/products ─────────────────────────────────────────
 if ($method === 'GET' && $uri === '/api/catalog/products') {
-    requireAuth('product', 'manage');
+    requireAuth(\InventoryApp\Domain\Identity\ValueObjects\Permission::CATALOG_READ);
     try {
         $products = Capsule::table('catalog_products')->get()->toArray();
         $variants = Capsule::table('catalog_variants')->get()->toArray();
@@ -1330,7 +1312,7 @@ if ($method === 'GET' && $uri === '/api/catalog/products') {
 
 // ── Route: POST /api/catalog/products/{id}/variants ──────────────────────────
 if ($method === 'POST' && preg_match('#^/api/catalog/products/([^/]+)/variants$#', $uri, $m)) {
-    requireAuth('product', 'manage');
+    requireAuth(\InventoryApp\Domain\Identity\ValueObjects\Permission::CATALOG_MANAGE);
     $productId = urldecode($m[1]);
     $useCase   = new AddVariant(ServiceContainer::catalogProductRepo(), $dispatcher);
     $response  = (new CatalogController())->addVariant($request, $productId, $useCase);

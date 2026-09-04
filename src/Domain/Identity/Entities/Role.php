@@ -34,9 +34,6 @@ class Role
             Permission::REPORTS_VIEW,
             Permission::INTEGRATIONS_MANAGE,
             Permission::USERS_MANAGE,
-            Permission::INVENTORY_ALLOCATE,
-            Permission::PRODUCT_MANAGE,
-            Permission::RMA_CREATE,
         ],
         self::MANAGER => [
             Permission::INVENTORY_RECEIVE,
@@ -49,9 +46,6 @@ class Role
             Permission::CATALOG_MANAGE,
             Permission::CATALOG_READ,
             Permission::REPORTS_VIEW,
-            Permission::INVENTORY_ALLOCATE,
-            Permission::PRODUCT_MANAGE,
-            Permission::RMA_CREATE,
         ],
         self::STAFF => [
             Permission::INVENTORY_READ,

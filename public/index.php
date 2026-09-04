@@ -1281,7 +1281,7 @@ if ($method === 'POST' && preg_match('#^/api/inventory/counts/([^/]+)/complete$#
 
 // ── Route: POST /api/catalog/products ────────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/catalog/products') {
-    requireAuth('inventory', 'adjust');
+    requireAuth('product', 'manage');
     $useCase  = new CreateProductCatalog(ServiceContainer::catalogProductRepo());
     $response = (new CatalogController())->createProduct($request, $useCase);
     http_response_code($response->getStatusCode());

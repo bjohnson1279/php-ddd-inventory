@@ -276,17 +276,6 @@ function requireAuth(?string $resource = null, ?string $action = null): void
         exit;
     }
 
-    $user = \InventoryApp\Infrastructure\ServiceContainer::userRepo()->findById($tokenData->user_id);
-    if ($user) {
-        $perms = [];
-        foreach ($user->getRoles() as $role) {
-            foreach ($role->getPermissions() as $p) {
-                $perms[] = $p;
-            }
-        }
-        $tokenData->permissions = array_unique($perms);
-    }
-
     // Make the resolved identity available to the rest of the request
     $_SERVER['auth.user_id']   = $tokenData->user_id;
     $_SERVER['auth.tenant_id'] = $tokenData->tenant_id;
@@ -1156,7 +1145,7 @@ if ($method === 'POST' && $uri === '/api/inventory/allocate') {
     requireAuth('inventory', 'allocate');
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:allocate')) {
+    if (!$actor || !$actor->canDo('inventory:receive')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
         exit;
@@ -1170,10 +1159,10 @@ if ($method === 'POST' && $uri === '/api/inventory/allocate') {
 
 // ── Route: POST /api/inventory/release-allocation ────────────────────────────
 if ($method === 'POST' && $uri === '/api/inventory/release-allocation') {
-    requireAuth('inventory', 'allocate');
+    requireAuth();
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:allocate')) {
+    if (!$actor || !$actor->canDo('inventory:receive')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
         exit;
@@ -1187,10 +1176,10 @@ if ($method === 'POST' && $uri === '/api/inventory/release-allocation') {
 
 // ── Route: POST /api/inventory/fulfill-allocation ────────────────────────────
 if ($method === 'POST' && $uri === '/api/inventory/fulfill-allocation') {
-    requireAuth('inventory', 'allocate');
+    requireAuth();
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:allocate')) {
+    if (!$actor || !$actor->canDo('inventory:receive')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized']);
         exit;

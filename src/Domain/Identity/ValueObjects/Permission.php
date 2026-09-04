@@ -17,7 +17,6 @@ class Permission
     public const INVENTORY_DISPATCH  = 'inventory:dispatch';
     public const INVENTORY_TRANSFER  = 'inventory:transfer';
     public const INVENTORY_RECONCILE = 'inventory:reconcile';
-    public const INVENTORY_ALLOCATE  = 'inventory:allocate';
     public const INVENTORY_READ      = 'inventory:read';
     public const INVENTORY_ALLOCATE  = 'inventory:allocate';
 

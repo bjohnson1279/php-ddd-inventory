@@ -44,30 +44,26 @@ class DemandForecaster
         $thirtyDaysAgo = $now->modify('-30 days');
         $sevenDaysAgo = $now->modify('-7 days');
 
+        $history90d = array_filter($entries, function ($e) use ($ninetyDaysAgo) {
+            return $e->occurredAt >= $ninetyDaysAgo &&
+                $e->quantity < 0 &&
+                ($e->reason === ReasonCode::Sale || $e->reason === ReasonCode::KitSale);
+        });
+
+        $history30d = array_filter($history90d, function ($e) use ($thirtyDaysAgo) {
+            return $e->occurredAt >= $thirtyDaysAgo;
+        });
+
+        $history7d = array_filter($history30d, function ($e) use ($sevenDaysAgo) {
+            return $e->occurredAt >= $sevenDaysAgo;
+        });
+
         $locationStock = $product->getStockAt($locationId);
         $currentStock = $locationStock->getStockQuantity()->getValue();
 
-        // ⚡ Bolt: Replace multiple O(N) array passes with a single foreach loop
-        $sum7d = 0;
-        $sum30d = 0;
-        $sum90d = 0;
-
-        foreach ($entries as $e) {
-            if ($e->quantity < 0 && ($e->reason === ReasonCode::Sale || $e->reason === ReasonCode::KitSale)) {
-                if ($e->occurredAt >= $ninetyDaysAgo) {
-                    $absQuantity = abs($e->quantity);
-                    $sum90d += $absQuantity;
-
-                    if ($e->occurredAt >= $thirtyDaysAgo) {
-                        $sum30d += $absQuantity;
-
-                        if ($e->occurredAt >= $sevenDaysAgo) {
-                            $sum7d += $absQuantity;
-                        }
-                    }
-                }
-            }
-        }
+        $sum7d = array_reduce($history7d, fn($acc, $e) => $acc + abs($e->quantity), 0);
+        $sum30d = array_reduce($history30d, fn($acc, $e) => $acc + abs($e->quantity), 0);
+        $sum90d = array_reduce($history90d, fn($acc, $e) => $acc + abs($e->quantity), 0);
 
         $ads7d = (float) number_format($sum7d / 7, 3, '.', '');
         $ads30d = (float) number_format($sum30d / 30, 3, '.', '');

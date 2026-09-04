@@ -1250,7 +1250,7 @@ if ($method === 'POST' && $uri === '/api/inventory/receive-in-transit') {
 
 // ── Route: POST /api/inventory/counts ────────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/inventory/counts') {
-    requireAuth('inventory', 'adjust');
+    requireAuth('inventory', 'reconcile');
     $useCase  = new StartInventoryCount(ServiceContainer::inventoryCountRepo(tenantId()));
     $response = (new InventoryCountController())->start($request, $useCase);
     http_response_code($response->getStatusCode());
@@ -1260,7 +1260,7 @@ if ($method === 'POST' && $uri === '/api/inventory/counts') {
 
 // ── Route: POST /api/inventory/counts/{id}/items ─────────────────────────────
 if ($method === 'POST' && preg_match('#^/api/inventory/counts/([^/]+)/items$#', $uri, $m)) {
-    requireAuth('inventory', 'adjust');
+    requireAuth('inventory', 'reconcile');
     $countId  = urldecode($m[1]);
     $useCase  = new RecordCountItem(ServiceContainer::inventoryCountRepo(tenantId()));
     $response = (new InventoryCountController())->recordItem($countId, $request, $useCase);
@@ -1271,7 +1271,7 @@ if ($method === 'POST' && preg_match('#^/api/inventory/counts/([^/]+)/items$#', 
 
 // ── Route: POST /api/inventory/counts/{id}/complete ──────────────────────────
 if ($method === 'POST' && preg_match('#^/api/inventory/counts/([^/]+)/complete$#', $uri, $m)) {
-    requireAuth('inventory', 'adjust');
+    requireAuth('inventory', 'reconcile');
     $countId  = urldecode($m[1]);
     $useCase  = new CompleteInventoryCount(
         ServiceContainer::inventoryCountRepo(tenantId()),
@@ -1286,7 +1286,7 @@ if ($method === 'POST' && preg_match('#^/api/inventory/counts/([^/]+)/complete$#
 
 // ── Route: POST /api/catalog/products ────────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/catalog/products') {
-    requireAuth('inventory', 'adjust');
+    requireAuth('catalog', 'manage');
     $useCase  = new CreateProductCatalog(ServiceContainer::catalogProductRepo());
     $response = (new CatalogController())->createProduct($request, $useCase);
     http_response_code($response->getStatusCode());
@@ -2273,7 +2273,7 @@ if ($method === 'POST' && $uri === '/api/inventory/return') {
 
 // ── Route: GET /api/inventory/counts/{id} ────────────────────────────────────
 if ($method === 'GET' && preg_match('#^/api/inventory/counts/([^/]+)$#', $uri, $m)) {
-    requireAuth('inventory', 'adjust');
+    requireAuth('inventory', 'read');
     $countId = urldecode($m[1]);
 
     try {
@@ -2309,7 +2309,7 @@ if ($method === 'GET' && preg_match('#^/api/inventory/counts/([^/]+)$#', $uri, $
 
 // ── Route: PATCH /api/users/{id}/role ────────────────────────────────────────
 if ($method === 'PATCH' && preg_match('#^/api/users/([^/]+)/role$#', $uri, $m)) {
-    requireAuth('inventory', 'adjust');
+    requireAuth('users', 'manage');
     $targetUserId = urldecode($m[1]);
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $body         = json_decode(file_get_contents('php://input'), true) ?: [];

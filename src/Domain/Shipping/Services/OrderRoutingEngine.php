@@ -28,9 +28,11 @@ class OrderRoutingEngine
             return $c['availableQuantity'] > 0;
         }));
 
-        $totalAvailable = array_reduce($activeCandidates, function ($sum, $c) {
-            return $sum + $c['availableQuantity'];
-        }, 0);
+        // ⚡ Bolt Optimization: Replaced array_reduce with a foreach loop to eliminate closure invocation overhead.
+        $totalAvailable = 0;
+        foreach ($activeCandidates as $c) {
+            $totalAvailable += $c['availableQuantity'];
+        }
 
         if ($totalAvailable < $quantity) {
             throw new Exception("Insufficient total stock for SKU {$sku}. Requested: {$quantity}, Available: {$totalAvailable}");

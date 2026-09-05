@@ -15,16 +15,11 @@ set_exception_handler(function (Throwable $e): void {
         . ' in ' . $e->getFile() . ':' . $e->getLine());
     $payload = [
         'error' => 'Internal server error',
+        'message' => $e->getMessage(),
+        'file' => $e->getFile() . ':' . $e->getLine(),
+        'exception' => get_class($e),
+        'trace' => explode("\n", $e->getTraceAsString())
     ];
-
-    $env = getenv('APP_ENV');
-    if ($env === 'development' || $env === 'testing') {
-        $payload['message'] = $e->getMessage();
-        $payload['file'] = $e->getFile() . ':' . $e->getLine();
-        $payload['exception'] = get_class($e);
-        $payload['trace'] = explode("\n", $e->getTraceAsString());
-    }
-
     echo json_encode($payload, JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR);
     exit;
 });
@@ -1286,7 +1281,7 @@ if ($method === 'POST' && preg_match('#^/api/inventory/counts/([^/]+)/complete$#
 
 // ── Route: POST /api/catalog/products ────────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/catalog/products') {
-    requireAuth('catalog', 'manage');
+    requireAuth('product', 'manage');
     $useCase  = new CreateProductCatalog(ServiceContainer::catalogProductRepo());
     $response = (new CatalogController())->createProduct($request, $useCase);
     http_response_code($response->getStatusCode());
@@ -2273,7 +2268,7 @@ if ($method === 'POST' && $uri === '/api/inventory/return') {
 
 // ── Route: GET /api/inventory/counts/{id} ────────────────────────────────────
 if ($method === 'GET' && preg_match('#^/api/inventory/counts/([^/]+)$#', $uri, $m)) {
-    requireAuth('inventory', 'read');
+    requireAuth('inventory', 'reconcile');
     $countId = urldecode($m[1]);
 
     try {

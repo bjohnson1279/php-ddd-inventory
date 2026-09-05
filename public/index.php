@@ -531,7 +531,7 @@ if ($method === 'POST' && $uri === '/api/audit/run') {
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
     if (!$actor || !$actor->canDo('inventory:reconcile')) {
         http_response_code(403);
-        echo json_encode(['error' => 'Unauthorized']);
+        echo json_encode(['error' => "Forbidden: Missing permission 'inventory:allocate'"]);
         exit;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\AuditController())->runAudit($request, tenantId());
@@ -547,7 +547,7 @@ if ($method === 'GET' && $uri === '/api/audit/discrepancies') {
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
     if (!$actor || !$actor->canDo('inventory:read')) {
         http_response_code(403);
-        echo json_encode(['error' => 'Unauthorized']);
+        echo json_encode(['error' => "Forbidden: Missing permission 'inventory:allocate'"]);
         exit;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\AuditController())->listDiscrepancies($request, tenantId());
@@ -563,7 +563,7 @@ if ($method === 'POST' && preg_match('#^/api/audit/discrepancies/([^/]+)/resolve
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
     if (!$actor || !$actor->canDo('inventory:reconcile')) {
         http_response_code(403);
-        echo json_encode(['error' => 'Unauthorized']);
+        echo json_encode(['error' => "Forbidden: Missing permission 'inventory:allocate'"]);
         exit;
     }
     $id = urldecode($m[1]);
@@ -1145,9 +1145,9 @@ if ($method === 'POST' && $uri === '/api/inventory/allocate') {
     requireAuth('inventory', 'allocate');
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:allocate')) {
         http_response_code(403);
-        echo json_encode(['error' => 'Unauthorized']);
+        echo json_encode(['error' => "Forbidden: Missing permission 'inventory:allocate'"]);
         exit;
     }
     $useCase  = new AllocateStock(ServiceContainer::productRepo(tenantId()));
@@ -1162,9 +1162,9 @@ if ($method === 'POST' && $uri === '/api/inventory/release-allocation') {
     requireAuth();
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:allocate')) {
         http_response_code(403);
-        echo json_encode(['error' => 'Unauthorized']);
+        echo json_encode(['error' => "Forbidden: Missing permission 'inventory:allocate'"]);
         exit;
     }
     $useCase  = new ReleaseAllocation(ServiceContainer::productRepo(tenantId()));
@@ -1179,9 +1179,9 @@ if ($method === 'POST' && $uri === '/api/inventory/fulfill-allocation') {
     requireAuth();
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:allocate')) {
         http_response_code(403);
-        echo json_encode(['error' => 'Unauthorized']);
+        echo json_encode(['error' => "Forbidden: Missing permission 'inventory:allocate'"]);
         exit;
     }
     $useCase  = new FulfillAllocation(ServiceContainer::productRepo(tenantId()), $dispatcher);
@@ -1196,9 +1196,9 @@ if ($method === 'POST' && $uri === '/api/inventory/create-in-transit') {
     requireAuth();
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:allocate')) {
         http_response_code(403);
-        echo json_encode(['error' => 'Unauthorized']);
+        echo json_encode(['error' => "Forbidden: Missing permission 'inventory:allocate'"]);
         exit;
     }
     $useCase  = new CreateInTransit(ServiceContainer::productRepo(tenantId()));
@@ -1213,9 +1213,9 @@ if ($method === 'POST' && $uri === '/api/inventory/receive-in-transit') {
     requireAuth('inventory', 'receive');
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:allocate')) {
         http_response_code(403);
-        echo json_encode(['error' => 'Unauthorized']);
+        echo json_encode(['error' => "Forbidden: Missing permission 'inventory:allocate'"]);
         exit;
     }
     $useCase  = new ReceiveInTransit(ServiceContainer::productRepo(tenantId()), $dispatcher);
@@ -1677,7 +1677,7 @@ if ($method === 'POST' && $uri === '/api/shipping/labels') {
     requireAuth();
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:allocate')) {
         http_response_code(403);
         echo json_encode(['error' => 'Forbidden: You do not have permission to purchase shipping labels.']);
         exit;
@@ -1718,7 +1718,7 @@ if ($method === 'POST' && preg_match('#^/api/shipping/shipments/([^/]+)/track$#'
     requireAuth();
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:allocate')) {
         http_response_code(403);
         echo json_encode(['error' => 'Forbidden: You do not have permission to track shipments.']);
         exit;
@@ -1792,7 +1792,7 @@ if ($method === 'POST' && preg_match('#^/api/outbox/([^/]+)/retry$#', $uri, $m))
     requireAuth();
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:allocate')) {
         http_response_code(403);
         echo json_encode(['error' => 'Forbidden']);
         exit;
@@ -1959,7 +1959,7 @@ if ($method === 'POST' && $uri === '/api/kits/assemble') {
     requireAuth();
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:allocate')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized: you do not have permission to assemble kits.']);
         exit;
@@ -1985,7 +1985,7 @@ if ($method === 'POST' && $uri === '/api/kits/disassemble') {
     requireAuth();
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:allocate')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized: you do not have permission to disassemble kits.']);
         exit;
@@ -2011,7 +2011,7 @@ if ($method === 'POST' && $uri === '/api/warehouse-locations') {
     requireAuth();
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:allocate')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized: you do not have permission to manage warehouse locations.']);
         exit;
@@ -2029,7 +2029,7 @@ if ($method === 'DELETE' && preg_match('#^/api/warehouse-locations/([^/]+)$#', $
     $id = urldecode($m[1]);
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:allocate')) {
         http_response_code(403);
         echo json_encode(['error' => 'Unauthorized: you do not have permission to manage warehouse locations.']);
         exit;
@@ -2321,9 +2321,9 @@ if ($method === 'POST' && $uri === '/api/purchase-orders') {
     requireAuth();
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:allocate')) {
         http_response_code(403);
-        echo json_encode(['error' => 'Unauthorized']);
+        echo json_encode(['error' => "Forbidden: Missing permission 'inventory:allocate'"]);
         exit;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\PurchaseOrderController())
@@ -2341,7 +2341,7 @@ if ($method === 'GET' && preg_match('#^/api/purchase-orders/([^/]+)$#', $uri, $m
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
     if (!$actor || !$actor->canDo('inventory:read')) {
         http_response_code(403);
-        echo json_encode(['error' => 'Unauthorized']);
+        echo json_encode(['error' => "Forbidden: Missing permission 'inventory:allocate'"]);
         exit;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\PurchaseOrderController())
@@ -2357,9 +2357,9 @@ if ($method === 'POST' && preg_match('#^/api/purchase-orders/([^/]+)/approve$#',
     $id = urldecode($m[1]);
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:allocate')) {
         http_response_code(403);
-        echo json_encode(['error' => 'Unauthorized']);
+        echo json_encode(['error' => "Forbidden: Missing permission 'inventory:allocate'"]);
         exit;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\PurchaseOrderController())
@@ -2375,9 +2375,9 @@ if ($method === 'POST' && preg_match('#^/api/purchase-orders/([^/]+)/send$#', $u
     $id = urldecode($m[1]);
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:allocate')) {
         http_response_code(403);
-        echo json_encode(['error' => 'Unauthorized']);
+        echo json_encode(['error' => "Forbidden: Missing permission 'inventory:allocate'"]);
         exit;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\PurchaseOrderController())
@@ -2393,9 +2393,9 @@ if ($method === 'POST' && preg_match('#^/api/purchase-orders/([^/]+)/receive$#',
     $id = urldecode($m[1]);
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:allocate')) {
         http_response_code(403);
-        echo json_encode(['error' => 'Unauthorized']);
+        echo json_encode(['error' => "Forbidden: Missing permission 'inventory:allocate'"]);
         exit;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\PurchaseOrderController())
@@ -2417,9 +2417,9 @@ if ($method === 'POST' && $uri === '/api/reorder-policies') {
     requireAuth();
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:allocate')) {
         http_response_code(403);
-        echo json_encode(['error' => 'Unauthorized']);
+        echo json_encode(['error' => "Forbidden: Missing permission 'inventory:allocate'"]);
         exit;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReorderPolicyController())
@@ -2434,9 +2434,9 @@ if ($method === 'POST' && $uri === '/api/reorder-policies/evaluate') {
     requireAuth();
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:allocate')) {
         http_response_code(403);
-        echo json_encode(['error' => 'Unauthorized']);
+        echo json_encode(['error' => "Forbidden: Missing permission 'inventory:allocate'"]);
         exit;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReorderPolicyController())
@@ -2455,7 +2455,7 @@ if ($method === 'GET' && preg_match('#^/api/reorder-policies/([^/]+)/([^/]+)$#',
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
     if (!$actor || !$actor->canDo('inventory:read')) {
         http_response_code(403);
-        echo json_encode(['error' => 'Unauthorized']);
+        echo json_encode(['error' => "Forbidden: Missing permission 'inventory:allocate'"]);
         exit;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReorderPolicyController())
@@ -2472,7 +2472,7 @@ if ($method === 'GET' && $uri === '/api/forecasting/report') {
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
     if (!$actor || !$actor->canDo('inventory:read')) {
         http_response_code(403);
-        echo json_encode(['error' => 'Unauthorized']);
+        echo json_encode(['error' => "Forbidden: Missing permission 'inventory:allocate'"]);
         exit;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\ForecastingController())
@@ -2495,7 +2495,7 @@ if ($method === 'GET' && $uri === '/api/forecasting/stock-velocity') {
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
     if (!$actor || !$actor->canDo('inventory:read')) {
         http_response_code(403);
-        echo json_encode(['error' => 'Unauthorized']);
+        echo json_encode(['error' => "Forbidden: Missing permission 'inventory:allocate'"]);
         exit;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\ForecastingController())
@@ -2512,9 +2512,9 @@ if ($method === 'POST' && $uri === '/api/forecasting/forecast') {
     requireAuth();
     $actingUserId = $_SERVER['auth.user_id'] ?? '';
     $actor = ServiceContainer::userRepo()->findById($actingUserId);
-    if (!$actor || !$actor->canDo('inventory:receive')) {
+    if (!$actor || !$actor->canDo('inventory:allocate')) {
         http_response_code(403);
-        echo json_encode(['error' => 'Unauthorized']);
+        echo json_encode(['error' => "Forbidden: Missing permission 'inventory:allocate'"]);
         exit;
     }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\ForecastingController())

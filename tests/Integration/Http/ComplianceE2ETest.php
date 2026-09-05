@@ -93,6 +93,7 @@ final class ComplianceE2ETest extends TestCase
             'email'     => $this->email,
             'password'  => $this->password,
         ]);
+        $this->assertEquals(200, $loginRes['status'], json_encode($loginRes));
         $this->token = $loginRes['body']['token'];
     }
 
@@ -110,7 +111,7 @@ final class ComplianceE2ETest extends TestCase
             'description' => 'Test Desc',
             'department'  => 'Test Dept'
         ], $this->token);
-        $this->assertEquals(201, $prodRes['status']);
+        $this->assertEquals(201, $prodRes['status'], json_encode($prodRes));
         $productId = $prodRes['body']['id'];
 
         $varRes = $this->request('POST', "/api/catalog/products/{$productId}/variants", [

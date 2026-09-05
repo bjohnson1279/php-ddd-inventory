@@ -20,7 +20,8 @@ class SqliteSetup
             self::getComplianceQueries(),
             self::getRfidQueries(),
             self::getLogisticsErpQueries(),
-            self::getReportingQueries()
+            self::getReportingQueries(),
+            self::getApprovalQueries()
         );
 
         foreach ($queries as $q) {
@@ -670,5 +671,47 @@ class SqliteSetup
             )"
         ];
     }
-}
 
+
+    private static function getApprovalQueries(): array
+    {
+        return [
+            "CREATE TABLE IF NOT EXISTS approval_workflows (
+                id TEXT PRIMARY KEY,
+                tenant_id TEXT NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                trigger_event VARCHAR(100) NOT NULL,
+                config TEXT NOT NULL,
+                is_active BOOLEAN DEFAULT 1,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(tenant_id, trigger_event)
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_requests (
+                id TEXT PRIMARY KEY,
+                tenant_id TEXT NOT NULL,
+                workflow_id TEXT NOT NULL,
+                reference_type VARCHAR(100) NOT NULL,
+                reference_id VARCHAR(255) NOT NULL,
+                requester_id TEXT NOT NULL,
+                status VARCHAR(20) DEFAULT 'PENDING',
+                current_step INT DEFAULT 0,
+                payload TEXT NOT NULL,
+                expires_at DATETIME,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (workflow_id) REFERENCES approval_workflows(id)
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_decisions (
+                id TEXT PRIMARY KEY,
+                request_id TEXT NOT NULL,
+                step_index INT NOT NULL,
+                decider_id TEXT NOT NULL,
+                decision VARCHAR(20) NOT NULL,
+                notes TEXT,
+                decided_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (request_id) REFERENCES approval_requests(id)
+            )"
+        ];
+    }
+}

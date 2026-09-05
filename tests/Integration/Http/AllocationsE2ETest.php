@@ -23,7 +23,12 @@ final class AllocationsE2ETest extends TestCase
     {
         // Start built-in PHP development server in the background on port 8087
         $output = [];
-        $command = "php -S 127.0.0.1:8087 public/index.php > tests/Integration/Http/server_allocations.log 2>&1 & echo $!";
+        $dbConn = escapeshellarg(getenv('DB_CONNECTION') ?: 'pgsql');
+        $dbDb = getenv('DB_CONNECTION') === 'sqlite' && getenv('DB_DATABASE') === ':memory:' ? escapeshellarg(__DIR__ . '/../../../database.sqlite') : escapeshellarg(getenv('DB_DATABASE') ?: '');
+        $dbHost = escapeshellarg(getenv('DB_HOST') ?: '');
+        $dbUser = escapeshellarg(getenv('DB_USERNAME') ?: '');
+        $dbPass = escapeshellarg(getenv('DB_PASSWORD') ?: '');
+        $command = "DB_CONNECTION={$dbConn} DB_DATABASE={$dbDb} DB_HOST={$dbHost} DB_USERNAME={$dbUser} DB_PASSWORD={$dbPass} php -S 127.0.0.1:8087 public/index.php > tests/Integration/Http/server_allocations.log 2>&1 & echo $!";
 
         exec($command, $output);
         self::$pid = (int)($output[0] ?? 0);
@@ -127,7 +132,20 @@ final class AllocationsE2ETest extends TestCase
         $locationId = 'LOC-INT';
 
         // 1. Setup product catalog directly in DB
-        $productId = uuidv4();
+        $productId = \Ramsey\Uuid\Uuid::uuid4()->toString();
+        Capsule::table('catalog_products')->insertOrIgnore([
+            'id' => $productId,
+            'tenant_id' => $this->tenantId,
+            'name' => 'Test Allocation Product',
+            'description' => 'Desc',
+            'department' => 'electronics'
+        ]);
+        Capsule::table('catalog_variants')->insertOrIgnore([
+            'id' => \Ramsey\Uuid\Uuid::uuid4()->toString(),
+            'product_id' => $productId,
+            'sku' => $skuStr,
+            'price' => 100
+        ]);
         // make sure tenant exists for Postgres constraint
         Capsule::table('tenants')->insertOrIgnore([
             'id' => $this->tenantId,
@@ -211,7 +229,20 @@ final class AllocationsE2ETest extends TestCase
         $locationId = 'LOC-INT';
 
         // 1. Setup product catalog directly in DB
-        $productId = uuidv4();
+        $productId = \Ramsey\Uuid\Uuid::uuid4()->toString();
+        Capsule::table('catalog_products')->insertOrIgnore([
+            'id' => $productId,
+            'tenant_id' => $this->tenantId,
+            'name' => 'Test Allocation Product',
+            'description' => 'Desc',
+            'department' => 'electronics'
+        ]);
+        Capsule::table('catalog_variants')->insertOrIgnore([
+            'id' => \Ramsey\Uuid\Uuid::uuid4()->toString(),
+            'product_id' => $productId,
+            'sku' => $skuStr,
+            'price' => 100
+        ]);
         // make sure tenant exists for Postgres constraint
         Capsule::table('tenants')->insertOrIgnore([
             'id' => $this->tenantId,

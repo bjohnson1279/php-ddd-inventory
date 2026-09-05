@@ -190,7 +190,16 @@ if ($driver === 'sqlite') {
         'rfid_tags',
         'rmas',
         'rma_items',
-        'quarantine_items'
+        'quarantine_items',
+        'approval_decisions',
+        'approval_requests',
+        'approval_workflows',
+        'approval_decisions',
+        'approval_requests',
+        'approval_workflows',
+        'approval_decisions',
+        'approval_requests',
+        'approval_workflows'
     ];
     
     foreach ($tables as $t) {

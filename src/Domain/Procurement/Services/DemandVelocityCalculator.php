@@ -40,9 +40,11 @@ class DemandVelocityCalculator
             );
         });
 
-        $totalQuantity = array_reduce($salesEntries, function ($sum, $e) {
-            return $sum + abs($e->quantity);
-        }, 0);
+        // ⚡ Bolt Optimization: Replaced array_reduce with a foreach loop to eliminate closure invocation overhead.
+        $totalQuantity = 0;
+        foreach ($salesEntries as $e) {
+            $totalQuantity += abs($e->quantity);
+        }
 
         $average = $totalQuantity / $windowDays;
 
@@ -59,9 +61,11 @@ class DemandVelocityCalculator
             }
         }
 
-        $varianceSum = array_reduce($dailyQuantities, function ($sum, $qty) use ($average) {
-            return $sum + pow($qty - $average, 2);
-        }, 0.0);
+        // ⚡ Bolt Optimization: Replaced array_reduce with a foreach loop to eliminate closure invocation overhead.
+        $varianceSum = 0.0;
+        foreach ($dailyQuantities as $qty) {
+            $varianceSum += pow($qty - $average, 2);
+        }
 
         $stdDev = sqrt($varianceSum / $windowDays);
 

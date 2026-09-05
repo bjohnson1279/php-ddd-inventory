@@ -99,9 +99,11 @@ class ReorderPointForecaster
                     $totalLT = array_sum($leadTimes);
                     $leadTimeDaysAvg = $totalLT / count($leadTimes);
 
-                    $ltVarianceSum = array_reduce($leadTimes, function ($sum, $lt) use ($leadTimeDaysAvg) {
-                        return $sum + pow($lt - $leadTimeDaysAvg, 2);
-                    }, 0.0);
+                    // ⚡ Bolt Optimization: Replaced array_reduce with a foreach loop to eliminate closure invocation overhead.
+                    $ltVarianceSum = 0.0;
+                    foreach ($leadTimes as $lt) {
+                        $ltVarianceSum += pow($lt - $leadTimeDaysAvg, 2);
+                    }
                     $leadTimeDaysStdDev = sqrt($ltVarianceSum / count($leadTimes));
                 }
             }

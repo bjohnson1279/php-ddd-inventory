@@ -41,7 +41,7 @@ class ApprovalWorkflowService
         }
 
         $config = is_string($workflowRecord->config) ? json_decode($workflowRecord->config, true) : $workflowRecord->config;
-        
+
         $workflow = new ApprovalWorkflow(
             $workflowRecord->id,
             $workflowRecord->tenant_id,
@@ -97,7 +97,7 @@ class ApprovalWorkflowService
         }
 
         $workflowConfig = is_string($requestRecord->workflow->config) ? json_decode($requestRecord->workflow->config, true) : $requestRecord->workflow->config;
-        
+
         $existingDecisions = [];
         foreach ($requestRecord->decisions as $d) {
             $existingDecisions[] = new ApprovalDecisionRecord(
@@ -244,7 +244,7 @@ class ApprovalWorkflowService
         foreach ($requests as $req) {
             $config = is_string($req['workflow']['config']) ? json_decode($req['workflow']['config'], true) : $req['workflow']['config'];
             $currentStep = $config['steps'][$req['current_step']] ?? null;
-            
+
             if (!$currentStep) continue;
 
             $approverRoles = $currentStep['approverRoles'] ?? [];

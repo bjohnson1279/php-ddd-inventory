@@ -15,7 +15,8 @@
   },
   "autoload": {
     "psr-4": {
-      "InventoryApp\\": "src/"
+      "InventoryApp\\": "src/",
+      "App\\": "src/"
     }
   }
 }

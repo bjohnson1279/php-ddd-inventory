@@ -36,7 +36,7 @@ class ApprovalWorkflowTest extends TestCase
     public function testShouldTriggerReturnsTrueWhenThresholdsEmpty(): void
     {
         $config = $this->createValidConfig();
-        
+
         $workflow = new ApprovalWorkflow(
             'wf_1', 't_1', 'Test', 'PO_CREATED', true, $config
         );
@@ -47,7 +47,7 @@ class ApprovalWorkflowTest extends TestCase
     public function testShouldTriggerReturnsFalseWhenInactive(): void
     {
         $config = $this->createValidConfig();
-        
+
         $workflow = new ApprovalWorkflow(
             'wf_1', 't_1', 'Test', 'PO_CREATED', false, $config
         );
@@ -92,7 +92,7 @@ class ApprovalWorkflowTest extends TestCase
     {
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('Approval workflow trigger event cannot be empty.');
-        
+
         new ApprovalWorkflow(
             'wf_1', 't_1', 'Test', '   ', true, $this->createValidConfig()
         );
@@ -102,7 +102,7 @@ class ApprovalWorkflowTest extends TestCase
     {
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('Approval workflow must define at least one approval step.');
-        
+
         new ApprovalWorkflow(
             'wf_1', 't_1', 'Test', 'PO_CREATED', true, ['steps' => []]
         );
@@ -111,7 +111,7 @@ class ApprovalWorkflowTest extends TestCase
     public function testAllComparisonOperatorsWorkCorrectly(): void
     {
         $config = $this->createValidConfig();
-        
+
         // >=
         $config['thresholds'] = [['field' => 'val', 'operator' => '>=', 'value' => 10]];
         $w = new ApprovalWorkflow('wf_1', 't_1', 'Test', 'EV', true, $config);
@@ -147,7 +147,7 @@ class ApprovalWorkflowTest extends TestCase
         $w = new ApprovalWorkflow('wf_1', 't_1', 'Test', 'EV', true, $config);
         $this->assertTrue($w->shouldTrigger(['val' => 11]));
         $this->assertFalse($w->shouldTrigger(['val' => 10]));
-        
+
         // unknown
         $config['thresholds'] = [['field' => 'val', 'operator' => 'UNKNOWN', 'value' => 10]];
         $w = new ApprovalWorkflow('wf_1', 't_1', 'Test', 'EV', true, $config);

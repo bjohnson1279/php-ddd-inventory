@@ -99,7 +99,7 @@ class AuditProcessorService
                     if ($accessToken !== 'mock-token' && strpos($storeDomain, 'mock') === false) {
                         try {
                             // Query Shopify API
-                            $client = new \GuzzleHttp\Client();
+                            $client = new \GuzzleHttp\Client(['verify' => true]);
                             $response = $client->post("https://{$storeDomain}/admin/api/2024-04/graphql.json", [
                                 'headers' => [
                                     'Content-Type' => 'application/json',
@@ -284,7 +284,7 @@ class AuditProcessorService
                         ->sum('quantity');
 
                     try {
-                        $client = new \GuzzleHttp\Client();
+                        $client = new \GuzzleHttp\Client(['verify' => true]);
                         $client->post("https://{$storeDomain}/admin/api/2024-04/graphql.json", [
                             'headers' => [
                                 'Content-Type' => 'application/json',

@@ -126,7 +126,7 @@ class DemandVelocityCalculatorTest extends TestCase
         $product = $this->createMock(Product::class);
         $product->method('getId')->willReturn('prod-123');
 
-        $today = new DateTimeImmutable();
+        $today = (new DateTimeImmutable())->setTime(12, 0, 0);
         $threeDaysAgo = $today->modify('-3 days');
 
         $entries = [

@@ -31,4 +31,10 @@ class ASN
     }
 
     public function getId(): string { return $this->id; }
+    public function getTenantId(): string { return $this->tenantId; }
+    public function getPoId(): string { return $this->poId; }
+    public function getSupplierId(): string { return $this->supplierId; }
+    public function getExpectedArrivalDate(): \DateTimeImmutable { return $this->expectedArrivalDate; }
+    public function getStatus(): string { return $this->status; }
+    public function getLines(): array { return $this->lines; }
 }

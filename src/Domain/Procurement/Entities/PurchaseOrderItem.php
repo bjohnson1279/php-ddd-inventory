@@ -21,6 +21,12 @@ class PurchaseOrderItem
         if ($unitCostCents < 0) {
             throw new InvalidArgumentException("Unit cost cannot be negative.");
         }
+        if ($receivedQuantity < 0) {
+            throw new InvalidArgumentException("Received quantity cannot be negative.");
+        }
+        if ($receivedQuantity > $quantity) {
+            throw new InvalidArgumentException("Received quantity cannot exceed ordered quantity.");
+        }
         $this->receivedQuantity = $receivedQuantity;
     }
 

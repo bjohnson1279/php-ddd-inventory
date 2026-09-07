@@ -100,18 +100,20 @@ class EloquentLedgerRepository implements LedgerRepositoryInterface
             return [];
         }
 
+        // ⚡ Bolt Optimization: Use pluck() instead of get() to avoid O(N) stdClass object hydration for bulk aggregations
         $results = LedgerEntryModel::where('tenant_id', $this->tenantId)
             ->whereIn('variant_id', $variantIds)
             ->groupBy('variant_id')
             ->selectRaw('variant_id, SUM(quantity) as total')
-            ->get();
+            ->pluck('total', 'variant_id')
+            ->toArray();
 
         $map = [];
         foreach ($variantIds as $vId) {
             $map[$vId] = 0;
         }
-        foreach ($results as $row) {
-            $map[$row->variant_id] = (int) $row->total;
+        foreach ($results as $vId => $total) {
+            $map[$vId] = (int) $total;
         }
         return $map;
     }

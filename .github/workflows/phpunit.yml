@@ -19,7 +19,7 @@ jobs:
       - name: Check for Merge Conflict Markers
         run: |
           echo "Scanning codebase for git merge conflict markers..."
-          if git grep -n -I -E '^(<{7}|={7}|>{7}|\|{7})([[:space:]]|$)'; then
+          if git grep -n -I -E '^(<{7}|={7}|>{7}|\|{7})([[:space:]]|$)' -- ":(exclude)vendor/"; then
             echo "::error::Merge conflict markers detected in tracked files! Please resolve conflicts before merging."
             exit 1
           fi

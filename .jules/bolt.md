@@ -28,3 +28,6 @@ origin/master
 - **Zero-Diff Task Termination**: If the requested optimization, refactor, or fix is ALREADY natively present in the target branch, DO NOT create an empty pull request or commit an acknowledgment PR. Exit the task cleanly without opening a PR.
 - **Stale Suggestion Guard**: Always verify the current code on `main`/`master` before planning changes. If no actionable diff is required, cancel task execution immediately.
 
+## 2024-09-07 - Eloquent bulk array hydration overhead
+**Learning:** In Laravel Eloquent, using `->get()` and then iterating over the results to build a key-value array incurs an O(N) penalty due to instantiating intermediate stdClass models for every row. Using `->pluck('value_column', 'key_column')->toArray()` allows the query builder to construct the associative array directly from the database driver result set, bypassing object hydration.
+**Action:** When aggregating or fetching simple key-value pairs (like SUM totals by ID) across large lists, always prefer `pluck()` over `get()`.

@@ -147,4 +147,33 @@ class PurchaseOrderTest extends TestCase
 
         $this->assertEquals(PurchaseOrderStatus::Closed, $po->getStatus());
     }
+
+    public function test_it_can_receive_items_when_already_partially_received(): void
+    {
+        $po = $this->createPurchaseOrder(PurchaseOrderStatus::PartiallyReceived);
+        $po->addItem($this->createItem('var-1', 10));
+
+        $po->receiveItems('var-1', 10);
+
+        $this->assertEquals(PurchaseOrderStatus::Received, $po->getStatus());
+    }
+
+    public function test_it_updates_status_to_partially_received_when_item_is_partially_received(): void
+    {
+        $po = $this->createPurchaseOrder(PurchaseOrderStatus::Sent);
+        $po->addItem($this->createItem('var-1', 10));
+
+        $po->receiveItems('var-1', 5);
+
+        $this->assertEquals(PurchaseOrderStatus::PartiallyReceived, $po->getStatus());
+    }
+
+    public function test_it_throws_when_receiving_more_than_ordered(): void
+    {
+        $po = $this->createPurchaseOrder(PurchaseOrderStatus::Sent);
+        $po->addItem($this->createItem('var-1', 10));
+
+        $this->expectException(\InvalidArgumentException::class);
+        $po->receiveItems('var-1', 11);
+    }
 }

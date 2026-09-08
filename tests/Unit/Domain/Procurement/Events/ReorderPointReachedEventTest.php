@@ -6,8 +6,12 @@ namespace Tests\Unit\Domain\Procurement\Events;
 
 use PHPUnit\Framework\TestCase;
 use InventoryApp\Domain\Procurement\Events\ReorderPointReachedEvent;
+use InventoryApp\Domain\Shared\Events\DomainEvent;
 use DateTimeImmutable;
 
+/**
+ * @covers \InventoryApp\Domain\Procurement\Events\ReorderPointReachedEvent
+ */
 class ReorderPointReachedEventTest extends TestCase
 {
     public function testCanCreateEvent()
@@ -49,5 +53,19 @@ class ReorderPointReachedEventTest extends TestCase
         );
 
         $this->assertSame($occurredOn, $event->occurredOn());
+    }
+
+    public function testImplementsDomainEvent()
+    {
+        $event = new ReorderPointReachedEvent(
+            'TEST-SKU-123',
+            'LOC-001',
+            10,
+            20,
+            50,
+            new DateTimeImmutable()
+        );
+
+        $this->assertInstanceOf(DomainEvent::class, $event);
     }
 }

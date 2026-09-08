@@ -41,6 +41,28 @@ class PurchaseOrderItemTest extends TestCase
         new PurchaseOrderItem('poi-1', 'variant-1', 10, -500);
     }
 
+    public function testCanCreatePurchaseOrderItemWithReceivedQuantity(): void
+    {
+        $item = new PurchaseOrderItem('poi-1', 'variant-1', 10, 500, 5);
+
+        $this->assertEquals(5, $item->getReceivedQuantity());
+        $this->assertFalse($item->isFullyReceived());
+    }
+
+    public function testCannotCreateWithNegativeReceivedQuantity(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("Received quantity cannot be negative.");
+        new PurchaseOrderItem('poi-1', 'variant-1', 10, 500, -1);
+    }
+
+    public function testCannotCreateWithReceivedQuantityExceedingOrdered(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("Received quantity cannot exceed ordered quantity.");
+        new PurchaseOrderItem('poi-1', 'variant-1', 10, 500, 11);
+    }
+
     public function testCanReceiveValidAmount(): void
     {
         $item = new PurchaseOrderItem('poi-1', 'variant-1', 10, 500);

@@ -10,6 +10,7 @@ use InventoryApp\Domain\Inventory\Entities\Product;
 use InventoryApp\Domain\Inventory\Entities\LedgerEntry;
 use InventoryApp\Domain\Inventory\ValueObjects\SKU;
 use InventoryApp\Domain\Inventory\Enums\ReasonCode;
+use InventoryApp\Domain\Inventory\Exceptions\InvalidSKUException;
 use DateTimeImmutable;
 
 class DemandVelocityCalculatorTest extends TestCase
@@ -112,5 +113,87 @@ class DemandVelocityCalculatorTest extends TestCase
 
         $this->assertEquals($expectedAverage, $stats['average']);
         $this->assertEqualsWithDelta($expectedStdDev, $stats['stdDev'], 0.0001);
+    }
+    public function testCalculateDailySalesStatsWithInvalidSku(): void
+    {
+        $this->expectException(InvalidSKUException::class);
+        $this->calculator->calculateDailySalesStats('INVALID SKU !@#', 'loc-1', 30);
+    }
+
+    public function testCalculateDailySalesStatsWithMultipleSalesOnSameDay(): void
+    {
+        $product = $this->createMock(Product::class);
+        $product->method('getId')->willReturn('prod-123');
+
+        $today = new DateTimeImmutable();
+        $threeDaysAgo = $today->modify('-3 days');
+
+        $entries = [
+            new LedgerEntry('entry-1', 'prod-123', -5, ReasonCode::Sale, 'user-1', null, $threeDaysAgo),
+            new LedgerEntry('entry-2', 'prod-123', -7, ReasonCode::KitSale, 'user-1', null, $threeDaysAgo),
+        ];
+
+        $this->ledgerRepo->method('entriesFor')
+            ->with('prod-123', 'loc-1')
+            ->willReturn($entries);
+
+        $stats = $this->calculator->calculateDailySalesStats('SKU-123', 'loc-1', 30, $product);
+
+        $expectedAverage = 12.0 / 30.0;
+
+        // Variance: 29 days with 0, 1 day with 12
+        $varianceSum = (29 * pow(0 - $expectedAverage, 2)) + pow(12 - $expectedAverage, 2);
+        $expectedStdDev = sqrt($varianceSum / 30);
+
+        $this->assertEquals($expectedAverage, $stats['average']);
+        $this->assertEqualsWithDelta($expectedStdDev, $stats['stdDev'], 0.0001);
+    }
+
+    public function testCalculateDailySalesStatsWithCustomWindow(): void
+    {
+        $product = $this->createMock(Product::class);
+        $product->method('getId')->willReturn('prod-123');
+
+        $today = new DateTimeImmutable();
+        $twoDaysAgo = $today->modify('-2 days');
+
+        $entries = [
+            new LedgerEntry('entry-1', 'prod-123', -14, ReasonCode::Sale, 'user-1', null, $twoDaysAgo),
+        ];
+
+        $this->ledgerRepo->method('entriesFor')
+            ->with('prod-123', 'loc-1')
+            ->willReturn($entries);
+
+        $stats = $this->calculator->calculateDailySalesStats('SKU-123', 'loc-1', 7, $product);
+
+        $expectedAverage = 14.0 / 7.0; // 2.0
+
+        // Variance: 6 days with 0, 1 day with 14
+        $varianceSum = (6 * pow(0 - $expectedAverage, 2)) + pow(14 - $expectedAverage, 2);
+        $expectedStdDev = sqrt($varianceSum / 7);
+
+        $this->assertEquals($expectedAverage, $stats['average']);
+        $this->assertEqualsWithDelta($expectedStdDev, $stats['stdDev'], 0.0001);
+    }
+
+    public function testCalculateDailySalesStatsWithEdgeDate(): void
+    {
+        $product = $this->createMock(Product::class);
+        $product->method('getId')->willReturn('prod-123');
+
+        $today = new \DateTime();
+        $today->setTime(0, 0, 0);
+        $exactlyThirtyDaysAgo = $today->modify('-30 days');
+
+        $entries = [
+            new LedgerEntry('entry-1', 'prod-123', -30, ReasonCode::Sale, 'user-1', null, \DateTimeImmutable::createFromMutable($exactlyThirtyDaysAgo)),
+        ];
+
+        $this->ledgerRepo->method('entriesFor')->willReturn($entries);
+
+        $stats = $this->calculator->calculateDailySalesStats('SKU-123', 'loc-1', 30, $product);
+
+        $this->assertGreaterThan(0.0, $stats['average']);
     }
 }

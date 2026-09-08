@@ -90,4 +90,20 @@ class RFIDBulkScanIngestionServiceTest extends TestCase
         $this->assertEquals(0, $result2['unique_processed']);
         $this->assertEquals(1, $result2['duplicates_skipped']);
     }
+    public function testProcessInvalidScanElements(): void
+    {
+        $scans = [
+            "invalid_string",
+            123,
+            null,
+            ["epc" => "EPC_123"]
+        ];
+
+        $result = $this->service->processBatch($scans);
+
+        $this->assertEquals(4, $result["total_scans"]);
+        $this->assertEquals(1, $result["unique_processed"]);
+        $this->assertEquals(0, $result["duplicates_skipped"]);
+    }
+
 }

@@ -11,6 +11,7 @@ class SqliteSetup
             self::getCatalogQueries(),
             self::getLocationQueries(),
             self::getInventoryQueries(),
+            ["CREATE TABLE IF NOT EXISTS inventory_items (id TEXT PRIMARY KEY, sku TEXT NOT NULL, location_id VARCHAR(50) NOT NULL, quantity INTEGER NOT NULL DEFAULT 0, allocated INTEGER NOT NULL DEFAULT 0, in_transit INTEGER NOT NULL DEFAULT 0)"],
             self::getAccountingQueries(),
             self::getIntegrationQueries(),
             self::getSystemQueries(),

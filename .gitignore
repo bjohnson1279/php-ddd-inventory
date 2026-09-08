@@ -13,4 +13,3 @@ vendor/
 .antigravitycli/
 /build/
 merge-master-to-prs.sh
-vendor/

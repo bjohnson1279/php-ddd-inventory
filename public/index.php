@@ -1665,6 +1665,15 @@ if ($method === 'POST' && preg_match('#^/api/reports/([^/]+)/execute$#', $uri, $
 
 if ($method === 'GET' && preg_match('#^/api/reports/shared/([^/]+)$#', $uri, $m)) {
     // Shared links do not require auth usually, handled inside controller
+    $token = urldecode($m[1]);
+    $link = \Illuminate\Database\Capsule\Manager::table('shared_report_links')->where('token', $token)->first();
+    if ($link && !empty($link->viewer_permissions)) {
+        $perms = explode(',', $link->viewer_permissions);
+        foreach ($perms as $perm) {
+            $parts = explode(':', trim($perm));
+            requireAuth($parts[0] ?? null, $parts[1] ?? null);
+        }
+    }
     $response = (new \InventoryApp\Infrastructure\Http\Controllers\ReportController())->getSharedLink($request, urldecode($m[1]));
     http_response_code($response->getStatusCode());
     echo $response->getContent();

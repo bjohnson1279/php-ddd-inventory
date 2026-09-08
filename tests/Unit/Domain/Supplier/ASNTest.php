@@ -21,32 +21,11 @@ class ASNTest extends TestCase
         );
 
         $this->assertEquals('asn-123', $asn->getId());
-
-        // Use reflection to check properties since there are no getters for other fields yet
-        $reflection = new \ReflectionClass(ASN::class);
-
-        $tenantIdProperty = $reflection->getProperty('tenantId');
-        $tenantIdProperty->setAccessible(true);
-        $this->assertEquals('tenant-1', $tenantIdProperty->getValue($asn));
-
-        $poIdProperty = $reflection->getProperty('poId');
-        $poIdProperty->setAccessible(true);
-        $this->assertEquals('po-1', $poIdProperty->getValue($asn));
-
-        $supplierIdProperty = $reflection->getProperty('supplierId');
-        $supplierIdProperty->setAccessible(true);
-        $this->assertEquals('sup-1', $supplierIdProperty->getValue($asn));
-
-        $dateProperty = $reflection->getProperty('expectedArrivalDate');
-        $dateProperty->setAccessible(true);
-        $this->assertEquals($date, $dateProperty->getValue($asn));
-
-        $statusProperty = $reflection->getProperty('status');
-        $statusProperty->setAccessible(true);
-        $this->assertEquals('PENDING', $statusProperty->getValue($asn));
-
-        $linesProperty = $reflection->getProperty('lines');
-        $linesProperty->setAccessible(true);
-        $this->assertEquals(['line1', 'line2'], $linesProperty->getValue($asn));
+        $this->assertEquals('tenant-1', $asn->getTenantId());
+        $this->assertEquals('po-1', $asn->getPoId());
+        $this->assertEquals('sup-1', $asn->getSupplierId());
+        $this->assertEquals($date, $asn->getExpectedArrivalDate());
+        $this->assertEquals('PENDING', $asn->getStatus());
+        $this->assertEquals(['line1', 'line2'], $asn->getLines());
     }
 }

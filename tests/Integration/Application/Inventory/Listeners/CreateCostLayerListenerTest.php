@@ -31,10 +31,9 @@ class CreateCostLayerListenerTest extends TestCase
         $reflection = new \ReflectionClass(CreateCostLayerListener::class);
         $property = $reflection->getProperty('priceCache');
         $property->setAccessible(true);
-        $property->setValue(null, []);
-
         $this->costLayerRepo = $this->createMock(CostLayerRepositoryInterface::class);
         $this->listener = new CreateCostLayerListener($this->costLayerRepo, 'test-tenant');
+        $property->setValue($this->listener, []);
     }
 
     public function test_preloadPrices_fetches_from_db(): void
@@ -60,7 +59,7 @@ class CreateCostLayerListenerTest extends TestCase
         $reflection = new \ReflectionClass(CreateCostLayerListener::class);
         $property = $reflection->getProperty('priceCache');
         $property->setAccessible(true);
-        $cache = $property->getValue();
+        $cache = $property->getValue($this->listener);
 
         $this->assertEquals(25.50, $cache['CACHED-SKU']);
         $this->assertEquals(10.00, $cache['UNCACHED-SKU']);
@@ -72,7 +71,7 @@ class CreateCostLayerListenerTest extends TestCase
         $reflection = new \ReflectionClass(CreateCostLayerListener::class);
         $property = $reflection->getProperty('priceCache');
         $property->setAccessible(true);
-        $property->setValue(null, ['SKU-1' => 15.00]);
+        $property->setValue($this->listener, ['SKU-1' => 15.00]);
 
         $event = new StockReceived(
             new SKU('SKU-1'),

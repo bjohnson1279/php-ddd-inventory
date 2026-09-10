@@ -38,3 +38,7 @@
 - **Zero-Diff Task Termination**: If the requested optimization, refactor, or fix is ALREADY natively present in the target branch, DO NOT create an empty pull request or commit an acknowledgment PR. Exit the task cleanly without opening a PR.
 - **Stale Suggestion Guard**: Always verify the current code on `main`/`master` before planning changes. If no actionable diff is required, cancel task execution immediately.
 
+## 2026-09-10 - SQL Injection in PostgreSQL SET Statement
+**Vulnerability:** The `requireAuth` helper function interpolated the user-controlled `tenant_id` from the API token directly into a PostgreSQL `SET app.current_tenant_id = '...'` query, creating a critical SQL injection vulnerability.
+**Learning:** The PostgreSQL `SET` command does not natively support parameter binding via PDO. Using string interpolation to set session-level variables is inherently unsafe when the value originates from user input.
+**Prevention:** When setting session-level configuration variables in PostgreSQL via Eloquent or raw statements, always use the `set_config` function with parameterized bindings (e.g., `SELECT set_config('app.current_tenant_id', ?, false)`) to ensure safe execution.

@@ -38,7 +38,7 @@ class AuditProcessorService
             $productsBySku = ProductModel::where('tenant_id', $tenantId)
                 ->whereIn('sku', $skus)
                 ->get()
-                ->keyBy('sku');
+                ->keyBy(fn($item) => (string)$item->sku);
 
             $locCol = Capsule::connection()->getDriverName() === 'sqlite'
                 ? "json_extract(metadata, '$.locationId')"

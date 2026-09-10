@@ -31,3 +31,7 @@ origin/master
 ## 2024-09-07 - Eloquent bulk array hydration overhead
 **Learning:** In Laravel Eloquent, using `->get()` and then iterating over the results to build a key-value array incurs an O(N) penalty due to instantiating intermediate stdClass models for every row. Using `->pluck('value_column', 'key_column')->toArray()` allows the query builder to construct the associative array directly from the database driver result set, bypassing object hydration.
 **Action:** When aggregating or fetching simple key-value pairs (like SUM totals by ID) across large lists, always prefer `pluck()` over `get()`.
+
+## 2024-09-10 - keyBy vs mapWithKeys Overhead
+**Learning:** When generating keyed hash maps from Eloquent/Database collections, replacing `->keyBy('field')` with `->mapWithKeys(fn($item) => [(string)$item->field => $item])` is a de-optimization. `mapWithKeys` instantiates a new array for every single item and triggers an inner foreach loop. The fastest approach that avoids the `data_get` overhead of `keyBy('string')` while ensuring explicit string key casting is `->keyBy(fn($item) => (string)$item->field)`.
+**Action:** Use `->keyBy(fn($item) => (string)$item->field)` instead of `mapWithKeys` when strict string casting and high performance are required on Eloquent collections.

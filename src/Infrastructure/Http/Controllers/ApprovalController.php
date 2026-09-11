@@ -12,14 +12,31 @@ use Exception;
  */
 class ApprovalController
 {
+    private \InventoryApp\Application\Approval\ManageApprovalWorkflows $manageWorkflows;
+
+    public function __construct(\InventoryApp\Application\Approval\ManageApprovalWorkflows $manageWorkflows)
+    {
+        $this->manageWorkflows = $manageWorkflows;
+    }
+
+    private function getTenantId($request): string
+    {
+        return $request->getAttribute('tenantId') ?? (function_exists('tenantId') ? tenantId() : 'system');
+    }
+
+    private function getUserId($request): string
+    {
+        return $request->getAttribute('userId') ?? 'system';
+    }
+
     /**
      * Lists all approval workflows for the tenant.
      */
     public function listWorkflows($request): Response
     {
         try {
-            // TODO: Wire to use case
-            return new Response(['data' => []]);
+            $workflows = $this->manageWorkflows->listWorkflows($this->getTenantId($request));
+            return new Response(['data' => $workflows]);
         } catch (Exception $e) {
             return new Response(['error' => $e->getMessage()], 500);
         }
@@ -31,8 +48,9 @@ class ApprovalController
     public function createWorkflow($request): Response
     {
         try {
-            // TODO: Wire to use case
-            return new Response(['data' => ['message' => 'Created']], 201);
+            $data = $request->input();
+            $workflow = $this->manageWorkflows->createWorkflow($this->getTenantId($request), $data);
+            return new Response(['data' => $workflow], 201);
         } catch (Exception $e) {
             return new Response(['error' => $e->getMessage()], 400);
         }
@@ -44,8 +62,9 @@ class ApprovalController
     public function updateWorkflow($request, $workflowId): Response
     {
         try {
-            // TODO: Wire to use case
-            return new Response(['message' => 'Workflow updated successfully.']);
+            $data = $request->input();
+            $workflow = $this->manageWorkflows->updateWorkflow($this->getTenantId($request), $workflowId, $data);
+            return new Response(['data' => $workflow]);
         } catch (Exception $e) {
             return new Response(['error' => $e->getMessage()], 400);
         }
@@ -57,8 +76,8 @@ class ApprovalController
     public function toggleWorkflow($request, $workflowId): Response
     {
         try {
-            // TODO: Wire to use case
-            return new Response(['message' => 'Workflow toggled successfully.']);
+            $workflow = $this->manageWorkflows->toggleWorkflow($this->getTenantId($request), $workflowId);
+            return new Response(['data' => $workflow]);
         } catch (Exception $e) {
             return new Response(['error' => $e->getMessage()], 400);
         }
@@ -70,8 +89,9 @@ class ApprovalController
     public function listPendingRequests($request): Response
     {
         try {
-            // TODO: Wire to use case
-            return new Response(['data' => []]);
+            $userRoles = $request->getAttribute('roles') ?? [];
+            $requests = $this->manageWorkflows->listPendingRequests($this->getTenantId($request), $userRoles);
+            return new Response(['data' => $requests]);
         } catch (Exception $e) {
             return new Response(['error' => $e->getMessage()], 500);
         }
@@ -83,8 +103,8 @@ class ApprovalController
     public function getApprovalRequest($request, $requestId): Response
     {
         try {
-            // TODO: Wire to use case
-            return new Response(['data' => []]);
+            $requestData = $this->manageWorkflows->getApprovalRequest($this->getTenantId($request), $requestId);
+            return new Response(['data' => $requestData]);
         } catch (Exception $e) {
             return new Response(['error' => $e->getMessage()], 404);
         }
@@ -96,10 +116,22 @@ class ApprovalController
     public function submitDecision($request, $requestId): Response
     {
         $data = $request->input();
+        $decision = $data['decision'] ?? null;
+        $notes = $data['notes'] ?? null;
+
+        if (!$decision) {
+            return new Response(['error' => 'Decision is required (APPROVED or REJECTED)'], 400);
+        }
 
         try {
-            // TODO: Wire to use case
-            return new Response(['message' => 'Decision submitted successfully.']);
+            $result = $this->manageWorkflows->submitDecision(
+                $this->getTenantId($request), 
+                $requestId, 
+                $this->getUserId($request), 
+                $decision, 
+                $notes
+            );
+            return new Response(['data' => $result]);
         } catch (Exception $e) {
             return new Response(['error' => $e->getMessage()], 400);
         }

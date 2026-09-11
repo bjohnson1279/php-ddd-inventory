@@ -106,6 +106,24 @@ class ServiceContainer
             return $c->make(EventDispatcher::class);
         });
 
+        $container->singleton(\InventoryApp\Application\Approval\ApprovalWorkflowService::class, function ($c) {
+            return new \InventoryApp\Application\Approval\ApprovalWorkflowService(
+                $c->make(EventDispatcher::class)
+            );
+        });
+
+        $container->singleton(\InventoryApp\Application\Approval\ManageApprovalWorkflows::class, function ($c) {
+            return new \InventoryApp\Application\Approval\ManageApprovalWorkflows(
+                $c->make(\InventoryApp\Application\Approval\ApprovalWorkflowService::class)
+            );
+        });
+
+        $container->singleton(\InventoryApp\Infrastructure\Http\Controllers\ApprovalController::class, function ($c) {
+            return new \InventoryApp\Infrastructure\Http\Controllers\ApprovalController(
+                $c->make(\InventoryApp\Application\Approval\ManageApprovalWorkflows::class)
+            );
+        });
+
         // Tenant-scoped factory mappings (requires tenantId)
         $container->bind(LedgerRepositoryInterface::class, function ($app, $parameters) {
             $tenantId = $parameters['tenantId'] ?? (function_exists('tenantId') ? tenantId() : 'system');

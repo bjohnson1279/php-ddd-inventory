@@ -2928,6 +2928,64 @@ if ($method === 'GET' && $uri === '/api/sustainability/emissions-report') {
     exit;
 }
 
+// ── Approval Routes ────────────────────────────────────────────────────────────
+if ($method === 'GET' && $uri === '/api/approvals/workflows') {
+    requireAuth('approval', 'view');
+    $response = ServiceContainer::getInstance()->make(\InventoryApp\Infrastructure\Http\Controllers\ApprovalController::class)->listWorkflows($request);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+if ($method === 'POST' && $uri === '/api/approvals/workflows') {
+    requireAuth('approval', 'manage');
+    $response = ServiceContainer::getInstance()->make(\InventoryApp\Infrastructure\Http\Controllers\ApprovalController::class)->createWorkflow($request);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+if ($method === 'PUT' && preg_match('#^/api/approvals/workflows/([^/]+)$#', $uri, $m)) {
+    requireAuth('approval', 'manage');
+    $response = ServiceContainer::getInstance()->make(\InventoryApp\Infrastructure\Http\Controllers\ApprovalController::class)->updateWorkflow($request, $m[1]);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+if ($method === 'POST' && preg_match('#^/api/approvals/workflows/([^/]+)/toggle$#', $uri, $m)) {
+    requireAuth('approval', 'manage');
+    $response = ServiceContainer::getInstance()->make(\InventoryApp\Infrastructure\Http\Controllers\ApprovalController::class)->toggleWorkflow($request, $m[1]);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+if ($method === 'GET' && $uri === '/api/approvals/pending') {
+    requireAuth('approval', 'view');
+    $response = ServiceContainer::getInstance()->make(\InventoryApp\Infrastructure\Http\Controllers\ApprovalController::class)->listPendingRequests($request);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+if ($method === 'GET' && preg_match('#^/api/approvals/([^/]+)$#', $uri, $m)) {
+    requireAuth('approval', 'view');
+    $response = ServiceContainer::getInstance()->make(\InventoryApp\Infrastructure\Http\Controllers\ApprovalController::class)->getApprovalRequest($request, $m[1]);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+if ($method === 'POST' && preg_match('#^/api/approvals/([^/]+)/decide$#', $uri, $m)) {
+    requireAuth('approval', 'manage');
+    $response = ServiceContainer::getInstance()->make(\InventoryApp\Infrastructure\Http\Controllers\ApprovalController::class)->submitDecision($request, $m[1]);
+    http_response_code($response->getStatusCode());
+    echo $response->getContent();
+    exit;
+}
+
+
 // ── Fallback ──────────────────────────────────────────────────────────────────
 http_response_code(200);
 echo json_encode(['message' => 'DDD Inventory API is running', 'uri' => $uri]);

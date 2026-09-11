@@ -28,3 +28,13 @@ merge-master-to-prs.sh
 *prs_to_*.json
 *all_open_prs*.json
 *all_audited_prs*.json
+
+# Bot scratch verification files
+test.js
+test_*.ts
+test_*.js
+test.cjs
+fix_*.php
+update_*.php
+scratch_*
+*.scratch

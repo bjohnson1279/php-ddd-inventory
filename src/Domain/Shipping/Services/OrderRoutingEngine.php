@@ -29,9 +29,12 @@ class OrderRoutingEngine
         }));
 
         // ⚡ Bolt Optimization: Replaced array_reduce with a foreach loop to eliminate closure invocation overhead.
+        // ⚡ Bolt Optimization: Added O(1) candidate lookup map to prevent O(N^2) inner loops later
         $totalAvailable = 0;
+        $candidateMap = [];
         foreach ($activeCandidates as $c) {
             $totalAvailable += $c['availableQuantity'];
+            $candidateMap[$c['locationId']] = $c;
         }
 
         if ($totalAvailable < $quantity) {
@@ -50,13 +53,8 @@ class OrderRoutingEngine
             $totalCost = 0;
 
             foreach ($allocations as $alloc) {
-                $candidate = null;
-                foreach ($activeCandidates as $c) {
-                    if ($c['locationId'] === $alloc->locationId) {
-                        $candidate = $c;
-                        break;
-                    }
-                }
+                // ⚡ Bolt Optimization: O(1) hash map lookup instead of O(N) loop
+                $candidate = $candidateMap[$alloc->locationId];
 
                 $dist = $candidate['geoLocation']->distanceTo($destination);
                 $totalDistance += $dist;

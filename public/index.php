@@ -322,7 +322,7 @@ function requireAuth(?string $resource = null, ?string $action = null): void
 
     if (getenv('DB_CONNECTION') === 'pgsql' || getenv('DB_CONNECTION') === '') {
         try {
-            \Illuminate\Database\Capsule\Manager::statement("SET app.current_tenant_id = '{$tokenData->tenant_id}'");
+            \Illuminate\Database\Capsule\Manager::statement("SELECT set_config('app.current_tenant_id', ?, false)", [$tokenData->tenant_id]);
         } catch (\Throwable $e) {
             // Ignore during setup or in environments where DB is not fully bootstrapped
         }

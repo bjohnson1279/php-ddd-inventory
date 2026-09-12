@@ -21,7 +21,9 @@ class SqliteSetup
             self::getComplianceQueries(),
             self::getRfidQueries(),
             self::getLogisticsErpQueries(),
-            self::getReportingQueries()
+            self::getReportingQueries(),
+            self::getWorkforceQueries(),
+            self::getPricingQueries()
         );
 
         foreach ($queries as $q) {
@@ -668,6 +670,74 @@ class SqliteSetup
               layout_y INTEGER NOT NULL DEFAULT 0,
               width INTEGER NOT NULL DEFAULT 1,
               height INTEGER NOT NULL DEFAULT 1
+            )"
+        ];
+    }
+
+    private static function getWorkforceQueries(): array
+    {
+        return [
+            "CREATE TABLE IF NOT EXISTS warehouse_operators (
+              id TEXT PRIMARY KEY,
+              user_id TEXT NOT NULL UNIQUE,
+              tenant_id VARCHAR(50) NOT NULL,
+              average_picks_per_hour NUMERIC NOT NULL DEFAULT 0.0,
+              total_distance_walked_m NUMERIC NOT NULL DEFAULT 0.0,
+              accuracy_score NUMERIC NOT NULL DEFAULT 100.0,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS labor_shifts (
+              id TEXT PRIMARY KEY,
+              operator_id TEXT NOT NULL,
+              tenant_id VARCHAR(50) NOT NULL,
+              start_time DATETIME NOT NULL,
+              end_time DATETIME NOT NULL,
+              status VARCHAR(50) NOT NULL DEFAULT 'SCHEDULED',
+              predicted_demand INTEGER NOT NULL,
+              actual_completed INTEGER NOT NULL DEFAULT 0,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (operator_id) REFERENCES warehouse_operators(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS task_performances (
+              id TEXT PRIMARY KEY,
+              operator_id TEXT NOT NULL,
+              tenant_id VARCHAR(50) NOT NULL,
+              task_type VARCHAR(50) NOT NULL,
+              location_id VARCHAR(50) NOT NULL,
+              traversal_distance_meters NUMERIC NOT NULL DEFAULT 0.0,
+              duration_seconds INTEGER NOT NULL,
+              accuracy_score NUMERIC NOT NULL DEFAULT 100.0,
+              occurred_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (operator_id) REFERENCES warehouse_operators(id) ON DELETE CASCADE
+            )"
+        ];
+    }
+
+    private static function getPricingQueries(): array
+    {
+        return [
+            "CREATE TABLE IF NOT EXISTS liquidation_rules (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              department TEXT,
+              sku TEXT,
+              days_to_expiration INTEGER NOT NULL,
+              markdown_percentage NUMERIC NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS markdown_events (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              variant_id TEXT NOT NULL,
+              rule_id TEXT,
+              original_price_cents INTEGER NOT NULL,
+              new_price_cents INTEGER NOT NULL,
+              reason TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )"
         ];
     }

@@ -42,20 +42,7 @@
 **Vulnerability:** The `requireAuth` helper function interpolated the user-controlled `tenant_id` from the API token directly into a PostgreSQL `SET app.current_tenant_id = '...'` query, creating a critical SQL injection vulnerability.
 **Learning:** The PostgreSQL `SET` command does not natively support parameter binding via PDO. Using string interpolation to set session-level variables is inherently unsafe when the value originates from user input.
 **Prevention:** When setting session-level configuration variables in PostgreSQL via Eloquent or raw statements, always use the `set_config` function with parameterized bindings (e.g., `SELECT set_config('app.current_tenant_id', ?, false)`) to ensure safe execution.
-
-## Prevention Directives for Automated Refactoring
-- **Never Overwrite Complete Files**: Always use range-scoped replacement chunks for edits to `schema.prisma`, `index.ts`, `public/index.php`, `db/schema.rb`, or DDL SQL scripts.
-- **Do Not Remove Core Declarations**: Do not delete existing route registrations or database DDL tables.
-- **Environment Isolation Compatibility**: When replacing fallback secrets, preserve test environment execution via `!getenv('APP_ENV')` or `getenv('APP_ENV') === 'testing'`.
-- **No Scratch Files**: Never stage or commit `test_*.ts`, `test_*.js`, `test.cjs`, `fix_*.php`, or `test.js` files to git.
-- **No Unresolved Conflict Markers**: Never stage or commit files containing Git merge conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`, `|||||||`). Always resolve conflicts cleanly before committing.
-
-## Completeness & Verification Directives
-- **Explicit Parameter & Contract Validation**: When creating or modifying API endpoints (Express, Fastify, Rails, Laravel), always implement explicit parameter and request body validation schemas (e.g. `z.string().uuid()`) to prevent unhandled 404/500 fallthroughs.
-- **Database Indexing for Queries**: When addressing query bottlenecks or adding query lookup filters, always implement native database index migrations rather than loading collections into memory and performing array filtering (`.filter()`, `.select`).
-- **Co-Occurring Dependency Auditing**: When bumping any dependency version, verify that other transitive dependencies do not carry high/critical security advisories (e.g. run `bundler-audit`, `npm audit`). Never introduce a version bump that breaks underlying framework APIs.
-- **Self-Verification Before Commit**: Always run syntax checks (`bash -n` for shell scripts, `tsc --noEmit` for TypeScript, linter checks) and targeted test runners locally before opening or updating a PR.
-
-## Hallucinatory Task & Empty PR Directives
-- **Zero-Diff Task Termination**: If the requested optimization, refactor, or fix is ALREADY natively present in the target branch, DO NOT create an empty pull request or commit an acknowledgment PR. Exit the task cleanly without opening a PR.
-- **Stale Suggestion Guard**: Always verify the current code on `main`/`master` before planning changes. If no actionable diff is required, cancel task execution immediately.
+## 2024-10-27 - Critical SQL Injection in Queue Worker via SET app.current_tenant_id
+**Vulnerability:** The queue worker script (`scripts/queue-worker.php`) interpolated the `tenant_id` from incoming queue jobs directly into a PostgreSQL `SET app.current_tenant_id = '...'` query. Because `SET` does not support parameter binding in PDO, this created a critical SQL injection vulnerability if a job payload was manipulated.
+**Learning:** Even internal backend processes like queue workers that handle seemingly internal data (like tenant IDs) must use parameterized queries. The assumption that internal identifiers are safe from injection is a dangerous anti-pattern.
+**Prevention:** When setting session-level configuration variables in PostgreSQL via Eloquent or raw statements, always use the `set_config` function with parameterized bindings (e.g., `SELECT set_config('app.current_tenant_id', ?, false)`) to ensure safe execution, rather than string interpolation with `SET`.

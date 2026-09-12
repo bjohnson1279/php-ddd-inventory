@@ -54,7 +54,7 @@ do {
 
     try {
         if (getenv('DB_CONNECTION') === 'pgsql' || getenv('DB_CONNECTION') === '') {
-            DB::statement("SET app.current_tenant_id = '{$job->tenant_id}'");
+            DB::statement("SELECT set_config('app.current_tenant_id', ?, false)", [$job->tenant_id]);
         }
 
         // Reconstruct event object from serialized data

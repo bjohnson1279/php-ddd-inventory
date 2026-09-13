@@ -39,7 +39,7 @@ class ApprovalControllerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->controller = new ApprovalController();
+        $this->controller = \InventoryApp\Infrastructure\ServiceContainer::getInstance()->make(\InventoryApp\Infrastructure\Http\Controllers\ApprovalController::class);
     }
 
     public function testListWorkflows()

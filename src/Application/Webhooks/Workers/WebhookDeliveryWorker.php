@@ -38,8 +38,9 @@ class WebhookDeliveryWorker
             WebhookDeliveryModel::whereIn('id', $ids)->update(['status' => 'Processing']);
 
             $subscriptionIds = $deliveries->pluck('subscription_id')->unique()->toArray();
-            // ⚡ Bolt Optimization: Use mapWithKeys for explicit string casting and faster key resolution
-            $subscriptions = WebhookSubscriptionModel::whereIn('id', $subscriptionIds)->get()->mapWithKeys(fn($item) => [(string)$item->id => $item]);
+            // ⚡ Bolt Optimization: Use keyBy(closure) instead of mapWithKeys to avoid per-item array instantiation
+            // overhead while ensuring explicit string key casting for faster key resolution.
+            $subscriptions = WebhookSubscriptionModel::whereIn('id', $subscriptionIds)->get()->keyBy(fn($item) => (string)$item->id);
 
             $mh = curl_multi_init();
             $curlHandles = [];

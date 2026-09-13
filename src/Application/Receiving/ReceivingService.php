@@ -35,7 +35,7 @@ class ReceivingService
 
         $data = json_decode($response, true);
         
-        $id = 'scan-' . substr(md5((string) mt_rand()), 0, 7);
+        $id = 'scan-' . bin2hex(random_bytes(4));
         
         $scan = new InboundScan(
             $id,

@@ -23,7 +23,8 @@ class SqliteSetup
             self::getLogisticsErpQueries(),
             self::getReportingQueries(),
             self::getWorkforceQueries(),
-            self::getPricingQueries()
+            self::getPricingQueries(),
+            self::getCvGatewayQueries()
         );
 
         foreach ($queries as $q) {
@@ -741,5 +742,22 @@ class SqliteSetup
             )"
         ];
     }
+    private static function getCvGatewayQueries(): array
+    {
+        return [
+            "CREATE TABLE IF NOT EXISTS inbound_scans (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              purchase_order_id TEXT,
+              image_url TEXT NOT NULL,
+              dimensions TEXT NOT NULL,
+              ocr_text TEXT,
+              anomaly_score NUMERIC NOT NULL,
+              has_damage BOOLEAN NOT NULL DEFAULT 0,
+              status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )"
+        ];
+    }
 }
-

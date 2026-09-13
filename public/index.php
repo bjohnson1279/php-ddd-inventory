@@ -188,6 +188,43 @@ if ($uri === '/api/health' || $uri === '/health') {
     exit;
 }
 
+// ── Route: POST /api/cv/analyze ──────────────────────────────────────────────
+if ($method === 'POST' && $uri === '/api/cv/analyze') {
+    requireAuth();
+    try {
+        $body = json_decode(file_get_contents('php://input'), true) ?: [];
+        $base64Image = $body['image_base64'] ?? '';
+        $poId = $body['po_id'] ?? null;
+        
+        if (empty($base64Image)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'image_base64 is required']);
+            exit;
+        }
+        
+        $service = new \InventoryApp\Application\Receiving\ReceivingService();
+        $scan = $service->analyzeInboundImage(tenantId(), $base64Image, $poId);
+        
+        http_response_code(200);
+        echo json_encode([
+            'id' => $scan->id,
+            'dimensions' => [
+                'length' => $scan->dimensions->length,
+                'width' => $scan->dimensions->width,
+                'height' => $scan->dimensions->height
+            ],
+            'ocrText' => $scan->ocrText,
+            'anomalyScore' => $scan->anomalyScore,
+            'hasDamage' => $scan->hasDamage
+        ]);
+        exit;
+    } catch (\Throwable $e) {
+        http_response_code(500);
+        echo json_encode(['error' => $e->getMessage()]);
+        exit;
+    }
+}
+
 // ── Request adapter ───────────────────────────────────────────────────────────
 use InventoryApp\Infrastructure\Http\RequestInterface;
 

@@ -35,6 +35,20 @@ class ApprovalRequestStub
         }
         return $all[$key] ?? $default;
     }
+
+    public function getAttribute($key, $default = null)
+    {
+        if ($key === 'tenantId') {
+            return $this->headers['_auth_tenant_id'] ?? $default;
+        }
+        if ($key === 'userId') {
+            return $this->headers['_auth_user_id'] ?? $default;
+        }
+        if ($key === 'roles') {
+            return $this->headers['_auth_roles'] ?? $default;
+        }
+        return $default;
+    }
 }
 
 class ApprovalControllerTest extends TestCase

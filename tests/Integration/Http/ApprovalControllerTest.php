@@ -2,7 +2,7 @@
 
 namespace InventoryApp\Tests\Integration\Http;
 
-
+use PHPUnit\Framework\TestCase;
 use InventoryApp\Infrastructure\Http\Controllers\ApprovalController;
 
 class ApprovalRequestStub
@@ -30,34 +30,16 @@ class ApprovalRequestStub
         }
         return $all[$key] ?? $default;
     }
-    public function getAttribute($key)
-    {
-        return $this->headers[$key] ?? null;
-    }
-    public function getBody()
-    {
-        return json_encode($this->body);
-    }
 }
 
-class ApprovalControllerTest extends \PHPUnit\Framework\TestCase
+class ApprovalControllerTest extends TestCase
 {
     private ApprovalController $controller;
 
     protected function setUp(): void
     {
         parent::setUp();
-
-        $manageWorkflows = $this->createMock(\InventoryApp\Application\Approval\ManageApprovalWorkflows::class);
-        $manageWorkflows->method("listWorkflows")->willReturn([]);
-        $manageWorkflows->method("createWorkflow")->willReturn(["message" => "Created"]);
-        $manageWorkflows->method("updateWorkflow")->willReturn(["message" => "Workflow updated successfully."]);
-        $manageWorkflows->method("toggleWorkflow")->willReturn(["message" => "Workflow toggled successfully."]);
-        $manageWorkflows->method("listPendingRequests")->willReturn([]);
-        $manageWorkflows->method("getApprovalRequest")->willReturn([]);
-        $manageWorkflows->method("submitDecision")->willReturn(["message" => "Decision submitted successfully."]);
-
-        $this->controller = new ApprovalController($manageWorkflows);
+        $this->controller = new ApprovalController();
     }
 
     public function testListWorkflows()
@@ -87,7 +69,7 @@ class ApprovalControllerTest extends \PHPUnit\Framework\TestCase
 
         $this->assertEquals(200, $response->getStatusCode());
         $body = json_decode($response->getContent(), true);
-        $this->assertEquals('Workflow updated successfully.', $body['data']['message']);
+        $this->assertEquals('Workflow updated successfully.', $body['message']);
     }
 
     public function testToggleWorkflow()
@@ -97,7 +79,7 @@ class ApprovalControllerTest extends \PHPUnit\Framework\TestCase
 
         $this->assertEquals(200, $response->getStatusCode());
         $body = json_decode($response->getContent(), true);
-        $this->assertEquals('Workflow toggled successfully.', $body['data']['message']);
+        $this->assertEquals('Workflow toggled successfully.', $body['message']);
     }
 
     public function testListPendingRequests()
@@ -127,6 +109,6 @@ class ApprovalControllerTest extends \PHPUnit\Framework\TestCase
 
         $this->assertEquals(200, $response->getStatusCode());
         $body = json_decode($response->getContent(), true);
-        $this->assertEquals('Decision submitted successfully.', $body['data']['message']);
+        $this->assertEquals('Decision submitted successfully.', $body['message']);
     }
 }

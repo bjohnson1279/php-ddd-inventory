@@ -2891,6 +2891,7 @@ if ($method === 'POST' && $uri === '/api/supplier/asn') {
 }
 
 if ($method === 'GET' && $uri === '/api/supplier/otif-scorecard') {
+    requireAuth();
     $supplierId = $_GET['supplierId'] ?? 'SUP-101';
     echo json_encode([
         'supplierId' => $supplierId,
@@ -2951,7 +2952,8 @@ if ($method === 'POST' && $uri === '/api/copilot/query') {
 }
 
 if ($method === 'GET' && $uri === '/api/sustainability/emissions-report') {
-    $tenantId = $_GET['tenantId'] ?? 'tenant-1';
+    requireAuth();
+    $tenantId = tenantId();
     echo json_encode([
         'tenantId' => $tenantId,
         'period' => '2026-Q3',

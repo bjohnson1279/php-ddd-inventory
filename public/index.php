@@ -2790,6 +2790,7 @@ if ($method === 'POST' && $uri === '/api/shipping/label') {
 }
 
 if ($method === 'POST' && $uri === '/api/shipping/bol') {
+    requireAuth();
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
     $bolNumber = 'BOL-' . rand(100000, 999999);
     echo json_encode([
@@ -2807,6 +2808,7 @@ if ($method === 'POST' && $uri === '/api/shipping/bol') {
 }
 
 if ($method === 'POST' && $uri === '/api/erp/sync') {
+    requireAuth();
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
     $provider = $input['provider'] ?? 'QUICKBOOKS';
     $lines = is_array($input['lines'] ?? null) ? $input['lines'] : [];
@@ -2824,6 +2826,7 @@ if ($method === 'POST' && $uri === '/api/erp/sync') {
 }
 
 if ($method === 'POST' && $uri === '/api/rma/inspect') {
+    requireAuth();
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
     $disp = $input['disposition'] ?? 'RESTOCK';
     echo json_encode([
@@ -2839,6 +2842,7 @@ if ($method === 'POST' && $uri === '/api/rma/inspect') {
 }
 
 if ($method === 'POST' && $uri === '/api/supplier/asn') {
+    requireAuth();
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
     $items = json_decode($input['lineItemsJson'] ?? '[]', true) ?: [];
     echo json_encode([
@@ -2854,6 +2858,7 @@ if ($method === 'POST' && $uri === '/api/supplier/asn') {
 }
 
 if ($method === 'GET' && $uri === '/api/supplier/otif-scorecard') {
+    requireAuth();
     $supplierId = $_GET['supplierId'] ?? 'SUP-101';
     echo json_encode([
         'supplierId' => $supplierId,
@@ -2868,6 +2873,7 @@ if ($method === 'GET' && $uri === '/api/supplier/otif-scorecard') {
 }
 
 if ($method === 'POST' && $uri === '/api/hardware/print-thermal') {
+    requireAuth();
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
     $type = strtoupper($input['labelType'] ?? 'LABEL');
     $barcode = $input['barcodeValue'] ?? 'BARCODE';
@@ -2883,6 +2889,7 @@ if ($method === 'POST' && $uri === '/api/hardware/print-thermal') {
 }
 
 if ($method === 'POST' && $uri === '/api/digital-twin/simulate') {
+    requireAuth();
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
     $waves = (int)($input['orderWaveCount'] ?? 10);
     $pickers = (int)($input['activePickersCount'] ?? 5);
@@ -2901,6 +2908,7 @@ if ($method === 'POST' && $uri === '/api/digital-twin/simulate') {
 }
 
 if ($method === 'POST' && $uri === '/api/copilot/query') {
+    requireAuth();
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
     $query = $input['query'] ?? 'What is the stockout risk?';
     echo json_encode([
@@ -2914,6 +2922,7 @@ if ($method === 'POST' && $uri === '/api/copilot/query') {
 }
 
 if ($method === 'GET' && $uri === '/api/sustainability/emissions-report') {
+    requireAuth();
     $tenantId = $_GET['tenantId'] ?? 'tenant-1';
     echo json_encode([
         'tenantId' => $tenantId,

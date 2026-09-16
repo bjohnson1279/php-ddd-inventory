@@ -22,11 +22,6 @@ class ApprovalRequestStub
         $this->headers = $headers;
     }
 
-    public function getAttribute($key)
-    {
-        return $this->headers['_' . strtolower($key)] ?? $this->headers['_auth_' . strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $key))] ?? null;
-    }
-
     public function input($key = null, $default = null)
     {
         $all = array_merge($this->query, $this->body, $this->headers);
@@ -47,7 +42,7 @@ class ApprovalRequestStub
         if ($key === 'roles') {
             return $this->headers['_auth_roles'] ?? $default;
         }
-        return $default;
+        return $this->headers['_' . strtolower($key)] ?? $this->headers['_auth_' . strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $key))] ?? $default;
     }
 }
 

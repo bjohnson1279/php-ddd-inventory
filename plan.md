@@ -1,73 +1,62 @@
-1. **Add `findActiveByTenantAndLocation` to `PurchaseOrderRepositoryInterface`**
-   - We'll add this to only load the POs for a specific tenant and location that are in an active state (Draft, Approved, Sent).
+1.  **Analyze memory/journal context:**
+    The `.jules/bolt.md` file notes:
+    "When generating keyed hash maps from Eloquent/Database collections, replacing `->keyBy('field')` with `->mapWithKeys(fn($item) => [(string)$item->field => $item])` is a de-optimization. `mapWithKeys` instantiates a new array for every single item and triggers an inner foreach loop. The fastest approach that avoids the `data_get` overhead of `keyBy('string')` while ensuring explicit string key casting is `->keyBy(fn($item) => (string)$item->field)`."
+    And the context mentions using `->keyBy(fn($item) => (string)$item->id)` over `->mapWithKeys(...)`.
 
-2. **Implement `findActiveByTenantAndLocation` in `EloquentPurchaseOrderRepository`**
-   - Query the DB efficiently for the active POs for the tenant/location.
+2.  **Target code:**
+    In `src/Infrastructure/Http/Controllers/ReportController.php` lines 27-29:
+    ```php
+            // Fetch all locations to initialize location names
+            // ⚡ Bolt: Use pluck() directly to retrieve key-value pairs without hydrating intermediate stdClass objects
+            $locations = DB::table('locations')->pluck('name', 'id');
+            if ($locations instanceof \Illuminate\Support\Collection) {
+                $locations = $locations->mapWithKeys(function ($name, $id) { return [(string)$id => $name]; })->toArray();
+            } else {
+    ```
+    This uses `mapWithKeys` on a collection created by `pluck('name', 'id')`.
 
-3. **Refactor `ReorderPolicyService::evaluatePolicies()` and `ReorderPolicyService::checkPolicy()`**
-   - Replace `$allPos = $this->poRepository->findAll();` with a single `$this->poRepository->findActiveByTenantAndLocation($tenantId, $policy->locationId);` query.
-   - Alternatively, even simpler and faster, just fetch all active POs for a tenant. Let's add `findAllActiveByTenant(string $tenantId)` instead.
-   - Actually, since we need to track this per location and tenant for all policies, maybe `findAllActiveByTenant` is best, it avoids fetching received POs and POs for other tenants. Wait, even better, we can avoid touching the interface by just doing the `$allPos = $this->poRepository->findAll();` lookup once inside `evaluatePolicies` outside of the loop and indexing it! Oh, wait! It's already doing it outside the loop: `if ($pendingPoLookup === null) { $allPos = $this->poRepository->findAll(); ... }`.
-   - Ah! Wait, look at `checkPolicy`. It calls `findAll()` for every single policy check: `$allPos = $this->poRepository->findAll();` inside the method.
-   - Look at `evaluatePolicies`. It does lazy load `findAll()` once into `$pendingPoLookup`. It uses memory, but wait. If we have 10,000 Purchase Orders, `findAll()` brings all 10,000 into memory. That's a huge memory spike. If we introduce `findAllActiveByTenant(string $tenantId)` or `findPendingItemSkusByTenant(string $tenantId)`, it would be much faster.
+3.  **Optimization:**
+    Wait, `pluck('name', 'id')` already returns a key-value pair of id => name. So the collection isn't a collection of items, but a collection of primitives: `[1 => 'Loc A', 2 => 'Loc B']`. We want string keys `['1' => 'Loc A']`.
+    Is there a better way to cast keys to string without `mapWithKeys`? `mapWithKeys` creates an array per item `[(string)$id => $name]` and merges them.
+    A faster approach is a simple `foreach` loop over the collection, which doesn't allocate an intermediate array per item. Wait, we can just avoid the `if/else` entirely and write:
 
-   Let's check `ReorderPolicyService::evaluatePolicies`:
-   ```php
-                if ($pendingPoLookup === null) {
-                    $allPos = $this->poRepository->findAll();
-                    $pendingPoLookup = [];
-                    foreach ($allPos as $po) {
-                        if (
-                            $po->getStatus() === PurchaseOrderStatus::Draft ||
-                            $po->getStatus() === PurchaseOrderStatus::Approved ||
-                            $po->getStatus() === PurchaseOrderStatus::Sent
-                        ) {
-   ```
-   If we optimize the interface to add a method to only fetch pending POs or we just optimize `checkPolicy` to use a more targeted method. Wait! We are restricted from changing interfaces if it breaks things.
+    ```php
+            $locationsRaw = DB::table('locations')->pluck('name', 'id');
+            $locations = [];
+            foreach ($locationsRaw as $id => $name) {
+                $locations[(string)$id] = $name;
+            }
+    ```
+    This removes the `mapWithKeys` overhead. Let's benchmark it vs `mapWithKeys` (already done in `test_perf_4.php` above, where `foreach` was `0.79s` vs `1.04s` for `mapWithKeys`). But wait, memory mentions:
+    "When using `keyBy('id')` in Laravel/Illuminate collections... pass a closure directly to `keyBy`: `->keyBy(fn($item) => (string)$item->id)`. Avoid using `mapWithKeys` for this purpose, as it is a de-optimization that creates unnecessary array instantiations per item."
 
-   Let's just implement `findActiveByTenant(string $tenantId): array` in `PurchaseOrderRepositoryInterface` and `EloquentPurchaseOrderRepository`.
+    Wait, `keyBy` doesn't work on `pluck('name', 'id')` because `keyBy` is used to index objects/arrays by a key. Here the collection values are strings (`name`), not objects. So we cannot use `keyBy(fn($item) => (string)$item->id)` directly if the value is just the name. If we did `$locations = DB::table('locations')->get(['id', 'name'])`, we could use `keyBy`. But `pluck('name', 'id')` is already faster than `get()` because it bypasses object hydration.
 
-   Let's update the interface:
-   ```php
-    public function findActiveByTenant(string $tenantId): array;
-   ```
-   In Eloquent:
-   ```php
-    public function findActiveByTenant(string $tenantId): array
-    {
-        $models = PurchaseOrderModel::with('items')
-            ->where('tenant_id', $tenantId)
-            ->whereIn('status', ['draft', 'approved', 'sent'])
-            ->get();
-        $results = [];
-        foreach ($models as $model) {
-            $results[] = $this->mapToDomain($model);
-        }
-        return $results;
-    }
-   ```
-   In `ReorderPolicyService`:
-   ```php
-                if ($pendingPoLookup === null) {
-                    // ⚡ Bolt: Fetch only active POs for the tenant to reduce memory and processing overhead
-                    $allPos = $this->poRepository->findActiveByTenant($tenantId);
-                    $pendingPoLookup = [];
-                    foreach ($allPos as $po) {
-                        foreach ($po->getItems() as $item) {
-                            if ($item->getReceivedQuantity() < $item->quantity) {
-                                $pendingPoLookup[$po->tenantId][$po->locationId][$item->variantId] = true;
-                            }
-                        }
-                    }
-                }
-   ```
-   For `checkPolicy`:
-   ```php
-            // 2. Check if a draft/approved/sent purchase order already exists for this vendor/location and includes this sku
-            $allPos = $this->poRepository->findActiveByTenant($tenantId);
-   ```
+    Is there any other place with `mapWithKeys`?
+    `grep -rn "\->mapWithKeys(" src/` only shows `ReportController.php:29`.
 
-   Actually, `checkPolicy` is just an individual check, we could use `findActiveByTenantAndLocation($tenantId, $locationId)`. But `findActiveByTenant` is good enough.
+    Let's check if there is another opportunity.
+    Wait, the memory from `.jules/bolt.md` specifically says: "The fastest approach that avoids the `data_get` overhead of `keyBy('string')` while ensuring explicit string key casting is `->keyBy(fn($item) => (string)$item->field)`."
+    Let's grep for `keyBy(` in the code to see if there is any `keyBy('id')` or something.
+    Ah, I already ran `grep -rn "\->keyBy(" src/` and found:
+    - `WebhookDeliveryWorker.php`: `keyBy(fn($item) => (string)$item->id)`
+    - `AuditProcessorService.php`: `keyBy(fn($item) => (string)$item->sku)`
+    - `ReportController.php`: `keyBy(fn($item) => (string)$item->id)`
+    They have already been optimized! Wait, where is `mapWithKeys` used?
+    `ReportController.php:29`
+    Wait, could the task be to replace `mapWithKeys` in `ReportController.php:29`?
+    If I look at `ReportController.php`, line 29:
+    ```php
+                $locations = $locations->mapWithKeys(function ($name, $id) { return [(string)$id => $name]; })->toArray();
+    ```
+    I can replace the whole `if/else` block:
+    ```php
+            $locationsRaw = DB::table('locations')->pluck('name', 'id');
+            $locations = [];
+            foreach ($locationsRaw as $id => $name) {
+                $locations[(string)$id] = $name;
+            }
+    ```
+    This avoids `mapWithKeys` (which creates an array on every loop iteration).
 
-4. **Verify Tests pass**
-5. **Submit PR**
+    Let me check `src/Infrastructure/Http/Controllers/ReportController.php`.

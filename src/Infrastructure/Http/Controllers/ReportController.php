@@ -25,11 +25,7 @@ class ReportController
             // Fetch all locations to initialize location names
             // ⚡ Bolt: Use pluck() directly to retrieve key-value pairs without hydrating intermediate stdClass objects
             $locations = DB::table('locations')->pluck('name', 'id');
-            $locationsArr = [];
-            foreach ($locations as $id => $name) {
-                $locationsArr[(string)$id] = $name;
-            }
-            $locations = $locationsArr;
+            $locations = is_array($locations) ? $locations : $locations->toArray();
 
             // Fetch ALL stock locations for these products once (to avoid N+1)
             $allStocks = $this->fetchStocksMap($productIds);

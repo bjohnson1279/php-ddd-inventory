@@ -105,7 +105,7 @@ class ApprovalControllerTest extends TestCase
     {
         $request = new ApprovalRequestStub('POST', '/api/approvals/workflows', [], [
             'name' => 'Test Workflow',
-            'triggerEvent' => 'PO_CREATED',
+            'triggerEvent' => 'INVENTORY_COUNT_COMPLETED',
             'config' => [
                 'steps' => [
                     ['role' => 'manager', 'requiredCount' => 1]

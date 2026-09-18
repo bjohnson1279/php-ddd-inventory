@@ -63,3 +63,7 @@
 ## Hallucinatory Task & Empty PR Directives
 - **Zero-Diff Task Termination**: If the requested optimization, refactor, or fix is ALREADY natively present in the target branch, DO NOT create an empty pull request or commit an acknowledgment PR. Exit the task cleanly without opening a PR.
 - **Stale Suggestion Guard**: Always verify the current code on `main`/`master` before planning changes. If no actionable diff is required, cancel task execution immediately.
+## 2024-05-18 - SSRF Vulnerability in Dead Webhook Worker Code
+**Vulnerability:** A duplicate, unreachable block of webhook delivery code in scripts/webhook-worker.php lacked the SSRF protections present in the active WebhookDeliveryWorker.php.
+**Learning:** Duplicate code, even when currently unreachable (dead code), presents a significant security risk if it lacks necessary protections, as it can be easily reactivated or used as a reference for future implementations.
+**Prevention:** Always remove dead code and ensure that security protections (like SSRF validation) are implemented in a central, reusable component rather than duplicated across scripts.

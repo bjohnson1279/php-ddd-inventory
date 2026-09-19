@@ -67,3 +67,8 @@
 **Vulnerability:** A duplicate, unreachable block of webhook delivery code in scripts/webhook-worker.php lacked the SSRF protections present in the active WebhookDeliveryWorker.php.
 **Learning:** Duplicate code, even when currently unreachable (dead code), presents a significant security risk if it lacks necessary protections, as it can be easily reactivated or used as a reference for future implementations.
 **Prevention:** Always remove dead code and ensure that security protections (like SSRF validation) are implemented in a central, reusable component rather than duplicated across scripts.
+
+## 2026-10-01 - Redundant Vulnerable Webhook Worker Logic
+**Vulnerability:** The standalone script `scripts/webhook-worker.php` duplicated the webhook delivery loop, but the duplicated loop bypassed the SSRF protections implemented in the `WebhookDeliveryWorker` class.
+**Learning:** Legacy procedural scripts sometimes retain old code even after a new secure object-oriented component (like `WebhookDeliveryWorker`) is integrated. When a secure class is instantiated at the top of a script, any trailing duplicated procedural logic is not just dead code—it's a latent vulnerability, especially if the script execution flow can bypass the secure class or execute both.
+**Prevention:** When patching vulnerabilities in legacy procedural scripts, first verify if a secure class component is already being instantiated. If so, simply delete the redundant, vulnerable procedural code instead of attempting to backport security fixes into it.

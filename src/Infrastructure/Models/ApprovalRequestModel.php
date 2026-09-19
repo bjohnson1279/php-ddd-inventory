@@ -11,8 +11,8 @@ class ApprovalRequestModel extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'id', 'tenant_id', 'workflow_id', 'reference_type', 'reference_id', 
-        'requester_id', 'status', 'current_step', 'payload', 'expires_at', 
+        'id', 'tenant_id', 'workflow_id', 'reference_type', 'reference_id',
+        'requester_id', 'status', 'current_step', 'payload', 'expires_at',
         'created_at', 'updated_at'
     ];
 

@@ -31,6 +31,70 @@ class SqliteSetup
     private static function getIdentityQueries(): array
     {
         return [
+            "CREATE TABLE IF NOT EXISTS approval_workflows (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              name TEXT NOT NULL,
+              trigger_event VARCHAR(100) NOT NULL,
+              config TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_requests (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              workflow_id TEXT NOT NULL,
+              reference_type VARCHAR(50) NOT NULL,
+              reference_id TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              current_step_index INTEGER NOT NULL DEFAULT 0,
+              payload TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (workflow_id) REFERENCES approval_workflows(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_decisions (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              actor_id VARCHAR(50) NOT NULL,
+              decision VARCHAR(50) NOT NULL,
+              reason TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (request_id) REFERENCES approval_requests(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_workflows (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              name TEXT NOT NULL,
+              trigger_event VARCHAR(100) NOT NULL,
+              config TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_requests (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              workflow_id TEXT NOT NULL,
+              reference_type VARCHAR(50) NOT NULL,
+              reference_id TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              current_step_index INTEGER NOT NULL DEFAULT 0,
+              payload TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (workflow_id) REFERENCES approval_workflows(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_decisions (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              actor_id VARCHAR(50) NOT NULL,
+              decision VARCHAR(50) NOT NULL,
+              reason TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (request_id) REFERENCES approval_requests(id) ON DELETE CASCADE
+            )",
             "CREATE TABLE IF NOT EXISTS tenants (
               id         VARCHAR(50) PRIMARY KEY,
               name       TEXT NOT NULL,
@@ -74,6 +138,70 @@ class SqliteSetup
     private static function getCatalogQueries(): array
     {
         return [
+            "CREATE TABLE IF NOT EXISTS approval_workflows (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              name TEXT NOT NULL,
+              trigger_event VARCHAR(100) NOT NULL,
+              config TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_requests (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              workflow_id TEXT NOT NULL,
+              reference_type VARCHAR(50) NOT NULL,
+              reference_id TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              current_step_index INTEGER NOT NULL DEFAULT 0,
+              payload TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (workflow_id) REFERENCES approval_workflows(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_decisions (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              actor_id VARCHAR(50) NOT NULL,
+              decision VARCHAR(50) NOT NULL,
+              reason TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (request_id) REFERENCES approval_requests(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_workflows (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              name TEXT NOT NULL,
+              trigger_event VARCHAR(100) NOT NULL,
+              config TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_requests (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              workflow_id TEXT NOT NULL,
+              reference_type VARCHAR(50) NOT NULL,
+              reference_id TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              current_step_index INTEGER NOT NULL DEFAULT 0,
+              payload TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (workflow_id) REFERENCES approval_workflows(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_decisions (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              actor_id VARCHAR(50) NOT NULL,
+              decision VARCHAR(50) NOT NULL,
+              reason TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (request_id) REFERENCES approval_requests(id) ON DELETE CASCADE
+            )",
             "CREATE TABLE IF NOT EXISTS catalog_products (
               id TEXT PRIMARY KEY,
               name TEXT NOT NULL,
@@ -146,6 +274,70 @@ class SqliteSetup
     private static function getLocationQueries(): array
     {
         return [
+            "CREATE TABLE IF NOT EXISTS approval_workflows (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              name TEXT NOT NULL,
+              trigger_event VARCHAR(100) NOT NULL,
+              config TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_requests (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              workflow_id TEXT NOT NULL,
+              reference_type VARCHAR(50) NOT NULL,
+              reference_id TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              current_step_index INTEGER NOT NULL DEFAULT 0,
+              payload TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (workflow_id) REFERENCES approval_workflows(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_decisions (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              actor_id VARCHAR(50) NOT NULL,
+              decision VARCHAR(50) NOT NULL,
+              reason TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (request_id) REFERENCES approval_requests(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_workflows (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              name TEXT NOT NULL,
+              trigger_event VARCHAR(100) NOT NULL,
+              config TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_requests (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              workflow_id TEXT NOT NULL,
+              reference_type VARCHAR(50) NOT NULL,
+              reference_id TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              current_step_index INTEGER NOT NULL DEFAULT 0,
+              payload TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (workflow_id) REFERENCES approval_workflows(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_decisions (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              actor_id VARCHAR(50) NOT NULL,
+              decision VARCHAR(50) NOT NULL,
+              reason TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (request_id) REFERENCES approval_requests(id) ON DELETE CASCADE
+            )",
             "CREATE TABLE IF NOT EXISTS locations (
               id VARCHAR(50) PRIMARY KEY,
               name TEXT NOT NULL,
@@ -217,6 +409,70 @@ class SqliteSetup
     private static function getInventoryQueries(): array
     {
         return [
+            "CREATE TABLE IF NOT EXISTS approval_workflows (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              name TEXT NOT NULL,
+              trigger_event VARCHAR(100) NOT NULL,
+              config TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_requests (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              workflow_id TEXT NOT NULL,
+              reference_type VARCHAR(50) NOT NULL,
+              reference_id TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              current_step_index INTEGER NOT NULL DEFAULT 0,
+              payload TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (workflow_id) REFERENCES approval_workflows(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_decisions (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              actor_id VARCHAR(50) NOT NULL,
+              decision VARCHAR(50) NOT NULL,
+              reason TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (request_id) REFERENCES approval_requests(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_workflows (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              name TEXT NOT NULL,
+              trigger_event VARCHAR(100) NOT NULL,
+              config TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_requests (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              workflow_id TEXT NOT NULL,
+              reference_type VARCHAR(50) NOT NULL,
+              reference_id TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              current_step_index INTEGER NOT NULL DEFAULT 0,
+              payload TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (workflow_id) REFERENCES approval_workflows(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_decisions (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              actor_id VARCHAR(50) NOT NULL,
+              decision VARCHAR(50) NOT NULL,
+              reason TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (request_id) REFERENCES approval_requests(id) ON DELETE CASCADE
+            )",
             "CREATE TABLE IF NOT EXISTS inventory_transactions (
               id TEXT PRIMARY KEY,
               tenant_id VARCHAR(50) NOT NULL,
@@ -301,6 +557,70 @@ class SqliteSetup
     private static function getAccountingQueries(): array
     {
         return [
+            "CREATE TABLE IF NOT EXISTS approval_workflows (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              name TEXT NOT NULL,
+              trigger_event VARCHAR(100) NOT NULL,
+              config TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_requests (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              workflow_id TEXT NOT NULL,
+              reference_type VARCHAR(50) NOT NULL,
+              reference_id TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              current_step_index INTEGER NOT NULL DEFAULT 0,
+              payload TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (workflow_id) REFERENCES approval_workflows(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_decisions (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              actor_id VARCHAR(50) NOT NULL,
+              decision VARCHAR(50) NOT NULL,
+              reason TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (request_id) REFERENCES approval_requests(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_workflows (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              name TEXT NOT NULL,
+              trigger_event VARCHAR(100) NOT NULL,
+              config TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_requests (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              workflow_id TEXT NOT NULL,
+              reference_type VARCHAR(50) NOT NULL,
+              reference_id TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              current_step_index INTEGER NOT NULL DEFAULT 0,
+              payload TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (workflow_id) REFERENCES approval_workflows(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_decisions (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              actor_id VARCHAR(50) NOT NULL,
+              decision VARCHAR(50) NOT NULL,
+              reason TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (request_id) REFERENCES approval_requests(id) ON DELETE CASCADE
+            )",
             "CREATE TABLE IF NOT EXISTS journal_entries (
               id TEXT PRIMARY KEY,
               tenant_id VARCHAR(50) NOT NULL,
@@ -317,6 +637,70 @@ class SqliteSetup
     private static function getIntegrationQueries(): array
     {
         return [
+            "CREATE TABLE IF NOT EXISTS approval_workflows (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              name TEXT NOT NULL,
+              trigger_event VARCHAR(100) NOT NULL,
+              config TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_requests (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              workflow_id TEXT NOT NULL,
+              reference_type VARCHAR(50) NOT NULL,
+              reference_id TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              current_step_index INTEGER NOT NULL DEFAULT 0,
+              payload TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (workflow_id) REFERENCES approval_workflows(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_decisions (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              actor_id VARCHAR(50) NOT NULL,
+              decision VARCHAR(50) NOT NULL,
+              reason TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (request_id) REFERENCES approval_requests(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_workflows (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              name TEXT NOT NULL,
+              trigger_event VARCHAR(100) NOT NULL,
+              config TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_requests (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              workflow_id TEXT NOT NULL,
+              reference_type VARCHAR(50) NOT NULL,
+              reference_id TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              current_step_index INTEGER NOT NULL DEFAULT 0,
+              payload TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (workflow_id) REFERENCES approval_workflows(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_decisions (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              actor_id VARCHAR(50) NOT NULL,
+              decision VARCHAR(50) NOT NULL,
+              reason TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (request_id) REFERENCES approval_requests(id) ON DELETE CASCADE
+            )",
             "CREATE TABLE IF NOT EXISTS shopify_location_mappings (
               id                  TEXT PRIMARY KEY,
               our_location_id     VARCHAR(50) NOT NULL,
@@ -368,6 +752,70 @@ class SqliteSetup
     private static function getSystemQueries(): array
     {
         return [
+            "CREATE TABLE IF NOT EXISTS approval_workflows (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              name TEXT NOT NULL,
+              trigger_event VARCHAR(100) NOT NULL,
+              config TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_requests (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              workflow_id TEXT NOT NULL,
+              reference_type VARCHAR(50) NOT NULL,
+              reference_id TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              current_step_index INTEGER NOT NULL DEFAULT 0,
+              payload TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (workflow_id) REFERENCES approval_workflows(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_decisions (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              actor_id VARCHAR(50) NOT NULL,
+              decision VARCHAR(50) NOT NULL,
+              reason TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (request_id) REFERENCES approval_requests(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_workflows (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              name TEXT NOT NULL,
+              trigger_event VARCHAR(100) NOT NULL,
+              config TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_requests (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              workflow_id TEXT NOT NULL,
+              reference_type VARCHAR(50) NOT NULL,
+              reference_id TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              current_step_index INTEGER NOT NULL DEFAULT 0,
+              payload TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (workflow_id) REFERENCES approval_workflows(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_decisions (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              actor_id VARCHAR(50) NOT NULL,
+              decision VARCHAR(50) NOT NULL,
+              reason TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (request_id) REFERENCES approval_requests(id) ON DELETE CASCADE
+            )",
             "CREATE TABLE IF NOT EXISTS notifications (
               id                        TEXT PRIMARY KEY,
               tenant_id                 VARCHAR(50) NOT NULL,
@@ -402,6 +850,70 @@ class SqliteSetup
     private static function getReturnsQueries(): array
     {
         return [
+            "CREATE TABLE IF NOT EXISTS approval_workflows (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              name TEXT NOT NULL,
+              trigger_event VARCHAR(100) NOT NULL,
+              config TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_requests (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              workflow_id TEXT NOT NULL,
+              reference_type VARCHAR(50) NOT NULL,
+              reference_id TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              current_step_index INTEGER NOT NULL DEFAULT 0,
+              payload TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (workflow_id) REFERENCES approval_workflows(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_decisions (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              actor_id VARCHAR(50) NOT NULL,
+              decision VARCHAR(50) NOT NULL,
+              reason TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (request_id) REFERENCES approval_requests(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_workflows (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              name TEXT NOT NULL,
+              trigger_event VARCHAR(100) NOT NULL,
+              config TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_requests (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              workflow_id TEXT NOT NULL,
+              reference_type VARCHAR(50) NOT NULL,
+              reference_id TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              current_step_index INTEGER NOT NULL DEFAULT 0,
+              payload TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (workflow_id) REFERENCES approval_workflows(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_decisions (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              actor_id VARCHAR(50) NOT NULL,
+              decision VARCHAR(50) NOT NULL,
+              reason TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (request_id) REFERENCES approval_requests(id) ON DELETE CASCADE
+            )",
             "CREATE TABLE IF NOT EXISTS rmas (
               id TEXT PRIMARY KEY,
               rma_number TEXT NOT NULL UNIQUE,
@@ -441,6 +953,70 @@ class SqliteSetup
     private static function getForecastingQueries(): array
     {
         return [
+            "CREATE TABLE IF NOT EXISTS approval_workflows (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              name TEXT NOT NULL,
+              trigger_event VARCHAR(100) NOT NULL,
+              config TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_requests (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              workflow_id TEXT NOT NULL,
+              reference_type VARCHAR(50) NOT NULL,
+              reference_id TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              current_step_index INTEGER NOT NULL DEFAULT 0,
+              payload TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (workflow_id) REFERENCES approval_workflows(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_decisions (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              actor_id VARCHAR(50) NOT NULL,
+              decision VARCHAR(50) NOT NULL,
+              reason TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (request_id) REFERENCES approval_requests(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_workflows (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              name TEXT NOT NULL,
+              trigger_event VARCHAR(100) NOT NULL,
+              config TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_requests (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              workflow_id TEXT NOT NULL,
+              reference_type VARCHAR(50) NOT NULL,
+              reference_id TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              current_step_index INTEGER NOT NULL DEFAULT 0,
+              payload TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (workflow_id) REFERENCES approval_workflows(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_decisions (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              actor_id VARCHAR(50) NOT NULL,
+              decision VARCHAR(50) NOT NULL,
+              reason TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (request_id) REFERENCES approval_requests(id) ON DELETE CASCADE
+            )",
             "CREATE TABLE IF NOT EXISTS demand_forecasts (
               id TEXT PRIMARY KEY,
               sku TEXT NOT NULL,
@@ -459,6 +1035,70 @@ class SqliteSetup
     private static function getShippingQueries(): array
     {
         return [
+            "CREATE TABLE IF NOT EXISTS approval_workflows (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              name TEXT NOT NULL,
+              trigger_event VARCHAR(100) NOT NULL,
+              config TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_requests (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              workflow_id TEXT NOT NULL,
+              reference_type VARCHAR(50) NOT NULL,
+              reference_id TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              current_step_index INTEGER NOT NULL DEFAULT 0,
+              payload TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (workflow_id) REFERENCES approval_workflows(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_decisions (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              actor_id VARCHAR(50) NOT NULL,
+              decision VARCHAR(50) NOT NULL,
+              reason TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (request_id) REFERENCES approval_requests(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_workflows (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              name TEXT NOT NULL,
+              trigger_event VARCHAR(100) NOT NULL,
+              config TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_requests (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              workflow_id TEXT NOT NULL,
+              reference_type VARCHAR(50) NOT NULL,
+              reference_id TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              current_step_index INTEGER NOT NULL DEFAULT 0,
+              payload TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (workflow_id) REFERENCES approval_workflows(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_decisions (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              actor_id VARCHAR(50) NOT NULL,
+              decision VARCHAR(50) NOT NULL,
+              reason TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (request_id) REFERENCES approval_requests(id) ON DELETE CASCADE
+            )",
             "CREATE TABLE IF NOT EXISTS shipments (
               id VARCHAR(50) PRIMARY KEY,
               sku TEXT NOT NULL,
@@ -500,6 +1140,70 @@ class SqliteSetup
     private static function getComplianceQueries(): array
     {
         return [
+            "CREATE TABLE IF NOT EXISTS approval_workflows (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              name TEXT NOT NULL,
+              trigger_event VARCHAR(100) NOT NULL,
+              config TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_requests (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              workflow_id TEXT NOT NULL,
+              reference_type VARCHAR(50) NOT NULL,
+              reference_id TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              current_step_index INTEGER NOT NULL DEFAULT 0,
+              payload TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (workflow_id) REFERENCES approval_workflows(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_decisions (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              actor_id VARCHAR(50) NOT NULL,
+              decision VARCHAR(50) NOT NULL,
+              reason TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (request_id) REFERENCES approval_requests(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_workflows (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              name TEXT NOT NULL,
+              trigger_event VARCHAR(100) NOT NULL,
+              config TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_requests (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              workflow_id TEXT NOT NULL,
+              reference_type VARCHAR(50) NOT NULL,
+              reference_id TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              current_step_index INTEGER NOT NULL DEFAULT 0,
+              payload TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (workflow_id) REFERENCES approval_workflows(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_decisions (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              actor_id VARCHAR(50) NOT NULL,
+              decision VARCHAR(50) NOT NULL,
+              reason TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (request_id) REFERENCES approval_requests(id) ON DELETE CASCADE
+            )",
             "CREATE TABLE IF NOT EXISTS compliance_ledgers (
               id VARCHAR(50) PRIMARY KEY,
               tenant_id VARCHAR(50) NOT NULL,
@@ -540,6 +1244,70 @@ class SqliteSetup
     private static function getRfidQueries(): array
     {
         return [
+            "CREATE TABLE IF NOT EXISTS approval_workflows (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              name TEXT NOT NULL,
+              trigger_event VARCHAR(100) NOT NULL,
+              config TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_requests (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              workflow_id TEXT NOT NULL,
+              reference_type VARCHAR(50) NOT NULL,
+              reference_id TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              current_step_index INTEGER NOT NULL DEFAULT 0,
+              payload TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (workflow_id) REFERENCES approval_workflows(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_decisions (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              actor_id VARCHAR(50) NOT NULL,
+              decision VARCHAR(50) NOT NULL,
+              reason TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (request_id) REFERENCES approval_requests(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_workflows (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              name TEXT NOT NULL,
+              trigger_event VARCHAR(100) NOT NULL,
+              config TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_requests (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              workflow_id TEXT NOT NULL,
+              reference_type VARCHAR(50) NOT NULL,
+              reference_id TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              current_step_index INTEGER NOT NULL DEFAULT 0,
+              payload TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (workflow_id) REFERENCES approval_workflows(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_decisions (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              actor_id VARCHAR(50) NOT NULL,
+              decision VARCHAR(50) NOT NULL,
+              reason TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (request_id) REFERENCES approval_requests(id) ON DELETE CASCADE
+            )",
             "CREATE TABLE IF NOT EXISTS rfid_tags (
               epc VARCHAR(100) PRIMARY KEY,
               sku VARCHAR(100) NOT NULL,
@@ -555,6 +1323,70 @@ class SqliteSetup
     private static function getLogisticsErpQueries(): array
     {
         return [
+            "CREATE TABLE IF NOT EXISTS approval_workflows (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              name TEXT NOT NULL,
+              trigger_event VARCHAR(100) NOT NULL,
+              config TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_requests (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              workflow_id TEXT NOT NULL,
+              reference_type VARCHAR(50) NOT NULL,
+              reference_id TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              current_step_index INTEGER NOT NULL DEFAULT 0,
+              payload TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (workflow_id) REFERENCES approval_workflows(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_decisions (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              actor_id VARCHAR(50) NOT NULL,
+              decision VARCHAR(50) NOT NULL,
+              reason TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (request_id) REFERENCES approval_requests(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_workflows (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              name TEXT NOT NULL,
+              trigger_event VARCHAR(100) NOT NULL,
+              config TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_requests (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              workflow_id TEXT NOT NULL,
+              reference_type VARCHAR(50) NOT NULL,
+              reference_id TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              current_step_index INTEGER NOT NULL DEFAULT 0,
+              payload TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (workflow_id) REFERENCES approval_workflows(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_decisions (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              actor_id VARCHAR(50) NOT NULL,
+              decision VARCHAR(50) NOT NULL,
+              reason TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (request_id) REFERENCES approval_requests(id) ON DELETE CASCADE
+            )",
             "CREATE TABLE IF NOT EXISTS bills_of_lading (
               id TEXT PRIMARY KEY,
               bol_number TEXT NOT NULL UNIQUE,
@@ -617,6 +1449,70 @@ class SqliteSetup
     private static function getReportingQueries(): array
     {
         return [
+            "CREATE TABLE IF NOT EXISTS approval_workflows (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              name TEXT NOT NULL,
+              trigger_event VARCHAR(100) NOT NULL,
+              config TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_requests (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              workflow_id TEXT NOT NULL,
+              reference_type VARCHAR(50) NOT NULL,
+              reference_id TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              current_step_index INTEGER NOT NULL DEFAULT 0,
+              payload TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (workflow_id) REFERENCES approval_workflows(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_decisions (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              actor_id VARCHAR(50) NOT NULL,
+              decision VARCHAR(50) NOT NULL,
+              reason TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (request_id) REFERENCES approval_requests(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_workflows (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              name TEXT NOT NULL,
+              trigger_event VARCHAR(100) NOT NULL,
+              config TEXT NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_requests (
+              id TEXT PRIMARY KEY,
+              tenant_id VARCHAR(50) NOT NULL,
+              workflow_id TEXT NOT NULL,
+              reference_type VARCHAR(50) NOT NULL,
+              reference_id TEXT NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              current_step_index INTEGER NOT NULL DEFAULT 0,
+              payload TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (workflow_id) REFERENCES approval_workflows(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS approval_decisions (
+              id TEXT PRIMARY KEY,
+              request_id TEXT NOT NULL,
+              actor_id VARCHAR(50) NOT NULL,
+              decision VARCHAR(50) NOT NULL,
+              reason TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (request_id) REFERENCES approval_requests(id) ON DELETE CASCADE
+            )",
             "CREATE TABLE IF NOT EXISTS report_definitions (
               id TEXT PRIMARY KEY,
               tenant_id VARCHAR(50) NOT NULL,

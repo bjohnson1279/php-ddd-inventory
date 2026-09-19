@@ -20,7 +20,7 @@ class ManageApprovalWorkflows
         if (empty($data['config']['steps'])) {
             throw new Exception("Approval workflow must define at least one approval step.");
         }
-        
+
         $id = \Ramsey\Uuid\Uuid::uuid4()->toString();
         $workflow = ApprovalWorkflowModel::create([
             'id' => $id,
@@ -30,7 +30,7 @@ class ManageApprovalWorkflows
             'config' => $data['config'],
             'is_active' => $data['isActive'] ?? true,
         ]);
-        
+
         return $workflow->toArray();
     }
 

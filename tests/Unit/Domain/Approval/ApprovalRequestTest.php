@@ -33,9 +33,9 @@ class ApprovalRequestTest extends TestCase
     {
         $request = $this->createRequest(1);
         $decision = $this->createDecision(0, 'APPROVED');
-        
+
         $request->approve($decision, 2); // Requires 2 approvals
-        
+
         $this->assertEquals(ApprovalRequest::STATUS_PENDING, $request->getStatus());
         $this->assertEquals(0, $request->getCurrentStep());
     }
@@ -44,9 +44,9 @@ class ApprovalRequestTest extends TestCase
     {
         $request = $this->createRequest(3, ApprovalRequest::STATUS_PENDING, 0);
         $decision = $this->createDecision(0, 'APPROVED');
-        
+
         $request->approve($decision, 1);
-        
+
         $this->assertEquals(ApprovalRequest::STATUS_PENDING, $request->getStatus());
         $this->assertEquals(1, $request->getCurrentStep());
     }
@@ -55,9 +55,9 @@ class ApprovalRequestTest extends TestCase
     {
         $request = $this->createRequest(2, ApprovalRequest::STATUS_PENDING, 1); // on final step
         $decision = $this->createDecision(1, 'APPROVED');
-        
+
         $request->approve($decision, 1);
-        
+
         $this->assertEquals(ApprovalRequest::STATUS_APPROVED, $request->getStatus());
     }
 
@@ -65,7 +65,7 @@ class ApprovalRequestTest extends TestCase
     {
         $request = $this->createRequest(2, ApprovalRequest::STATUS_APPROVED);
         $decision = $this->createDecision(0);
-        
+
         $this->expectException(DomainException::class);
         $request->approve($decision, 1);
     }
@@ -74,7 +74,7 @@ class ApprovalRequestTest extends TestCase
     {
         $request = $this->createRequest(2, ApprovalRequest::STATUS_PENDING, 0);
         $decision = $this->createDecision(1); // Mismatch, should be 0
-        
+
         $this->expectException(DomainException::class);
         $request->approve($decision, 1);
     }
@@ -83,9 +83,9 @@ class ApprovalRequestTest extends TestCase
     {
         $request = $this->createRequest(3, ApprovalRequest::STATUS_PENDING, 0);
         $decision = $this->createDecision(0, 'REJECTED');
-        
+
         $request->reject($decision);
-        
+
         $this->assertEquals(ApprovalRequest::STATUS_REJECTED, $request->getStatus());
     }
 
@@ -93,7 +93,7 @@ class ApprovalRequestTest extends TestCase
     {
         $request = $this->createRequest(2, ApprovalRequest::STATUS_APPROVED);
         $decision = $this->createDecision(0, 'REJECTED');
-        
+
         $this->expectException(DomainException::class);
         $request->reject($decision);
     }
@@ -101,9 +101,9 @@ class ApprovalRequestTest extends TestCase
     public function testEscalateAdvancesStep(): void
     {
         $request = $this->createRequest(3, ApprovalRequest::STATUS_PENDING, 0);
-        
+
         $request->escalate();
-        
+
         $this->assertEquals(ApprovalRequest::STATUS_ESCALATED, $request->getStatus());
         $this->assertEquals(1, $request->getCurrentStep());
     }
@@ -111,16 +111,16 @@ class ApprovalRequestTest extends TestCase
     public function testEscalateTransitionsToExpiredAtFinalStep(): void
     {
         $request = $this->createRequest(2, ApprovalRequest::STATUS_PENDING, 1); // on final step
-        
+
         $request->escalate();
-        
+
         $this->assertEquals(ApprovalRequest::STATUS_EXPIRED, $request->getStatus());
     }
 
     public function testEscalateThrowsOnTerminalStatus(): void
     {
         $request = $this->createRequest(2, ApprovalRequest::STATUS_APPROVED);
-        
+
         $this->expectException(DomainException::class);
         $request->escalate();
     }
@@ -139,7 +139,7 @@ class ApprovalRequestTest extends TestCase
     public function testExpireThrowsOnApprovedOrRejected(): void
     {
         $request = $this->createRequest(2, ApprovalRequest::STATUS_APPROVED);
-        
+
         $this->expectException(DomainException::class);
         $request->expire();
     }

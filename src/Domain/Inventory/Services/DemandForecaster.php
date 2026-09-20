@@ -179,10 +179,9 @@ class DemandForecaster
         $stocks = \Illuminate\Database\Capsule\Manager::table('product_locations')
             ->join('products', 'product_locations.product_id', '=', 'products.id')
             ->where('product_locations.location_id', $locationId->getValue())
-            ->select('products.sku')
-            ->get();
+            ->pluck('products.sku');
 
-        $skuStrings = $stocks->pluck('sku')->toArray();
+        $skuStrings = is_array($stocks) ? $stocks : $stocks->toArray();
         $skuObjects = array_map(fn($s) => new SKU($s), $skuStrings);
 
         $products = $this->productRepo->findBySkus($skuObjects);

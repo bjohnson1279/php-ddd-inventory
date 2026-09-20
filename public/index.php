@@ -2776,7 +2776,7 @@ if ($uri === '/api/fulfillment/drop-ship' && $method === 'POST') {
 if ($method === 'GET' && $uri === '/api/anomaly-detection/analyze') {
     requireAuth();
     $service = new \InventoryApp\Application\AI\AnomalyDetectionService();
-    $response = $service->analyze($_GET);
+    $response = $service->analyze(tenantId());
     http_response_code(200);
     echo json_encode($response);
     exit;
@@ -2786,7 +2786,7 @@ if ($method === 'GET' && $uri === '/api/anomaly-detection/analyze') {
 if ($method === 'GET' && $uri === '/api/rebalance/matrix') {
     requireAuth();
     $service = new \InventoryApp\Application\AI\RebalanceOptimizationService();
-    $response = $service->getMatrix($_GET);
+    $response = $service->getMatrix(tenantId());
     http_response_code(200);
     echo json_encode($response);
     exit;

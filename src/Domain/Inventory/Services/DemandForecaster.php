@@ -122,8 +122,18 @@ class DemandForecaster
                 $monthlySales[$month] += abs($entry->quantity);
             }
 
-            $totalSales = array_sum($monthlySales);
-            $activeMonths = count(array_filter($monthlySales, fn($s) => $s > 0)) ?: 1;
+            // ⚡ Bolt Optimization: Replace array_sum and array_filter with a single foreach loop
+            // to eliminate closure invocation overhead and intermediate array allocations.
+            $totalSales = 0;
+            $activeMonthsCount = 0;
+            foreach ($monthlySales as $s) {
+                $totalSales += $s;
+                if ($s > 0) {
+                    $activeMonthsCount++;
+                }
+            }
+            $activeMonths = $activeMonthsCount ?: 1;
+
             $overallMonthlyAverage = $totalSales / $activeMonths;
 
             if ($overallMonthlyAverage > 0) {

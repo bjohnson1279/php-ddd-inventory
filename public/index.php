@@ -2660,11 +2660,12 @@ if ($method === 'POST' && str_starts_with($uri, '/webhooks/shopify/')) {
 
 // ── Lot Quarantine & Recall Endpoints ─────────────────────────────────────
 if ($uri === '/api/lots/quarantine' && $method === 'POST') {
+    requireAuth();
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
     $lotNumber = $input['lotNumber'] ?? '';
     $variantId = $input['variantId'] ?? '';
     $reason = $input['reason'] ?? 'Quarantine initiated';
-    $tenantId = 'tenant-1';
+    $tenantId = tenantId();
 
     $lot = new \App\Domain\Inventory\Entities\LotBatch(
         id: uniqid('lot-'),
@@ -2688,11 +2689,12 @@ if ($uri === '/api/lots/quarantine' && $method === 'POST') {
 }
 
 if ($uri === '/api/lots/recall' && $method === 'POST') {
+    requireAuth();
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
     $lotNumber = $input['lotNumber'] ?? '';
     $variantId = $input['variantId'] ?? '';
     $reason = $input['reason'] ?? 'Recall initiated';
-    $tenantId = 'tenant-1';
+    $tenantId = tenantId();
 
     $lot = new \App\Domain\Inventory\Entities\LotBatch(
         id: uniqid('lot-'),
@@ -2716,12 +2718,13 @@ if ($uri === '/api/lots/recall' && $method === 'POST') {
 }
 
 if ($uri === '/api/lots/release' && $method === 'POST') {
+    requireAuth();
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
     $lotNumber = $input['lotNumber'] ?? '';
     $variantId = $input['variantId'] ?? '';
 
     echo json_encode([
-        'tenantId' => 'tenant-1',
+        'tenantId' => tenantId(),
         'lotNumber' => $lotNumber,
         'variantId' => $variantId,
         'status' => 'ACTIVE'
@@ -2730,13 +2733,14 @@ if ($uri === '/api/lots/release' && $method === 'POST') {
 }
 
 if (str_starts_with($uri, '/api/lots/') && str_ends_with($uri, '/traceability') && $method === 'GET') {
+    requireAuth();
     $parts = explode('/', trim($uri, '/'));
     $lotNumber = urldecode($parts[2] ?? '');
     $variantId = $_GET['variantId'] ?? '';
     
     $lot = new \App\Domain\Inventory\Entities\LotBatch(
         id: 'temp-lot-1',
-        tenantId: 'tenant-1',
+        tenantId: tenantId(),
         lotNumber: $lotNumber,
         variantId: $variantId,
         status: 'ACTIVE'
@@ -2748,6 +2752,7 @@ if (str_starts_with($uri, '/api/lots/') && str_ends_with($uri, '/traceability') 
 }
 
 if ($uri === '/api/cross-dock/evaluate' && $method === 'POST') {
+    requireAuth();
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
     $poId = $input['purchaseOrderId'] ?? 'PO-1';
     $inbound = $input['inboundItems'] ?? [];
@@ -2759,6 +2764,7 @@ if ($uri === '/api/cross-dock/evaluate' && $method === 'POST') {
 }
 
 if ($uri === '/api/fulfillment/drop-ship' && $method === 'POST') {
+    requireAuth();
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
     echo json_encode([
         'status' => 'SUCCESS',

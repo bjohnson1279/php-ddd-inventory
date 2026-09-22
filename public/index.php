@@ -2800,6 +2800,7 @@ if ($method === 'GET' && $uri === '/api/rebalance/matrix') {
 
 // ── Section 11 Enterprise Extensions Routes ─────────────────────────────────
 if ($method === 'POST' && $uri === '/api/shipping/quote') {
+    requireAuth();
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
     $carrier = $input['carrier'] ?? 'FEDEX';
     $weightKg = (float)($input['weightKg'] ?? 1.0);
@@ -2817,6 +2818,7 @@ if ($method === 'POST' && $uri === '/api/shipping/quote') {
 }
 
 if ($method === 'POST' && $uri === '/api/shipping/label') {
+    requireAuth();
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
     $carrier = $input['carrier'] ?? 'FEDEX';
     $tracking = $carrier . '-' . rand(100000000, 999999999);

@@ -2660,6 +2660,7 @@ if ($method === 'POST' && str_starts_with($uri, '/webhooks/shopify/')) {
 
 // ── Lot Quarantine & Recall Endpoints ─────────────────────────────────────
 if ($uri === '/api/lots/quarantine' && $method === 'POST') {
+    requireAuth();
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
     $lotNumber = $input['lotNumber'] ?? '';
     $variantId = $input['variantId'] ?? '';
@@ -2688,6 +2689,7 @@ if ($uri === '/api/lots/quarantine' && $method === 'POST') {
 }
 
 if ($uri === '/api/lots/recall' && $method === 'POST') {
+    requireAuth();
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
     $lotNumber = $input['lotNumber'] ?? '';
     $variantId = $input['variantId'] ?? '';
@@ -2716,6 +2718,7 @@ if ($uri === '/api/lots/recall' && $method === 'POST') {
 }
 
 if ($uri === '/api/lots/release' && $method === 'POST') {
+    requireAuth();
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
     $lotNumber = $input['lotNumber'] ?? '';
     $variantId = $input['variantId'] ?? '';
@@ -2730,6 +2733,7 @@ if ($uri === '/api/lots/release' && $method === 'POST') {
 }
 
 if (str_starts_with($uri, '/api/lots/') && str_ends_with($uri, '/traceability') && $method === 'GET') {
+    requireAuth();
     $parts = explode('/', trim($uri, '/'));
     $lotNumber = urldecode($parts[2] ?? '');
     $variantId = $_GET['variantId'] ?? '';
@@ -2748,6 +2752,7 @@ if (str_starts_with($uri, '/api/lots/') && str_ends_with($uri, '/traceability') 
 }
 
 if ($uri === '/api/cross-dock/evaluate' && $method === 'POST') {
+    requireAuth();
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
     $poId = $input['purchaseOrderId'] ?? 'PO-1';
     $inbound = $input['inboundItems'] ?? [];
@@ -2759,6 +2764,7 @@ if ($uri === '/api/cross-dock/evaluate' && $method === 'POST') {
 }
 
 if ($uri === '/api/fulfillment/drop-ship' && $method === 'POST') {
+    requireAuth();
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
     echo json_encode([
         'status' => 'SUCCESS',
@@ -2794,6 +2800,7 @@ if ($method === 'GET' && $uri === '/api/rebalance/matrix') {
 
 // ── Section 11 Enterprise Extensions Routes ─────────────────────────────────
 if ($method === 'POST' && $uri === '/api/shipping/quote') {
+    requireAuth();
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
     $carrier = $input['carrier'] ?? 'FEDEX';
     $weightKg = (float)($input['weightKg'] ?? 1.0);
@@ -2811,6 +2818,7 @@ if ($method === 'POST' && $uri === '/api/shipping/quote') {
 }
 
 if ($method === 'POST' && $uri === '/api/shipping/label') {
+    requireAuth();
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
     $carrier = $input['carrier'] ?? 'FEDEX';
     $tracking = $carrier . '-' . rand(100000000, 999999999);

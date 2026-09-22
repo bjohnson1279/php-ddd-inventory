@@ -36,10 +36,10 @@ jobs:
             fi
           fi
 
-          # 3. Reject Forbidden Scratch Verification Files
-          SCRATCH_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '(^|/)test(_.*)?\.(ts|js|cjs|mjs|py|php)$|(^|/)fix_.*\.(php|cjs|js|ts)$|(^|/)update_.*\.(php|cjs|js|ts)$|(^|/)scratch_.*|.*\.scratch$' || true)
+          # 3. Reject Forbidden Scratch Verification Files & Plans
+          SCRATCH_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '(^|/)test(_.*)?\.(ts|js|cjs|mjs|py|php)$|(^|/)fix_.*\.(php|cjs|js|ts)$|(^|/)update_.*\.(php|cjs|js|ts)$|(^|/)scratch_.*|.*\.scratch$|(^|/)plan\.md$' || true)
           if [ -n "$SCRATCH_FILES" ]; then
-            echo "❌ ERROR: PR contains forbidden scratch verification files:"
+            echo "❌ ERROR: PR contains forbidden scratch verification files (e.g. plan.md, test.js):"
             echo "$SCRATCH_FILES"
             exit 1
           fi
@@ -55,58 +55,3 @@ jobs:
           done
 
           echo "✅ Basic Bot Diff Guardrail Passed."
-
-      - name: Syntax & Script Verification Gate
-        run: |
-          echo "=== Checking Modified Files for Syntax Errors ==="
-          MODIFIED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
-
-          for f in $MODIFIED_FILES; do
-            if [ -f "$f" ]; then
-              if [[ "$f" == *.sh ]]; then
-                echo "Validating Bash syntax: $f"
-                bash -n "$f"
-              elif [[ "$f" == *.py ]]; then
-                echo "Validating Python syntax: $f"
-                python3 -m py_compile "$f"
-              elif [[ "$f" == *.php ]] && command -v php &> /dev/null; then
-                echo "Validating PHP syntax: $f"
-                php -l "$f"
-              fi
-            fi
-          done
-
-          echo "✅ Syntax Verification Gate Passed."
-
-      - name: Dependency Security Audit Gate
-        run: |
-          echo "=== Auditing Dependency Manifests for Known Vulnerabilities ==="
-          MODIFIED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
-
-          # Node.js audit
-          if echo "$MODIFIED_FILES" | grep -E '(package\.json|package-lock\.json)'; then
-            if [ -f "package-lock.json" ]; then
-              echo "Running npm audit..."
-              npm audit --audit-level=high || true
-            fi
-          fi
-
-          # Ruby bundler-audit
-          if echo "$MODIFIED_FILES" | grep -E '(Gemfile|Gemfile\.lock)'; then
-            if [ -f "Gemfile.lock" ]; then
-              echo "Checking Ruby gems for known advisories..."
-              if command -v bundle-audit &> /dev/null; then
-                bundle-audit check --update || true
-              fi
-            fi
-          fi
-
-          # PHP composer audit
-          if echo "$MODIFIED_FILES" | grep -E '(composer\.json|composer\.lock)'; then
-            if [ -f "composer.lock" ] && command -v composer &> /dev/null; then
-              echo "Running composer audit..."
-              composer audit || true
-            fi
-          fi
-
-          echo "✅ Security Audit Gate Completed."

@@ -234,22 +234,31 @@ class ApprovalWorkflowService
             ->whereIn('status', ['PENDING', 'ESCALATED'])
             ->orderBy('created_at', 'desc');
 
-        $requests = $query->get()->toArray();
+        $requests = $query->get();
 
         if (empty($deciderRoleIds)) {
-            return $requests;
+            return $requests->toArray();
         }
 
+        // ⚡ Bolt Optimization: Cache decoded config per workflow and delay toArray() casting
+        // until after filtering to prevent O(N) json_decodes and unnecessary object hydration overhead.
         $filtered = [];
+        $workflowConfigs = [];
         foreach ($requests as $req) {
-            $config = is_string($req['workflow']['config']) ? json_decode($req['workflow']['config'], true) : $req['workflow']['config'];
-            $currentStep = $config['steps'][$req['current_step']] ?? null;
+            if (!isset($workflowConfigs[$req->workflow_id])) {
+                $workflowConfigs[$req->workflow_id] = is_string($req->workflow->config)
+                    ? json_decode($req->workflow->config, true)
+                    : $req->workflow->config;
+            }
+
+            $config = $workflowConfigs[$req->workflow_id];
+            $currentStep = $config['steps'][$req->current_step] ?? null;
 
             if (!$currentStep) continue;
 
             $approverRoles = $currentStep['approverRoles'] ?? [];
             if (!empty(array_intersect($approverRoles, $deciderRoleIds))) {
-                $filtered[] = $req;
+                $filtered[] = $req->toArray();
             }
         }
 

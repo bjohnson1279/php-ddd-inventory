@@ -189,8 +189,15 @@ class ApprovalWorkflowService
 
         $processedCount = 0;
 
+        // ⚡ Bolt Optimization: Memoize the json_decode result for workflow configs
+        // to avoid redundant parsing overhead when multiple requests share the same workflow.
+        $workflowConfigCache = [];
+
         foreach ($staleRequests as $record) {
-            $config = is_string($record->workflow->config) ? json_decode($record->workflow->config, true) : $record->workflow->config;
+            if (!isset($workflowConfigCache[$record->workflow_id])) {
+                $workflowConfigCache[$record->workflow_id] = is_string($record->workflow->config) ? json_decode($record->workflow->config, true) : $record->workflow->config;
+            }
+            $config = $workflowConfigCache[$record->workflow_id];
             $request = ApprovalRequest::reconstruct(
                 $record->id, $record->tenant_id, $record->workflow_id,
                 $record->reference_type, $record->reference_id, $record->requester_id,
@@ -241,8 +248,16 @@ class ApprovalWorkflowService
         }
 
         $filtered = [];
+
+        // ⚡ Bolt Optimization: Memoize the json_decode result for workflow configs
+        // to avoid redundant parsing overhead when multiple requests share the same workflow.
+        $workflowConfigCache = [];
+
         foreach ($requests as $req) {
-            $config = is_string($req['workflow']['config']) ? json_decode($req['workflow']['config'], true) : $req['workflow']['config'];
+            if (!isset($workflowConfigCache[$req['workflow_id']])) {
+                $workflowConfigCache[$req['workflow_id']] = is_string($req['workflow']['config']) ? json_decode($req['workflow']['config'], true) : $req['workflow']['config'];
+            }
+            $config = $workflowConfigCache[$req['workflow_id']];
             $currentStep = $config['steps'][$req['current_step']] ?? null;
 
             if (!$currentStep) continue;

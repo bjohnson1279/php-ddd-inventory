@@ -13,7 +13,7 @@ class ComplianceController
     public function list(RequestInterface $request)
     {
         try {
-            $tenantId = $request->query('tenantId') ?: null;
+            $tenantId = function_exists('tenantId') ? tenantId() : 'system';
             $repo = ServiceContainer::complianceLedgerRepo();
             $entries = $repo->findAll($tenantId);
 
@@ -45,7 +45,7 @@ class ComplianceController
     public function verify(RequestInterface $request)
     {
         try {
-            $tenantId = $request->query('tenantId') ?: null;
+            $tenantId = function_exists('tenantId') ? tenantId() : 'system';
             $result = ComplianceLedgerService::validateLedger($tenantId);
             return new Response($result, 200);
         } catch (Exception $e) {
@@ -57,7 +57,7 @@ class ComplianceController
     public function reconstruct(RequestInterface $request)
     {
         try {
-            $tenantId = $request->query('tenantId') ?: 'tenant-1';
+            $tenantId = function_exists('tenantId') ? tenantId() : 'system';
             $timestamp = $request->query('timestamp') ?: null;
             $result = ComplianceLedgerService::reconstructState($tenantId, $timestamp);
             return new Response($result, 200);
@@ -70,7 +70,7 @@ class ComplianceController
     public function replay(RequestInterface $request)
     {
         try {
-            $tenantId = $request->query('tenantId') ?: 'tenant-1';
+            $tenantId = function_exists('tenantId') ? tenantId() : 'system';
             $timestamp = $request->query('timestamp') ?: null;
             $result = ComplianceLedgerService::replayAudit($tenantId, $timestamp);
             return new Response($result, 200);

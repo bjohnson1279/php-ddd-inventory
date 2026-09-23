@@ -76,3 +76,7 @@
 **Vulnerability:** The `/api/anomaly-detection/analyze` and `/api/rebalance/matrix` endpoints in `public/index.php` were passing the untrusted `$_GET` global array directly into service methods (`analyze` and `getMatrix`) which expect a `tenantId` string. This allows for an Insecure Direct Object Reference (IDOR) bypass, where a malicious actor could theoretically manipulate the input to access other tenants' data.
 **Learning:** Never pass raw globals like `$_GET` directly into service methods, especially those responsible for fetching data based on a tenant ID. Always resolve the tenant context securely from the authenticated session.
 **Prevention:** Always use the securely resolved `tenantId()` helper function to fetch the current tenant ID, ensuring that AI endpoints and other services only access data for the currently authenticated tenant.
+## 2024-05-24 - Fix IDOR in Compliance Controller
+**Vulnerability:** IDOR in ComplianceController methods (`list`, `verify`, `reconstruct`, `replay`) trusting the `tenantId` query parameter from user input.
+**Learning:** Controllers in the system must not blindly trust `tenantId` from `$request->query('tenantId')` or `$_GET['tenantId']` for data isolation.
+**Prevention:** Always use the securely resolved `tenantId()` helper (or fallback to 'system') instead of user-provided tenant identifiers.

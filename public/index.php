@@ -2920,8 +2920,9 @@ if ($method === 'GET' && $uri === '/api/supplier/otif-scorecard') {
 if ($method === 'POST' && $uri === '/api/hardware/print-thermal') {
     requireAuth();
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
-    $type = strtoupper($input['labelType'] ?? 'LABEL');
-    $barcode = $input['barcodeValue'] ?? 'BARCODE';
+    // Sentinel optimization: Strip ZPL control characters to prevent injection
+    $type = str_replace(['^', '~'], '', strtoupper($input['labelType'] ?? 'LABEL'));
+    $barcode = str_replace(['^', '~'], '', $input['barcodeValue'] ?? 'BARCODE');
     $zpl = "^XA\n^FO50,50^A0N,36,36^FD{$type} TAG^FS\n^FO50,100^BCN,100,Y,N,N^FD{$barcode}^FS\n^XZ";
     echo json_encode([
         'success' => true,

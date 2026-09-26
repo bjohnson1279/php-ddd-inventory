@@ -2827,7 +2827,7 @@ if ($method === 'POST' && $uri === '/api/shipping/label') {
         'trackingNumber' => $tracking,
         'serviceLevel' => 'EXPRESS',
         'labelFormat' => $input['format'] ?? 'BOTH',
-        'zplString' => "^XA^FO50,50^A0N,36,36^FDSHIP TO: " . ($input['recipientName'] ?? 'Recipient') . "^FS^XZ",
+        'zplString' => "^XA^FO50,50^A0N,36,36^FDSHIP TO: " . str_replace(['^', '~'], '', $input['recipientName'] ?? 'Recipient') . "^FS^XZ",
         'pdfBase64' => base64_encode("SHIPPING LABEL\nCarrier: {$carrier}\nTracking: {$tracking}"),
         'createdAt' => (new DateTimeImmutable())->format(DATE_ATOM)
     ]);
@@ -2920,8 +2920,8 @@ if ($method === 'GET' && $uri === '/api/supplier/otif-scorecard') {
 if ($method === 'POST' && $uri === '/api/hardware/print-thermal') {
     requireAuth();
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
-    $type = strtoupper($input['labelType'] ?? 'LABEL');
-    $barcode = $input['barcodeValue'] ?? 'BARCODE';
+    $type = strtoupper(str_replace(['^', '~'], '', $input['labelType'] ?? 'LABEL'));
+    $barcode = str_replace(['^', '~'], '', $input['barcodeValue'] ?? 'BARCODE');
     $zpl = "^XA\n^FO50,50^A0N,36,36^FD{$type} TAG^FS\n^FO50,100^BCN,100,Y,N,N^FD{$barcode}^FS\n^XZ";
     echo json_encode([
         'success' => true,

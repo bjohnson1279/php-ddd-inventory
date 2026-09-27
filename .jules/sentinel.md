@@ -76,3 +76,8 @@
 **Vulnerability:** The `/api/anomaly-detection/analyze` and `/api/rebalance/matrix` endpoints in `public/index.php` were passing the untrusted `$_GET` global array directly into service methods (`analyze` and `getMatrix`) which expect a `tenantId` string. This allows for an Insecure Direct Object Reference (IDOR) bypass, where a malicious actor could theoretically manipulate the input to access other tenants' data.
 **Learning:** Never pass raw globals like `$_GET` directly into service methods, especially those responsible for fetching data based on a tenant ID. Always resolve the tenant context securely from the authenticated session.
 **Prevention:** Always use the securely resolved `tenantId()` helper function to fetch the current tenant ID, ensuring that AI endpoints and other services only access data for the currently authenticated tenant.
+
+## 2024-10-31 - ZPL Injection in Thermal Printer API
+**Vulnerability:** The `/api/hardware/print-thermal` endpoint constructs a ZPL string directly from user inputs `labelType` and `barcodeValue` without sanitization. This introduces a ZPL injection vulnerability, allowing an attacker to inject arbitrary ZPL control characters to manipulate the printed label, bypass printer security, or cause denial of service.
+**Learning:** Constructing ZPL commands from unsanitized input is analogous to XSS or command injection. Attackers can leverage control characters (`^` and `~`) to change printer configurations or alter the label's intent.
+**Prevention:** Always sanitize user input prior to interpolation into ZPL strings by stripping out ZPL control characters, particularly `^` and `~`.

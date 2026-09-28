@@ -188,9 +188,14 @@ class ApprovalWorkflowService
             ->get();
 
         $processedCount = 0;
+        $decodedConfigs = [];
 
         foreach ($staleRequests as $record) {
-            $config = is_string($record->workflow->config) ? json_decode($record->workflow->config, true) : $record->workflow->config;
+            if (!isset($decodedConfigs[$record->workflow_id])) {
+                $decodedConfigs[$record->workflow_id] = is_string($record->workflow->config) ? json_decode($record->workflow->config, true) : $record->workflow->config;
+            }
+            $config = $decodedConfigs[$record->workflow_id];
+
             $request = ApprovalRequest::reconstruct(
                 $record->id, $record->tenant_id, $record->workflow_id,
                 $record->reference_type, $record->reference_id, $record->requester_id,
@@ -241,8 +246,12 @@ class ApprovalWorkflowService
         }
 
         $filtered = [];
+        $decodedConfigs = [];
         foreach ($requests as $req) {
-            $config = is_string($req['workflow']['config']) ? json_decode($req['workflow']['config'], true) : $req['workflow']['config'];
+            if (!isset($decodedConfigs[$req['workflow_id']])) {
+                $decodedConfigs[$req['workflow_id']] = is_string($req['workflow']['config']) ? json_decode($req['workflow']['config'], true) : $req['workflow']['config'];
+            }
+            $config = $decodedConfigs[$req['workflow_id']];
             $currentStep = $config['steps'][$req['current_step']] ?? null;
 
             if (!$currentStep) continue;

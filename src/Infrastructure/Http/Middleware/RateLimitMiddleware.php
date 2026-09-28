@@ -8,11 +8,13 @@ class RateLimitMiddleware
 {
     private int $limit;
     private int $windowSeconds;
+    private string $cacheKeySuffix;
 
-    public function __construct(int $limit = 5, int $windowSeconds = 60)
+    public function __construct(int $limit = 5, int $windowSeconds = 60, string $cacheKeySuffix = '')
     {
         $this->limit = $limit;
         $this->windowSeconds = $windowSeconds;
+        $this->cacheKeySuffix = $cacheKeySuffix;
     }
 
     public function handle($request, \Closure $next)
@@ -50,7 +52,7 @@ class RateLimitMiddleware
         if (php_sapi_name() === 'cli-server' || (php_sapi_name() === 'cli' && defined('PHPUNIT_COMPOSER_INSTALL') && !str_starts_with($ip, '10.0.'))) {
             return $next($request);
         }
-        $cacheFile = sys_get_temp_dir() . '/rate_limit_' . hash('sha256', $ip) . '.json';
+        $cacheFile = sys_get_temp_dir() . '/rate_limit_' . hash('sha256', $ip . '_' . $this->cacheKeySuffix) . '.json';
 
         $now = time();
         $requests = [];

@@ -37,7 +37,7 @@ jobs:
           fi
 
           # 3. Reject Forbidden Scratch Verification Files & Plans
-          SCRATCH_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '(^|/)test(_.*)?\.(ts|js|cjs|mjs|py|php)$|(^|/)fix_.*\.(php|cjs|js|ts)$|(^|/)update_.*\.(php|cjs|js|ts)$|(^|/)scratch_.*|.*\.scratch$|(^|/)plan\.md$' || true)
+          SCRATCH_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '^test(_.*)?\.(ts|js|cjs|mjs|py|php)$|(^|/)(scratch(_.*)?|temp(_.*)?|plan\.md$)|(^|/)fix_.*\.(php|cjs|js|ts)$|(^|/)update_.*\.(php|cjs|js|ts)$|.*\.scratch$' || true)
           if [ -n "$SCRATCH_FILES" ]; then
             echo "❌ ERROR: PR contains forbidden scratch verification files (e.g. plan.md, test.js):"
             echo "$SCRATCH_FILES"

@@ -1,0 +1,3 @@
+# Additive union merge for automated bot learning journals to prevent merge conflicts
+.jules/*.md merge=union
+.Jules/*.md merge=union

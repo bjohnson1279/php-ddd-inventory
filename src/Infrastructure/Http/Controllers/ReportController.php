@@ -37,7 +37,7 @@ class ReportController
             $catalogVariants = $this->fetchCatalogVariantsMap($productSkus);
 
             $reportData = $this->buildReportData($products, $locations, $allStocks, $allLayers, $catalogVariants);
-            $reportData['recent_activity'] = $this->getRecentActivity($tenantId, $products->keyBy(fn($item) => (string)$item->id));
+            $reportData['recent_activity'] = $this->getRecentActivity($tenantId, $products->mapWithKeys(fn($item) => [(string)$item->id => $item]));
 
             return new Response($reportData, 200);
         } catch (Exception $e) {

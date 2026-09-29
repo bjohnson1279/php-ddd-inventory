@@ -85,3 +85,8 @@
 **Vulnerability:** IDOR in ComplianceController methods (`list`, `verify`, `reconstruct`, `replay`) trusting the `tenantId` query parameter from user input.
 **Learning:** Controllers in the system must not blindly trust `tenantId` from `$request->query('tenantId')` or `$_GET['tenantId']` for data isolation.
 **Prevention:** Always use the securely resolved `tenantId()` helper (or fallback to 'system') instead of user-provided tenant identifiers.
+
+## 2024-11-06 - Insecure Rate Limit Key Formulation
+**Vulnerability:** The RateLimitMiddleware used only the IP address for its cache key, creating a global rate limit pool across all endpoints. While not using `$_SERVER['REQUEST_URI']` prevents an immediate bypass vulnerability via dynamic paths, omitting a route identifier entirely allows attackers to easily DoS specific users or bypass intended per-route limits by cross-polluting the cache.
+**Learning:** Rate limiting mechanisms must isolate limits per action or route. A global rate limit based solely on IP addresses can inadvertently lock users out of the entire application (e.g., login, registration) if they hit the limit on a single noisy endpoint, or conversely, fail to sufficiently limit high-value targets.
+**Prevention:** When implementing rate limiting per route, do not use `$_SERVER['REQUEST_URI']` or `parse_url` paths as part of the rate limit cache key, as this allows attackers to bypass limits using dynamic path segments or query parameters. Instead, pass an explicit, static route identifier (e.g., `$cacheKeySuffix = 'login'`) into the middleware.

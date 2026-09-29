@@ -633,7 +633,7 @@ if ($method === 'POST' && preg_match('#^/api/audit/discrepancies/([^/]+)/resolve
 
 // ── Route: POST /auth/register ────────────────────────────────────────────────
 if ($method === 'POST' && $uri === '/auth/register') {
-    $middleware = new \InventoryApp\Infrastructure\Http\Middleware\RateLimitMiddleware(5, 60);
+    $middleware = new \InventoryApp\Infrastructure\Http\Middleware\RateLimitMiddleware(5, 60, 'register');
     $response = $middleware->handle($request, function ($req) use ($dispatcher) {
         $useCase  = new RegisterUser(ServiceContainer::userRepo(), $dispatcher);
         return (new AuthController())->register($req, $useCase);
@@ -646,7 +646,7 @@ if ($method === 'POST' && $uri === '/auth/register') {
 
 // ── Route: POST /api/setup ───────────────────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/setup') {
-    $middleware = new \InventoryApp\Infrastructure\Http\Middleware\RateLimitMiddleware(5, 60);
+    $middleware = new \InventoryApp\Infrastructure\Http\Middleware\RateLimitMiddleware(5, 60, 'setup');
     $response = $middleware->handle($request, function ($req) {
         $body = json_decode(file_get_contents('php://input'), true) ?: [];
 
@@ -748,7 +748,7 @@ if ($method === 'GET' && $uri === '/api/users') {
 // ── Route: POST /api/users ────────────────────────────────────────────────────
 if ($method === 'POST' && $uri === '/api/users') {
     requireAuth();
-    $middleware = new \InventoryApp\Infrastructure\Http\Middleware\RateLimitMiddleware(5, 60);
+    $middleware = new \InventoryApp\Infrastructure\Http\Middleware\RateLimitMiddleware(5, 60, 'users');
     $response = $middleware->handle($request, function ($req) use ($dispatcher) {
         $body = json_decode(file_get_contents('php://input'), true) ?: [];
 
@@ -791,7 +791,7 @@ if ($method === 'POST' && $uri === '/api/users') {
 
 // ── Route: POST /auth/login ───────────────────────────────────────────────────
 if ($method === 'POST' && ($uri === '/auth/login' || $uri === '/api/auth/login')) {
-    $middleware = new \InventoryApp\Infrastructure\Http\Middleware\RateLimitMiddleware(5, 60);
+    $middleware = new \InventoryApp\Infrastructure\Http\Middleware\RateLimitMiddleware(5, 60, 'login');
     $response = $middleware->handle($request, function ($req) {
         $useCase  = new AuthenticateUser(ServiceContainer::userRepo(), new ApiTokenService());
         return (new AuthController())->login($req, $useCase);

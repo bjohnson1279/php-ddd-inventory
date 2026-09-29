@@ -27,14 +27,16 @@ class AuditProcessorService
         $accessToken = env('SHOPIFY_ACCESS_TOKEN');
 
         if ($storeDomain && $accessToken) {
-            $skuMappings = Capsule::table('shopify_sku_mappings')->get();
-            $locMappings = Capsule::table('shopify_location_mappings')->get();
+            $skuMappingsRaw = Capsule::table('shopify_sku_mappings')->pluck('shopify_inventory_item_id', 'sku');
+            $skuMappings = is_array($skuMappingsRaw) ? $skuMappingsRaw : $skuMappingsRaw->toArray();
+            $locMappingsRaw = Capsule::table('shopify_location_mappings')->pluck('shopify_location_id', 'our_location_id');
+            $locMappings = is_array($locMappingsRaw) ? $locMappingsRaw : $locMappingsRaw->toArray();
 
             // ⚡ Bolt Optimization: Prevent N+1 queries during Shopify inventory auditing
             // 💡 What: Pre-fetch all relevant products and pre-calculate local stock levels using a group-by query.
             // 🎯 Why: Previously, finding the product and summing ledger entries ran queries inside nested loops, causing N+1 database calls.
             // 📊 Impact: Significant reduction in query count and execution time when auditing tenants with many products and locations.
-            $skus = $skuMappings->pluck('sku')->toArray();
+            $skus = array_keys($skuMappings);
             $productsBySku = ProductModel::where('tenant_id', $tenantId)
                 ->whereIn('sku', $skus)
                 ->get()
@@ -57,9 +59,9 @@ class AuditProcessorService
 
             // Bolt optimization: Pre-fetch existing discrepancies to avoid N+1 queries
             $possibleReferenceIds = [];
-            foreach ($skuMappings as $skuMap) {
-                foreach ($locMappings as $locMap) {
-                    $possibleReferenceIds[] = "{$skuMap->sku}:{$locMap->our_location_id}";
+            foreach ($skuMappings as $sku => $inventoryItemId) {
+                foreach ($locMappings as $ourLocationId => $shopifyLocationId) {
+                    $possibleReferenceIds[] = "{$sku}:{$ourLocationId}";
                 }
             }
 
@@ -73,19 +75,13 @@ class AuditProcessorService
                     ->pluck('reference_id')->toArray());
             }
 
-            foreach ($skuMappings as $skuMap) {
-                $sku = $skuMap->sku;
-                $inventoryItemId = $skuMap->shopify_inventory_item_id;
-
+            foreach ($skuMappings as $sku => $inventoryItemId) {
                 $product = $productsBySku->get($sku);
                 if (!$product) {
                     continue;
                 }
 
-                foreach ($locMappings as $locMap) {
-                    $ourLocationId = $locMap->our_location_id;
-                    $shopifyLocationId = $locMap->shopify_location_id;
-
+                foreach ($locMappings as $ourLocationId => $shopifyLocationId) {
                     $localQty = 0;
                     if ($ledgerQuantities->has($product->id)) {
                         $locRows = $ledgerQuantities->get($product->id);

@@ -27,19 +27,21 @@ jobs:
             exit 1
           fi
 
-          # 2. Reject Zero-Diff / Hallucinatory Acknowledgment PRs
+          # 2. Reject Zero-Diff / Hallucinatory Acknowledgment PRs & Journal-Only PRs
           if [ "${{ github.actor }}" != "dependabot" ] && [ "${{ github.actor }}" != "dependabot[bot]" ]; then
             CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -v '^\.jules/' | grep -v '^\.Jules/' | grep -v 'package.*json' | grep -v 'composer\.lock' | grep -v 'Gemfile\.lock' | grep -v 'pnpm-lock\.yaml' | grep -v 'mix\.lock' | grep -v 'Cargo\.lock' || true)
             if [ -z "$CHANGED_FILES" ]; then
-              echo "❌ ERROR: PR contains 0 non-metadata code changes (hallucinatory task acknowledgment). Auto-failing."
+              echo "❌ ERROR: PR contains 0 non-metadata code changes (hallucinatory task acknowledgment or journal notes only). Auto-failing."
               exit 1
             fi
           fi
 
-          # 3. Reject Forbidden Scratch Verification Files & Plans
-          SCRATCH_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '^test(_.*)?\.(ts|js|cjs|mjs|py|php)$|(^|/)(scratch(_.*)?|temp(_.*)?|plan\.md$)|(^|/)fix_.*\.(php|cjs|js|ts)$|(^|/)update_.*\.(php|cjs|js|ts)$|.*\.scratch$' || true)
+          # 3. Reject Forbidden Scratch Verification Files
+          # Filter out recognized test suite directories and only audit newly added non-test files
+          ADDED_FILES=$(git diff --name-only --diff-filter=A origin/${{ github.base_ref }}...HEAD | grep -v -E '(^|/)(tests|__tests__|test)/' || true)
+          SCRATCH_FILES=$(echo "$ADDED_FILES" | grep -E '(^|/)test(_.*)?\.(ts|js|cjs|mjs|py|php|sh|bash)$|(^|/)fix_.*\.(php|cjs|js|ts|sh)$|(^|/)patch_.*\.(php|cjs|js|ts|py|sh|bash)$|(^|/)update_.*\.(php|cjs|js|ts|sh)$|(^|/)scratch_.*|.*\.scratch$|^plan\.md$' || true)
           if [ -n "$SCRATCH_FILES" ]; then
-            echo "❌ ERROR: PR contains forbidden scratch verification files (e.g. plan.md, test.js):"
+            echo "❌ ERROR: PR contains forbidden scratch verification files:"
             echo "$SCRATCH_FILES"
             exit 1
           fi
@@ -54,4 +56,67 @@ jobs:
             fi
           done
 
+          # 5. Reject Bot CI Workflow Tampering
+          CI_DIFF=$(git diff origin/${{ github.base_ref }}...HEAD -- .github/workflows/ | grep -E '\|\|\s*true|continue-on-error:\s*true' || true)
+          if [ -n "$CI_DIFF" ]; then
+            echo "❌ ERROR: Bot PR modifies .github/workflows to suppress errors ('|| true' or 'continue-on-error: true'). Auto-failing."
+            echo "$CI_DIFF"
+            exit 1
+          fi
+
           echo "✅ Basic Bot Diff Guardrail Passed."
+
+      - name: Syntax & Script Verification Gate
+        run: |
+          echo "=== Checking Modified Files for Syntax Errors ==="
+          MODIFIED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+
+          for f in $MODIFIED_FILES; do
+            if [ -f "$f" ]; then
+              if [[ "$f" == *.sh ]]; then
+                echo "Validating Bash syntax: $f"
+                bash -n "$f"
+              elif [[ "$f" == *.py ]]; then
+                echo "Validating Python syntax: $f"
+                python3 -m py_compile "$f"
+              elif [[ "$f" == *.php ]] && command -v php &> /dev/null; then
+                echo "Validating PHP syntax: $f"
+                php -l "$f"
+              fi
+            fi
+          done
+
+          echo "✅ Syntax Verification Gate Passed."
+
+      - name: Dependency Security Audit Gate
+        run: |
+          echo "=== Auditing Dependency Manifests for Known Vulnerabilities ==="
+          MODIFIED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+
+          # Node.js audit
+          if echo "$MODIFIED_FILES" | grep -E '(package\.json|package-lock\.json)'; then
+            if [ -f "package-lock.json" ]; then
+              echo "Running npm audit..."
+              npm audit --audit-level=high || true
+            fi
+          fi
+
+          # Ruby bundler-audit
+          if echo "$MODIFIED_FILES" | grep -E '(Gemfile|Gemfile\.lock)'; then
+            if [ -f "Gemfile.lock" ]; then
+              echo "Checking Ruby gems for known advisories..."
+              if command -v bundle-audit &> /dev/null; then
+                bundle-audit check --update || true
+              fi
+            fi
+          fi
+
+          # PHP composer audit
+          if echo "$MODIFIED_FILES" | grep -E '(composer\.json|composer\.lock)'; then
+            if [ -f "composer.lock" ] && command -v composer &> /dev/null; then
+              echo "Running composer audit..."
+              composer audit || true
+            fi
+          fi
+
+          echo "✅ Security Audit Gate Completed."

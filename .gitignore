@@ -45,3 +45,7 @@ test_*.ts
 test_*.js
 *.scratch
 plan.md
+
+fix_*.cjs
+patch_*.py
+patch_*.sh

@@ -55,3 +55,7 @@ origin/master
 ## 2026-09-18 - Pluck with mapWithKeys Overhead and Conditional Array Fallbacks
 **Learning:** When generating keyed hash maps from Eloquent/Database collections via `pluck()`, using `mapWithKeys()` for simple formatting or redundant type-casting (like casting numeric string keys, which PHP automatically reverts to integers anyway) introduces severe closure invocation overhead. Furthermore, if tests mock the DB to return an array, directly chaining `->toArray()` onto the result will cause a fatal error (`Call to a member function toArray() on array`).
 **Action:** Always prefer safely appending `->toArray()` directly to `pluck()` using a conditional check `is_array($result) ? $result : $result->toArray()` instead of iterating over the collection manually. This allows the query builder to construct the associative array natively, avoiding intermediate instantiations, while gracefully handling plain arrays returned in mocked test environments.
+
+## 2024-05-19 - Eloquent get() hydration overhead on mapped loops
+**Learning:** Hydrating full Eloquent models via `get()` in query builder chains introduces significant O(N) memory and processing overhead when the code only iterates over specific keys.
+**Action:** When mapping database relations internally directly replacing `->get()` with explicit array fetching via `->pluck('value', 'key')` dramatically speeds up batch processing loops. Always prefer safely appending `->toArray()` to pluck using `is_array($result) ? $result : $result->toArray()` instead of iterating over object collections.

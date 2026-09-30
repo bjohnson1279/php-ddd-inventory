@@ -239,29 +239,31 @@ class ApprovalWorkflowService
             ->whereIn('status', ['PENDING', 'ESCALATED'])
             ->orderBy('created_at', 'desc');
 
-        $requests = $query->get()->toArray();
+        $requests = $query->get();
 
         if (empty($deciderRoleIds)) {
-            return $requests;
+            return $requests->toArray();
         }
 
-        $filtered = [];
         $decodedConfigs = [];
-        foreach ($requests as $req) {
-            if (!isset($decodedConfigs[$req['workflow_id']])) {
-                $decodedConfigs[$req['workflow_id']] = is_string($req['workflow']['config']) ? json_decode($req['workflow']['config'], true) : $req['workflow']['config'];
+        // ⚡ Bolt Optimization: Delay toArray() call until after filtering the collection.
+        // This avoids the severe performance penalty of deeply serializing Eloquent models
+        // (evaluating accessors, mutators, formatting dates) that are ultimately discarded.
+        $filtered = $requests->filter(function ($req) use (&$decodedConfigs, $deciderRoleIds) {
+            if (!isset($decodedConfigs[$req->workflow_id])) {
+                $decodedConfigs[$req->workflow_id] = is_string($req->workflow->config) ? json_decode($req->workflow->config, true) : $req->workflow->config;
             }
-            $config = $decodedConfigs[$req['workflow_id']];
-            $currentStep = $config['steps'][$req['current_step']] ?? null;
+            $config = $decodedConfigs[$req->workflow_id];
+            $currentStep = $config['steps'][$req->current_step] ?? null;
 
-            if (!$currentStep) continue;
+            if (!$currentStep) {
+                return false;
+            }
 
             $approverRoles = $currentStep['approverRoles'] ?? [];
-            if (!empty(array_intersect($approverRoles, $deciderRoleIds))) {
-                $filtered[] = $req;
-            }
-        }
+            return !empty(array_intersect($approverRoles, $deciderRoleIds));
+        });
 
-        return $filtered;
+        return array_values($filtered->toArray());
     }
 }

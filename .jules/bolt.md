@@ -82,3 +82,8 @@ origin/master
 ## 2024-10-24 - Delayed toArray() on Eloquent Collections
 **Learning:** Calling `toArray()` on a large Eloquent Collection *before* applying filters (e.g., in `listPendingRequests`) forces the framework to fully serialize every single model—evaluating relationships, accessors, mutators, and casting date fields. This introduces massive, unnecessary CPU and memory overhead for models that are subsequently discarded by the array filter.
 **Action:** Always filter the Eloquent Collection of models first (using `->filter()`) and call `->toArray()` *only* on the reduced subset before returning the final array. Use `array_values()` if the resulting keys must be sequentially re-indexed.
+
+## Additive Documentation & Scratch Cleanliness Directives
+- **Strictly Additive Journal Updates**: When updating `.jules/*.md`, strictly append new dated entries (`## YYYY-MM-DD - Title`). NEVER delete, truncate, or overwrite historical learnings or previous entries.
+- **Substantive Code Diff Requirement**: Pull requests must include substantive code changes in `src/`, `app/`, `lib/`, or `tests/`. Never open PRs that modify only `.jules/*.md` journals or root scratch scripts.
+- **Zero Scratch File Commits**: Never commit `*.diff`, `*.patch`, `test_*.ts`, `test_*.js`, `test.cjs`, `fix_*.php`, or `patch_*.py` files. Always remove temporary debugging or verification scripts prior to committing.

@@ -36,12 +36,11 @@ jobs:
             fi
           fi
 
-          # 3. Reject Forbidden Scratch Verification Files
-          # Filter out recognized test suite directories and only audit newly added non-test files
-          ADDED_FILES=$(git diff --name-only --diff-filter=A origin/${{ github.base_ref }}...HEAD | grep -v -E '(^|/)(tests|__tests__|test)/' || true)
-          SCRATCH_FILES=$(echo "$ADDED_FILES" | grep -E '(^|/)test(_.*)?\.(ts|js|cjs|mjs|py|php|sh|bash)$|(^|/)fix_.*\.(php|cjs|js|ts|sh)$|(^|/)patch_.*\.(php|cjs|js|ts|py|sh|bash)$|(^|/)update_.*\.(php|cjs|js|ts|sh)$|(^|/)scratch_.*|.*\.scratch$|^plan\.md$' || true)
+          # 3. Reject Forbidden Scratch Verification and Patch Files (Added or Modified)
+          TOUCHED_NON_TEST_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -v -E '(^|/)(tests|__tests__|test)/' || true)
+          SCRATCH_FILES=$(echo "$TOUCHED_NON_TEST_FILES" | grep -E '(^|/)test(_.*)?\.(ts|js|cjs|mjs|py|php|sh|bash)$|(^|/)fix_.*\.(php|cjs|js|ts|sh)$|(^|/)patch_.*\.(php|cjs|js|ts|py|sh|bash)$|(^|/)update_.*\.(php|cjs|js|ts|sh)$|(^|/)scratch_.*|.*\.scratch$|^plan\.md$|.*\.diff$|.*\.patch$' || true)
           if [ -n "$SCRATCH_FILES" ]; then
-            echo "❌ ERROR: PR contains forbidden scratch verification files:"
+            echo "❌ ERROR: PR contains forbidden scratch verification or patch files:"
             echo "$SCRATCH_FILES"
             exit 1
           fi
@@ -61,6 +60,14 @@ jobs:
           if [ -n "$CI_DIFF" ]; then
             echo "❌ ERROR: Bot PR modifies .github/workflows to suppress errors ('|| true' or 'continue-on-error: true'). Auto-failing."
             echo "$CI_DIFF"
+            exit 1
+          fi
+
+          # 6. Reject Deletion of Dated Historical Journal Entries in .jules/
+          DELETED_JOURNAL=$(git diff origin/${{ github.base_ref }}...HEAD -- .jules/ .Jules/ | grep -E '^\-## [0-9]{4}-[0-9]{2}-[0-9]{2}' || true)
+          if [ -n "$DELETED_JOURNAL" ]; then
+            echo "❌ ERROR: PR deletes historical journal entries from .jules/*.md. Entries must be strictly append-only."
+            echo "$DELETED_JOURNAL"
             exit 1
           fi
 

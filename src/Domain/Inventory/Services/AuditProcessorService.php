@@ -37,10 +37,11 @@ class AuditProcessorService
             // 🎯 Why: Previously, finding the product and summing ledger entries ran queries inside nested loops, causing N+1 database calls.
             // 📊 Impact: Significant reduction in query count and execution time when auditing tenants with many products and locations.
             $skus = array_keys($skuMappings);
+            // ⚡ Bolt Optimization: Use keyBy with explicit closure for string casting to avoid array instantiation overhead
             $productsBySku = ProductModel::where('tenant_id', $tenantId)
                 ->whereIn('sku', $skus)
                 ->get()
-                ->mapWithKeys(fn($item) => [(string)$item->sku => $item]);
+                ->keyBy(fn($item) => (string)$item->sku);
 
             $locCol = Capsule::connection()->getDriverName() === 'sqlite'
                 ? "json_extract(metadata, '$.locationId')"

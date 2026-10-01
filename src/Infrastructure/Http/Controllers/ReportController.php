@@ -37,7 +37,8 @@ class ReportController
             $catalogVariants = $this->fetchCatalogVariantsMap($productSkus);
 
             $reportData = $this->buildReportData($products, $locations, $allStocks, $allLayers, $catalogVariants);
-            $reportData['recent_activity'] = $this->getRecentActivity($tenantId, $products->mapWithKeys(fn($item) => [(string)$item->id => $item]));
+            // ⚡ Bolt Optimization: Use keyBy with explicit closure for string casting to avoid array instantiation overhead
+            $reportData['recent_activity'] = $this->getRecentActivity($tenantId, $products->keyBy(fn($item) => (string)$item->id));
 
             return new Response($reportData, 200);
         } catch (Exception $e) {

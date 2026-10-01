@@ -317,16 +317,7 @@ CREATE TABLE IF NOT EXISTS outbox_events (
   next_attempt_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS "OutboxEventModel" (
-  "id" TEXT PRIMARY KEY,
-  "eventName" TEXT NOT NULL,
-  "payload" TEXT NOT NULL,
-  "occurredOn" TIMESTAMP WITH TIME ZONE NOT NULL,
-  "processedAt" TIMESTAMP WITH TIME ZONE,
-  "attempts" INTEGER NOT NULL DEFAULT 0,
-  "lastError" TEXT,
-  "nextAttemptAt" TIMESTAMP WITH TIME ZONE DEFAULT now()
-);
+
 
 -- Convenience indexes
 CREATE INDEX IF NOT EXISTS idx_ledger_variant ON ledger_entries(variant_id);

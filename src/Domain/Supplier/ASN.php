@@ -37,4 +37,5 @@ class ASN
     public function getExpectedArrivalDate(): \DateTimeImmutable { return $this->expectedArrivalDate; }
     public function getStatus(): string { return $this->status; }
     public function getLines(): array { return $this->lines; }
+    public function setStatus(string $status): void { $this->status = $status; }
 }

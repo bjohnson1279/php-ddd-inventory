@@ -37,7 +37,7 @@ jobs:
           fi
 
           # 3. Reject Forbidden Scratch Verification and Patch Files (Added or Modified)
-          TOUCHED_NON_TEST_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -v -E '(^|/)(tests|__tests__|test)/' || true)
+          TOUCHED_NON_TEST_FILES=$(git diff --name-only --diff-filter=d origin/${{ github.base_ref }}...HEAD | grep -v -E '(^|/)(tests|__tests__|test)/' || true)
           SCRATCH_FILES=$(echo "$TOUCHED_NON_TEST_FILES" | grep -E '(^|/)test(_.*)?\.(ts|js|cjs|mjs|py|php|sh|bash)$|(^|/)fix_.*\.(php|cjs|js|ts|sh)$|(^|/)patch_.*\.(php|cjs|js|ts|py|sh|bash)$|(^|/)update_.*\.(php|cjs|js|ts|sh)$|(^|/)scratch_.*|.*\.scratch$|^plan\.md$|.*\.diff$|.*\.patch$' || true)
           if [ -n "$SCRATCH_FILES" ]; then
             echo "❌ ERROR: PR contains forbidden scratch verification or patch files:"
@@ -76,7 +76,7 @@ jobs:
       - name: Syntax & Script Verification Gate
         run: |
           echo "=== Checking Modified Files for Syntax Errors ==="
-          MODIFIED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          MODIFIED_FILES=$(git diff --name-only --diff-filter=d origin/${{ github.base_ref }}...HEAD)
 
           for f in $MODIFIED_FILES; do
             if [ -f "$f" ]; then
@@ -98,7 +98,7 @@ jobs:
       - name: Dependency Security Audit Gate
         run: |
           echo "=== Auditing Dependency Manifests for Known Vulnerabilities ==="
-          MODIFIED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          MODIFIED_FILES=$(git diff --name-only --diff-filter=d origin/${{ github.base_ref }}...HEAD)
 
           # Node.js audit
           if echo "$MODIFIED_FILES" | grep -E '(package\.json|package-lock\.json)'; then

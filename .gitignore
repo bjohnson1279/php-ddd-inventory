@@ -53,3 +53,5 @@ patch_*.sh
 *.diff
 *.patch
 patch.diff
+
+*.timestamp-*.mjs

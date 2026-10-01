@@ -91,3 +91,8 @@ origin/master
 ## 2026-10-01 - Optimize mapWithKeys to keyBy for Eloquent collections
 **Learning:** When generating keyed hash maps from Eloquent collections, `mapWithKeys` instantiates a new array for every single item and triggers an inner foreach loop, which is a de-optimization compared to `keyBy`. Using `keyBy(fn($item) => (string)$item->field)` provides the same explicit string casting without the overhead.
 **Action:** Use `->keyBy(fn($item) => (string)$item->field)` instead of `mapWithKeys` when strict string casting and high performance are required on Eloquent collections.
+
+## Scope Quarantine, Journaling & Security Test Invariants
+- **Strictly Append-Only Journaling**: When adding learnings to `.jules/*.md`, append strictly at the end of the file. Do not rewrite, deduplicate, or remove lines beginning with `## YYYY-MM-DD`.
+- **Surgical Scope Quarantine**: Modify only the files directly involved in the issue and their corresponding test fixtures. Do not delete, rename, or perform drive-by cleanups of unrelated root-level scripts or legacy files.
+- **Coupled Test Fixture Awareness for Security Invariants**: When changing fail-open fallback behavior (such as hardening decryption to fail closed), always update upstream test mocks that rely on plaintext credentials or mock values.

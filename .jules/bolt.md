@@ -87,3 +87,7 @@ origin/master
 - **Strictly Additive Journal Updates**: When updating `.jules/*.md`, strictly append new dated entries (`## YYYY-MM-DD - Title`). NEVER delete, truncate, or overwrite historical learnings or previous entries.
 - **Substantive Code Diff Requirement**: Pull requests must include substantive code changes in `src/`, `app/`, `lib/`, or `tests/`. Never open PRs that modify only `.jules/*.md` journals or root scratch scripts.
 - **Zero Scratch File Commits**: Never commit `*.diff`, `*.patch`, `test_*.ts`, `test_*.js`, `test.cjs`, `fix_*.php`, or `patch_*.py` files. Always remove temporary debugging or verification scripts prior to committing.
+
+## 2026-10-01 - Optimize mapWithKeys to keyBy for Eloquent collections
+**Learning:** When generating keyed hash maps from Eloquent collections, `mapWithKeys` instantiates a new array for every single item and triggers an inner foreach loop, which is a de-optimization compared to `keyBy`. Using `keyBy(fn($item) => (string)$item->field)` provides the same explicit string casting without the overhead.
+**Action:** Use `->keyBy(fn($item) => (string)$item->field)` instead of `mapWithKeys` when strict string casting and high performance are required on Eloquent collections.

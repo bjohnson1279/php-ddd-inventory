@@ -73,6 +73,21 @@ jobs:
 
           echo "✅ Basic Bot Diff Guardrail Passed."
 
+      - name: Duplicate Target Guardrail (Supersession Prevention)
+        run: |
+          echo "=== Checking for Duplicate or Superseded Bot PRs ==="
+          MODIFIED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -v '^\.jules/' || true)
+          if [ -n "$MODIFIED_FILES" ]; then
+            for f in $MODIFIED_FILES; do
+              RECENT_BOT_COMMITS=$(git log --since="48 hours" -i --grep="bolt\|sentinel\|dependabot\|jules" origin/${{ github.base_ref }} -- "$f" || true)
+              if [ -n "$RECENT_BOT_COMMITS" ]; then
+                echo "⚠️ WARNING: File $f was recently modified by another bot PR in the base branch."
+                echo "This PR might be functionally superseded. Please review carefully."
+              fi
+            done
+          fi
+          echo "✅ Supersession Check Completed."
+
       - name: Syntax & Script Verification Gate
         run: |
           echo "=== Checking Modified Files for Syntax Errors ==="

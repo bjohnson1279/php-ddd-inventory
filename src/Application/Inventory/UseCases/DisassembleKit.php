@@ -87,12 +87,23 @@ class DisassembleKit
         $totalEstimatedComponentsCost = 0;
         $componentAvgCosts = [];
 
+        // Pre-fetch active cost layers for all kit components in a single query to eliminate N+1 DB calls
+        $componentVariantIds = array_map(fn($c) => $c->variantId, $kit->components());
+        $prefetchedLayers = [];
+        try {
+            $prefetchedLayers = $this->costLayerRepository->getActiveLayersByVariantIds($componentVariantIds, 'received_at ASC');
+        } catch (\Throwable $e) {
+            $prefetchedLayers = [];
+        }
+
         foreach ($kit->components() as $component) {
             $needed = $component->quantity * $quantity;
             $avgUnitCost = 0;
 
             try {
-                $activeLayers = $this->costLayerRepository->getActiveLayers($component->variantId, 'received_at ASC');
+                $activeLayers = isset($prefetchedLayers[$component->variantId])
+                    ? $prefetchedLayers[$component->variantId]
+                    : $this->costLayerRepository->getActiveLayers($component->variantId, 'received_at ASC');
                 $totalUnits = 0;
                 $totalValue = 0;
                 foreach ($activeLayers as $layer) {

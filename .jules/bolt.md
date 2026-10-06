@@ -96,3 +96,7 @@ origin/master
 - **Strictly Append-Only Journaling**: When adding learnings to `.jules/*.md`, append strictly at the end of the file. Do not rewrite, deduplicate, or remove lines beginning with `## YYYY-MM-DD`.
 - **Surgical Scope Quarantine**: Modify only the files directly involved in the issue and their corresponding test fixtures. Do not delete, rename, or perform drive-by cleanups of unrelated root-level scripts or legacy files.
 - **Coupled Test Fixture Awareness for Security Invariants**: When changing fail-open fallback behavior (such as hardening decryption to fail closed), always update upstream test mocks that rely on plaintext credentials or mock values.
+
+## 2026-10-24 - Bulk Load Active Cost Layers to Eliminate N+1 Queries
+**Learning:** In domain use cases processing kits or bulk items (such as `DisassembleKit`), querying active cost layers individually per component variant inside a loop creates an N+1 database query bottleneck.
+**Action:** Add bulk query repository methods like `getActiveLayersByVariantIds(array $variantIds)` that execute a single `whereIn('variant_id', $variantIds)` database query and return an associative array mapping each variant ID to its array of layers.

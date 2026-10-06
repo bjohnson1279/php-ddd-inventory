@@ -33,6 +33,45 @@ class EloquentCostLayerRepository implements CostLayerRepositoryInterface
         return $models->map(fn($model) => $this->hydrate($model))->all();
     }
 
+    /**
+     * @param string[] $variantIds
+     * @return array<string, InventoryCostLayer[]>
+     */
+    public function getActiveLayersByVariantIds(array $variantIds, string $orderBy = 'received_at ASC'): array
+    {
+        if (empty($variantIds)) {
+            return [];
+        }
+
+        $isExpiration = str_contains(strtolower($orderBy), 'expiration');
+        $direction = str_contains(strtolower($orderBy), 'desc') ? 'desc' : 'asc';
+
+        $query = CostLayerModel::where('tenant_id', $this->tenantId)
+            ->whereIn('variant_id', $variantIds)
+            ->where('remaining_quantity', '>', 0);
+
+        if ($isExpiration) {
+            $query->orderBy('expiration_date', $direction)
+                  ->orderBy('received_at', 'asc');
+        } else {
+            $query->orderBy('received_at', $direction);
+        }
+
+        $models = $query->get();
+
+        $result = [];
+        foreach ($variantIds as $vId) {
+            $result[$vId] = [];
+        }
+
+        foreach ($models as $model) {
+            $layer = $this->hydrate($model);
+            $result[$layer->variantId][] = $layer;
+        }
+
+        return $result;
+    }
+
     public function save(InventoryCostLayer $layer): void
     {
         CostLayerModel::updateOrCreate(

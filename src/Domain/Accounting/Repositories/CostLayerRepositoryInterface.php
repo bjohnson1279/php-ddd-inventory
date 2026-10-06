@@ -9,6 +9,12 @@ interface CostLayerRepositoryInterface
     /** @return InventoryCostLayer[] */
     public function getActiveLayers(string $variantId, string $orderBy = 'received_at ASC'): array;
 
+    /**
+     * @param string[] $variantIds
+     * @return array<string, InventoryCostLayer[]> Keyed by variantId
+     */
+    public function getActiveLayersByVariantIds(array $variantIds, string $orderBy = 'received_at ASC'): array;
+
     public function save(InventoryCostLayer $layer): void;
 
     /**

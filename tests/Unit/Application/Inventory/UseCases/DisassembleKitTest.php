@@ -202,6 +202,10 @@ class DisassembleKitTest extends TestCase
             ['comp-1', 'received_at ASC', [$compLayer]]
         ]);
 
+        $this->costLayerRepository->method('getActiveLayersByVariantIds')->willReturn([
+            'comp-1' => [$compLayer]
+        ]);
+
         $this->costLayerRepository->expects($this->atLeastOnce())->method('saveBatch');
 
         $this->costLayerRepository->expects($this->once())

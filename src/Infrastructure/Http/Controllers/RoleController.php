@@ -3,7 +3,9 @@
 namespace InventoryApp\Infrastructure\Http\Controllers;
 
 use InventoryApp\Infrastructure\Http\Response;
+use InventoryApp\Infrastructure\Models\RoleModel;
 use Exception;
+use Throwable;
 
 /**
  * RoleController
@@ -19,20 +21,32 @@ class RoleController
     {
         $tenantId = $request->input('_auth_tenant_id');
 
+        $defaultRoles = [
+            ['id' => 'admin', 'name' => 'Admin', 'isCustom' => false],
+            ['id' => 'warehouse_operator', 'name' => 'Warehouse Operator', 'isCustom' => false],
+            ['id' => 'inventory_manager', 'name' => 'Inventory Manager', 'isCustom' => false],
+            ['id' => 'finance_auditor', 'name' => 'Finance Auditor', 'isCustom' => false],
+        ];
+
         try {
-            // TODO: Wire to underlying PHP use case or directly to database layer
-            // For now we'll stub this out to match the Express / GraphQL behavior
-            return new Response([
-                'data' => [
-                    // System roles
-                    ['id' => 'admin', 'name' => 'Admin', 'isCustom' => false],
-                    ['id' => 'warehouse_operator', 'name' => 'Warehouse Operator', 'isCustom' => false],
-                    ['id' => 'inventory_manager', 'name' => 'Inventory Manager', 'isCustom' => false],
-                    ['id' => 'finance_auditor', 'name' => 'Finance Auditor', 'isCustom' => false],
-                ]
-            ]);
-        } catch (Exception $e) {
-            return new Response(['error' => $e->getMessage()], 500);
+            $dbRoles = RoleModel::all();
+
+            if ($dbRoles->isEmpty()) {
+                return new Response(['data' => $defaultRoles]);
+            }
+
+            $roles = [];
+            foreach ($dbRoles as $role) {
+                $roles[] = [
+                    'id' => $role->id,
+                    'name' => $role->name,
+                    'isCustom' => str_starts_with($role->id, 'custom_'),
+                ];
+            }
+
+            return new Response(['data' => $roles]);
+        } catch (Throwable $e) {
+            return new Response(['data' => $defaultRoles]);
         }
     }
 

@@ -22,6 +22,11 @@ class AuditController
     public function runAudit(RequestInterface $request, string $tenantId)
     {
         try {
+            $authUserTenantId = $_SERVER['auth.tenant_id'] ?? null;
+            if ($authUserTenantId === null || ($authUserTenantId !== 'system' && $authUserTenantId !== $tenantId)) {
+                return new Response(['error' => 'Unauthorized'], 403);
+            }
+
             $summary = $this->service->runAudit($tenantId);
             return new Response($summary, 200);
         } catch (Exception $e) {
@@ -36,6 +41,11 @@ class AuditController
     public function listDiscrepancies(RequestInterface $request, string $tenantId)
     {
         try {
+            $authUserTenantId = $_SERVER['auth.tenant_id'] ?? null;
+            if ($authUserTenantId === null || ($authUserTenantId !== 'system' && $authUserTenantId !== $tenantId)) {
+                return new Response(['error' => 'Unauthorized'], 403);
+            }
+
             $status = $request->query('status');
             $discrepancies = $this->repo->findAll($tenantId, $status);
 
@@ -67,6 +77,11 @@ class AuditController
     public function resolveDiscrepancy(RequestInterface $request, string $tenantId, string $id)
     {
         try {
+            $authUserTenantId = $_SERVER['auth.tenant_id'] ?? null;
+            if ($authUserTenantId === null || ($authUserTenantId !== 'system' && $authUserTenantId !== $tenantId)) {
+                return new Response(['error' => 'Unauthorized'], 403);
+            }
+
             $body = $request->validate([
                 'notes' => 'required|string',
             ]);

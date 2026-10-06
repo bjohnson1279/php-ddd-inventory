@@ -17,6 +17,9 @@
     "psr-4": {
       "InventoryApp\\": "src/",
       "App\\": "src/"
-    }
+    },
+    "classmap": [
+      "src/"
+    ]
   }
 }

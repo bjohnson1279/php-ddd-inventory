@@ -55,7 +55,7 @@ class ReorderPolicyServiceTest extends TestCase
             ->willThrowException(new Exception("Forecasting failed"));
 
         $this->reorderPolicyRepoMock->expects($this->never())
-            ->method('save');
+            ->method('saveAll');
 
         $this->productRepoMock->expects($this->once())
             ->method('findBySkus')
@@ -81,5 +81,44 @@ class ReorderPolicyServiceTest extends TestCase
         $this->assertCount(1, $results);
         $this->assertEquals('SKU-123', $results[0]['sku']);
         $this->assertEquals(10, $results[0]['reorderPoint']);
+    }
+
+    public function testEvaluatePoliciesBulkSavesUpdatedPolicies()
+    {
+        $tenantId = 'tenant-123';
+        $sku = new SKU('SKU-123');
+        $policy = new ReorderPolicy('id-1', $sku, 'LOC-1', 10, 50, 5, true);
+
+        $this->reorderPolicyRepoMock->expects($this->once())
+            ->method('findAll')
+            ->willReturn([$policy]);
+
+        $this->forecasterMock->expects($this->once())
+            ->method('forecastReorderPoint')
+            ->willReturn(25);
+
+        $this->productRepoMock->expects($this->once())
+            ->method('findBySkus')
+            ->with([$sku])
+            ->willReturn([]);
+
+        $this->reorderPolicyRepoMock->expects($this->once())
+            ->method('saveAll')
+            ->with($this->callback(function (array $policies) use ($policy) {
+                return count($policies) === 1
+                    && $policies[0] === $policy
+                    && $policies[0]->reorderPoint === 25;
+            }));
+
+        $results = $this->service->evaluatePolicies(
+            $tenantId,
+            $this->forecasterMock,
+            $this->productRepoMock,
+            $this->ledgerRepoMock
+        );
+
+        $this->assertCount(1, $results);
+        $this->assertEquals('SKU-123', $results[0]['sku']);
+        $this->assertEquals(25, $results[0]['reorderPoint']);
     }
 }

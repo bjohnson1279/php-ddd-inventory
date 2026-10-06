@@ -74,9 +74,9 @@ class TenantProvisioner
             $this->capsule->getConnection()->statement("
                 SELECT pg_terminate_backend(pg_stat_activity.pid)
                 FROM pg_stat_activity
-                WHERE pg_stat_activity.datname = '{$entry->dbName}'
+                WHERE pg_stat_activity.datname = ?
                   AND pid <> pg_backend_pid()
-            ");
+            ", [$entry->dbName]);
         } catch (\Throwable $_) {
             error_log('[TenantProvisioner] Failed to terminate connections: ' . $_->getMessage());
             error_log('[TenantProvisioner] Failed to terminate active connections: ' . $_->getMessage());

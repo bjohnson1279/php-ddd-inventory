@@ -21,7 +21,7 @@ class RoleController
     {
         $tenantId = $request->input('_auth_tenant_id');
 
-        $defaultRoles = [
+        $systemRoles = [
             ['id' => 'admin', 'name' => 'Admin', 'isCustom' => false],
             ['id' => 'warehouse_operator', 'name' => 'Warehouse Operator', 'isCustom' => false],
             ['id' => 'inventory_manager', 'name' => 'Inventory Manager', 'isCustom' => false],
@@ -29,24 +29,20 @@ class RoleController
         ];
 
         try {
-            $dbRoles = RoleModel::all();
+            $customRoles = [];
+            $dbRoles = RoleModel::where('id', 'LIKE', 'custom_%')->get();
 
-            if ($dbRoles->isEmpty()) {
-                return new Response(['data' => $defaultRoles]);
-            }
-
-            $roles = [];
             foreach ($dbRoles as $role) {
-                $roles[] = [
+                $customRoles[] = [
                     'id' => $role->id,
                     'name' => $role->name,
-                    'isCustom' => str_starts_with($role->id, 'custom_'),
+                    'isCustom' => true,
                 ];
             }
 
-            return new Response(['data' => $roles]);
+            return new Response(['data' => array_merge($systemRoles, $customRoles)]);
         } catch (Throwable $e) {
-            return new Response(['data' => $defaultRoles]);
+            return new Response(['data' => $systemRoles]);
         }
     }
 

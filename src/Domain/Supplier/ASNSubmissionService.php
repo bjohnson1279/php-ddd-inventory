@@ -18,7 +18,7 @@ class ASNSubmissionService
             throw new \DomainException("ASN supplier does not match PO supplier.");
         }
 
-        if (empty($asn->getItems())) {
+        if (empty($asn->getLines())) {
             throw new \DomainException("ASN must contain at least one line item.");
         }
 

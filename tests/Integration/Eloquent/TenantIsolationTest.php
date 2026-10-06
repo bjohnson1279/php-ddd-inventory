@@ -217,4 +217,26 @@ final class TenantIsolationTest extends TestCase
 
         $method->invoke($provisioner, $mockEntry);
     }
+
+    public function test_provisioner_rejects_invalid_dbname_with_sql_injection(): void
+    {
+        $mockRegistry = $this->createMock(TenantRegistry::class);
+        $mockRegistry->method('registerTenant')->willReturn(new TenantRegistryEntry(
+            'bad-tenant',
+            '127.0.0.1',
+            5432,
+            'test_db"; DROP DATABASE postgres;--',
+            'postgres',
+            'password',
+            'PROVISIONING',
+            new \DateTimeImmutable(),
+            '0'
+        ));
+
+        $provisioner = new TenantProvisioner($this->capsule, $mockRegistry);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Invalid database name');
+        $provisioner->provisionTenant('bad-tenant');
+    }
 }

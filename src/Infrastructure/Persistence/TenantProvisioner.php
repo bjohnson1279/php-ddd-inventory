@@ -27,10 +27,13 @@ class TenantProvisioner
         $entry = $this->registry->registerTenant($tenantId);
         $dbName = $entry->dbName;
 
+        $this->validateDbName($dbName);
+        $escapedDbName = str_replace('"', '""', $dbName);
+
         try {
             // Create the tenant's dedicated database.
             // Since CREATE DATABASE cannot run inside a transaction, we run it on the control connection.
-            $this->capsule->getConnection()->statement("CREATE DATABASE \"{$dbName}\"");
+            $this->capsule->getConnection()->statement("CREATE DATABASE \"{$escapedDbName}\"");
 
             // Connect to the new database and run migrations
             $this->runMigrationsOnTenantDb($entry);
@@ -48,7 +51,7 @@ class TenantProvisioner
             error_log('[TenantProvisioner] Provisioning failed: ' . $e->getMessage());
             // Cleanup on failure
             try {
-                $this->capsule->getConnection()->statement("DROP DATABASE IF EXISTS \"{$dbName}\"");
+                $this->capsule->getConnection()->statement("DROP DATABASE IF EXISTS \"{$escapedDbName}\"");
             } catch (\Throwable $_) {
                 error_log('[TenantProvisioner] Failed to cleanup database: ' . $_->getMessage());
                 error_log('[TenantProvisioner] Failed to drop database during cleanup: ' . $_->getMessage());
@@ -69,21 +72,32 @@ class TenantProvisioner
             throw new \RuntimeException("Tenant \"{$tenantId}\" not found in registry.");
         }
 
+        $this->validateDbName($entry->dbName);
+        $escapedDbName = str_replace('"', '""', $entry->dbName);
+
         // Terminate active connections to the tenant database
         try {
             $this->capsule->getConnection()->statement("
                 SELECT pg_terminate_backend(pg_stat_activity.pid)
                 FROM pg_stat_activity
-                WHERE pg_stat_activity.datname = '{$entry->dbName}'
+                WHERE pg_stat_activity.datname = ?
                   AND pid <> pg_backend_pid()
-            ");
+            ", [$entry->dbName]);
         } catch (\Throwable $_) {
             error_log('[TenantProvisioner] Failed to terminate connections: ' . $_->getMessage());
             error_log('[TenantProvisioner] Failed to terminate active connections: ' . $_->getMessage());
         }
 
-        $this->capsule->getConnection()->statement("DROP DATABASE IF EXISTS \"{$entry->dbName}\"");
+        $this->capsule->getConnection()->statement("DROP DATABASE IF EXISTS \"{$escapedDbName}\"");
         $this->registry->deprovisionTenant($tenantId);
+    }
+
+    private function validateDbName(string $dbName): void
+    {
+        // Enforce strict database name format to prevent SQL injection vulnerabilities
+        if (!preg_match('/^[a-zA-Z0-9_]+$/', $dbName)) {
+            throw new \InvalidArgumentException("Invalid database name: \"{$dbName}\". Database names must only contain alphanumeric characters and underscores.");
+        }
     }
 
     // ──────────────────────────────────────────────

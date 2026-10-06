@@ -99,4 +99,59 @@ class WebhookDeliveryWorkerTest extends TestCase
         $this->assertEquals('Failed', $delivery->status);
         $this->assertStringContainsString('Subscription not found or inactive', $delivery->last_error);
     }
+
+    public function testBatchUpsertSuccessfulDeliveries(): void
+    {
+        WebhookDeliveryModel::create([
+            'id' => 'del-3', 'tenant_id' => 't-1', 'subscription_id' => 'sub-1', 'event_type' => 'e',
+            'payload' => '{}', 'status' => 'Pending', 'attempts' => 0, 'created_at' => new \DateTime()
+        ]);
+        WebhookDeliveryModel::create([
+            'id' => 'del-4', 'tenant_id' => 't-1', 'subscription_id' => 'sub-1', 'event_type' => 'e',
+            'payload' => '{}', 'status' => 'Pending', 'attempts' => 1, 'created_at' => new \DateTime()
+        ]);
+
+        $deliveriesToUpsert = [
+            [
+                'id' => 'del-3',
+                'tenant_id' => 't-1',
+                'subscription_id' => 'sub-1',
+                'event_type' => 'e',
+                'payload' => '{}',
+                'status' => 'Success',
+                'attempts' => 1,
+                'last_error' => null,
+                'next_attempt_at' => null,
+                'processed_at' => (new \DateTime())->format('Y-m-d H:i:s'),
+                'created_at' => (new \DateTime())->format('Y-m-d H:i:s'),
+            ],
+            [
+                'id' => 'del-4',
+                'tenant_id' => 't-1',
+                'subscription_id' => 'sub-1',
+                'event_type' => 'e',
+                'payload' => '{}',
+                'status' => 'Success',
+                'attempts' => 2,
+                'last_error' => null,
+                'next_attempt_at' => null,
+                'processed_at' => (new \DateTime())->format('Y-m-d H:i:s'),
+                'created_at' => (new \DateTime())->format('Y-m-d H:i:s'),
+            ]
+        ];
+
+        WebhookDeliveryModel::upsert(
+            $deliveriesToUpsert,
+            ['id'],
+            ['status', 'attempts', 'processed_at']
+        );
+
+        $d3 = WebhookDeliveryModel::find('del-3');
+        $d4 = WebhookDeliveryModel::find('del-4');
+
+        $this->assertEquals('Success', $d3->status);
+        $this->assertEquals(1, $d3->attempts);
+        $this->assertEquals('Success', $d4->status);
+        $this->assertEquals(2, $d4->attempts);
+    }
 }

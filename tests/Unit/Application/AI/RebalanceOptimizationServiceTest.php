@@ -1,43 +1,85 @@
 <?php
 
 namespace InventoryApp\Application\AI {
-    // Mock file_get_contents in the namespace of the tested class
-    function file_get_contents($filename, $use_include_path = false, $context = null, $offset = 0, $length = null) {
-        if (strpos($filename, '/rebalance-optimize') !== false) {
-            // Check if we want to simulate a failure
-            if (getenv('SIMULATE_SIDECAR_FAILURE') === '1') {
-                return false;
-            }
-            if (getenv('SIMULATE_SIDECAR_INVALID_JSON') === '1') {
-                return 'invalid json';
-            }
-            return json_encode([
-                'recommendations' => [
-                    [
-                        'sku' => 'SKU-123',
-                        'source_warehouse_id' => 'WH1',
-                        'dest_warehouse_id' => 'WH2',
-                        'quantity' => 20,
-                        'priority' => 'HIGH',
-                        'estimated_shipping_cost' => 30.0,
-                        'source_current_doc' => 45,
-                        'dest_current_doc' => 0,
-                        'source_projected_doc' => 35,
-                        'dest_projected_doc' => 14,
-                        'urgency_reason' => 'Stockout predicted'
+    if (!function_exists('InventoryApp\Application\AI\file_get_contents')) {
+        // Mock file_get_contents in the namespace of the tested class
+        function file_get_contents($filename, $use_include_path = false, $context = null, $offset = 0, $length = null) {
+            if (strpos($filename, '/rebalance-optimize') !== false) {
+                // Check if we want to simulate a failure
+                if (getenv('SIMULATE_SIDECAR_FAILURE') === '1') {
+                    return false;
+                }
+                if (getenv('SIMULATE_SIDECAR_INVALID_JSON') === '1') {
+                    return 'invalid json';
+                }
+                return json_encode([
+                    'recommendations' => [
+                        [
+                            'sku' => 'SKU-123',
+                            'source_warehouse_id' => 'WH1',
+                            'dest_warehouse_id' => 'WH2',
+                            'quantity' => 20,
+                            'priority' => 'HIGH',
+                            'estimated_shipping_cost' => 30.0,
+                            'source_current_doc' => 45,
+                            'dest_current_doc' => 0,
+                            'source_projected_doc' => 35,
+                            'dest_projected_doc' => 14,
+                            'urgency_reason' => 'Stockout predicted'
+                        ]
+                    ],
+                    'matrix' => ['some' => 'matrix data'],
+                    'summary' => [
+                        'total_transfers' => 1,
+                        'total_cost' => 30.0,
+                        'skus_improved' => 1,
+                        'avg_doc_improvement' => 14.0
                     ]
-                ],
-                'matrix' => ['some' => 'matrix data'],
-                'summary' => [
-                    'total_transfers' => 1,
-                    'total_cost' => 30.0,
-                    'skus_improved' => 1,
-                    'avg_doc_improvement' => 14.0
-                ]
-            ]);
-        }
+                ]);
+            }
 
-        return \file_get_contents($filename, $use_include_path, $context, $offset, $length);
+            if (strpos($filename, '/anomaly-detect') !== false) {
+                if (getenv('SIMULATE_SIDECAR_FAILURE') === '1') {
+                    return false;
+                }
+                if (getenv('SIMULATE_SIDECAR_INVALID_JSON') === '1') {
+                    return 'invalid json';
+                }
+
+                if ($context !== null) {
+                    $opts = stream_context_get_options($context);
+                    if (isset($opts['http']['content'])) {
+                        $GLOBALS['LAST_SIDECAR_PAYLOAD'] = json_decode($opts['http']['content'], true);
+                    }
+                }
+
+                return json_encode([
+                    'alerts' => [
+                        [
+                            'alert_type' => 'HIGH_VARIANCE',
+                            'severity' => 'HIGH',
+                            'confidence' => 0.95,
+                            'sku' => 'SKU-001',
+                            'location_id' => 'LOC-1',
+                            'actor_id' => 'USER-1',
+                            'title' => 'Unusual Count Adjustment',
+                            'description' => 'Discrepancy detected in cycle count',
+                            'evidence' => ['expected' => 0, 'actual' => 50],
+                            'detected_at' => '2025-01-01T00:00:00Z',
+                        ]
+                    ],
+                    'summary' => [
+                        'total_critical' => 0,
+                        'total_high' => 1,
+                        'total_medium' => 0,
+                        'total_low' => 0,
+                        'overall_risk_score' => 80.0,
+                    ]
+                ]);
+            }
+
+            return \file_get_contents($filename, $use_include_path, $context, $offset, $length);
+        }
     }
 }
 

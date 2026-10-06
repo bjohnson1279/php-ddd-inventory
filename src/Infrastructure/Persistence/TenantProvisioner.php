@@ -27,10 +27,12 @@ class TenantProvisioner
         $entry = $this->registry->registerTenant($tenantId);
         $dbName = $entry->dbName;
 
+        $escapedDbName = str_replace('"', '""', $dbName);
+
         try {
             // Create the tenant's dedicated database.
             // Since CREATE DATABASE cannot run inside a transaction, we run it on the control connection.
-            $this->capsule->getConnection()->statement("CREATE DATABASE \"{$dbName}\"");
+            $this->capsule->getConnection()->statement("CREATE DATABASE \"{$escapedDbName}\"");
 
             // Connect to the new database and run migrations
             $this->runMigrationsOnTenantDb($entry);
@@ -48,7 +50,7 @@ class TenantProvisioner
             error_log('[TenantProvisioner] Provisioning failed: ' . $e->getMessage());
             // Cleanup on failure
             try {
-                $this->capsule->getConnection()->statement("DROP DATABASE IF EXISTS \"{$dbName}\"");
+                $this->capsule->getConnection()->statement("DROP DATABASE IF EXISTS \"{$escapedDbName}\"");
             } catch (\Throwable $_) {
                 error_log('[TenantProvisioner] Failed to cleanup database: ' . $_->getMessage());
                 error_log('[TenantProvisioner] Failed to drop database during cleanup: ' . $_->getMessage());
@@ -74,15 +76,16 @@ class TenantProvisioner
             $this->capsule->getConnection()->statement("
                 SELECT pg_terminate_backend(pg_stat_activity.pid)
                 FROM pg_stat_activity
-                WHERE pg_stat_activity.datname = '{$entry->dbName}'
+                WHERE pg_stat_activity.datname = ?
                   AND pid <> pg_backend_pid()
-            ");
+            ", [$entry->dbName]);
         } catch (\Throwable $_) {
             error_log('[TenantProvisioner] Failed to terminate connections: ' . $_->getMessage());
             error_log('[TenantProvisioner] Failed to terminate active connections: ' . $_->getMessage());
         }
 
-        $this->capsule->getConnection()->statement("DROP DATABASE IF EXISTS \"{$entry->dbName}\"");
+        $escapedDbName = str_replace('"', '""', $entry->dbName);
+        $this->capsule->getConnection()->statement("DROP DATABASE IF EXISTS \"{$escapedDbName}\"");
         $this->registry->deprovisionTenant($tenantId);
     }
 

@@ -217,4 +217,43 @@ final class TenantIsolationTest extends TestCase
 
         $method->invoke($provisioner, $mockEntry);
     }
+
+    public function test_deprovisionTenant_escapes_dbName_and_prevents_sql_injection(): void
+    {
+        $mockRegistry = $this->createMock(TenantRegistry::class);
+        $maliciousDbName = 'test_db"; DROP TABLE tenant_registry; --';
+
+        $mockRegistry->method('lookupTenant')->willReturn(new TenantRegistryEntry(
+            'malicious-tenant',
+            '127.0.0.1',
+            5432,
+            $maliciousDbName,
+            'postgres',
+            'password',
+            'ACTIVE',
+            new \DateTimeImmutable(),
+            '1'
+        ));
+
+        $mockConnection = $this->createMock(\Illuminate\Database\Connection::class);
+
+        // Expect pg_terminate_backend statement with parameterized datname
+        $mockConnection->expects($this->exactly(2))
+            ->method('statement')
+            ->willReturnCallback(function (string $sql, array $bindings = []) use ($maliciousDbName) {
+                if (str_contains($sql, 'pg_terminate_backend')) {
+                    $this->assertEquals([$maliciousDbName], $bindings);
+                } elseif (str_contains($sql, 'DROP DATABASE IF EXISTS')) {
+                    $expectedEscapedName = str_replace('"', '""', $maliciousDbName);
+                    $this->assertStringContainsString("DROP DATABASE IF EXISTS \"{$expectedEscapedName}\"", $sql);
+                }
+                return true;
+            });
+
+        $mockCapsule = $this->createMock(Capsule::class);
+        $mockCapsule->method('getConnection')->willReturn($mockConnection);
+
+        $provisioner = new TenantProvisioner($mockCapsule, $mockRegistry);
+        $provisioner->deprovisionTenant('malicious-tenant');
+    }
 }

@@ -43,6 +43,7 @@ class ReorderPolicyService
         $pendingPoLookup = null;
 
         $results = [];
+        $policiesToSave = [];
 
         foreach ($policies as $policy) {
             $rop = $policy->reorderPoint;
@@ -61,7 +62,8 @@ class ReorderPolicyService
                         $product
                     );
                     $policy->updateReorderPoint($newRop);
-                    $this->reorderPolicyRepository->save($policy);
+                    // ⚡ Bolt: Collect updated policy for bulk save to avoid N+1 DB saves
+                    $policiesToSave[] = $policy;
                     $rop = $newRop;
                 } catch (\Exception $e) {
                     error_log("Error forecasting ROP for SKU {$policy->sku->getValue()}: " . $e->getMessage());
@@ -132,6 +134,10 @@ class ReorderPolicyService
                 'triggered'    => $triggered,
                 'reason'       => $reason
             ];
+        }
+
+        if (!empty($policiesToSave)) {
+            $this->reorderPolicyRepository->saveAll($policiesToSave);
         }
 
         return $results;

@@ -98,7 +98,25 @@ class RoleController
         $permissionIds = $request->input('permissionIds', []);
 
         try {
-            // TODO: Implement actual logic
+            if (!is_array($permissionIds)) {
+                $permissionIds = [];
+            }
+
+            Capsule::transaction(function () use ($roleId, $permissionIds) {
+                Capsule::table('role_permissions')->where('role_id', $roleId)->delete();
+
+                if (!empty($permissionIds)) {
+                    $records = [];
+                    foreach ($permissionIds as $perm) {
+                        $records[] = [
+                            'role_id' => $roleId,
+                            'permission' => $perm,
+                        ];
+                    }
+                    Capsule::table('role_permissions')->insert($records);
+                }
+            });
+
             return new Response(['message' => 'Role permissions updated successfully.']);
         } catch (Exception $e) {
             return new Response(['error' => $e->getMessage()], 400);

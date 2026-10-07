@@ -122,6 +122,9 @@ class DisassembleKit
         $componentVariantIds = array_column($componentAvgCosts, 'variantId');
         $prefetchedProducts = $this->productRepository->findByIds($componentVariantIds);
 
+        $newCostLayers = [];
+        $modifiedProducts = [];
+
         foreach ($componentAvgCosts as $item) {
             $allocatedUnitCost = $scaleFactor > 0 ? (int) round($item['avgUnitCost'] * $scaleFactor) : 0;
 
@@ -135,7 +138,7 @@ class DisassembleKit
                 receivedAt: new \DateTimeImmutable(),
                 purchaseOrderId: $referenceId
             );
-            $this->costLayerRepository->save($layer);
+            $newCostLayers[] = $layer;
 
             // Increment stock level on Product aggregate root
             $compProduct = $prefetchedProducts[$item['variantId']] ?? null;
@@ -143,7 +146,7 @@ class DisassembleKit
                 throw new Exception("Product variant {$item['variantId']} not found.");
             }
             $compProduct->receiveStockAt(new LocationId($locationId), new Quantity($item['quantity']), $referenceId);
-            $this->productRepository->save($compProduct);
+            $modifiedProducts[$compProduct->getId()] = $compProduct;
 
             // Add increment ledger entry for this component
             $ledgerEntriesToAppend[] = new LedgerEntry(
@@ -156,6 +159,14 @@ class DisassembleKit
                 occurredAt: new \DateTimeImmutable(),
                 metadata: ['locationId' => $locationId]
             );
+        }
+
+        // Batch save cost layers and modified products
+        if (!empty($newCostLayers)) {
+            $this->costLayerRepository->saveBatch($newCostLayers);
+        }
+        if (!empty($modifiedProducts)) {
+            $this->productRepository->saveAll(array_values($modifiedProducts));
         }
 
         $this->ledgerRepository->appendAll($ledgerEntriesToAppend);

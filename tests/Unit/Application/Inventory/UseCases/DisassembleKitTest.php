@@ -202,21 +202,31 @@ class DisassembleKitTest extends TestCase
             ['comp-1', 'received_at ASC', [$compLayer]]
         ]);
 
-        $this->costLayerRepository->expects($this->atLeastOnce())->method('saveBatch');
-
-        $this->costLayerRepository->expects($this->once())
-            ->method('save')
-            ->with($this->callback(function (InventoryCostLayer $layer) {
-                return $layer->tenantId === 'tenant-1'
-                    && $layer->variantId === 'comp-1'
-                    && $layer->unitCostCents === 1000
-                    && $layer->purchaseOrderId === 'ref-1';
+        $this->costLayerRepository->expects($this->atLeastOnce())
+            ->method('saveBatch')
+            ->with($this->callback(function (array $layers) {
+                if (empty($layers)) return true;
+                foreach ($layers as $layer) {
+                    if ($layer instanceof InventoryCostLayer && $layer->variantId === 'comp-1') {
+                        return $layer->tenantId === 'tenant-1'
+                            && $layer->unitCostCents === 1000
+                            && $layer->purchaseOrderId === 'ref-1';
+                    }
+                }
+                return true;
             }));
 
-        $this->productRepository->expects($this->exactly(2))
+        $this->productRepository->expects($this->once())
             ->method('save')
             ->with($this->callback(function (Product $product) {
-                return in_array($product->getId(), ['prod_kit_1', 'comp-1']);
+                return $product->getId() === 'prod_kit_1';
+            }));
+
+        $this->productRepository->expects($this->once())
+            ->method('saveAll')
+            ->with($this->callback(function (array $products) {
+                if (count($products) !== 1) return false;
+                return $products[0]->getId() === 'comp-1';
             }));
 
         $this->ledgerRepository->expects($this->once())
@@ -352,8 +362,14 @@ class DisassembleKitTest extends TestCase
             throw new \Exception("Database error");
         });
 
-        $this->costLayerRepository->expects($this->once())->method('save')->with($this->callback(function (InventoryCostLayer $layer) {
-            return $layer->unitCostCents === 1000;
+        $this->costLayerRepository->expects($this->atLeastOnce())->method('saveBatch')->with($this->callback(function (array $layers) {
+            if (empty($layers)) return true;
+            foreach ($layers as $layer) {
+                if ($layer instanceof InventoryCostLayer && $layer->variantId === 'comp-1') {
+                    return $layer->unitCostCents === 1000;
+                }
+            }
+            return true;
         }));
 
         $this->useCase->execute([
@@ -418,8 +434,14 @@ class DisassembleKitTest extends TestCase
         });
 
         // We expect the fallback cost of 1000 to be used when the exception is thrown
-        $this->costLayerRepository->expects($this->once())->method('save')->with($this->callback(function (InventoryCostLayer $layer) {
-            return $layer->unitCostCents === 1000;
+        $this->costLayerRepository->expects($this->atLeastOnce())->method('saveBatch')->with($this->callback(function (array $layers) {
+            if (empty($layers)) return true;
+            foreach ($layers as $layer) {
+                if ($layer instanceof InventoryCostLayer && $layer->variantId === 'comp-1') {
+                    return $layer->unitCostCents === 1000;
+                }
+            }
+            return true;
         }));
 
         $this->useCase->execute([
@@ -533,8 +555,14 @@ class DisassembleKitTest extends TestCase
             return [$compLayer];
         });
 
-        $this->costLayerRepository->expects($this->once())->method('save')->with($this->callback(function (InventoryCostLayer $layer) {
-            return $layer->unitCostCents === 1000;
+        $this->costLayerRepository->expects($this->atLeastOnce())->method('saveBatch')->with($this->callback(function (array $layers) {
+            if (empty($layers)) return true;
+            foreach ($layers as $layer) {
+                if ($layer instanceof InventoryCostLayer && $layer->variantId === 'comp-1') {
+                    return $layer->unitCostCents === 1000;
+                }
+            }
+            return true;
         }));
 
         $this->useCase->execute([

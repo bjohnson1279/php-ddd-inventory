@@ -2,6 +2,8 @@
 
 namespace InventoryApp\Tests\Integration\Http;
 
+require_once __DIR__ . '/../bootstrap.php';
+
 use PHPUnit\Framework\TestCase;
 use InventoryApp\Infrastructure\Http\Controllers\RoleController;
 use Illuminate\Database\Capsule\Manager as Capsule;
@@ -91,11 +93,59 @@ class RoleControllerTest extends TestCase
 
     public function testDeleteCustomRole()
     {
+        Capsule::table('roles')->insertOrIgnore([
+            'id' => 'custom_1',
+            'name' => 'Custom Role 1'
+        ]);
+
         $request = new RoleRequestStub('DELETE', '/api/roles/custom_1', [], [], ['_auth_tenant_id' => 'test-tenant']);
         $response = $this->controller->deleteCustomRole($request, 'custom_1');
 
         $this->assertEquals(200, $response->getStatusCode());
         $body = json_decode($response->getContent(), true);
         $this->assertEquals('Role deleted successfully.', $body['message']);
+        $this->assertNull(Capsule::table('roles')->where('id', 'custom_1')->first());
+    }
+
+    public function testDeleteSystemRoleFails()
+    {
+        $request = new RoleRequestStub('DELETE', '/api/roles/admin', [], [], ['_auth_tenant_id' => 'test-tenant']);
+        $response = $this->controller->deleteCustomRole($request, 'admin');
+
+        $this->assertEquals(400, $response->getStatusCode());
+        $body = json_decode($response->getContent(), true);
+        $this->assertEquals('Cannot delete system role.', $body['error']);
+    }
+
+    public function testDeleteRoleWithAssignedUsersFails()
+    {
+        Capsule::table('roles')->insertOrIgnore([
+            'id' => 'custom_assigned',
+            'name' => 'Assigned Role'
+        ]);
+        $userId = '11111111-1111-4111-8111-111111111111';
+        Capsule::table('users')->insertOrIgnore([
+            'id' => $userId,
+            'tenant_id' => 'test-tenant',
+            'email' => 'user1@example.com',
+            'password_hash' => 'hash',
+            'name' => 'Test User'
+        ]);
+        Capsule::table('user_roles')->insertOrIgnore([
+            'user_id' => $userId,
+            'role_id' => 'custom_assigned'
+        ]);
+
+        $request = new RoleRequestStub('DELETE', '/api/roles/custom_assigned', [], [], ['_auth_tenant_id' => 'test-tenant']);
+        $response = $this->controller->deleteCustomRole($request, 'custom_assigned');
+
+        $this->assertEquals(400, $response->getStatusCode());
+        $body = json_decode($response->getContent(), true);
+        $this->assertEquals('Cannot delete role assigned to users.', $body['error']);
+
+        // Clean up
+        Capsule::table('user_roles')->where('role_id', 'custom_assigned')->delete();
+        Capsule::table('roles')->where('id', 'custom_assigned')->delete();
+        Capsule::table('users')->where('id', $userId)->delete();
     }
 }

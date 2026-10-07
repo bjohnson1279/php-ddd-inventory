@@ -103,7 +103,22 @@ class RoleController
         $tenantId = $request->input('_auth_tenant_id');
 
         try {
-            // TODO: Implement actual logic
+            $systemRoles = ['admin', 'warehouse_operator', 'inventory_manager', 'finance_auditor', 'manager', 'staff'];
+            if (in_array($roleId, $systemRoles, true)) {
+                throw new Exception("Cannot delete system role.");
+            }
+
+            $assignedUsersCount = Capsule::table('user_roles')
+                ->where('role_id', $roleId)
+                ->count();
+
+            if ($assignedUsersCount > 0) {
+                throw new Exception("Cannot delete role assigned to users.");
+            }
+
+            Capsule::table('role_permissions')->where('role_id', $roleId)->delete();
+            Capsule::table('roles')->where('id', $roleId)->delete();
+
             return new Response(['message' => 'Role deleted successfully.']);
         } catch (Exception $e) {
             return new Response(['error' => $e->getMessage()], 400);

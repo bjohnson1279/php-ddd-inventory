@@ -92,4 +92,25 @@ class SyncJournalToNetSuiteTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $this->listener->handle($event);
     }
+
+    public function testHandlePropagatesFailureWhenSavingMappingFails(): void
+    {
+        $entry = new JournalEntry('local-entry-id', 'test-tenant', new DateTimeImmutable(), 'Test sale', 'ref-1', AccountingMethod::Accrual);
+        $entry->addLine(AccountCode::cash(), 100, DebitCredit::Debit);
+        $entry->addLine(AccountCode::salesRevenue(), 100, DebitCredit::Credit);
+
+        $event = new JournalEntryRecorded($entry);
+
+        $this->mappings->method('findNetSuiteJournalId')->with('local-entry-id')->willReturn(null);
+
+        $this->sync->method('createJournalEntry')->willReturn('ns-journal-123');
+
+        // Simulate database exception when saving mapping
+        $this->mappings->method('saveMapping')
+            ->with('local-entry-id', 'ns-journal-123')
+            ->willThrowException(new \RuntimeException('Database error during mapping save'));
+
+        $this->expectException(\RuntimeException::class);
+        $this->listener->handle($event);
+    }
 }

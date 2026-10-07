@@ -81,6 +81,36 @@ class EloquentReorderPolicyRepository implements ReorderPolicyRepositoryInterfac
         );
     }
 
+    /**
+     * @param ReorderPolicy[] $policies
+     */
+    public function saveAll(array $policies): void
+    {
+        if (empty($policies)) {
+            return;
+        }
+
+        $values = [];
+        foreach ($policies as $policy) {
+            $values[] = [
+                'id'                  => $policy->id,
+                'sku'                 => $policy->sku->getValue(),
+                'location_id'         => $policy->locationId,
+                'reorder_point'       => $policy->reorderPoint,
+                'reorder_quantity'    => $policy->reorderQuantity,
+                'safety_stock'        => $policy->safetyStock,
+                'dynamic_rop_enabled' => $policy->dynamicRopEnabled ? 1 : 0,
+            ];
+        }
+
+        // ⚡ Bolt: Bulk upsert reorder policies to eliminate N+1 DB update overhead
+        ReorderPolicyModel::upsert(
+            $values,
+            ['sku', 'location_id'],
+            ['id', 'reorder_point', 'reorder_quantity', 'safety_stock', 'dynamic_rop_enabled']
+        );
+    }
+
     public function findAll(): array
     {
         $models = ReorderPolicyModel::all();

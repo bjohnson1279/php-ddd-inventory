@@ -18,8 +18,21 @@
       "InventoryApp\\": "src/",
       "App\\": "src/"
     },
-    "classmap": [
-      "src/"
+    "files": [
+      "src/Domain/Aging/AgingEntities.php",
+      "src/Domain/Aging/AgingServices.php",
+      "src/Domain/Billing/BillingEntities.php",
+      "src/Domain/Billing/BillingServices.php",
+      "src/Domain/Intercompany/IntercompanyEntities.php",
+      "src/Domain/Intercompany/IntercompanyServices.php",
+      "src/Domain/Labor/LaborEntities.php",
+      "src/Domain/Labor/LaborServices.php",
+      "src/Domain/Notification/NotificationServices.php",
+      "src/Domain/Notification/NotificationEntities.php",
+      "src/Domain/Vision/VisionEntities.php",
+      "src/Domain/Vision/VisionServices.php",
+      "src/Domain/YieldManagement/YieldEntities.php",
+      "src/Domain/YieldManagement/YieldServices.php"
     ]
   }
 }

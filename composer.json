@@ -19,7 +19,7 @@
       "App\\": "src/"
     },
     "classmap": [
-      "src/Domain/"
+      "src/"
     ]
   }
 }

@@ -118,6 +118,8 @@ class WebhookDeliveryWorker
                 } while ($active && $status == CURLM_OK);
             }
 
+            $successfulDeliveries = [];
+
             foreach ($deliveries as $delivery) {
                 if (isset($deliveryExceptions[$delivery->id])) {
                     $e = $deliveryExceptions[$delivery->id];
@@ -152,12 +154,34 @@ class WebhookDeliveryWorker
                     $delivery->status = 'Success';
                     $delivery->attempts = $delivery->attempts + 1;
                     $delivery->processed_at = new \DateTime();
-                    $delivery->save();
+
+                    $successfulDeliveries[] = [
+                        'id'              => $delivery->id,
+                        'tenant_id'       => $delivery->tenant_id,
+                        'subscription_id' => $delivery->subscription_id,
+                        'event_type'      => $delivery->event_type,
+                        'payload'         => $delivery->payload,
+                        'status'          => $delivery->status,
+                        'attempts'        => $delivery->attempts,
+                        'last_error'      => $delivery->last_error,
+                        'next_attempt_at' => $delivery->next_attempt_at ? ($delivery->next_attempt_at instanceof \DateTimeInterface ? $delivery->next_attempt_at->format('Y-m-d H:i:s') : $delivery->next_attempt_at) : null,
+                        'processed_at'    => $delivery->processed_at->format('Y-m-d H:i:s'),
+                        'created_at'      => $delivery->created_at ? ($delivery->created_at instanceof \DateTimeInterface ? $delivery->created_at->format('Y-m-d H:i:s') : $delivery->created_at) : null,
+                    ];
 
                     echo "Webhook delivery {$delivery->id} sent successfully.\n";
                 } catch (\Throwable $e) {
                     $this->handleFailure($delivery, $e, $subscription);
                 }
+            }
+
+            if (!empty($successfulDeliveries)) {
+                // ⚡ Bolt Optimization: Batch update successful webhook deliveries using upsert to eliminate N+1 DB saves
+                WebhookDeliveryModel::upsert(
+                    $successfulDeliveries,
+                    ['id'],
+                    ['status', 'attempts', 'processed_at']
+                );
             }
 
             curl_multi_close($mh);

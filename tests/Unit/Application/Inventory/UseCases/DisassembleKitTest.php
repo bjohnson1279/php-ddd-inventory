@@ -574,4 +574,159 @@ class DisassembleKitTest extends TestCase
             'referenceId' => 'ref-1'
         ]);
     }
+
+    public function testExecuteUsesDefaultCostWhenComponentActiveLayersAreEmpty(): void
+    {
+        $expectedSku = 'KIT-1';
+        $kit = new Kit('kit-id', $expectedSku, 'Test Kit');
+        $kit->addComponent('comp-1', 2);
+
+        $kitProduct = Product::create(
+            'prod_kit_1',
+            new SKU($expectedSku),
+            'Test Kit',
+            new Department('KITS'),
+            new LocationId('LOC-1'),
+            new Quantity(5)
+        );
+
+        $compProduct = Product::create(
+            'comp-1',
+            new SKU('COMP-1'),
+            'Test Component 1',
+            new Department('PARTS'),
+            new LocationId('LOC-1'),
+            new Quantity(10)
+        );
+
+        $this->kitRepository->method('findBySku')->willReturn($kit);
+
+        $this->productRepository->method('findBySku')
+            ->with($this->callback(function (SKU $sku) use ($expectedSku) {
+                return $sku->getValue() === $expectedSku;
+            }))
+            ->willReturn($kitProduct);
+
+        $this->productRepository->method('findById')->willReturnMap([
+            ['comp-1', $compProduct]
+        ]);
+
+        $this->productRepository->method('findByIds')->willReturnMap([
+            [['comp-1'], ['comp-1' => $compProduct]]
+        ]);
+
+        $this->ledgerRepository->method('currentQuantity')->willReturn(5);
+
+        $kitLayer = new InventoryCostLayer('layer-1', 'prod_kit_1', 'tenant-1', 5, 2000, new \DateTimeImmutable(), 'ref-1');
+
+        $this->costLayerRepository->method('getActiveLayers')->willReturnCallback(function($variantId) use ($kitLayer) {
+            if ($variantId === 'prod_kit_1') {
+                return [$kitLayer];
+            }
+            return [];
+        });
+
+        $this->costLayerRepository->expects($this->once())->method('save')->with($this->callback(function (InventoryCostLayer $layer) {
+            return $layer->unitCostCents === 1000;
+        }));
+
+        $this->useCase->execute([
+            'tenantId' => 'tenant-1',
+            'locationId' => 'LOC-1',
+            'kitSku' => 'KIT-1',
+            'quantity' => 1,
+            'actorId' => 'actor-1',
+            'referenceId' => 'ref-1'
+        ]);
+    }
+
+    public function testExecuteCalculatesProportionalCostWithMultipleLayersAndComponents(): void
+    {
+        $expectedSku = 'KIT-1';
+        $kit = new Kit('kit-id', $expectedSku, 'Test Kit');
+        $kit->addComponent('comp-1', 2);
+        $kit->addComponent('comp-2', 1);
+
+        $kitProduct = Product::create(
+            'prod_kit_1',
+            new SKU($expectedSku),
+            'Test Kit',
+            new Department('KITS'),
+            new LocationId('LOC-1'),
+            new Quantity(5)
+        );
+
+        $compProduct1 = Product::create(
+            'comp-1',
+            new SKU('COMP-1'),
+            'Test Component 1',
+            new Department('PARTS'),
+            new LocationId('LOC-1'),
+            new Quantity(10)
+        );
+
+        $compProduct2 = Product::create(
+            'comp-2',
+            new SKU('COMP-2'),
+            'Test Component 2',
+            new Department('PARTS'),
+            new LocationId('LOC-1'),
+            new Quantity(10)
+        );
+
+        $this->kitRepository->method('findBySku')->willReturn($kit);
+
+        $this->productRepository->method('findBySku')
+            ->with($this->callback(function (SKU $sku) use ($expectedSku) {
+                return $sku->getValue() === $expectedSku;
+            }))
+            ->willReturn($kitProduct);
+
+        $this->productRepository->method('findByIds')->willReturn([
+            'comp-1' => $compProduct1,
+            'comp-2' => $compProduct2,
+        ]);
+
+        $this->ledgerRepository->method('currentQuantity')->willReturn(5);
+
+        $kitLayer = new InventoryCostLayer('layer-kit', 'prod_kit_1', 'tenant-1', 5, 2000, new \DateTimeImmutable(), 'ref-1');
+
+        $comp1Layer1 = new InventoryCostLayer('layer-c1-1', 'comp-1', 'tenant-1', 2, 1000, new \DateTimeImmutable(), 'ref-1');
+        $comp1Layer2 = new InventoryCostLayer('layer-c1-2', 'comp-1', 'tenant-1', 2, 2000, new \DateTimeImmutable(), 'ref-1');
+
+        $comp2Layer1 = new InventoryCostLayer('layer-c2-1', 'comp-2', 'tenant-1', 1, 500, new \DateTimeImmutable(), 'ref-1');
+
+        $this->costLayerRepository->method('getActiveLayers')->willReturnCallback(function($variantId) use ($kitLayer, $comp1Layer1, $comp1Layer2, $comp2Layer1) {
+            if ($variantId === 'prod_kit_1') {
+                return [$kitLayer];
+            }
+            if ($variantId === 'comp-1') {
+                return [$comp1Layer1, $comp1Layer2];
+            }
+            if ($variantId === 'comp-2') {
+                return [$comp2Layer1];
+            }
+            return [];
+        });
+
+        $savedLayers = [];
+        $this->costLayerRepository->expects($this->exactly(2))
+            ->method('save')
+            ->with($this->callback(function (InventoryCostLayer $layer) use (&$savedLayers) {
+                $savedLayers[$layer->variantId] = $layer->unitCostCents;
+                return true;
+            }));
+
+        $this->useCase->execute([
+            'tenantId' => 'tenant-1',
+            'locationId' => 'LOC-1',
+            'kitSku' => 'KIT-1',
+            'quantity' => 1,
+            'actorId' => 'actor-1',
+            'referenceId' => 'ref-1'
+        ]);
+
+        $this->assertEquals(857, $savedLayers['comp-1']);
+        $this->assertEquals(286, $savedLayers['comp-2']);
+    }
 }

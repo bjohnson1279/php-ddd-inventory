@@ -3,7 +3,10 @@
 namespace InventoryApp\Infrastructure\Http\Controllers;
 
 use InventoryApp\Infrastructure\Http\Response;
+use InventoryApp\Infrastructure\Models\RoleModel;
+use Illuminate\Database\Capsule\Manager as Capsule;
 use Exception;
+use Throwable;
 
 /**
  * RoleController
@@ -19,20 +22,28 @@ class RoleController
     {
         $tenantId = $request->input('_auth_tenant_id');
 
+        $systemRoles = [
+            ['id' => 'admin', 'name' => 'Admin', 'isCustom' => false],
+            ['id' => 'warehouse_operator', 'name' => 'Warehouse Operator', 'isCustom' => false],
+            ['id' => 'inventory_manager', 'name' => 'Inventory Manager', 'isCustom' => false],
+            ['id' => 'finance_auditor', 'name' => 'Finance Auditor', 'isCustom' => false],
+        ];
+
         try {
-            // TODO: Wire to underlying PHP use case or directly to database layer
-            // For now we'll stub this out to match the Express / GraphQL behavior
-            return new Response([
-                'data' => [
-                    // System roles
-                    ['id' => 'admin', 'name' => 'Admin', 'isCustom' => false],
-                    ['id' => 'warehouse_operator', 'name' => 'Warehouse Operator', 'isCustom' => false],
-                    ['id' => 'inventory_manager', 'name' => 'Inventory Manager', 'isCustom' => false],
-                    ['id' => 'finance_auditor', 'name' => 'Finance Auditor', 'isCustom' => false],
-                ]
-            ]);
-        } catch (Exception $e) {
-            return new Response(['error' => $e->getMessage()], 500);
+            $customRoles = [];
+            $dbRoles = RoleModel::where('id', 'LIKE', 'custom_%')->get();
+
+            foreach ($dbRoles as $role) {
+                $customRoles[] = [
+                    'id' => $role->id,
+                    'name' => $role->name,
+                    'isCustom' => true,
+                ];
+            }
+
+            return new Response(['data' => array_merge($systemRoles, $customRoles)]);
+        } catch (Throwable $e) {
+            return new Response(['data' => $systemRoles]);
         }
     }
 

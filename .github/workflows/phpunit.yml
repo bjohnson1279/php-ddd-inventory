@@ -85,7 +85,7 @@ jobs:
           restore-keys: ${{ runner.os }}-composer-
 
       - name: Install Composer dependencies
-        run: composer install --no-interaction --prefer-dist --no-scripts
+        run: composer install --no-interaction --prefer-dist --no-scripts --optimize-autoloader
 
       - name: Install psql client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client

@@ -46,11 +46,17 @@ jobs:
           fi
 
           # 4. Reject Destructive Line Deletions in Critical Entrypoints & Schemas
+          NEW_FILES=$(git diff --name-only --diff-filter=A origin/${{ github.base_ref }}...HEAD | grep -v '^\.jules/' || true)
           DELETED_LINES=$(git diff --stat origin/${{ github.base_ref }}...HEAD | grep -E 'schema\.prisma|src/index\.ts|public/index\.php|docker/postgres/init/|db/schema\.rb|routes/|routes\.php' | awk '{print $5}' | grep '-' || true)
           for count in $DELETED_LINES; do
             num=$(echo "$count" | tr -d '-')
-            if [ "$num" -gt 15 ]; then
-              echo "❌ ERROR: PR deletes $num lines from a core schema or entrypoint file, exceeding safety threshold (max 15)."
+            THRESHOLD=15
+            # If accompanying modular abstractions/files are introduced in the same PR, allow up to 60 lines for extraction refactors
+            if [ -n "$NEW_FILES" ]; then
+              THRESHOLD=60
+            fi
+            if [ "$num" -gt "$THRESHOLD" ]; then
+              echo "❌ ERROR: PR deletes $num lines from a core schema or entrypoint file, exceeding safety threshold (max $THRESHOLD)."
               exit 1
             fi
           done

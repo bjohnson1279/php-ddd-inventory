@@ -25,7 +25,7 @@ class TenantProvisioner
     public function provisionTenant(string $tenantId): string
     {
         $entry = $this->registry->registerTenant($tenantId);
-        $dbName = $entry->dbName;
+        $dbName = $this->sanitizeIdentifier($entry->dbName);
 
         try {
             // Create the tenant's dedicated database.
@@ -69,12 +69,14 @@ class TenantProvisioner
             throw new \RuntimeException("Tenant \"{$tenantId}\" not found in registry.");
         }
 
+        $dbName = $this->sanitizeIdentifier($entry->dbName);
+
         // Terminate active connections to the tenant database
         try {
             $this->capsule->getConnection()->statement("
                 SELECT pg_terminate_backend(pg_stat_activity.pid)
                 FROM pg_stat_activity
-                WHERE pg_stat_activity.datname = '{$entry->dbName}'
+                WHERE pg_stat_activity.datname = '{$dbName}'
                   AND pid <> pg_backend_pid()
             ");
         } catch (\Throwable $_) {
@@ -82,8 +84,16 @@ class TenantProvisioner
             error_log('[TenantProvisioner] Failed to terminate active connections: ' . $_->getMessage());
         }
 
-        $this->capsule->getConnection()->statement("DROP DATABASE IF EXISTS \"{$entry->dbName}\"");
+        $this->capsule->getConnection()->statement("DROP DATABASE IF EXISTS \"{$dbName}\"");
         $this->registry->deprovisionTenant($tenantId);
+    }
+
+    /**
+     * Sanitize SQL identifier to prevent SQL injection in DDL statements.
+     */
+    private function sanitizeIdentifier(string $name): string
+    {
+        return preg_replace('/[^a-zA-Z0-9_]/', '', $name);
     }
 
     // ──────────────────────────────────────────────

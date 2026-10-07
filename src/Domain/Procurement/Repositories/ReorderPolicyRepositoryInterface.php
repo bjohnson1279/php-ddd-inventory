@@ -16,5 +16,11 @@ interface ReorderPolicyRepositoryInterface
      public function findAllByLocation(string $locationId): array;
 
     public function save(ReorderPolicy $policy): void;
+
+    /**
+     * @param ReorderPolicy[] $policies
+     */
+    public function saveAll(array $policies): void;
+
     public function findAll(): array;
 }

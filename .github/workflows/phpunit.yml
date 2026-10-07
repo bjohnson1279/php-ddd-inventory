@@ -44,7 +44,7 @@ jobs:
           restore-keys: ${{ runner.os }}-composer-
 
       - name: Install Composer dependencies
-        run: composer install --no-interaction --prefer-dist --no-scripts
+        run: composer install --no-interaction --prefer-dist --no-scripts --optimize-autoloader
 
       - name: Run PHPUnit (unit)
         run: php vendor/bin/phpunit --testdox --exclude-group integration

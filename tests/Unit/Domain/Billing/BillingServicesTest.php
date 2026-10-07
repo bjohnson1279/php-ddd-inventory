@@ -3,6 +3,9 @@
 namespace Tests\Unit\Domain\Billing;
 
 use PHPUnit\Framework\TestCase;
+
+require_once __DIR__ . '/../../../../src/Domain/Billing/BillingEntities.php';
+require_once __DIR__ . '/../../../../src/Domain/Billing/BillingServices.php';
 use App\Domain\Billing\TenantBillingTier;
 use App\Domain\Billing\TierName;
 use App\Domain\Billing\ApiUsageRecord;

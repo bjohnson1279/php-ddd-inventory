@@ -3,6 +3,9 @@
 namespace Tests\Unit\Domain\Labor;
 
 use PHPUnit\Framework\TestCase;
+
+require_once __DIR__ . '/../../../../src/Domain/Labor/LaborEntities.php';
+require_once __DIR__ . '/../../../../src/Domain/Labor/LaborServices.php';
 use App\Domain\Labor\ScheduleStatus;
 use App\Domain\Labor\OperatorPerformanceService;
 use App\Domain\Labor\PredictiveSchedulingEngine;

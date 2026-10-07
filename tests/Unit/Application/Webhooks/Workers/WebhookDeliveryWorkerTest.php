@@ -153,5 +153,15 @@ class WebhookDeliveryWorkerTest extends TestCase
         $this->assertEquals(1, $d3->attempts);
         $this->assertEquals('Success', $d4->status);
         $this->assertEquals(2, $d4->attempts);
+    public function testWorkerExitsWithoutBlockingWhenNoPendingWebhooksExist(): void
+    {
+        $startTime = microtime(true);
+        ob_start();
+        (new WebhookDeliveryWorker())->run(false);
+        $output = ob_get_clean();
+
+        $elapsedTime = microtime(true) - $startTime;
+        $this->assertStringContainsString('No pending webhooks found. Exiting.', $output);
+        $this->assertLessThan(1.0, $elapsedTime, 'Worker execution should not block/sleep for 2 seconds when empty.');
     }
 }

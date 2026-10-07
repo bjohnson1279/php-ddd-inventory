@@ -162,13 +162,6 @@ class ApprovalWorkflowService
             ]);
         });
 
-        // Dispatch events (in a real app, define these classes)
-        // if ($request->getStatus() === ApprovalRequest::STATUS_APPROVED) {
-        //     $this->eventDispatcher->dispatch(new ApprovalRequestApprovedEvent(...));
-        // } elseif ($request->getStatus() === ApprovalRequest::STATUS_REJECTED) {
-        //     $this->eventDispatcher->dispatch(new ApprovalRequestRejectedEvent(...));
-        // }
-
         return [
             'status' => $request->getStatus(),
             'referenceType' => $requestRecord->reference_type,

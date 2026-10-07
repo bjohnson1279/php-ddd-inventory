@@ -165,4 +165,17 @@ class SerializedItemControllerTest extends TestCase
         $this->assertEquals(400, $response->getStatusCode());
         $this->assertStringContainsString('Simulated Service Error', $response->getContent());
     }
+
+    public function testRegisterGenericExceptionReturns500(): void
+    {
+        $this->requestMock->expects($this->once())
+            ->method('validate')
+            ->willThrowException(new \RuntimeException('Database connection lost'));
+
+        $response = $this->controller->register($this->requestMock, $this->serviceMock);
+
+        $this->assertEquals(500, $response->getStatusCode());
+        $this->assertStringContainsString('An internal server error occurred.', $response->getContent());
+        $this->assertStringNotContainsString('Database connection lost', $response->getContent());
+    }
 }

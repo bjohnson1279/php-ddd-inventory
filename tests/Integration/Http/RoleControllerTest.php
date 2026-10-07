@@ -63,17 +63,40 @@ class RoleControllerTest extends TestCase
         $body = json_decode($response->getContent(), true);
         $this->assertTrue($body['data']['isCustom']);
         $this->assertEquals('Custom Manager', $body['data']['name']);
+        $this->assertEquals(['inv:view'], $body['data']['permissionIds']);
         $this->assertStringStartsWith('custom_test-tenant_', $body['data']['id']);
+    }
+
+    public function testCreateCustomRoleWithMissingNameFailsValidation()
+    {
+        $request = new RoleRequestStub('POST', '/api/roles', [], ['permissionIds' => ['inv:view']], ['_auth_tenant_id' => 'test-tenant']);
+        $response = $this->controller->createCustomRole($request);
+
+        $this->assertEquals(400, $response->getStatusCode());
+        $body = json_decode($response->getContent(), true);
+        $this->assertEquals('Role name is required.', $body['error']);
     }
 
     public function testUpdateRolePermissions()
     {
-        $request = new RoleRequestStub('PUT', '/api/roles/custom_1/permissions', [], ['permissionIds' => ['inv:edit']], ['_auth_tenant_id' => 'test-tenant']);
+        Capsule::table('role_permissions')->where('role_id', 'custom_1')->delete();
+        Capsule::table('role_permissions')->insert([
+            ['role_id' => 'custom_1', 'permission' => 'old_permission']
+        ]);
+
+        $request = new RoleRequestStub('PUT', '/api/roles/custom_1/permissions', [], ['permissionIds' => ['inv:edit', 'inv:view']], ['_auth_tenant_id' => 'test-tenant']);
         $response = $this->controller->updateRolePermissions($request, 'custom_1');
 
         $this->assertEquals(200, $response->getStatusCode());
         $body = json_decode($response->getContent(), true);
         $this->assertEquals('Role permissions updated successfully.', $body['message']);
+
+        $perms = Capsule::table('role_permissions')
+            ->where('role_id', 'custom_1')
+            ->pluck('permission')
+            ->toArray();
+
+        $this->assertEqualsCanonicalizing(['inv:edit', 'inv:view'], $perms);
     }
 
     public function testDeleteCustomRole()

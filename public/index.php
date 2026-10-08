@@ -2827,7 +2827,7 @@ if ($method === 'POST' && $uri === '/api/shipping/label') {
         'trackingNumber' => $tracking,
         'serviceLevel' => 'EXPRESS',
         'labelFormat' => $input['format'] ?? 'BOTH',
-        'zplString' => "^XA^FO50,50^A0N,36,36^FDSHIP TO: " . ($input['recipientName'] ?? 'Recipient') . "^FS^XZ",
+        'zplString' => "^XA^FO50,50^A0N,36,36^FDSHIP TO: " . str_replace(['^', '~'], '', $input['recipientName'] ?? 'Recipient') . "^FS^XZ",
         'pdfBase64' => base64_encode("SHIPPING LABEL\nCarrier: {$carrier}\nTracking: {$tracking}"),
         'createdAt' => (new DateTimeImmutable())->format(DATE_ATOM)
     ]);

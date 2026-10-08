@@ -153,6 +153,8 @@ class WebhookDeliveryWorkerTest extends TestCase
         $this->assertEquals(1, $d3->attempts);
         $this->assertEquals('Success', $d4->status);
         $this->assertEquals(2, $d4->attempts);
+    }
+
     public function testWorkerExitsWithoutBlockingWhenNoPendingWebhooksExist(): void
     {
         $startTime = microtime(true);

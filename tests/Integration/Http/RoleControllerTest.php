@@ -82,6 +82,9 @@ class RoleControllerTest extends TestCase
 
     public function testUpdateRolePermissions()
     {
+        Capsule::table('roles')->insertOrIgnore([
+            ['id' => 'custom_1', 'name' => 'Custom Role 1']
+        ]);
         Capsule::table('role_permissions')->where('role_id', 'custom_1')->delete();
         Capsule::table('role_permissions')->insert([
             ['role_id' => 'custom_1', 'permission' => 'old_permission']

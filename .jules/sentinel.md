@@ -128,3 +128,7 @@
 - **Strict PSR-4 Isolation in PHP**: In PHP codebases, place every class, interface, and enum in its own file named `<ClassName>.php` matching its namespace path. Never combine multiple domain classes into a single file.
 - **Domain Contract Verification**: Always inspect entity and aggregate root definitions to verify exact method and property names before writing service logic or test fixtures.
 - **Clean Markdown Formatting**: Always append journal entries using actual newline characters, never literal string escape sequences.
+## 2024-10-31 - ZPL Injection in Shipping Label API
+**Vulnerability:** The `/api/shipping/label` endpoint in `public/index.php` constructed a ZPL string directly from user input `recipientName` without sanitization. This introduced a ZPL injection vulnerability.
+**Learning:** Constructing ZPL commands from unsanitized input is analogous to XSS or command injection. Attackers can leverage control characters (`^` and `~`) to change printer configurations or alter the label's intent.
+**Prevention:** Always sanitize user input prior to interpolation into ZPL strings by stripping out ZPL control characters, particularly `^` and `~`.

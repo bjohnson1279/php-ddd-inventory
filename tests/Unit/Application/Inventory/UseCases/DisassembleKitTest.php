@@ -626,8 +626,12 @@ class DisassembleKitTest extends TestCase
             return [];
         });
 
-        $this->costLayerRepository->expects($this->once())->method('save')->with($this->callback(function (InventoryCostLayer $layer) {
-            return $layer->unitCostCents === 1000;
+        $savedLayers = [];
+        $this->costLayerRepository->expects($this->any())->method('saveBatch')->with($this->callback(function (array $layers) use (&$savedLayers) {
+            foreach ($layers as $layer) {
+                $savedLayers[] = $layer;
+            }
+            return true;
         }));
 
         $this->useCase->execute([
@@ -638,6 +642,14 @@ class DisassembleKitTest extends TestCase
             'actorId' => 'actor-1',
             'referenceId' => 'ref-1'
         ]);
+
+        $found = false;
+        foreach ($savedLayers as $layer) {
+            if ($layer->variantId === 'comp-1' && $layer->unitCostCents === 1000) {
+                $found = true;
+            }
+        }
+        $this->assertTrue($found, 'Component layer should be saved with 1000 default cost');
     }
 
     public function testExecuteCalculatesProportionalCostWithMultipleLayersAndComponents(): void
@@ -710,10 +722,12 @@ class DisassembleKitTest extends TestCase
         });
 
         $savedLayers = [];
-        $this->costLayerRepository->expects($this->exactly(2))
-            ->method('save')
-            ->with($this->callback(function (InventoryCostLayer $layer) use (&$savedLayers) {
-                $savedLayers[$layer->variantId] = $layer->unitCostCents;
+        $this->costLayerRepository->expects($this->any())
+            ->method('saveBatch')
+            ->with($this->callback(function (array $layers) use (&$savedLayers) {
+                foreach ($layers as $layer) {
+                    $savedLayers[$layer->variantId] = $layer->unitCostCents;
+                }
                 return true;
             }));
 

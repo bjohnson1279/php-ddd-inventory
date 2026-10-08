@@ -4,6 +4,9 @@ namespace InventoryApp\Tests\Integration\Http;
 
 use PHPUnit\Framework\TestCase;
 use InventoryApp\Infrastructure\Http\Controllers\RoleController;
+use Illuminate\Database\Capsule\Manager as Capsule;
+
+require_once __DIR__ . '/../bootstrap.php';
 
 class RoleRequestStub
 {

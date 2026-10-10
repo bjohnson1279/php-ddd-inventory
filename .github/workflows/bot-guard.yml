@@ -27,6 +27,12 @@ jobs:
             exit 1
           fi
 
+          # 1b. Reject Stale Base Branches with In-Memory 3-Way Merge Conflicts
+          if ! git merge-tree origin/${{ github.base_ref }} HEAD > /dev/null 2>&1; then
+            echo "❌ ERROR: PR branch has merge conflicts against origin/${{ github.base_ref }}. Auto-rebase or sync required before review."
+            exit 1
+          fi
+
           # 2. Reject Zero-Diff / Hallucinatory Acknowledgment PRs & Journal-Only PRs
           if [ "${{ github.actor }}" != "dependabot" ] && [ "${{ github.actor }}" != "dependabot[bot]" ]; then
             CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -v '^\.jules/' | grep -v '^\.Jules/' | grep -v 'package.*json' | grep -v 'composer\.lock' | grep -v 'Gemfile\.lock' | grep -v 'pnpm-lock\.yaml' | grep -v 'mix\.lock' | grep -v 'Cargo\.lock' || true)

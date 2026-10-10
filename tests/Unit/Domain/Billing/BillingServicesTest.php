@@ -3,6 +3,8 @@
 namespace Tests\Unit\Domain\Billing;
 
 use PHPUnit\Framework\TestCase;
+require_once dirname(__DIR__, 4) . "/src/Domain/Billing/BillingEntities.php";
+require_once dirname(__DIR__, 4) . "/src/Domain/Billing/BillingServices.php";
 use App\Domain\Billing\TenantBillingTier;
 use App\Domain\Billing\TierName;
 use App\Domain\Billing\ApiUsageRecord;

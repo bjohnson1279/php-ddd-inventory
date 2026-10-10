@@ -3,6 +3,8 @@
 namespace Tests\Unit\Domain\Notification;
 
 use PHPUnit\Framework\TestCase;
+require_once dirname(__DIR__, 4) . "/src/Domain/Notification/NotificationEntities.php";
+require_once dirname(__DIR__, 4) . "/src/Domain/Notification/NotificationServices.php";
 use App\Domain\Notification\Notification;
 use App\Domain\Notification\NotificationPreference;
 use App\Domain\Notification\NotificationCategory;

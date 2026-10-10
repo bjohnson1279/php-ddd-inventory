@@ -3,6 +3,9 @@
 namespace Tests\Unit\Domain\Supplier;
 
 use PHPUnit\Framework\TestCase;
+require_once dirname(__DIR__, 4) . "/src/Domain/Supplier/ASN.php";
+require_once dirname(__DIR__, 4) . "/src/Domain/Supplier/ASNSubmissionService.php";
+require_once dirname(__DIR__, 4) . "/src/Domain/Supplier/OTIFCalculationService.php";
 use App\Domain\Supplier\ASN;
 use App\Domain\Supplier\ASNSubmissionService;
 use App\Domain\Supplier\OTIFCalculationService;

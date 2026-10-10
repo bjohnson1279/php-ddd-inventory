@@ -3,6 +3,8 @@
 namespace Tests\Unit\Domain\YieldManagement;
 
 use PHPUnit\Framework\TestCase;
+require_once dirname(__DIR__, 4) . "/src/Domain/YieldManagement/YieldEntities.php";
+require_once dirname(__DIR__, 4) . "/src/Domain/YieldManagement/YieldServices.php";
 use App\Domain\YieldManagement\LiquidationProfile;
 use App\Domain\YieldManagement\InventoryYieldMetrics;
 use App\Domain\YieldManagement\YieldCalculationService;

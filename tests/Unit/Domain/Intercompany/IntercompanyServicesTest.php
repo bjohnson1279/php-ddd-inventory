@@ -3,6 +3,8 @@
 namespace Tests\Unit\Domain\Intercompany;
 
 use PHPUnit\Framework\TestCase;
+require_once dirname(__DIR__, 4) . "/src/Domain/Intercompany/IntercompanyEntities.php";
+require_once dirname(__DIR__, 4) . "/src/Domain/Intercompany/IntercompanyServices.php";
 use App\Domain\Intercompany\TransferPricingRule;
 use App\Domain\Intercompany\PricingRuleType;
 use App\Domain\Intercompany\TransferPricingService;

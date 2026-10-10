@@ -3,6 +3,8 @@
 namespace Tests\Unit\Domain\Aging;
 
 use PHPUnit\Framework\TestCase;
+require_once dirname(__DIR__, 4) . "/src/Domain/Aging/AgingEntities.php";
+require_once dirname(__DIR__, 4) . "/src/Domain/Aging/AgingServices.php";
 use App\Domain\Aging\InventoryAgingService;
 use App\Domain\Aging\DeadStockRecommendationEngine;
 use App\Domain\Aging\EsgEmissionsCalculator;

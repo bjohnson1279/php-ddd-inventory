@@ -3,6 +3,8 @@
 namespace Tests\Unit\Domain\Vision;
 
 use PHPUnit\Framework\TestCase;
+require_once dirname(__DIR__, 4) . "/src/Domain/Vision/VisionEntities.php";
+require_once dirname(__DIR__, 4) . "/src/Domain/Vision/VisionServices.php";
 use App\Domain\Vision\VisionInspection;
 use App\Domain\Vision\InspectionStatus;
 use App\Domain\Vision\ComputerVisionService;

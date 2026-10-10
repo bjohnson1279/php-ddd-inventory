@@ -115,3 +115,8 @@
 - **Strictly Append-Only Journaling**: When adding learnings to `.jules/*.md`, append strictly at the end of the file. Do not rewrite, deduplicate, or remove lines beginning with `## YYYY-MM-DD`.
 - **Surgical Scope Quarantine**: Modify only the files directly involved in the issue and their corresponding test fixtures. Do not delete, rename, or perform drive-by cleanups of unrelated root-level scripts or legacy files.
 - **Coupled Test Fixture Awareness for Security Invariants**: When changing fail-open fallback behavior (such as hardening decryption to fail closed), always update upstream test mocks that rely on plaintext credentials or mock values.
+
+## 2026-10-10 - Strict SSL Verification for Outbound cURL Requests
+**Vulnerability:** Internal cURL requests to sidecar and microservice endpoints in `ReceivingService` and `SlottingOptimizer` omitted explicit SSL certificate and host verification flags.
+**Learning:** Outbound HTTP client requests without strict certificate and peer validation (`CURLOPT_SSL_VERIFYPEER` and `CURLOPT_SSL_VERIFYHOST`) are susceptible to Man-in-the-Middle (MitM) traffic interception or proxy spoofing.
+**Prevention:** Always set `CURLOPT_SSL_VERIFYPEER => true` and `CURLOPT_SSL_VERIFYHOST => 2` on all outbound cURL client instances in production code.

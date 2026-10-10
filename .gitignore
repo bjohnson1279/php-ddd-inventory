@@ -8,7 +8,6 @@ vendor/
 .DS_Store
 /node_modules/
 /db_data/
-/.jules/
 /tests/**/*.log
 .antigravitycli/
 /build/

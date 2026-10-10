@@ -24,6 +24,9 @@ class ReceivingService
             'image_base64' => $base64Image,
             'po_id' => $purchaseOrderId
         ]));
+        // Add strict SSL verification as a defense-in-depth measure
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);

@@ -132,3 +132,7 @@
 **Vulnerability:** The `/api/shipping/label` endpoint in `public/index.php` constructed a ZPL string directly from user input `recipientName` without sanitization. This introduced a ZPL injection vulnerability.
 **Learning:** Constructing ZPL commands from unsanitized input is analogous to XSS or command injection. Attackers can leverage control characters (`^` and `~`) to change printer configurations or alter the label's intent.
 **Prevention:** Always sanitize user input prior to interpolation into ZPL strings by stripping out ZPL control characters, particularly `^` and `~`.
+## 2026-10-10 - Strict SSL Verification for Outbound cURL Requests
+**Vulnerability:** Internal cURL requests to sidecar and microservice endpoints in `ReceivingService` and `SlottingOptimizer` omitted explicit SSL certificate and host verification flags.
+**Learning:** Outbound HTTP client requests without strict certificate and peer validation (`CURLOPT_SSL_VERIFYPEER` and `CURLOPT_SSL_VERIFYHOST`) are susceptible to Man-in-the-Middle (MitM) traffic interception or proxy spoofing.
+**Prevention:** Always set `CURLOPT_SSL_VERIFYPEER => true` and `CURLOPT_SSL_VERIFYHOST => 2` on all outbound cURL client instances in production code.

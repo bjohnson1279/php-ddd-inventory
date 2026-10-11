@@ -1,0 +1,7 @@
+.git
+.vscode
+vendor
+*.log
+phpunit-output.txt
+.phpunit.result.cache
+storage/logs/*.log

@@ -24,3 +24,7 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 # Set working directory
 WORKDIR /var/www/html
+
+# Keep application code and dependencies together when no development bind mount is used.
+COPY . .
+RUN composer install --no-interaction --prefer-dist

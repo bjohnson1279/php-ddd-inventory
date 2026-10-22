@@ -83,35 +83,55 @@ class RoleControllerTest extends TestCase
     public function testUpdateRolePermissions()
     {
         Capsule::table('roles')->insertOrIgnore([
-            ['id' => 'custom_1', 'name' => 'Custom Role 1']
+            ['id' => 'custom_test-tenant_1', 'name' => 'Custom Role 1']
         ]);
-        Capsule::table('role_permissions')->where('role_id', 'custom_1')->delete();
+        Capsule::table('role_permissions')->where('role_id', 'custom_test-tenant_1')->delete();
         Capsule::table('role_permissions')->insert([
-            ['role_id' => 'custom_1', 'permission' => 'old_permission']
+            ['role_id' => 'custom_test-tenant_1', 'permission' => 'old_permission']
         ]);
 
-        $request = new RoleRequestStub('PUT', '/api/roles/custom_1/permissions', [], ['permissionIds' => ['inv:edit', 'inv:view']], ['_auth_tenant_id' => 'test-tenant']);
-        $response = $this->controller->updateRolePermissions($request, 'custom_1');
+        $request = new RoleRequestStub('PUT', '/api/roles/custom_test-tenant_1/permissions', [], ['permissionIds' => ['inv:edit', 'inv:view']], ['_auth_tenant_id' => 'test-tenant']);
+        $response = $this->controller->updateRolePermissions($request, 'custom_test-tenant_1');
 
         $this->assertEquals(200, $response->getStatusCode());
         $body = json_decode($response->getContent(), true);
         $this->assertEquals('Role permissions updated successfully.', $body['message']);
 
         $perms = Capsule::table('role_permissions')
-            ->where('role_id', 'custom_1')
+            ->where('role_id', 'custom_test-tenant_1')
             ->pluck('permission')
             ->toArray();
 
         $this->assertEqualsCanonicalizing(['inv:edit', 'inv:view'], $perms);
     }
 
+    public function testUpdateRolePermissionsFailsForOtherTenant()
+    {
+        $request = new RoleRequestStub('PUT', '/api/roles/custom_other-tenant_1/permissions', [], ['permissionIds' => ['inv:edit']], ['_auth_tenant_id' => 'test-tenant']);
+        $response = $this->controller->updateRolePermissions($request, 'custom_other-tenant_1');
+
+        $this->assertEquals(400, $response->getStatusCode());
+        $body = json_decode($response->getContent(), true);
+        $this->assertEquals('Unauthorized role update', $body['error']);
+    }
+
     public function testDeleteCustomRole()
     {
-        $request = new RoleRequestStub('DELETE', '/api/roles/custom_1', [], [], ['_auth_tenant_id' => 'test-tenant']);
-        $response = $this->controller->deleteCustomRole($request, 'custom_1');
+        $request = new RoleRequestStub('DELETE', '/api/roles/custom_test-tenant_1', [], [], ['_auth_tenant_id' => 'test-tenant']);
+        $response = $this->controller->deleteCustomRole($request, 'custom_test-tenant_1');
 
         $this->assertEquals(200, $response->getStatusCode());
         $body = json_decode($response->getContent(), true);
         $this->assertEquals('Role deleted successfully.', $body['message']);
+    }
+
+    public function testDeleteCustomRoleFailsForOtherTenant()
+    {
+        $request = new RoleRequestStub('DELETE', '/api/roles/custom_other-tenant_1', [], [], ['_auth_tenant_id' => 'test-tenant']);
+        $response = $this->controller->deleteCustomRole($request, 'custom_other-tenant_1');
+
+        $this->assertEquals(400, $response->getStatusCode());
+        $body = json_decode($response->getContent(), true);
+        $this->assertEquals('Unauthorized role deletion', $body['error']);
     }
 }

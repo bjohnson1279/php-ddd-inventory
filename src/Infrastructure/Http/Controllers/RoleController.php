@@ -31,7 +31,8 @@ class RoleController
 
         try {
             $customRoles = [];
-            $dbRoles = RoleModel::where('id', 'LIKE', 'custom_%')->get();
+            // Escape the literal underscore to prevent matching e.g. custom_tenant1_% when querying custom_tenant_%
+            $dbRoles = RoleModel::where('id', 'LIKE', "custom_{$tenantId}\_%")->get();
 
             foreach ($dbRoles as $role) {
                 $customRoles[] = [
@@ -109,6 +110,10 @@ class RoleController
         $permissionIds = $request->input('permissionIds', []);
 
         try {
+            if (!str_starts_with($roleId, "custom_{$tenantId}_")) {
+                throw new \Exception("Unauthorized role update");
+            }
+
             if (!is_array($permissionIds)) {
                 $permissionIds = [];
             }
@@ -142,6 +147,10 @@ class RoleController
         $tenantId = $request->input('_auth_tenant_id');
 
         try {
+            if (!str_starts_with($roleId, "custom_{$tenantId}_")) {
+                throw new \Exception("Unauthorized role deletion");
+            }
+
             // TODO: Implement actual logic
             return new Response(['message' => 'Role deleted successfully.']);
         } catch (Exception $e) {

@@ -9,7 +9,6 @@ use InventoryApp\Domain\Inventory\ValueObjects\Quantity;
 use InventoryApp\Application\Inventory\UseCases\DispatchStock;
 use InventoryApp\Application\Inventory\UseCases\ReceiveStock;
 use InventoryApp\Application\Inventory\UseCases\RecordCountItem;
-use Illuminate\Database\Capsule\Manager as Capsule;
 use DomainException;
 use InvalidArgumentException;
 
@@ -106,19 +105,10 @@ class BarcodeScanDispatcher
         }
 
         $rawScanClean = strtoupper(trim($rawScan));
-        $variantId = $this->repo->findVariantByBarcodeValue($rawScanClean);
+        $sku = $this->repo->findSkuByBarcodeValue($rawScanClean);
 
-        if ($variantId === null) {
+        if ($sku === null) {
             throw new DomainException("No variant found for barcode: {$rawScan}");
-        }
-
-        // Resolve variant_id UUID to SKU string
-        $variantRow = Capsule::connection()->table('catalog_variants')->where('id', $variantId)->first();
-        if ($variantRow === null) {
-            // Fallback if running in-memory or setup without catalog_variants table populated
-            $sku = $variantId;
-        } else {
-            $sku = $variantRow->sku;
         }
 
         $handler = $this->handlers[$context->value] ?? null;

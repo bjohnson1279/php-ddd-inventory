@@ -12,6 +12,8 @@ interface BarcodeRepositoryInterface
 
     public function findVariantByBarcodeValue(string $value): ?string;
 
+    public function findSkuByBarcodeValue(string $value): ?string;
+
     public function findSetForVariant(string $variantId): VariantBarcodeSet;
 
     public function saveSet(VariantBarcodeSet $set): void;

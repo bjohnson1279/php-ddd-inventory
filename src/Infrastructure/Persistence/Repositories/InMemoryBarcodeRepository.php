@@ -54,6 +54,11 @@ class InMemoryBarcodeRepository implements BarcodeRepositoryInterface
         return null;
     }
 
+    public function findSkuByBarcodeValue(string $value): ?string
+    {
+        return $this->findVariantByBarcodeValue($value);
+    }
+
     public function findSetForVariant(string $variantId): VariantBarcodeSet
     {
         $rows = $this->read();

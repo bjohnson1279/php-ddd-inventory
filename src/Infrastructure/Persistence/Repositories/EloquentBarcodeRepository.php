@@ -38,6 +38,21 @@ class EloquentBarcodeRepository implements BarcodeRepositoryInterface
         return $model ? $model->variant_id : null;
     }
 
+    public function findSkuByBarcodeValue(string $value): ?string
+    {
+        $variantId = $this->findVariantByBarcodeValue($value);
+        if ($variantId === null) {
+            return null;
+        }
+
+        $variantRow = \Illuminate\Database\Capsule\Manager::connection()->table('catalog_variants')->where('id', $variantId)->first();
+        if ($variantRow === null) {
+            return $variantId;
+        }
+
+        return $variantRow->sku;
+    }
+
     public function findSetForVariant(string $variantId): VariantBarcodeSet
     {
         $models = BarcodeModel::where('variant_id', $variantId)->get();

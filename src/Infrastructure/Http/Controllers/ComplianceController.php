@@ -10,6 +10,11 @@ use Exception;
 
 class ComplianceController
 {
+    private function getService(): ComplianceLedgerService
+    {
+        return new ComplianceLedgerService(ServiceContainer::complianceLedgerRepo());
+    }
+
     public function list(RequestInterface $request)
     {
         try {
@@ -46,7 +51,7 @@ class ComplianceController
     {
         try {
             $tenantId = function_exists('tenantId') ? tenantId() : 'system';
-            $result = ComplianceLedgerService::validateLedger($tenantId);
+            $result = $this->getService()->validateLedger($tenantId);
             return new Response($result, 200);
         } catch (Exception $e) {
             error_log('[ComplianceController] ' . $e->getMessage());
@@ -59,7 +64,7 @@ class ComplianceController
         try {
             $tenantId = function_exists('tenantId') ? tenantId() : 'system';
             $timestamp = $request->query('timestamp') ?: null;
-            $result = ComplianceLedgerService::reconstructState($tenantId, $timestamp);
+            $result = $this->getService()->reconstructState($tenantId, $timestamp);
             return new Response($result, 200);
         } catch (Exception $e) {
             error_log('[ComplianceController] ' . $e->getMessage());
@@ -72,7 +77,7 @@ class ComplianceController
         try {
             $tenantId = function_exists('tenantId') ? tenantId() : 'system';
             $timestamp = $request->query('timestamp') ?: null;
-            $result = ComplianceLedgerService::replayAudit($tenantId, $timestamp);
+            $result = $this->getService()->replayAudit($tenantId, $timestamp);
             return new Response($result, 200);
         } catch (Exception $e) {
             error_log('[ComplianceController] ' . $e->getMessage());
@@ -80,4 +85,3 @@ class ComplianceController
         }
     }
 }
-

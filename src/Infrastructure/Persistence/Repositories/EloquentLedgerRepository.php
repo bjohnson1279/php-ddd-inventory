@@ -49,9 +49,13 @@ class EloquentLedgerRepository implements LedgerRepositoryInterface
 
         LedgerEntryModel::insert($insertData);
 
+        $complianceLedgerService = new \InventoryApp\Domain\Compliance\Services\ComplianceLedgerService(
+            \InventoryApp\Infrastructure\ServiceContainer::complianceLedgerRepo()
+        );
+
         foreach ($entries as $entry) {
             try {
-                \InventoryApp\Domain\Compliance\Services\ComplianceLedgerService::logEvent(
+                $complianceLedgerService->logEvent(
                     $this->tenantId,
                     $entry->actorId ?: 'system',
                     'STOCK_ADJUSTED',

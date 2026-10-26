@@ -3,12 +3,16 @@
 namespace InventoryApp\Domain\Compliance\Services;
 
 use InventoryApp\Domain\Compliance\Entities\ComplianceLedgerEntry;
-use InventoryApp\Infrastructure\ServiceContainer;
+use InventoryApp\Domain\Compliance\Repositories\ComplianceLedgerRepositoryInterface;
 use DateTime;
 
 class ComplianceLedgerService
 {
-    private static function getPrivateKey(): string
+    public function __construct(
+        private readonly ComplianceLedgerRepositoryInterface $repo
+    ) {}
+
+    private function getPrivateKey(): string
     {
         $key = getenv('COMPLIANCE_PRIVATE_KEY') ?: getenv('COMPLIANCE_KEY');
         if (!$key || empty(trim($key))) {
@@ -17,10 +21,9 @@ class ComplianceLedgerService
         return $key;
     }
 
-    public static function logEvent(string $tenantId, string $actorId, string $eventType, array $payloadData): ComplianceLedgerEntry
+    public function logEvent(string $tenantId, string $actorId, string $eventType, array $payloadData): ComplianceLedgerEntry
     {
-        $repo = ServiceContainer::complianceLedgerRepo();
-        $lastEntry = $repo->getLastEntry($tenantId);
+        $lastEntry = $this->repo->getLastEntry($tenantId);
 
         if ($lastEntry) {
             $previousHash = $lastEntry->getCurrentHash();
@@ -33,7 +36,7 @@ class ComplianceLedgerService
         $payloadJson = json_encode($payloadData);
         $dataToHash = $sequenceNumber . $previousHash . $eventType . $payloadJson . $tenantId . $actorId;
         $currentHash = hash('sha256', $dataToHash);
-        $signature = hash_hmac('sha256', $currentHash, self::getPrivateKey());
+        $signature = hash_hmac('sha256', $currentHash, $this->getPrivateKey());
 
         $id = bin2hex(random_bytes(16)); // UUID alternative in native PHP
 
@@ -50,15 +53,14 @@ class ComplianceLedgerService
             new DateTime()
         );
 
-        $repo->save($entry);
+        $this->repo->save($entry);
         return $entry;
     }
 
-    public static function validateLedger(string $tenantId = null): array
+    public function validateLedger(?string $tenantId = null): array
     {
-        $repo = ServiceContainer::complianceLedgerRepo();
-        $entries = $repo->findAll($tenantId);
-        $privateKey = self::getPrivateKey();
+        $entries = $this->repo->findAll($tenantId);
+        $privateKey = $this->getPrivateKey();
 
         for ($i = 0; $i < count($entries); $i++) {
             $entry = $entries[$i];
@@ -110,10 +112,9 @@ class ComplianceLedgerService
         return ['isValid' => true];
     }
 
-    public static function reconstructState(string $tenantId, ?string $timestampStr = null): array
+    public function reconstructState(string $tenantId, ?string $timestampStr = null): array
     {
-        $repo = ServiceContainer::complianceLedgerRepo();
-        $entries = $repo->findAll($tenantId);
+        $entries = $this->repo->findAll($tenantId);
 
         $cutoffDate = $timestampStr ? new DateTime($timestampStr) : new DateTime();
         $filtered = array_filter($entries, function ($e) use ($cutoffDate) {
@@ -176,10 +177,9 @@ class ComplianceLedgerService
         ];
     }
 
-    public static function replayAudit(string $tenantId, ?string $upToTimestamp = null): array
+    public function replayAudit(string $tenantId, ?string $upToTimestamp = null): array
     {
-        $repo = ServiceContainer::complianceLedgerRepo();
-        $entries = $repo->findAll($tenantId);
+        $entries = $this->repo->findAll($tenantId);
 
         if ($upToTimestamp) {
             $cutoffDate = new DateTime($upToTimestamp);
@@ -200,4 +200,3 @@ class ComplianceLedgerService
         }, array_values($entries));
     }
 }
-

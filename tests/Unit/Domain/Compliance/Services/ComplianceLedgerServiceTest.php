@@ -8,12 +8,12 @@ use PHPUnit\Framework\TestCase;
 use InventoryApp\Domain\Compliance\Services\ComplianceLedgerService;
 use InventoryApp\Domain\Compliance\Entities\ComplianceLedgerEntry;
 use InventoryApp\Domain\Compliance\Repositories\ComplianceLedgerRepositoryInterface;
-use InventoryApp\Infrastructure\ServiceContainer;
 
 class ComplianceLedgerServiceTest extends TestCase
 {
     private $mockRepo;
     private $savedEntries = [];
+    private ComplianceLedgerService $service;
 
     protected function setUp(): void
     {
@@ -41,9 +41,7 @@ class ComplianceLedgerServiceTest extends TestCase
             return $this->savedEntries[count($this->savedEntries) - 1];
         });
 
-        // Override binding in ServiceContainer
-        $container = ServiceContainer::getInstance();
-        $container->instance(ComplianceLedgerRepositoryInterface::class, $this->mockRepo);
+        $this->service = new ComplianceLedgerService($this->mockRepo);
     }
 
     public function testLogEventGeneratesValidBlockChain()
@@ -51,19 +49,19 @@ class ComplianceLedgerServiceTest extends TestCase
         $payload = ['sku' => 'SKU-TEST-1', 'quantity' => 100];
 
         // Log 1st event
-        $entry1 = ComplianceLedgerService::logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
+        $entry1 = $this->service->logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
         $this->assertEquals(1, $entry1->getSequenceNumber());
         $this->assertEquals(str_repeat('0', 64), $entry1->getPreviousHash());
         $this->assertNotEmpty($entry1->getCurrentHash());
         $this->assertNotEmpty($entry1->getSignature());
 
         // Log 2nd event
-        $entry2 = ComplianceLedgerService::logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
+        $entry2 = $this->service->logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
         $this->assertEquals(2, $entry2->getSequenceNumber());
         $this->assertEquals($entry1->getCurrentHash(), $entry2->getPreviousHash());
 
         // Validate the ledger chain
-        $validationResult = ComplianceLedgerService::validateLedger('tenant-1');
+        $validationResult = $this->service->validateLedger('tenant-1');
         $this->assertTrue($validationResult['isValid']);
     }
 
@@ -71,8 +69,8 @@ class ComplianceLedgerServiceTest extends TestCase
     {
         $payload = ['sku' => 'SKU-TEST-1'];
 
-        $entry1 = ComplianceLedgerService::logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
-        $entry2 = ComplianceLedgerService::logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
+        $entry1 = $this->service->logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
+        $entry2 = $this->service->logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
 
         // Tamper with the previous hash of block 2
         $tamperedEntry2 = new ComplianceLedgerEntry(
@@ -91,7 +89,7 @@ class ComplianceLedgerServiceTest extends TestCase
         // Replace entry2 in our memory representation
         $this->savedEntries[1] = $tamperedEntry2;
 
-        $validationResult = ComplianceLedgerService::validateLedger('tenant-1');
+        $validationResult = $this->service->validateLedger('tenant-1');
         $this->assertFalse($validationResult['isValid']);
         $this->assertEquals(2, $validationResult['failedSequenceNumber']);
         $this->assertStringContainsString('Chaining hash mismatch', $validationResult['reason']);
@@ -100,7 +98,7 @@ class ComplianceLedgerServiceTest extends TestCase
     public function testValidationFailsIfBlockContentIsTampered()
     {
         $payload = ['sku' => 'SKU-TEST-1'];
-        $entry1 = ComplianceLedgerService::logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
+        $entry1 = $this->service->logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
 
         // Tamper with the payload data without updating hash/signature
         $tamperedEntry1 = new ComplianceLedgerEntry(
@@ -118,7 +116,7 @@ class ComplianceLedgerServiceTest extends TestCase
 
         $this->savedEntries[0] = $tamperedEntry1;
 
-        $validationResult = ComplianceLedgerService::validateLedger('tenant-1');
+        $validationResult = $this->service->validateLedger('tenant-1');
         $this->assertFalse($validationResult['isValid']);
         $this->assertEquals(1, $validationResult['failedSequenceNumber']);
         $this->assertStringContainsString('Block content hash mismatch', $validationResult['reason']);
@@ -127,7 +125,7 @@ class ComplianceLedgerServiceTest extends TestCase
     public function testValidationFailsIfSignatureIsInvalid()
     {
         $payload = ['sku' => 'SKU-TEST-1'];
-        $entry1 = ComplianceLedgerService::logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
+        $entry1 = $this->service->logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
 
         // Tamper with signature
         $tamperedEntry1 = new ComplianceLedgerEntry(
@@ -145,7 +143,7 @@ class ComplianceLedgerServiceTest extends TestCase
 
         $this->savedEntries[0] = $tamperedEntry1;
 
-        $validationResult = ComplianceLedgerService::validateLedger('tenant-1');
+        $validationResult = $this->service->validateLedger('tenant-1');
         $this->assertFalse($validationResult['isValid']);
         $this->assertEquals(1, $validationResult['failedSequenceNumber']);
         $this->assertStringContainsString('Cryptographic signature validation failed', $validationResult['reason']);
@@ -164,7 +162,7 @@ class ComplianceLedgerServiceTest extends TestCase
             $this->expectExceptionMessage('Compliance private key environment variable is not set.');
 
             $payload = ['sku' => 'SKU-TEST-1'];
-            ComplianceLedgerService::logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
+            $this->service->logEvent('tenant-1', 'actor-1', 'STOCK_ADJUSTED', $payload);
         } finally {
             putenv('COMPLIANCE_PRIVATE_KEY=' . ($originalPrivateKey !== false ? $originalPrivateKey : ''));
             putenv('COMPLIANCE_KEY=' . ($originalKey !== false ? $originalKey : ''));

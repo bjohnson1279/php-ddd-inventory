@@ -11,7 +11,8 @@ class SlottingOptimizer
     public function generateSuggestions(): array
     {
         // 1. Fetch all locations
-        $locations = Capsule::table('warehouse_locations')->get();
+        // ⚡ Bolt Optimization: explicitly select only required columns to reduce memory consumption
+        $locations = Capsule::table('warehouse_locations')->select('id', 'grid_x', 'grid_y')->get();
         if ($locations->isEmpty()) {
             return [];
         }
@@ -25,9 +26,11 @@ class SlottingOptimizer
 
         // 2. Fetch all ledger entries in the last 30 days to calculate velocity
         $thirtyDaysAgo = (new \DateTime())->modify('-30 days')->format('Y-m-d H:i:s');
+        // ⚡ Bolt Optimization: explicitly select only required columns to reduce memory consumption
         $entries = Capsule::table('ledger_entries')
             ->where('occurred_at', '>=', $thirtyDaysAgo)
             ->where('quantity', '<', 0)
+            ->select('quantity', 'metadata', 'variant_id', 'occurred_at')
             ->get();
 
         // 3. Fetch current inventory allocations

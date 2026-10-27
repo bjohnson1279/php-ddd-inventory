@@ -3,23 +3,38 @@
 namespace InventoryApp\Domain\Compliance\Services;
 
 use InventoryApp\Domain\Compliance\Entities\ComplianceLedgerEntry;
-use InventoryApp\Infrastructure\ServiceContainer;
+use InventoryApp\Domain\Compliance\Repositories\ComplianceLedgerRepositoryInterface;
 use DateTime;
+use RuntimeException;
+use InvalidArgumentException;
 
 class ComplianceLedgerService
 {
+    public function __construct(
+        private ?ComplianceLedgerRepositoryInterface $repo = null
+    ) {}
+
     private static function getPrivateKey(): string
     {
         $key = getenv('COMPLIANCE_PRIVATE_KEY') ?: getenv('COMPLIANCE_KEY');
         if (!$key || empty(trim($key))) {
-            throw new \RuntimeException('Compliance private key environment variable is not set.');
+            throw new RuntimeException('Compliance private key environment variable is not set.');
         }
         return $key;
     }
 
-    public static function logEvent(string $tenantId, string $actorId, string $eventType, array $payloadData): ComplianceLedgerEntry
+    private function resolveRepo(?ComplianceLedgerRepositoryInterface $repo = null): ComplianceLedgerRepositoryInterface
     {
-        $repo = ServiceContainer::complianceLedgerRepo();
+        $repository = $repo ?? $this->repo;
+        if (!$repository) {
+            throw new InvalidArgumentException('ComplianceLedgerRepositoryInterface repository must be provided.');
+        }
+        return $repository;
+    }
+
+    public function logEvent(string $tenantId, string $actorId, string $eventType, array $payloadData, ?ComplianceLedgerRepositoryInterface $repo = null): ComplianceLedgerEntry
+    {
+        $repo = $this->resolveRepo($repo);
         $lastEntry = $repo->getLastEntry($tenantId);
 
         if ($lastEntry) {
@@ -54,9 +69,9 @@ class ComplianceLedgerService
         return $entry;
     }
 
-    public static function validateLedger(string $tenantId = null): array
+    public function validateLedger(?string $tenantId = null, ?ComplianceLedgerRepositoryInterface $repo = null): array
     {
-        $repo = ServiceContainer::complianceLedgerRepo();
+        $repo = $this->resolveRepo($repo);
         $entries = $repo->findAll($tenantId);
         $privateKey = self::getPrivateKey();
 
@@ -110,9 +125,9 @@ class ComplianceLedgerService
         return ['isValid' => true];
     }
 
-    public static function reconstructState(string $tenantId, ?string $timestampStr = null): array
+    public function reconstructState(string $tenantId, ?string $timestampStr = null, ?ComplianceLedgerRepositoryInterface $repo = null): array
     {
-        $repo = ServiceContainer::complianceLedgerRepo();
+        $repo = $this->resolveRepo($repo);
         $entries = $repo->findAll($tenantId);
 
         $cutoffDate = $timestampStr ? new DateTime($timestampStr) : new DateTime();
@@ -176,9 +191,9 @@ class ComplianceLedgerService
         ];
     }
 
-    public static function replayAudit(string $tenantId, ?string $upToTimestamp = null): array
+    public function replayAudit(string $tenantId, ?string $upToTimestamp = null, ?ComplianceLedgerRepositoryInterface $repo = null): array
     {
-        $repo = ServiceContainer::complianceLedgerRepo();
+        $repo = $this->resolveRepo($repo);
         $entries = $repo->findAll($tenantId);
 
         if ($upToTimestamp) {

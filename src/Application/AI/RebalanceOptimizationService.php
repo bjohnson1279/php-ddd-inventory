@@ -16,7 +16,8 @@ class RebalanceOptimizationService
     public function getMatrix(string $tenantId): array
     {
         // 1. Fetch warehouse locations and derive unique warehouses
-        $locations = DB::table('warehouse_locations')->get(['id', 'warehouse_id', 'zone'])->toArray();
+        $locations = DB::table('warehouse_locations')->get(['id', 'warehouse_id', 'zone']);
+        $locations = is_array($locations) ? $locations : $locations->toArray();
         $warehouseMap = [];
         $locToWarehouse = [];
         foreach ($locations as $loc) {
@@ -40,8 +41,8 @@ class RebalanceOptimizationService
         $inventory = DB::table('inventory_items')
             ->select('sku', 'location_id', DB::raw('SUM(quantity) as quantity, SUM(allocated) as allocated, SUM(in_transit) as in_transit'))
             ->groupBy('sku', 'location_id')
-            ->get()
-            ->toArray();
+            ->get();
+        $inventory = is_array($inventory) ? $inventory : $inventory->toArray();
 
         $stockAgg = [];
         foreach ($inventory as $item) {

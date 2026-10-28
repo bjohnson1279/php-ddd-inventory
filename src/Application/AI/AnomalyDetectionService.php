@@ -20,8 +20,8 @@ class AnomalyDetectionService
             ->where('tenant_id', $tenantId)
             ->orderBy('occurred_at', 'desc')
             ->limit(500)
-            ->get()
-            ->toArray();
+            ->get();
+        $ledgerEntries = is_array($ledgerEntries) ? $ledgerEntries : $ledgerEntries->toArray();
 
         // 2. Format for sidecar and derive cycle counts in one pass
         $sidecarLedger = [];

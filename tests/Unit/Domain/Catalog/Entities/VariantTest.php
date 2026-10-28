@@ -5,6 +5,7 @@ namespace Tests\Unit\Domain\Catalog\Entities;
 use PHPUnit\Framework\TestCase;
 use InventoryApp\Domain\Catalog\Entities\Variant;
 use InventoryApp\Domain\Inventory\ValueObjects\SKU;
+use InventoryApp\Domain\Shared\ValueObjects\Money;
 
 class VariantTest extends TestCase
 {
@@ -36,5 +37,22 @@ class VariantTest extends TestCase
         $variant = new Variant('v1', 'p1', new SKU('BASIC-SKU'), [], 9.99);
         $this->assertIsArray($variant->getAttributes());
         $this->assertEmpty($variant->getAttributes());
+    }
+
+    public function testCanCreateVariantWithMoneyValueObject(): void
+    {
+        $money = Money::fromCents(2999, 'USD');
+        $variant = new Variant(
+            'v1',
+            'p1',
+            new SKU('TEE-L-RED'),
+            ['size' => 'L', 'color' => 'Red'],
+            $money
+        );
+
+        $this->assertEquals(29.99, $variant->getPrice());
+        $this->assertTrue($money->equals($variant->getPriceMoney()));
+        $this->assertEquals(2999, $variant->getPriceMoney()->getAmountInCents());
+        $this->assertEquals('USD', $variant->getPriceMoney()->getCurrency());
     }
 }

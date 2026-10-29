@@ -113,3 +113,7 @@ origin/master
 - **Strict PSR-4 Isolation in PHP**: In PHP codebases, place every class, interface, and enum in its own file named `<ClassName>.php` matching its namespace path. Never combine multiple domain classes into a single file.
 - **Domain Contract Verification**: Always inspect entity and aggregate root definitions to verify exact method and property names before writing service logic or test fixtures.
 - **Clean Markdown Formatting**: Always append journal entries using actual newline characters, never literal string escape sequences.
+
+## 2024-10-25 - Prevent toArray() Crash on Mocked get() Responses
+**Learning:** When tests mock database operations (like `DB::table(...)->get()`) to return a plain PHP array instead of an Eloquent Collection, chaining `->toArray()` directly onto the result will cause a fatal error (`Call to a member function toArray() on array`).
+**Action:** Always prefer safely appending `->toArray()` directly to the `get()` result using a conditional check `is_array($result) ? $result : $result->toArray()` instead of blindly chaining it. This gracefully handles plain arrays returned in mocked test environments.

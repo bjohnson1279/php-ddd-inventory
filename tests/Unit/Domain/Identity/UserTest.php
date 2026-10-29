@@ -19,7 +19,7 @@ class UserTest extends TestCase
     public function testCanRegisterUser(): void
     {
         $user = User::register('u1', $this->makeTenant(), 'jane@store.com', 'password123', 'Jane');
-        $this->assertEquals('jane@store.com', $user->getEmail());
+        $this->assertEquals('jane@store.com', $user->getEmail()->getValue());
         $this->assertEquals('Jane', $user->getName());
         $this->assertTrue($user->isActive());
     }
@@ -27,7 +27,7 @@ class UserTest extends TestCase
     public function testEmailIsNormalisedToLowercase(): void
     {
         $user = User::register('u1', $this->makeTenant(), 'JANE@STORE.COM', 'password123', 'Jane');
-        $this->assertEquals('jane@store.com', $user->getEmail());
+        $this->assertEquals('jane@store.com', $user->getEmail()->getValue());
     }
 
     public function testInvalidEmailThrowsException(): void

@@ -3,6 +3,7 @@
 namespace InventoryApp\Domain\Identity\Entities;
 
 use InventoryApp\Domain\Identity\ValueObjects\TenantId;
+use InventoryApp\Domain\Identity\ValueObjects\Email;
 use InventoryApp\Domain\Identity\Events\UserRegistered;
 use InventoryApp\Domain\Identity\Events\UserDeactivated;
 use InventoryApp\Domain\Shared\Entities\AggregateRoot;
@@ -22,7 +23,7 @@ class User extends AggregateRoot
 {
     private string $id;
     private TenantId $tenantId;
-    private string $email;
+    private Email $email;
     private string $passwordHash;
     private string $name;
     private bool $active;
@@ -33,7 +34,7 @@ class User extends AggregateRoot
     public function __construct(
         string $id,
         TenantId $tenantId,
-        string $email,
+        Email|string $email,
         string $passwordHash,
         string $name,
         array $roles = [],
@@ -42,7 +43,7 @@ class User extends AggregateRoot
     ) {
         $this->id           = $id;
         $this->tenantId     = $tenantId;
-        $this->email        = $email;
+        $this->email        = $email instanceof Email ? $email : new Email($email);
         $this->passwordHash = $passwordHash;
         $this->name         = $name;
         $this->roles        = $roles;
@@ -53,14 +54,12 @@ class User extends AggregateRoot
     public static function register(
         string $id,
         TenantId $tenantId,
-        string $email,
+        Email|string $email,
         string $plainPassword,
         string $name
     ): self {
-        $email = trim($email);
-        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL, FILTER_FLAG_EMAIL_UNICODE)) {
-            throw new InvalidArgumentException("Invalid email address: {$email}");
-        }
+        $emailObj = $email instanceof Email ? $email : new Email($email);
+
         if (strlen($plainPassword) < 8) {
             throw new InvalidArgumentException("Password must be at least 8 characters");
         }
@@ -68,7 +67,7 @@ class User extends AggregateRoot
         $user = new self(
             $id,
             $tenantId,
-            strtolower(trim($email)),
+            $emailObj,
             password_hash($plainPassword, PASSWORD_ARGON2ID),
             trim($name),
             [Role::createDefault(Role::STAFF)] // default role
@@ -77,7 +76,7 @@ class User extends AggregateRoot
         $user->recordEvent(new UserRegistered(
             userId:    $id,
             tenantId:  $tenantId,
-            email:     strtolower(trim($email)),
+            email:     $emailObj->getValue(),
             name:      trim($name),
             occurredOn: new DateTimeImmutable(),
         ));
@@ -87,7 +86,7 @@ class User extends AggregateRoot
 
     public function getId(): string             { return $this->id; }
     public function getTenantId(): TenantId     { return $this->tenantId; }
-    public function getEmail(): string          { return $this->email; }
+    public function getEmail(): Email           { return $this->email; }
     public function getPasswordHash(): string   { return $this->passwordHash; }
     public function getName(): string           { return $this->name; }
     public function isActive(): bool            { return $this->active; }

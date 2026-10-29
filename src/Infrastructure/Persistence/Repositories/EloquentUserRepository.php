@@ -42,7 +42,7 @@ class EloquentUserRepository implements UserRepositoryInterface
             ['id' => $user->getId()],
             [
                 'tenant_id'     => $user->getTenantId()->getValue(),
-                'email'         => $user->getEmail(),
+                'email'         => $user->getEmail()->getValue(),
                 'password_hash' => $user->getPasswordHash(),
                 'name'          => $user->getName(),
                 'active'        => $user->isActive(),

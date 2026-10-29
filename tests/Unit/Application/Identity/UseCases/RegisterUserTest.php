@@ -32,7 +32,7 @@ class RegisterUserTest extends TestCase
         $repo = $this->createMock(UserRepositoryInterface::class);
         $repo->expects($this->once())->method('findByEmail')->willReturn(null);
         $repo->expects($this->once())->method('save')
-            ->with($this->callback(fn(User $u) => $u->getEmail() === $expectedEmail));
+            ->with($this->callback(fn(User $u) => $u->getEmail()->getValue() === $expectedEmail));
 
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
         $dispatcher->expects($this->once())->method('dispatch')
@@ -143,7 +143,7 @@ class RegisterUserTest extends TestCase
         $repo->expects($this->once())->method('findByEmail')->willReturn(null);
         $repo->expects($this->once())->method('save')
             ->with($this->callback(function (User $u) {
-                return $u->getEmail() === 'mixedcase@store.com' && $u->getName() === 'Spaced Name';
+                return $u->getEmail()->getValue() === 'mixedcase@store.com' && $u->getName() === 'Spaced Name';
             }));
 
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
@@ -227,7 +227,7 @@ class RegisterUserTest extends TestCase
         $repo->expects($this->once())->method('save')->with($this->callback(function (User $user) {
             return $user->getId() === 'u-new'
                 && $user->getTenantId()->getValue() === 't-new'
-                && $user->getEmail() === 'state@store.com'
+                && $user->getEmail()->getValue() === 'state@store.com'
                 && $user->getName() === 'State User'
                 && $user->isActive() === true
                 && count($user->getRoles()) === 1

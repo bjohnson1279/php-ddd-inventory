@@ -176,4 +176,17 @@ class PurchaseOrderTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $po->receiveItems('var-1', 11);
     }
+
+    public function test_it_calculates_total_cost_correctly(): void
+    {
+        $po = $this->createPurchaseOrder();
+        $item1 = new PurchaseOrderItem('i1', 'var-1', 10, 1000); // 10000 cents = $100.00
+        $item2 = new PurchaseOrderItem('i2', 'var-2', 5, 2500);  // 12500 cents = $125.00
+        $po->addItem($item1);
+        $po->addItem($item2);
+
+        $totalMoney = $po->getTotalCost('USD');
+        $this->assertEquals(22500, $totalMoney->getAmountInCents());
+        $this->assertEquals('USD', $totalMoney->getCurrency());
+    }
 }

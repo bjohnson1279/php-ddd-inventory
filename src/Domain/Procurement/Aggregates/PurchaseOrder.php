@@ -5,6 +5,7 @@ namespace InventoryApp\Domain\Procurement\Aggregates;
 use InventoryApp\Domain\Shared\Entities\AggregateRoot;
 use InventoryApp\Domain\Procurement\Enums\PurchaseOrderStatus;
 use InventoryApp\Domain\Procurement\Entities\PurchaseOrderItem;
+use InventoryApp\Domain\Shared\ValueObjects\Money;
 use DomainException;
 
 class PurchaseOrder extends AggregateRoot
@@ -100,5 +101,14 @@ class PurchaseOrder extends AggregateRoot
     public function close(): void
     {
         $this->status = PurchaseOrderStatus::Closed;
+    }
+
+    public function getTotalCost(string $currency = 'USD'): Money
+    {
+        $total = Money::zero($currency);
+        foreach ($this->items as $item) {
+            $total = $total->add($item->getTotalCost());
+        }
+        return $total;
     }
 }

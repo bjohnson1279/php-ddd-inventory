@@ -4,6 +4,7 @@ namespace Tests\Unit\Domain\Procurement\Entities;
 
 use InvalidArgumentException;
 use InventoryApp\Domain\Procurement\Entities\PurchaseOrderItem;
+use InventoryApp\Domain\Shared\ValueObjects\Money;
 use PHPUnit\Framework\TestCase;
 
 class PurchaseOrderItemTest extends TestCase
@@ -97,5 +98,16 @@ class PurchaseOrderItemTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage("Cannot receive 11 items. Total received would exceed ordered quantity of 10.");
         $item->receive(11);
+    }
+
+    public function testCanCreateWithMoneyValueObject(): void
+    {
+        $money = Money::fromCents(1250, 'USD');
+        $item = new PurchaseOrderItem('poi-1', 'variant-1', 4, $money);
+
+        $this->assertEquals(1250, $item->unitCostCents);
+        $this->assertTrue($item->getUnitCost()->equals($money));
+        $this->assertEquals(5000, $item->getTotalCost()->getAmountInCents());
+        $this->assertEquals('USD', $item->getTotalCost()->getCurrency());
     }
 }

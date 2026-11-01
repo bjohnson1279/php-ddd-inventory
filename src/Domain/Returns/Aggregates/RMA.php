@@ -8,6 +8,7 @@ use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
 use InventoryApp\Domain\Returns\Enums\RMAStatus;
 use InventoryApp\Domain\Returns\Enums\RMADisposition;
 use InventoryApp\Domain\Returns\Entities\RMAItem;
+use InventoryApp\Domain\Shared\ValueObjects\Money;
 use DateTimeImmutable;
 use InvalidArgumentException;
 
@@ -107,5 +108,14 @@ class RMA extends AggregateRoot
         }
         $this->status = RMAStatus::Rejected;
         $this->updatedAt = new DateTimeImmutable();
+    }
+
+    public function getTotalCost(string $currency = 'USD'): Money
+    {
+        $total = Money::zero($currency);
+        foreach ($this->items as $item) {
+            $total = $total->add($item->getTotalCost());
+        }
+        return $total;
     }
 }

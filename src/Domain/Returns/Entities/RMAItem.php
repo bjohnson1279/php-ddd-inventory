@@ -4,6 +4,7 @@ namespace InventoryApp\Domain\Returns\Entities;
 
 use InventoryApp\Domain\Returns\Enums\RMAItemStatus;
 use InventoryApp\Domain\Returns\Enums\RMADisposition;
+use InventoryApp\Domain\Shared\ValueObjects\Money;
 use InvalidArgumentException;
 
 class RMAItem
@@ -11,6 +12,7 @@ class RMAItem
     private string $id;
     private string $variantId;
     private int $quantity;
+    private Money $unitCost;
     private int $unitCostCents;
     private int $receivedQuantity;
     private RMAItemStatus $status;
@@ -20,7 +22,7 @@ class RMAItem
         string $id,
         string $variantId,
         int $quantity,
-        int $unitCostCents,
+        Money|int $unitCostCents,
         int $receivedQuantity = 0,
         RMAItemStatus $status = RMAItemStatus::Pending,
         ?RMADisposition $disposition = null
@@ -28,9 +30,22 @@ class RMAItem
         if ($quantity <= 0) {
             throw new InvalidArgumentException("Quantity must be greater than zero.");
         }
-        if ($unitCostCents < 0) {
+
+        if ($unitCostCents instanceof Money) {
+            $this->unitCost = $unitCostCents;
+            $this->unitCostCents = $unitCostCents->getAmountInCents();
+        } else {
+            if ($unitCostCents < 0) {
+                throw new InvalidArgumentException("Unit cost cannot be negative.");
+            }
+            $this->unitCost = Money::fromCents($unitCostCents);
+            $this->unitCostCents = $unitCostCents;
+        }
+
+        if ($this->unitCost->isNegative()) {
             throw new InvalidArgumentException("Unit cost cannot be negative.");
         }
+
         if ($receivedQuantity < 0) {
             throw new InvalidArgumentException("Received quantity cannot be negative.");
         }
@@ -38,7 +53,6 @@ class RMAItem
         $this->id = $id;
         $this->variantId = $variantId;
         $this->quantity = $quantity;
-        $this->unitCostCents = $unitCostCents;
         $this->receivedQuantity = $receivedQuantity;
         $this->status = $status;
         $this->disposition = $disposition;
@@ -47,6 +61,8 @@ class RMAItem
     public function getId(): string { return $this->id; }
     public function getVariantId(): string { return $this->variantId; }
     public function getQuantity(): int { return $this->quantity; }
+    public function getUnitCost(): Money { return $this->unitCost; }
+    public function getTotalCost(): Money { return $this->unitCost->multiply($this->quantity); }
     public function getUnitCostCents(): int { return $this->unitCostCents; }
     public function getReceivedQuantity(): int { return $this->receivedQuantity; }
     public function getStatus(): RMAItemStatus { return $this->status; }

@@ -2,6 +2,9 @@
 
 namespace InventoryApp\Domain\Inventory\Aggregates;
 
+use InventoryApp\Domain\Shared\ValueObjects\Money;
+use InvalidArgumentException;
+
 enum StockOnboardingStatus: string
 {
     case Draft = 'draft';
@@ -10,9 +13,37 @@ enum StockOnboardingStatus: string
 
 final class StockOnboardingItem
 {
-    public function __construct(public readonly string $variantId, public readonly int $quantity, public readonly int $unitCostCents)
+    public readonly Money $unitCost;
+    public readonly int $unitCostCents;
+
+    public function __construct(
+        public readonly string $variantId,
+        public readonly int $quantity,
+        Money|int $unitCostCents
+    ) {
+        if ($this->quantity < 0) {
+            throw new InvalidArgumentException('Opening balance quantity cannot be negative.');
+        }
+
+        if ($unitCostCents instanceof Money) {
+            $this->unitCost = $unitCostCents;
+            $this->unitCostCents = $unitCostCents->getAmountInCents();
+        } else {
+            if ($unitCostCents < 0) {
+                throw new InvalidArgumentException('Unit cost cannot be negative.');
+            }
+            $this->unitCost = Money::fromCents($unitCostCents);
+            $this->unitCostCents = $unitCostCents;
+        }
+
+        if ($this->unitCost->isNegative()) {
+            throw new InvalidArgumentException('Unit cost cannot be negative.');
+        }
+    }
+
+    public function getUnitCost(): Money
     {
-        if ($this->quantity < 0) throw new \InvalidArgumentException('Opening balance quantity cannot be negative.');
+        return $this->unitCost;
     }
 }
 
@@ -27,7 +58,7 @@ class StockOnboarding
         $this->status = StockOnboardingStatus::Draft;
     }
 
-    public function setItem(string $variantId, int $quantity, int $unitCostCents): void
+    public function setItem(string $variantId, int $quantity, Money|int $unitCostCents): void
     {
         $this->assertDraft();
         $this->items[$variantId] = new StockOnboardingItem($variantId, $quantity, $unitCostCents);

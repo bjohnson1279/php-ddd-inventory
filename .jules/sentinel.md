@@ -136,3 +136,8 @@
 **Vulnerability:** Internal cURL requests to sidecar and microservice endpoints in `ReceivingService` and `SlottingOptimizer` omitted explicit SSL certificate and host verification flags.
 **Learning:** Outbound HTTP client requests without strict certificate and peer validation (`CURLOPT_SSL_VERIFYPEER` and `CURLOPT_SSL_VERIFYHOST`) are susceptible to Man-in-the-Middle (MitM) traffic interception or proxy spoofing.
 **Prevention:** Always set `CURLOPT_SSL_VERIFYPEER => true` and `CURLOPT_SSL_VERIFYHOST => 2` on all outbound cURL client instances in production code.
+
+## 2024-11-05 - Fix missing authentication on barcode lookup endpoint
+**Vulnerability:** The GET `/api/barcodes/lookup` endpoint in `public/index.php` was missing authentication, potentially allowing unauthorized access to barcode and product information.
+**Learning:** Endpoints added to the global `public/index.php` router are not authenticated by default in this architecture. Every single endpoint handler must explicitly call `requireAuth()` (or have an equivalent mechanism) to ensure it is protected.
+**Prevention:** Always verify that newly added endpoints in `public/index.php` include a call to `requireAuth()` unless they are intentionally public (e.g. webhooks with their own signature verification).

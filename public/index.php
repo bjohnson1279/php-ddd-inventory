@@ -1382,6 +1382,7 @@ if ($method === 'POST' && preg_match('#^/api/catalog/products/([^/]+)/variants$#
 // ── Barcode Registry ──────────────────────────────────────────────────────────
 // Route: GET /api/barcodes/lookup
 if ($method === 'GET' && $uri === '/api/barcodes/lookup') {
+    requireAuth();
     $response = (new BarcodeController())->lookup($request, ServiceContainer::barcodeRepo());
     http_response_code($response->getStatusCode());
     echo $response->getContent();

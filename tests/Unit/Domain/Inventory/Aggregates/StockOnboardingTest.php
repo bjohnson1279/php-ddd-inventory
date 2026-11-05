@@ -6,6 +6,7 @@ use PHPUnit\Framework\TestCase;
 use InventoryApp\Domain\Inventory\Aggregates\StockOnboarding;
 use InventoryApp\Domain\Inventory\Aggregates\StockOnboardingStatus;
 use InventoryApp\Domain\Inventory\Events\StockOnboardingSubmitted;
+use InventoryApp\Domain\Shared\ValueObjects\Money;
 use DateTimeImmutable;
 use DomainException;
 use InvalidArgumentException;
@@ -128,5 +129,40 @@ class StockOnboardingTest extends TestCase
         $this->expectExceptionMessage('Onboarding already submitted.');
 
         $onboarding->submit();
+    }
+
+    public function testCanAddItemWithMoneyValueObject(): void
+    {
+        $onboarding = new StockOnboarding($this->id, $this->tenantId, $this->locationId, $this->asOfDate);
+        $money = Money::fromCents(1250, 'USD');
+        $onboarding->setItem('var-money', 4, $money);
+
+        $items = $onboarding->items();
+        $this->assertCount(1, $items);
+        $this->assertEquals('var-money', $items[0]->variantId);
+        $this->assertEquals(4, $items[0]->quantity);
+        $this->assertEquals(1250, $items[0]->unitCostCents);
+        $this->assertInstanceOf(Money::class, $items[0]->getUnitCost());
+        $this->assertTrue($items[0]->getUnitCost()->equals($money));
+    }
+
+    public function testCannotAddNegativeIntegerUnitCost(): void
+    {
+        $onboarding = new StockOnboarding($this->id, $this->tenantId, $this->locationId, $this->asOfDate);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Unit cost cannot be negative.');
+
+        $onboarding->setItem('var-neg', 1, -100);
+    }
+
+    public function testCannotAddNegativeMoneyUnitCost(): void
+    {
+        $onboarding = new StockOnboarding($this->id, $this->tenantId, $this->locationId, $this->asOfDate);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Unit cost cannot be negative.');
+
+        $onboarding->setItem('var-neg-m', 1, Money::fromCents(-250, 'USD'));
     }
 }

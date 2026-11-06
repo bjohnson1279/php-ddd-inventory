@@ -2,8 +2,10 @@
 
 namespace Tests\Unit\Domain\Accounting\Entities;
 
+use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use InventoryApp\Domain\Accounting\Entities\InventoryCostLayer;
+use InventoryApp\Domain\Shared\ValueObjects\Money;
 
 class InventoryCostLayerTest extends TestCase
 {
@@ -96,5 +98,41 @@ class InventoryCostLayerTest extends TestCase
         $layer->setRemainingQuantity(20);
 
         $this->assertEquals(20, $layer->remainingQuantity());
+    }
+
+    public function testInitializationWithMoneyValueObject(): void
+    {
+        $money = Money::fromCents(250, 'USD');
+        $layer = new InventoryCostLayer(
+            id: 'layer-money',
+            variantId: 'variant-1',
+            tenantId: 'tenant-1',
+            originalQuantity: 10,
+            unitCostCents: $money,
+            receivedAt: new \DateTimeImmutable('2023-01-01 10:00:00')
+        );
+
+        $this->assertSame(250, $layer->unitCostCents);
+        $this->assertSame($money, $layer->unitCost);
+        $this->assertTrue($layer->getUnitCost()->equals($money));
+        $this->assertTrue($layer->getRemainingCost()->equals(Money::fromCents(2500, 'USD')));
+
+        $layer->consume(4);
+        $this->assertTrue($layer->getRemainingCost()->equals(Money::fromCents(1500, 'USD')));
+    }
+
+    public function testNegativeUnitCostThrowsException(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Unit cost cannot be negative.');
+
+        new InventoryCostLayer(
+            id: 'layer-neg',
+            variantId: 'variant-1',
+            tenantId: 'tenant-1',
+            originalQuantity: 10,
+            unitCostCents: -50,
+            receivedAt: new \DateTimeImmutable('2023-01-01 10:00:00')
+        );
     }
 }

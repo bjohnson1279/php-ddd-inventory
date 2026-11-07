@@ -5,6 +5,7 @@ namespace InventoryApp\Domain\Procurement\Aggregates;
 use InventoryApp\Domain\Shared\Entities\AggregateRoot;
 use InventoryApp\Domain\Procurement\Enums\PurchaseOrderStatus;
 use InventoryApp\Domain\Procurement\Entities\PurchaseOrderItem;
+use InventoryApp\Domain\Procurement\ValueObjects\PurchaseOrderNumber;
 use InventoryApp\Domain\Shared\ValueObjects\Money;
 use DomainException;
 
@@ -12,10 +13,12 @@ class PurchaseOrder extends AggregateRoot
 {
     private PurchaseOrderStatus $status;
     private array $items;
+    public readonly PurchaseOrderNumber $orderNumber;
+    public readonly string $purchaseOrderNumber;
 
     public function __construct(
         public readonly string $id,
-        public readonly string $purchaseOrderNumber,
+        PurchaseOrderNumber|string $purchaseOrderNumber,
         public readonly string $vendorId,
         public readonly string $tenantId,
         public readonly string $locationId,
@@ -24,8 +27,21 @@ class PurchaseOrder extends AggregateRoot
         public readonly ?\DateTimeInterface $createdAt = null,
         public readonly ?\DateTimeInterface $updatedAt = null
     ) {
+        if ($purchaseOrderNumber instanceof PurchaseOrderNumber) {
+            $this->orderNumber = $purchaseOrderNumber;
+            $this->purchaseOrderNumber = $purchaseOrderNumber->getValue();
+        } else {
+            $this->orderNumber = new PurchaseOrderNumber($purchaseOrderNumber);
+            $this->purchaseOrderNumber = $this->orderNumber->getValue();
+        }
+
         $this->status = $status;
         $this->items = $items;
+    }
+
+    public function getPurchaseOrderNumber(): PurchaseOrderNumber
+    {
+        return $this->orderNumber;
     }
 
     public function getStatus(): PurchaseOrderStatus

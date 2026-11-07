@@ -6,6 +6,7 @@ use PHPUnit\Framework\TestCase;
 use InventoryApp\Domain\Procurement\Aggregates\PurchaseOrder;
 use InventoryApp\Domain\Procurement\Enums\PurchaseOrderStatus;
 use InventoryApp\Domain\Procurement\Entities\PurchaseOrderItem;
+use InventoryApp\Domain\Procurement\ValueObjects\PurchaseOrderNumber;
 use DomainException;
 use Ramsey\Uuid\Uuid;
 
@@ -45,6 +46,23 @@ class PurchaseOrderTest extends TestCase
 
         $this->assertEquals(PurchaseOrderStatus::Draft, $po->getStatus());
         $this->assertEmpty($po->getItems());
+        $this->assertInstanceOf(PurchaseOrderNumber::class, $po->getPurchaseOrderNumber());
+        $this->assertEquals('PO-001', $po->getPurchaseOrderNumber()->getValue());
+    }
+
+    public function test_it_accepts_purchase_order_number_value_object(): void
+    {
+        $poNumber = new PurchaseOrderNumber('PO-999');
+        $po = new PurchaseOrder(
+            id: 'po-1',
+            purchaseOrderNumber: $poNumber,
+            vendorId: 'vendor-1',
+            tenantId: 'tenant-1',
+            locationId: 'loc-1'
+        );
+
+        $this->assertSame($poNumber, $po->getPurchaseOrderNumber());
+        $this->assertEquals('PO-999', $po->purchaseOrderNumber);
     }
 
     public function test_it_can_add_an_item(): void

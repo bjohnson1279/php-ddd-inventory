@@ -144,7 +144,7 @@ class RoleControllerTest extends TestCase
             ['id' => 'custom_test-tenant_2', 'name' => 'Assigned Role']
         ]);
         Capsule::table('user_roles')->insertOrIgnore([
-            ['user_id' => 'test-user-1', 'role_id' => 'custom_test-tenant_2']
+            ['user_id' => '11111111-1111-4111-8111-111111111111', 'role_id' => 'custom_test-tenant_2']
         ]);
 
         $request = new RoleRequestStub('DELETE', '/api/roles/custom_test-tenant_2', [], [], ['_auth_tenant_id' => 'test-tenant']);

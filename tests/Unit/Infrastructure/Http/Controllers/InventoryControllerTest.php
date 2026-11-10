@@ -418,4 +418,195 @@ class InventoryControllerTest extends TestCase
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertStringContainsString('0', $response->getContent());
     }
+
+    /**
+     * Test: suggestFefoPick() successfully returns suggestions
+     */
+    public function testSuggestFefoPickSuccess(): void
+    {
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->exactly(2))
+            ->method('query')
+            ->willReturnCallback(function (string $key, $default = null) {
+                if ($key === 'sku') {
+                    return 'SKU-FEFO-01';
+                }
+                if ($key === 'quantity') {
+                    return '10';
+                }
+                return $default;
+            });
+
+        $expectedSuggestions = [
+            [
+                'lotNumber' => 'LOT-01',
+                'locationId' => 'LOC-A',
+                'quantity' => 10,
+                'expirationDate' => '2026-06-30'
+            ]
+        ];
+
+        $suggesterMock = $this->createMock(\InventoryApp\Domain\Inventory\Services\FEFOPickingSuggester::class);
+        $suggesterMock->expects($this->once())
+            ->method('suggestFefoPicking')
+            ->with('SKU-FEFO-01', 10)
+            ->willReturn($expectedSuggestions);
+
+        $response = $this->controller->suggestFefoPick($requestMock, $suggesterMock);
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertEquals(json_encode($expectedSuggestions), $response->getContent());
+    }
+
+    /**
+     * Test: suggestFefoPick() returns 400 or 500 when SKU is missing
+     */
+    public function testSuggestFefoPickMissingSku(): void
+    {
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->exactly(2))
+            ->method('query')
+            ->willReturnCallback(function (string $key, $default = null) {
+                if ($key === 'sku') {
+                    return '';
+                }
+                if ($key === 'quantity') {
+                    return '5';
+                }
+                return $default;
+            });
+
+        $suggesterMock = $this->createMock(\InventoryApp\Domain\Inventory\Services\FEFOPickingSuggester::class);
+        $suggesterMock->expects($this->never())->method('suggestFefoPicking');
+
+        $response = $this->controller->suggestFefoPick($requestMock, $suggesterMock);
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(500, $response->getStatusCode());
+        $this->assertStringContainsString('An internal server error occurred.', $response->getContent());
+    }
+
+    /**
+     * Test: suggestFefoPick() returns 500 when quantity is zero or negative
+     */
+    public function testSuggestFefoPickInvalidQuantity(): void
+    {
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->exactly(2))
+            ->method('query')
+            ->willReturnCallback(function (string $key, $default = null) {
+                if ($key === 'sku') {
+                    return 'SKU-FEFO-01';
+                }
+                if ($key === 'quantity') {
+                    return '0';
+                }
+                return $default;
+            });
+
+        $suggesterMock = $this->createMock(\InventoryApp\Domain\Inventory\Services\FEFOPickingSuggester::class);
+        $suggesterMock->expects($this->never())->method('suggestFefoPicking');
+
+        $response = $this->controller->suggestFefoPick($requestMock, $suggesterMock);
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(500, $response->getStatusCode());
+        $this->assertStringContainsString('An internal server error occurred.', $response->getContent());
+    }
+
+    /**
+     * Test: suggestFefoPick() handles DomainException properly
+     */
+    public function testSuggestFefoPickDomainException(): void
+    {
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->exactly(2))
+            ->method('query')
+            ->willReturnCallback(function (string $key, $default = null) {
+                if ($key === 'sku') {
+                    return 'SKU-FEFO-01';
+                }
+                if ($key === 'quantity') {
+                    return '10';
+                }
+                return $default;
+            });
+
+        $suggesterMock = $this->createMock(\InventoryApp\Domain\Inventory\Services\FEFOPickingSuggester::class);
+        $suggesterMock->expects($this->once())
+            ->method('suggestFefoPicking')
+            ->with('SKU-FEFO-01', 10)
+            ->willThrowException(new \DomainException('Not enough lot stock available'));
+
+        $response = $this->controller->suggestFefoPick($requestMock, $suggesterMock);
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(400, $response->getStatusCode());
+        $this->assertStringContainsString('Not enough lot stock available', $response->getContent());
+        $this->assertStringContainsString('DomainException', $response->getContent());
+    }
+
+    /**
+     * Test: suggestFefoPick() handles InvalidArgumentException properly
+     */
+    public function testSuggestFefoPickInvalidArgumentException(): void
+    {
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->exactly(2))
+            ->method('query')
+            ->willReturnCallback(function (string $key, $default = null) {
+                if ($key === 'sku') {
+                    return 'SKU-FEFO-01';
+                }
+                if ($key === 'quantity') {
+                    return '10';
+                }
+                return $default;
+            });
+
+        $suggesterMock = $this->createMock(\InventoryApp\Domain\Inventory\Services\FEFOPickingSuggester::class);
+        $suggesterMock->expects($this->once())
+            ->method('suggestFefoPicking')
+            ->with('SKU-FEFO-01', 10)
+            ->willThrowException(new \InvalidArgumentException('Invalid SKU provided'));
+
+        $response = $this->controller->suggestFefoPick($requestMock, $suggesterMock);
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(400, $response->getStatusCode());
+        $this->assertStringContainsString('Invalid SKU provided', $response->getContent());
+        $this->assertStringContainsString('InvalidArgumentException', $response->getContent());
+    }
+
+    /**
+     * Test: suggestFefoPick() handles unexpected RuntimeException with 500
+     */
+    public function testSuggestFefoPickUnexpectedException(): void
+    {
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->exactly(2))
+            ->method('query')
+            ->willReturnCallback(function (string $key, $default = null) {
+                if ($key === 'sku') {
+                    return 'SKU-FEFO-01';
+                }
+                if ($key === 'quantity') {
+                    return '10';
+                }
+                return $default;
+            });
+
+        $suggesterMock = $this->createMock(\InventoryApp\Domain\Inventory\Services\FEFOPickingSuggester::class);
+        $suggesterMock->expects($this->once())
+            ->method('suggestFefoPicking')
+            ->with('SKU-FEFO-01', 10)
+            ->willThrowException(new \RuntimeException('Database query failed'));
+
+        $response = $this->controller->suggestFefoPick($requestMock, $suggesterMock);
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(500, $response->getStatusCode());
+        $this->assertStringContainsString('An internal server error occurred.', $response->getContent());
+    }
 }

@@ -117,12 +117,46 @@ class RoleControllerTest extends TestCase
 
     public function testDeleteCustomRole()
     {
+        Capsule::table('roles')->insertOrIgnore([
+            ['id' => 'custom_test-tenant_1', 'name' => 'Custom Role 1']
+        ]);
+        Capsule::table('role_permissions')->insertOrIgnore([
+            ['role_id' => 'custom_test-tenant_1', 'permission' => 'inv:view']
+        ]);
+
         $request = new RoleRequestStub('DELETE', '/api/roles/custom_test-tenant_1', [], [], ['_auth_tenant_id' => 'test-tenant']);
         $response = $this->controller->deleteCustomRole($request, 'custom_test-tenant_1');
 
         $this->assertEquals(200, $response->getStatusCode());
         $body = json_decode($response->getContent(), true);
         $this->assertEquals('Role deleted successfully.', $body['message']);
+
+        $roleExists = Capsule::table('roles')->where('id', 'custom_test-tenant_1')->exists();
+        $this->assertFalse($roleExists);
+
+        $permsCount = Capsule::table('role_permissions')->where('role_id', 'custom_test-tenant_1')->count();
+        $this->assertEquals(0, $permsCount);
+    }
+
+    public function testDeleteCustomRoleFailsWhenUsersAssigned()
+    {
+        Capsule::table('roles')->insertOrIgnore([
+            ['id' => 'custom_test-tenant_assigned', 'name' => 'Assigned Role']
+        ]);
+        Capsule::table('user_roles')->insertOrIgnore([
+            ['user_id' => 'test-user-1', 'role_id' => 'custom_test-tenant_assigned']
+        ]);
+
+        $request = new RoleRequestStub('DELETE', '/api/roles/custom_test-tenant_assigned', [], [], ['_auth_tenant_id' => 'test-tenant']);
+        $response = $this->controller->deleteCustomRole($request, 'custom_test-tenant_assigned');
+
+        $this->assertEquals(400, $response->getStatusCode());
+        $body = json_decode($response->getContent(), true);
+        $this->assertEquals('Cannot delete role assigned to users', $body['error']);
+
+        // Clean up
+        Capsule::table('user_roles')->where('role_id', 'custom_test-tenant_assigned')->delete();
+        Capsule::table('roles')->where('id', 'custom_test-tenant_assigned')->delete();
     }
 
     public function testDeleteCustomRoleFailsForOtherTenant()

@@ -151,7 +151,16 @@ class RoleController
                 throw new \Exception("Unauthorized role deletion");
             }
 
-            // TODO: Implement actual logic
+            $assignedUsersCount = Capsule::table('user_roles')->where('role_id', $roleId)->count();
+            if ($assignedUsersCount > 0) {
+                throw new \Exception("Cannot delete role assigned to users");
+            }
+
+            Capsule::transaction(function () use ($roleId) {
+                Capsule::table('role_permissions')->where('role_id', $roleId)->delete();
+                Capsule::table('roles')->where('id', $roleId)->delete();
+            });
+
             return new Response(['message' => 'Role deleted successfully.']);
         } catch (Exception $e) {
             return new Response(['error' => $e->getMessage()], 400);

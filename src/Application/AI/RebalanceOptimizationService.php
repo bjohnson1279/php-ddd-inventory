@@ -71,16 +71,7 @@ class RebalanceOptimizationService
         }
 
         // 3. Build default lead times and shipping costs between warehouse pairs
-        $leadTimes = [];
-        $shippingCosts = [];
-        foreach ($warehouses as $w1) {
-            foreach ($warehouses as $w2) {
-                if ($w1['id'] !== $w2['id']) {
-                    $leadTimes[] = ['source_warehouse_id' => $w1['id'], 'dest_warehouse_id' => $w2['id'], 'transit_days' => 3];
-                    $shippingCosts[] = ['source_warehouse_id' => $w1['id'], 'dest_warehouse_id' => $w2['id'], 'cost_per_unit' => 1.5];
-                }
-            }
-        }
+        [$leadTimes, $shippingCosts] = $this->buildWarehousePairDefaults($warehouses);
 
         $payload = json_encode([
             'warehouses' => $warehouses,
@@ -144,6 +135,37 @@ class RebalanceOptimizationService
                 'avgDocImprovement' => $decoded['summary']['avg_doc_improvement'] ?? 0,
             ],
         ];
+    }
+
+    /**
+     * Build default lead times and shipping costs across all distinct warehouse pairs.
+     *
+     * @param array $warehouses
+     * @return array{0: array, 1: array} [$leadTimes, $shippingCosts]
+     */
+    public function buildWarehousePairDefaults(array $warehouses): array
+    {
+        $leadTimes = [];
+        $shippingCosts = [];
+
+        foreach ($warehouses as $w1) {
+            foreach ($warehouses as $w2) {
+                if ($w1['id'] !== $w2['id']) {
+                    $leadTimes[] = [
+                        'source_warehouse_id' => $w1['id'],
+                        'dest_warehouse_id' => $w2['id'],
+                        'transit_days' => 3,
+                    ];
+                    $shippingCosts[] = [
+                        'source_warehouse_id' => $w1['id'],
+                        'dest_warehouse_id' => $w2['id'],
+                        'cost_per_unit' => 1.5,
+                    ];
+                }
+            }
+        }
+
+        return [$leadTimes, $shippingCosts];
     }
 
     private function fallback(): array

@@ -141,22 +141,22 @@ class RoleControllerTest extends TestCase
     public function testDeleteCustomRoleFailsWhenUsersAssigned()
     {
         Capsule::table('roles')->insertOrIgnore([
-            ['id' => 'custom_test-tenant_assigned', 'name' => 'Assigned Role']
+            ['id' => 'custom_test-tenant_2', 'name' => 'Assigned Role']
         ]);
         Capsule::table('user_roles')->insertOrIgnore([
-            ['user_id' => 'test-user-1', 'role_id' => 'custom_test-tenant_assigned']
+            ['user_id' => 'test-user-1', 'role_id' => 'custom_test-tenant_2']
         ]);
 
-        $request = new RoleRequestStub('DELETE', '/api/roles/custom_test-tenant_assigned', [], [], ['_auth_tenant_id' => 'test-tenant']);
-        $response = $this->controller->deleteCustomRole($request, 'custom_test-tenant_assigned');
+        $request = new RoleRequestStub('DELETE', '/api/roles/custom_test-tenant_2', [], [], ['_auth_tenant_id' => 'test-tenant']);
+        $response = $this->controller->deleteCustomRole($request, 'custom_test-tenant_2');
 
         $this->assertEquals(400, $response->getStatusCode());
         $body = json_decode($response->getContent(), true);
         $this->assertEquals('Cannot delete role assigned to users', $body['error']);
 
         // Clean up
-        Capsule::table('user_roles')->where('role_id', 'custom_test-tenant_assigned')->delete();
-        Capsule::table('roles')->where('id', 'custom_test-tenant_assigned')->delete();
+        Capsule::table('user_roles')->where('role_id', 'custom_test-tenant_2')->delete();
+        Capsule::table('roles')->where('id', 'custom_test-tenant_2')->delete();
     }
 
     public function testDeleteCustomRoleFailsForOtherTenant()

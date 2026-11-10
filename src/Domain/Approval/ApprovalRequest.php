@@ -147,4 +147,25 @@ class ApprovalRequest
     {
         return $this->status === self::STATUS_PENDING || $this->status === self::STATUS_ESCALATED;
     }
+
+    /**
+     * Calculates the expiration timestamp for the current step if the request is pending.
+     */
+    public function calculateNextExpiration(array $stepsConfig, ?DateTimeInterface $fromTime = null): ?DateTimeImmutable
+    {
+        if (!$this->isPending()) {
+            return null;
+        }
+
+        $step = $stepsConfig[$this->currentStep] ?? null;
+        if (!$step || !isset($step['timeoutHours']) || $step['timeoutHours'] <= 0) {
+            return null;
+        }
+
+        $baseTime = $fromTime instanceof DateTimeImmutable
+            ? $fromTime
+            : ($fromTime ? DateTimeImmutable::createFromInterface($fromTime) : new DateTimeImmutable());
+
+        return $baseTime->modify('+' . (int)$step['timeoutHours'] . ' hours');
+    }
 }

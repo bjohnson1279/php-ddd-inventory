@@ -143,4 +143,39 @@ class ApprovalRequestTest extends TestCase
         $this->expectException(DomainException::class);
         $request->expire();
     }
+
+    public function testCalculateNextExpirationReturnsNullWhenNotPending(): void
+    {
+        $request = $this->createRequest(2, ApprovalRequest::STATUS_APPROVED, 0);
+        $stepsConfig = [
+            ['timeoutHours' => 24]
+        ];
+
+        $this->assertNull($request->calculateNextExpiration($stepsConfig));
+    }
+
+    public function testCalculateNextExpirationReturnsNullWhenStepConfigMissingOrNoTimeout(): void
+    {
+        $request = $this->createRequest(2, ApprovalRequest::STATUS_PENDING, 0);
+
+        $this->assertNull($request->calculateNextExpiration([]));
+        $this->assertNull($request->calculateNextExpiration([['approverRoles' => ['MANAGER']]]));
+        $this->assertNull($request->calculateNextExpiration([['timeoutHours' => 0]]));
+        $this->assertNull($request->calculateNextExpiration([['timeoutHours' => -5]]));
+    }
+
+    public function testCalculateNextExpirationCalculatesTimestampCorrectly(): void
+    {
+        $request = $this->createRequest(2, ApprovalRequest::STATUS_PENDING, 1);
+        $stepsConfig = [
+            0 => ['timeoutHours' => 12],
+            1 => ['timeoutHours' => 48],
+        ];
+
+        $fromTime = new DateTimeImmutable('2025-01-01 10:00:00');
+        $expiresAt = $request->calculateNextExpiration($stepsConfig, $fromTime);
+
+        $this->assertInstanceOf(DateTimeImmutable::class, $expiresAt);
+        $this->assertEquals('2025-01-03 10:00:00', $expiresAt->format('Y-m-d H:i:s'));
+    }
 }

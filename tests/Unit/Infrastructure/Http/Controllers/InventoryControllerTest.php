@@ -418,4 +418,78 @@ class InventoryControllerTest extends TestCase
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertStringContainsString('0', $response->getContent());
     }
+
+    /**
+     * Test: traceRecall() returns 200 with traced dispatches on success
+     */
+    public function testTraceRecallSuccess(): void
+    {
+        $requestMock = $this->createMock(RequestInterface::class);
+        $recallServiceMock = $this->createMock(\InventoryApp\Domain\Inventory\Services\ProductRecallService::class);
+
+        $expectedDispatches = [
+            [
+                'ledgerEntryId' => 123,
+                'locationId'    => 'LOC-01',
+                'quantity'      => 10,
+                'referenceId'   => 'DISPATCH-001',
+                'occurredAt'    => '2023-01-01 10:00:00',
+                'actorId'       => 'USER-1',
+            ],
+        ];
+
+        $recallServiceMock->expects($this->once())
+            ->method('traceProductRecall')
+            ->with('LOT-12345')
+            ->willReturn($expectedDispatches);
+
+        $response = $this->controller->traceRecall($requestMock, 'LOT-12345', $recallServiceMock);
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertSame(json_encode($expectedDispatches), $response->getContent());
+    }
+
+    /**
+     * Test: traceRecall() returns 400 when an InvalidArgumentException is thrown
+     */
+    public function testTraceRecallValidationOrDomainExceptionReturns400(): void
+    {
+        $requestMock = $this->createMock(RequestInterface::class);
+        $recallServiceMock = $this->createMock(\InventoryApp\Domain\Inventory\Services\ProductRecallService::class);
+
+        $recallServiceMock->expects($this->once())
+            ->method('traceProductRecall')
+            ->with('')
+            ->willThrowException(new \InvalidArgumentException('Lot number cannot be empty.'));
+
+        $response = $this->controller->traceRecall($requestMock, '', $recallServiceMock);
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(400, $response->getStatusCode());
+        $data = json_decode($response->getContent(), true);
+        $this->assertEquals('Lot number cannot be empty.', $data['error']);
+        $this->assertEquals('InvalidArgumentException', $data['type']);
+    }
+
+    /**
+     * Test: traceRecall() returns 500 when an unexpected exception is thrown
+     */
+    public function testTraceRecallUnexpectedExceptionReturns500(): void
+    {
+        $requestMock = $this->createMock(RequestInterface::class);
+        $recallServiceMock = $this->createMock(\InventoryApp\Domain\Inventory\Services\ProductRecallService::class);
+
+        $recallServiceMock->expects($this->once())
+            ->method('traceProductRecall')
+            ->with('LOT-500')
+            ->willThrowException(new \Exception('Database failure'));
+
+        $response = $this->controller->traceRecall($requestMock, 'LOT-500', $recallServiceMock);
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(500, $response->getStatusCode());
+        $data = json_decode($response->getContent(), true);
+        $this->assertEquals('An internal server error occurred.', $data['error']);
+    }
 }

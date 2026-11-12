@@ -254,4 +254,134 @@ class KitControllerTest extends TestCase
         $this->assertArrayHasKey('error', $content);
         $this->assertEquals('An internal server error occurred.', $content['error']);
     }
+
+    public function test_add_component_returns_200_on_success(): void
+    {
+        // Arrange
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->once())
+            ->method('validate')
+            ->willReturn([
+                'variant_id' => 'VAR-101',
+                'quantity'   => 5,
+            ]);
+
+        $kit = new Kit('kit-1', 'KIT-SKU-1', 'Test Kit');
+
+        $kitRepoMock = $this->createMock(KitRepositoryInterface::class);
+        $kitRepoMock->expects($this->once())
+            ->method('findOrFail')
+            ->with('kit-1')
+            ->willReturn($kit);
+        $kitRepoMock->expects($this->once())
+            ->method('save')
+            ->with($this->callback(function (Kit $savedKit) {
+                $components = $savedKit->components();
+                return count($components) === 1
+                    && $components[0]->variantId === 'VAR-101'
+                    && $components[0]->quantity === 5;
+            }));
+
+        // Act
+        $response = $this->controller->addComponent($requestMock, 'kit-1', $kitRepoMock);
+
+        // Assert
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(200, $response->getStatusCode());
+
+        $content = json_decode($response->getContent(), true);
+        $this->assertArrayHasKey('message', $content);
+        $this->assertEquals('Component added/updated successfully', $content['message']);
+    }
+
+    public function test_add_component_returns_400_on_invalid_quantity(): void
+    {
+        // Arrange
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->once())
+            ->method('validate')
+            ->willReturn([
+                'variant_id' => 'VAR-101',
+                'quantity'   => 0,
+            ]);
+
+        $kit = new Kit('kit-1', 'KIT-SKU-1', 'Test Kit');
+
+        $kitRepoMock = $this->createMock(KitRepositoryInterface::class);
+        $kitRepoMock->expects($this->once())
+            ->method('findOrFail')
+            ->with('kit-1')
+            ->willReturn($kit);
+        $kitRepoMock->expects($this->never())
+            ->method('save');
+
+        // Act
+        $response = $this->controller->addComponent($requestMock, 'kit-1', $kitRepoMock);
+
+        // Assert
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(400, $response->getStatusCode());
+
+        $content = json_decode($response->getContent(), true);
+        $this->assertArrayHasKey('error', $content);
+        $this->assertEquals('Kit component quantity must be at least 1.', $content['error']);
+    }
+
+    public function test_add_component_returns_400_when_kit_not_found_with_domain_exception(): void
+    {
+        // Arrange
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->once())
+            ->method('validate')
+            ->willReturn([
+                'variant_id' => 'VAR-101',
+                'quantity'   => 2,
+            ]);
+
+        $kitRepoMock = $this->createMock(KitRepositoryInterface::class);
+        $kitRepoMock->expects($this->once())
+            ->method('findOrFail')
+            ->with('kit-unknown')
+            ->willThrowException(new \DomainException('Kit not found'));
+
+        // Act
+        $response = $this->controller->addComponent($requestMock, 'kit-unknown', $kitRepoMock);
+
+        // Assert
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(400, $response->getStatusCode());
+
+        $content = json_decode($response->getContent(), true);
+        $this->assertArrayHasKey('error', $content);
+        $this->assertEquals('Kit not found', $content['error']);
+    }
+
+    public function test_add_component_returns_500_on_internal_error(): void
+    {
+        // Arrange
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->once())
+            ->method('validate')
+            ->willReturn([
+                'variant_id' => 'VAR-101',
+                'quantity'   => 2,
+            ]);
+
+        $kitRepoMock = $this->createMock(KitRepositoryInterface::class);
+        $kitRepoMock->expects($this->once())
+            ->method('findOrFail')
+            ->with('kit-1')
+            ->willThrowException(new Exception('Database connection failed'));
+
+        // Act
+        $response = $this->controller->addComponent($requestMock, 'kit-1', $kitRepoMock);
+
+        // Assert
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(500, $response->getStatusCode());
+
+        $content = json_decode($response->getContent(), true);
+        $this->assertArrayHasKey('error', $content);
+        $this->assertEquals('An internal server error occurred.', $content['error']);
+    }
 }

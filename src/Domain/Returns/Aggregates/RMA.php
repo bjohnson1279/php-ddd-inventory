@@ -5,6 +5,7 @@ namespace InventoryApp\Domain\Returns\Aggregates;
 use InventoryApp\Domain\Shared\Entities\AggregateRoot;
 use InventoryApp\Domain\Identity\ValueObjects\TenantId;
 use InventoryApp\Domain\Inventory\ValueObjects\LocationId;
+use InventoryApp\Domain\Returns\ValueObjects\RMANumber;
 use InventoryApp\Domain\Returns\Enums\RMAStatus;
 use InventoryApp\Domain\Returns\Enums\RMADisposition;
 use InventoryApp\Domain\Returns\Entities\RMAItem;
@@ -15,6 +16,7 @@ use InvalidArgumentException;
 class RMA extends AggregateRoot
 {
     private string $id;
+    private RMANumber $number;
     private string $rmaNumber;
     private TenantId $tenantId;
     private string $customerId;
@@ -27,7 +29,7 @@ class RMA extends AggregateRoot
 
     public function __construct(
         string $id,
-        string $rmaNumber,
+        RMANumber|string $rmaNumber,
         TenantId $tenantId,
         string $customerId,
         LocationId $locationId,
@@ -37,7 +39,13 @@ class RMA extends AggregateRoot
         ?DateTimeImmutable $updatedAt = null
     ) {
         $this->id = $id;
-        $this->rmaNumber = $rmaNumber;
+        if ($rmaNumber instanceof RMANumber) {
+            $this->number = $rmaNumber;
+            $this->rmaNumber = $rmaNumber->getValue();
+        } else {
+            $this->number = new RMANumber($rmaNumber);
+            $this->rmaNumber = $this->number->getValue();
+        }
         $this->tenantId = $tenantId;
         $this->customerId = $customerId;
         $this->locationId = $locationId;
@@ -48,6 +56,7 @@ class RMA extends AggregateRoot
     }
 
     public function getId(): string { return $this->id; }
+    public function getNumber(): RMANumber { return $this->number; }
     public function getRmaNumber(): string { return $this->rmaNumber; }
     public function getTenantId(): TenantId { return $this->tenantId; }
     public function getCustomerId(): string { return $this->customerId; }

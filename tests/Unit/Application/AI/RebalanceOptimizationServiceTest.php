@@ -157,6 +157,38 @@ namespace Tests\Unit\Application\AI {
             $this->assertEquals(30.0, $result['summary']['totalCost']);
         }
 
+        public function testBuildWarehousePairDefaultsGeneratesCartesianPairsExcludingSelf(): void
+        {
+            $service = new RebalanceOptimizationService();
+            $warehouses = [
+                ['id' => 'WH1', 'name' => 'Warehouse WH1', 'region' => 'US-East'],
+                ['id' => 'WH2', 'name' => 'Warehouse WH2', 'region' => 'US-West'],
+                ['id' => 'WH3', 'name' => 'Warehouse WH3', 'region' => 'EU-Central'],
+            ];
+
+            [$leadTimes, $shippingCosts] = $service->buildWarehousePairDefaults($warehouses);
+
+            // 3 warehouses -> 3 * 2 = 6 pairs
+            $this->assertCount(6, $leadTimes);
+            $this->assertCount(6, $shippingCosts);
+
+            $this->assertEquals([
+                'source_warehouse_id' => 'WH1',
+                'dest_warehouse_id' => 'WH2',
+                'transit_days' => 3,
+            ], $leadTimes[0]);
+
+            $this->assertEquals([
+                'source_warehouse_id' => 'WH1',
+                'dest_warehouse_id' => 'WH2',
+                'cost_per_unit' => 1.5,
+            ], $shippingCosts[0]);
+
+            foreach ($leadTimes as $leadTime) {
+                $this->assertNotEquals($leadTime['source_warehouse_id'], $leadTime['dest_warehouse_id']);
+            }
+        }
+
         private function seedTwoWarehouses(): void
         {
             DB::table('warehouse_locations')->insert([

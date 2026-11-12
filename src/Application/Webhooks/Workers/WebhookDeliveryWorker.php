@@ -142,13 +142,7 @@ class WebhookDeliveryWorker
                 curl_close($ch);
 
                 try {
-                    if ($curlError) {
-                        throw new \Exception("cURL Error: " . $curlError);
-                    }
-
-                    if ($httpCode < 200 || $httpCode >= 300) {
-                        throw new \Exception("HTTP Error: " . $httpCode . " Response: " . $response);
-                    }
+                    $this->validateDeliveryResponse($curlError, $httpCode, $response);
 
                     // Mark as Success
                     $delivery->status = 'Success';
@@ -189,6 +183,17 @@ class WebhookDeliveryWorker
         } while (!$once);
 
         echo "DDD Webhook Delivery Worker finished.\n";
+    }
+
+    private function validateDeliveryResponse(?string $curlError, int $httpCode, ?string $response): void
+    {
+        if ($curlError) {
+            throw new \Exception("cURL Error: " . $curlError);
+        }
+
+        if ($httpCode < 200 || $httpCode >= 300) {
+            throw new \Exception("HTTP Error: " . $httpCode . " Response: " . $response);
+        }
     }
 
     private function handleFailure($delivery, \Throwable $e, $subscription): void

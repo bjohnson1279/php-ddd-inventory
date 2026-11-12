@@ -9,16 +9,17 @@ use InventoryApp\Domain\Returns\Aggregates\RMA;
 use InventoryApp\Domain\Returns\Entities\RMAItem;
 use InventoryApp\Domain\Returns\Enums\RMADisposition;
 use InventoryApp\Domain\Returns\Enums\RMAStatus;
+use InventoryApp\Domain\Returns\ValueObjects\RMANumber;
 use InventoryApp\Domain\Shared\ValueObjects\Money;
 use PHPUnit\Framework\TestCase;
 
 class RMATest extends TestCase
 {
-    private function createRMA(RMAStatus $status = RMAStatus::Requested, array $items = []): RMA
+    private function createRMA(RMAStatus $status = RMAStatus::Requested, array $items = [], RMANumber|string $rmaNumber = 'RMA-100'): RMA
     {
         return new RMA(
             'rma-1',
-            'RMA-100',
+            $rmaNumber,
             new TenantId('tenant-1'),
             'cust-1',
             new LocationId('LOC-01-A'),
@@ -34,6 +35,8 @@ class RMATest extends TestCase
 
         $this->assertEquals('rma-1', $rma->getId());
         $this->assertEquals('RMA-100', $rma->getRmaNumber());
+        $this->assertInstanceOf(RMANumber::class, $rma->getNumber());
+        $this->assertEquals('RMA-100', $rma->getNumber()->getValue());
         $this->assertEquals('tenant-1', $rma->getTenantId()->getValue());
         $this->assertEquals('cust-1', $rma->getCustomerId());
         $this->assertEquals('LOC-01-A', $rma->getLocationId()->getValue());
@@ -41,6 +44,15 @@ class RMATest extends TestCase
         $this->assertCount(1, $rma->getItems());
         $this->assertNotNull($rma->getCreatedAt());
         $this->assertNotNull($rma->getUpdatedAt());
+    }
+
+    public function testInitializesWithRMANumberValueObject(): void
+    {
+        $rmaNumber = new RMANumber('RMA-2026-VAL');
+        $rma = $this->createRMA(RMAStatus::Requested, [], $rmaNumber);
+
+        $this->assertSame($rmaNumber, $rma->getNumber());
+        $this->assertEquals('RMA-2026-VAL', $rma->getRmaNumber());
     }
 
     public function testCanAuthorizeRequestedRMA(): void

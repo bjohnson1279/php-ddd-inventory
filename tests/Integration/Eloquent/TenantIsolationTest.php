@@ -85,8 +85,6 @@ final class TenantIsolationTest extends TestCase
         putenv('DB_PASSWORD=');
 
         try {
-            $oldEnv = getenv('APP_ENV');
-            putenv('APP_ENV=production');
             $this->expectException(\RuntimeException::class);
             $this->expectExceptionMessage('DB_PASSWORD environment variable must be set.');
             $registry->registerTenant('no-pass-tenant');
@@ -95,11 +93,6 @@ final class TenantIsolationTest extends TestCase
                 putenv("DB_PASSWORD={$oldPassword}");
             } else {
                 putenv('DB_PASSWORD'); // unset
-            }
-            if ($oldEnv !== false) {
-                putenv("APP_ENV={$oldEnv}");
-            } else {
-                putenv('APP_ENV'); // unset
             }
         }
     }

@@ -166,4 +166,38 @@ class WebhookDeliveryWorkerTest extends TestCase
         $this->assertStringContainsString('No pending webhooks found. Exiting.', $output);
         $this->assertLessThan(1.0, $elapsedTime, 'Worker execution should not block/sleep for 2 seconds when empty.');
     }
+
+    public function testValidateDeliveryResponseThrowsOnCurlError(): void
+    {
+        $this->expectException(\Exception::class);
+        $this->expectExceptionMessage('cURL Error: Connection timed out');
+
+        $worker = new WebhookDeliveryWorker();
+        $refMethod = new \ReflectionMethod($worker, 'validateDeliveryResponse');
+        $refMethod->setAccessible(true);
+        $refMethod->invoke($worker, 'Connection timed out', 0, '');
+    }
+
+    public function testValidateDeliveryResponseThrowsOnNon2xxHttpCode(): void
+    {
+        $this->expectException(\Exception::class);
+        $this->expectExceptionMessage('HTTP Error: 500 Response: Internal Server Error');
+
+        $worker = new WebhookDeliveryWorker();
+        $refMethod = new \ReflectionMethod($worker, 'validateDeliveryResponse');
+        $refMethod->setAccessible(true);
+        $refMethod->invoke($worker, null, 500, 'Internal Server Error');
+    }
+
+    public function testValidateDeliveryResponseSucceedsOn2xx(): void
+    {
+        $worker = new WebhookDeliveryWorker();
+        $refMethod = new \ReflectionMethod($worker, 'validateDeliveryResponse');
+        $refMethod->setAccessible(true);
+
+        $refMethod->invoke($worker, null, 200, '{"success":true}');
+        $refMethod->invoke($worker, null, 204, '');
+
+        $this->assertTrue(true);
+    }
 }

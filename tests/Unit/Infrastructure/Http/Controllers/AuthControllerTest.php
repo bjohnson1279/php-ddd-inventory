@@ -182,4 +182,63 @@ class AuthControllerTest extends TestCase
         $this->assertArrayHasKey('error', $content);
         $this->assertEquals('Invalid credentials.', $content['error']);
     }
+
+    public function testLoginReturns200WithTokenOnSuccess(): void
+    {
+        // Arrange
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->once())
+            ->method('validate')
+            ->willReturn([
+                'email'     => 'test@example.com',
+                'password'  => 'valid-password',
+                'tenant_id' => 'tenant-1',
+            ]);
+
+        $useCaseMock = $this->createMock(AuthenticateUser::class);
+        $useCaseMock->expects($this->once())
+            ->method('execute')
+            ->with('test@example.com', 'valid-password', 'tenant-1')
+            ->willReturn('jwt-token-xyz');
+
+        // Act
+        $response = $this->controller->login($requestMock, $useCaseMock);
+
+        // Assert
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(200, $response->getStatusCode());
+
+        $content = json_decode($response->getContent(), true);
+        $this->assertArrayHasKey('token', $content);
+        $this->assertEquals('jwt-token-xyz', $content['token']);
+    }
+
+    public function testLoginReturns500OnUnexpectedException(): void
+    {
+        // Arrange
+        $requestMock = $this->createMock(RequestInterface::class);
+        $requestMock->expects($this->once())
+            ->method('validate')
+            ->willReturn([
+                'email'     => 'test@example.com',
+                'password'  => 'valid-password',
+                'tenant_id' => 'tenant-1',
+            ]);
+
+        $useCaseMock = $this->createMock(AuthenticateUser::class);
+        $useCaseMock->expects($this->once())
+            ->method('execute')
+            ->willThrowException(new Exception('Unexpected failure.'));
+
+        // Act
+        $response = $this->controller->login($requestMock, $useCaseMock);
+
+        // Assert
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(500, $response->getStatusCode());
+
+        $content = json_decode($response->getContent(), true);
+        $this->assertArrayHasKey('error', $content);
+        $this->assertEquals('An internal server error occurred.', $content['error']);
+    }
 }

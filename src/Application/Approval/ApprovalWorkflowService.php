@@ -202,13 +202,7 @@ class ApprovalWorkflowService
 
             $request->escalate();
 
-            $newExpiresAt = null;
-            if ($request->isPending()) {
-                $nextStep = $config['steps'][$request->getCurrentStep()] ?? null;
-                if ($nextStep && isset($nextStep['timeoutHours']) && $nextStep['timeoutHours'] > 0) {
-                    $newExpiresAt = new \DateTimeImmutable('+' . $nextStep['timeoutHours'] . ' hours');
-                }
-            }
+            $newExpiresAt = $request->calculateNextExpiration($config['steps'] ?? []);
 
             ApprovalRequestModel::where('id', $record->id)->update([
                 'status' => $request->getStatus(),

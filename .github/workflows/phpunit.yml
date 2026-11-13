@@ -34,7 +34,8 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: mbstring, xml, intl, pdo, pdo_pgsql
+          coverage: pcov
+          extensions: mbstring, xml, intl, pdo, pdo_pgsql, pdo_sqlite, sqlite3, curl
 
       - name: Cache Composer
         uses: actions/cache@v4
@@ -47,7 +48,20 @@ jobs:
         run: composer install --no-interaction --prefer-dist --no-scripts --optimize-autoloader
 
       - name: Run PHPUnit (unit)
-        run: php vendor/bin/phpunit --testdox --exclude-group integration
+        run: |
+          php vendor/bin/phpunit --testdox --exclude-group integration --coverage-clover build/coverage.xml --coverage-text --log-junit build/unit-results.xml
+          php scripts/check-coverage.php build/coverage.xml 50
+
+      - name: Upload php-unit-coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: php-unit-coverage
+          path: |
+            build/
+          if-no-files-found: error
+          retention-days: 14
+
 
   integration:
     name: Integration tests (with Postgres)
@@ -75,7 +89,8 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: mbstring, xml, intl, pdo, pdo_pgsql
+          coverage: pcov
+          extensions: mbstring, xml, intl, pdo, pdo_pgsql, pdo_sqlite, sqlite3, curl
 
       - name: Cache Composer
         uses: actions/cache@v4
@@ -115,4 +130,14 @@ jobs:
           DB_DATABASE: ddd_inventory
           DB_USERNAME: ddd_user
           DB_PASSWORD: secret
-        run: php vendor/bin/phpunit tests/Integration --testdox
+        run: php vendor/bin/phpunit tests/Integration --testdox --log-junit build/integration-results.xml
+
+      - name: Upload php-integration-results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: php-integration-results
+          path: |
+            build/integration-results.xml
+          if-no-files-found: error
+          retention-days: 14

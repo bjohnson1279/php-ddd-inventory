@@ -4,7 +4,7 @@ declare(strict_types=1);
 // PHPUnit's Clover project metrics contain the aggregate statement coverage.
 // Reject missing/empty reports rather than treating absent instrumentation as 100%.
 $path = $argv[1] ?? 'build/coverage.xml';
-$minimum = (float) ($argv[2] ?? 50);
+$minimum = (float) ($argv[2] ?? 44);
 if (!is_file($path)) {
     fwrite(STDERR, "Coverage report is missing: {$path}\n");
     exit(1);

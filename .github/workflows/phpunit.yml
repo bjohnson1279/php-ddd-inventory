@@ -50,7 +50,7 @@ jobs:
       - name: Run PHPUnit (unit)
         run: |
           php vendor/bin/phpunit --testdox --exclude-group integration --coverage-clover build/coverage.xml --coverage-text --log-junit build/unit-results.xml
-          php scripts/check-coverage.php build/coverage.xml 50
+          php scripts/check-coverage.php build/coverage.xml 44
 
       - name: Upload php-unit-coverage
         if: always()

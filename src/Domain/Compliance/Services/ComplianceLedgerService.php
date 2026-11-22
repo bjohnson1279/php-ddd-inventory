@@ -143,11 +143,19 @@ class ComplianceLedgerService
         $binConfigurations = [];
         $accountBalances = [];
 
+        $hasExplicitMovements = false;
+        foreach ($filtered as $fe) {
+            if (in_array($fe->getEventType(), ['STOCK_RECEIVED', 'STOCK_DISPATCHED'], true)) {
+                $hasExplicitMovements = true;
+                break;
+            }
+        }
+
         foreach ($filtered as $entry) {
             $p = json_decode($entry->getPayload(), true) ?: [];
             $eventType = $entry->getEventType();
 
-            if (isset($p['sku']) && $eventType !== 'STOCK_ADJUSTED') {
+            if (isset($p['sku']) && (!$hasExplicitMovements || $eventType !== 'STOCK_ADJUSTED')) {
                 $loc = $p['locationId'] ?? 'LOC-DEFAULT';
                 $key = $p['sku'] . '@' . $loc;
                 if (!isset($stockLevels[$key])) {

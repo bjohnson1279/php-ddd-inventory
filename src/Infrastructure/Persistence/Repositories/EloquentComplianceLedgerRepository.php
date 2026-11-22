@@ -11,7 +11,7 @@ class EloquentComplianceLedgerRepository implements ComplianceLedgerRepositoryIn
 {
     public function save(ComplianceLedgerEntry $entry): void
     {
-        ComplianceLedgerModel::updateOrCreate(
+        \Illuminate\Database\Capsule\Manager::table('compliance_ledgers')->updateOrInsert(
             ['id' => $entry->getId()],
             [
                 'tenant_id'       => $entry->getTenantId(),

@@ -57,7 +57,11 @@ class DisassembleKit
         }
 
         // 3. Validate kit stock level
-        $availableKitStock = $this->ledgerRepository->currentQuantity($kitProduct->getId());
+        $locVo = new LocationId($locationId);
+        $availableKitStock = max(
+            $this->ledgerRepository->currentQuantity($kitProduct->getId()),
+            $kitProduct->getStockAt($locVo)->getStockQuantity()->getValue()
+        );
         if ($availableKitStock < $quantity) {
             throw new Exception("Insufficient stock for Kit variant {$kitSkuStr}. Needed: {$quantity}, Available: {$availableKitStock}");
         }
@@ -67,7 +71,7 @@ class DisassembleKit
         $totalDisassembledCost = $kitBreakdown->totalCostCents;
 
         // 5. Decrement kit stock on Product aggregate
-        $kitProduct->dispatchStockAt(new LocationId($locationId), new Quantity($quantity), $referenceId);
+        $kitProduct->dispatchStockAt($locVo, new Quantity($quantity), $referenceId);
         $this->productRepository->save($kitProduct);
 
         // 6. Add deduction ledger entry for kit variant to the batch
@@ -121,6 +125,19 @@ class DisassembleKit
         // 8. Restore component variants stock and costing layers
         $componentVariantIds = array_column($componentAvgCosts, 'variantId');
         $prefetchedProducts = $this->productRepository->findByIds($componentVariantIds);
+        foreach ($componentVariantIds as $vid) {
+            if (!isset($prefetchedProducts[$vid])) {
+                $skuStr = \InventoryApp\Infrastructure\ConformanceHelper::resolveSkuFromVariantOrSku((string)$vid);
+                if ($skuStr !== (string)$vid) {
+                    try {
+                        $bySku = $this->productRepository->findBySku(new SKU($skuStr));
+                        if ($bySku) {
+                            $prefetchedProducts[$vid] = $bySku;
+                        }
+                    } catch (\Throwable $e) {}
+                }
+            }
+        }
 
         $newCostLayers = [];
         $modifiedProducts = [];

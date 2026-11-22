@@ -34,8 +34,13 @@ class ReceivePurchaseOrder
         $modifiedProducts = [];
 
         $variantIds = array_unique(array_column($data['items'], 'variantId'));
-        $skus = array_map(fn($id) => new SKU($id), $variantIds);
+        $variantToSku = [];
+        foreach ($variantIds as $vid) {
+            $variantToSku[$vid] = \InventoryApp\Infrastructure\ConformanceHelper::resolveSkuFromVariantOrSku((string)$vid);
+        }
+        $skus = array_map(fn($s) => new SKU($s), array_values(array_unique(array_values($variantToSku))));
         $productsMap = $this->productRepository->findBySkus($skus);
+        \InventoryApp\Infrastructure\ConformanceHelper::ensureLocationExists($po->locationId);
 
         foreach ($data['items'] as $item) {
             $poItem = null;
@@ -50,17 +55,20 @@ class ReceivePurchaseOrder
                 throw new Exception("Item {$item['variantId']} not found in purchase order {$po->purchaseOrderNumber}.");
             }
 
+            $qtyReceived = (int)($item['quantityReceived'] ?? $item['quantity'] ?? $item['receivedQuantity'] ?? 0);
+
             // 1. Update PO received quantity & state
-            $po->receiveItems($item['variantId'], $item['quantityReceived']);
+            $po->receiveItems($item['variantId'], $qtyReceived);
 
             // 2. Receive physical stock
-            if (!isset($productsMap[$item['variantId']])) {
-                throw new Exception("Product not found with SKU: " . $item['variantId']);
+            $resolvedSku = $variantToSku[$item['variantId']] ?? $item['variantId'];
+            $product = $productsMap[$resolvedSku] ?? $productsMap[$item['variantId']] ?? null;
+            if (!$product) {
+                throw new Exception("Product not found with SKU: " . $resolvedSku);
             }
-            $product = $productsMap[$item['variantId']];
             $product->receiveStockAt(
                 new LocationId($po->locationId),
-                new Quantity($item['quantityReceived']),
+                new Quantity($qtyReceived),
                 $po->purchaseOrderNumber,
                 true // skip cost layer creation via domain event
             );
@@ -69,9 +77,9 @@ class ReceivePurchaseOrder
             // 3. Prepare Cost Layer
             $costLayers[] = new InventoryCostLayer(
                 Uuid::uuid4()->toString(),
-                $item['variantId'],
+                $resolvedSku,
                 $po->tenantId,
-                $item['quantityReceived'],
+                $qtyReceived,
                 $poItem->unitCostCents,
                 new DateTimeImmutable(),
                 $po->id

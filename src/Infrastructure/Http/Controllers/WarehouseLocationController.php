@@ -30,6 +30,7 @@ class WarehouseLocationController
             $location = $this->buildLocationFromRequest($request, $body);
 
             $repo->save($location);
+            \InventoryApp\Infrastructure\ConformanceHelper::ensureLocationExists($location->getId()->getValue());
 
             return new Response([
                 'message' => 'Warehouse location saved successfully.',

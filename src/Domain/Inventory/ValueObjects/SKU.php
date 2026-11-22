@@ -16,7 +16,7 @@ class SKU
 
     private function validate(string $value): void
     {
-        if (empty($value) || !preg_match('/^[A-Z0-9-]{3,20}$/i', $value)) {
+        if (empty($value) || !preg_match('/^[A-Z0-9-]{3,64}$/i', $value)) {
             throw new InvalidSKUException($value);
         }
     }

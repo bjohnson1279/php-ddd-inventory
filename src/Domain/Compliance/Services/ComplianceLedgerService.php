@@ -135,9 +135,11 @@ class ComplianceLedgerService
         $entries = $repo->findAll($tenantId);
 
         $cutoffDate = $timestampStr ? new DateTime($timestampStr) : new DateTime();
-        $filtered = array_filter($entries, function ($e) use ($cutoffDate) {
-            return $e->getCreatedAt() <= $cutoffDate;
-        });
+        $filtered = $timestampStr
+            ? array_filter($entries, function ($e) use ($cutoffDate) {
+                return $e->getCreatedAt() <= $cutoffDate;
+            })
+            : $entries;
 
         $stockLevels = [];
         $binConfigurations = [];

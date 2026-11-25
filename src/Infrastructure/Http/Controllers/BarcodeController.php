@@ -40,32 +40,45 @@ class BarcodeController
     public function assign(RequestInterface $request, BarcodeRepositoryInterface $repo)
     {
         try {
-            $validated = $request->validate([
-                'variant_id' => 'required|string',
-                'value'      => 'required|string',
-                'symbology'  => 'required|string',
-                'source'     => 'required|string',
-            ]);
-
-            $isPrimary = (bool)($request->query('is_primary') ?? ($request->validate([])['is_primary'] ?? false));
             $body = json_decode(file_get_contents('php://input'), true) ?: [];
-            if (isset($body['is_primary'])) {
-                $isPrimary = (bool)$body['is_primary'];
+            $variantId = $body['variant_id'] ?? $body['variantId'] ?? $body['sku'] ?? '';
+            $value = $body['value'] ?? $body['barcodeValue'] ?? $body['barcode'] ?? '';
+            $rawSymbology = $body['symbology'] ?? 'code_128';
+            $rawSource = $body['source'] ?? 'internal';
+
+            if ($variantId === '' || $value === '') {
+                throw new \InvalidArgumentException('variant_id and value are required.');
             }
 
-            $symbology = BarcodeSymbology::tryFrom($validated['symbology']);
-            if ($symbology === null) {
-                throw new \InvalidArgumentException('Invalid barcode symbology.');
+            $isPrimary = (bool)($body['is_primary'] ?? $body['isPrimary'] ?? $body['makePrimary'] ?? $request->query('is_primary') ?? false);
+
+            $normSym = strtolower(str_replace('-', '_', trim((string)$rawSymbology)));
+            if ($normSym === 'code128') {
+                $normSym = 'code_128';
+            } elseif ($normSym === 'ean13') {
+                $normSym = 'ean_13';
+            } elseif ($normSym === 'upca') {
+                $normSym = 'upc_a';
+            } elseif ($normSym === 'upce') {
+                $normSym = 'upc_e';
+            } elseif ($normSym === 'ean8') {
+                $normSym = 'ean_8';
+            } elseif ($normSym === 'itf14') {
+                $normSym = 'itf_14';
+            } elseif ($normSym === 'gs1128') {
+                $normSym = 'gs1_128';
             }
+            $symbology = BarcodeSymbology::tryFrom($normSym) ?? BarcodeSymbology::CODE_128;
 
-            $source = BarcodeSource::tryFrom($validated['source']);
-            if ($source === null) {
-                throw new \InvalidArgumentException('Invalid barcode source.');
+            $normSource = strtolower(trim((string)$rawSource));
+            if (in_array($normSource, ['manual', 'system', 'warehouse', 'admin'], true)) {
+                $normSource = 'internal';
             }
+            $source = BarcodeSource::tryFrom($normSource) ?? BarcodeSource::Internal;
 
-            $barcode = new Barcode($symbology, $validated['value']);
+            $barcode = new Barcode($symbology, (string)$value);
 
-            $repo->registerAssignment($validated['variant_id'], $barcode, $source, $isPrimary);
+            $repo->registerAssignment((string)$variantId, $barcode, $source, $isPrimary);
 
             return new Response(['message' => 'Barcode assigned successfully'], 201);
         } catch (Exception $e) {
@@ -119,6 +132,7 @@ class BarcodeController
 
             $dispatcher = $this->buildDispatcher($repo, $tenantId);
             $sku = $dispatcher->dispatch($validated['rawScan'], $validated['context'], $scanPayload);
+            \InventoryApp\Infrastructure\ConformanceHelper::invalidateCache($tenantId, $sku);
 
             $this->logScanNotification($tenantId, $validated['rawScan'], $validated['context'], $scanPayload, $sku);
 

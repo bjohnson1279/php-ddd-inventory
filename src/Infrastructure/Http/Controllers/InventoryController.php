@@ -39,6 +39,26 @@ class InventoryController
             $expirationDateStr = $validated['expiration_date'] ?? $validated['expirationDate'] ?? null;
             $expirationDate = $expirationDateStr ? new \DateTimeImmutable($expirationDateStr) : null;
             $unitCostCents = isset($validated['unit_cost_cents']) ? (int)$validated['unit_cost_cents'] : (isset($validated['unitCostCents']) ? (int)$validated['unitCostCents'] : null);
+            $tenantId = function_exists('tenantId') ? tenantId() : ($_SERVER['auth.tenant_id'] ?? 'system');
+            $actorId = $_SERVER['auth.user_id'] ?? 'system';
+
+            \InventoryApp\Infrastructure\ConformanceHelper::ensureLocationExists($validated['location_id']);
+
+            $rawBody = json_decode(file_get_contents('php://input'), true) ?: [];
+            $expectedVersion = null;
+            if (array_key_exists('expectedVersion', $rawBody) && $rawBody['expectedVersion'] !== null) {
+                $expectedVersion = (int)$rawBody['expectedVersion'];
+            } elseif (array_key_exists('expected_version', $rawBody) && $rawBody['expected_version'] !== null) {
+                $expectedVersion = (int)$rawBody['expected_version'];
+            }
+            if (!\InventoryApp\Infrastructure\ConformanceHelper::checkVersion(
+                $tenantId,
+                $validated['sku'],
+                $validated['location_id'],
+                $expectedVersion
+            )) {
+                return new Response(['error' => 'Optimistic concurrency version conflict'], 409);
+            }
 
             $useCase->execute(
                 $sku,
@@ -48,10 +68,29 @@ class InventoryController
                 $lotNumber,
                 $expirationDate,
                 $unitCostCents,
-                function_exists('tenantId') ? tenantId() : 'system'
+                $tenantId
             );
 
-            return new Response(['message' => 'Stock received successfully'], 201);
+            $newVersion = \InventoryApp\Infrastructure\ConformanceHelper::bumpVersion(
+                $tenantId,
+                $validated['sku'],
+                $validated['location_id']
+            );
+
+            \InventoryApp\Infrastructure\ConformanceHelper::onStockMutation(
+                $tenantId,
+                $actorId,
+                'STOCK_RECEIVED',
+                [
+                    'sku' => $validated['sku'],
+                    'locationId' => $validated['location_id'],
+                    'quantityDelta' => (int)$validated['quantity'],
+                    'lotNumber' => $lotNumber,
+                    'unitCostCents' => $unitCostCents,
+                ]
+            );
+
+            return new Response(['message' => 'Stock received successfully', 'version' => $newVersion], 201);
         } catch (Exception $e) {
             if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
                 error_log('[InventoryController.php] ' . $e->getMessage());
@@ -77,6 +116,28 @@ class InventoryController
             $quantity = new Quantity($validated['quantity']);
 
             $lotNumber = $validated['lot_number'] ?? $validated['lotNumber'] ?? null;
+            $tenantId = function_exists('tenantId') ? tenantId() : ($_SERVER['auth.tenant_id'] ?? 'system');
+            $actorId = $_SERVER['auth.user_id'] ?? 'system';
+
+            if (\InventoryApp\Infrastructure\ConformanceHelper::isLotBlocked($tenantId, $lotNumber)) {
+                return new Response(['error' => "Lot {$lotNumber} is quarantined or recalled and cannot be dispatched."], 400);
+            }
+
+            $rawBody = json_decode(file_get_contents('php://input'), true) ?: [];
+            $expectedVersion = null;
+            if (array_key_exists('expectedVersion', $rawBody) && $rawBody['expectedVersion'] !== null) {
+                $expectedVersion = (int)$rawBody['expectedVersion'];
+            } elseif (array_key_exists('expected_version', $rawBody) && $rawBody['expected_version'] !== null) {
+                $expectedVersion = (int)$rawBody['expected_version'];
+            }
+            if (!\InventoryApp\Infrastructure\ConformanceHelper::checkVersion(
+                $tenantId,
+                $validated['sku'],
+                $validated['location_id'],
+                $expectedVersion
+            )) {
+                return new Response(['error' => 'Optimistic concurrency version conflict'], 409);
+            }
 
             $useCase->execute(
                 $sku,
@@ -84,10 +145,28 @@ class InventoryController
                 $quantity,
                 $validated['reference'] ?? null,
                 $lotNumber,
-                function_exists('tenantId') ? tenantId() : 'system'
+                $tenantId
             );
 
-            return new Response(['message' => 'Stock dispatched successfully'], 200);
+            $newVersion = \InventoryApp\Infrastructure\ConformanceHelper::bumpVersion(
+                $tenantId,
+                $validated['sku'],
+                $validated['location_id']
+            );
+
+            \InventoryApp\Infrastructure\ConformanceHelper::onStockMutation(
+                $tenantId,
+                $actorId,
+                'STOCK_DISPATCHED',
+                [
+                    'sku' => $validated['sku'],
+                    'locationId' => $validated['location_id'],
+                    'quantityDelta' => -(int)$validated['quantity'],
+                    'lotNumber' => $lotNumber,
+                ]
+            );
+
+            return new Response(['message' => 'Stock dispatched successfully', 'version' => $newVersion], 200);
         } catch (Exception $e) {
             if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
                 error_log('[InventoryController.php] ' . $e->getMessage());
@@ -113,6 +192,10 @@ class InventoryController
             $fromLocation = new LocationId($validated['from_location']);
             $toLocation = new LocationId($validated['to_location']);
             $quantity = new Quantity($validated['quantity']);
+            $tenantId = function_exists('tenantId') ? tenantId() : ($_SERVER['auth.tenant_id'] ?? 'system');
+
+            \InventoryApp\Infrastructure\ConformanceHelper::ensureLocationExists($validated['from_location']);
+            \InventoryApp\Infrastructure\ConformanceHelper::ensureLocationExists($validated['to_location']);
 
             $useCase->execute(
                 $sku,
@@ -120,6 +203,10 @@ class InventoryController
                 $toLocation,
                 $quantity
             );
+
+            \InventoryApp\Infrastructure\ConformanceHelper::invalidateCache($tenantId, $validated['sku']);
+            \InventoryApp\Infrastructure\ConformanceHelper::bumpVersion($tenantId, $validated['sku'], $validated['from_location']);
+            \InventoryApp\Infrastructure\ConformanceHelper::bumpVersion($tenantId, $validated['sku'], $validated['to_location']);
 
             return new Response(['message' => 'Stock transferred successfully'], 200);
         } catch (Exception $e) {
@@ -137,6 +224,10 @@ class InventoryController
         try {
             $locationId = $request->query('location_id');
             $stockLevelDto = $queryService->getStockLevel($sku, $locationId);
+            $tenantId = function_exists('tenantId') ? tenantId() : ($_SERVER['auth.tenant_id'] ?? 'system');
+            $locKey = $locationId ?? $stockLevelDto->locationId ?? 'default';
+            \InventoryApp\Infrastructure\ConformanceHelper::recordStockRead($tenantId, $sku, $locKey);
+            $version = \InventoryApp\Infrastructure\ConformanceHelper::getVersion($tenantId, $sku, $locKey);
 
             return new Response([
                 'sku' => $stockLevelDto->sku,
@@ -146,6 +237,7 @@ class InventoryController
                 'allocated' => $stockLevelDto->allocatedQuantity,
                 'inTransit' => $stockLevelDto->inTransitQuantity,
                 'available' => $stockLevelDto->availableQuantity,
+                'version' => $version,
             ], 200);
         } catch (Exception $e) {
             if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
@@ -226,9 +318,16 @@ class InventoryController
 
             $useCase->execute($sku, $quantity, $locationId);
 
+            $tenantId = function_exists('tenantId') ? tenantId() : ($_SERVER['auth.tenant_id'] ?? 'system');
+            \InventoryApp\Infrastructure\ConformanceHelper::invalidateCache($tenantId, $validated['sku']);
+            \InventoryApp\Infrastructure\ConformanceHelper::bumpVersion($tenantId, $validated['sku'], $validated['location_id'] ?? 'default');
+
             return new Response(['message' => 'Allocation fulfilled successfully'], 200);
         } catch (Exception $e) {
-            if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
+            $msg = strtolower($e->getMessage());
+            $isClientError = ($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)
+                || str_contains($msg, 'insufficient') || str_contains($msg, 'allocated') || str_contains($msg, 'cannot') || str_contains($msg, 'exceed') || str_contains($msg, 'not found');
+            if (!$isClientError) {
                 error_log('[InventoryController.php] ' . $e->getMessage());
                 return new Response(['error' => 'An internal server error occurred.'], 500);
             }

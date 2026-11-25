@@ -37,10 +37,15 @@ class ResolveQuarantineItem
         // Decrement stock from quarantine location
         $product = $this->productRepository->findById($variantId);
         if (!$product) {
+            $skuStr = \InventoryApp\Infrastructure\ConformanceHelper::resolveSkuFromVariantOrSku($variantId);
+            $product = $this->productRepository->findBySku(new \InventoryApp\Domain\Inventory\ValueObjects\SKU($skuStr));
+        }
+        if (!$product) {
             throw new Exception("Product not found for variant {$variantId}");
         }
         $product->dispatchStockAt(new LocationId($quarantineLocId), new Quantity($qItem->getQuantity()), "RESOLVE-Q-{$qItem->getId()}");
         $this->productRepository->save($product);
+        \InventoryApp\Infrastructure\ConformanceHelper::invalidateCache($qItem->getTenantId()->getValue(), $product->getSku()->getValue());
 
         if ($dto['resolution'] === 'RESTOCK') {
             $qItem->resolveRestock();

@@ -8,10 +8,10 @@ final class SerialNumber
 
     public function __construct(string $raw)
     {
-        $normalized = strtoupper(trim($raw));
+        $normalized = trim($raw);
         if (empty($normalized)) throw new \InvalidArgumentException('Serial number cannot be empty.');
         if (strlen($normalized) > 100) throw new \InvalidArgumentException('Serial number cannot exceed 100 characters.');
-        if (!preg_match('/^[A-Z0-9\-\.\/]+$/', $normalized)) throw new \InvalidArgumentException('Serial number contains invalid characters.');
+        if (!preg_match('/^[A-Za-z0-9\-\._\/]+$/', $normalized)) throw new \InvalidArgumentException('Serial number contains invalid characters.');
         $this->value = $normalized;
     }
 

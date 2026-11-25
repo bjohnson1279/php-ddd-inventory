@@ -51,6 +51,10 @@ class ComplianceLedgerService
         $signature = hash_hmac('sha256', $currentHash, self::getPrivateKey());
 
         $id = bin2hex(random_bytes(16)); // UUID alternative in native PHP
+        $createdAt = new DateTime((new DateTime())->format('Y-m-d H:i:s'));
+        if ($lastEntry && $createdAt <= $lastEntry->getCreatedAt()) {
+            $createdAt = (clone $lastEntry->getCreatedAt())->modify('+1 second');
+        }
 
         $entry = new ComplianceLedgerEntry(
             $id,
@@ -62,7 +66,7 @@ class ComplianceLedgerService
             $currentHash,
             $signature,
             $payloadJson,
-            new DateTime()
+            $createdAt
         );
 
         $repo->save($entry);
@@ -131,19 +135,29 @@ class ComplianceLedgerService
         $entries = $repo->findAll($tenantId);
 
         $cutoffDate = $timestampStr ? new DateTime($timestampStr) : new DateTime();
-        $filtered = array_filter($entries, function ($e) use ($cutoffDate) {
-            return $e->getTimestamp() <= $cutoffDate;
-        });
+        $filtered = $timestampStr
+            ? array_filter($entries, function ($e) use ($cutoffDate) {
+                return $e->getCreatedAt() <= $cutoffDate;
+            })
+            : $entries;
 
         $stockLevels = [];
         $binConfigurations = [];
         $accountBalances = [];
 
+        $hasExplicitMovements = false;
+        foreach ($filtered as $fe) {
+            if (in_array($fe->getEventType(), ['STOCK_RECEIVED', 'STOCK_DISPATCHED'], true)) {
+                $hasExplicitMovements = true;
+                break;
+            }
+        }
+
         foreach ($filtered as $entry) {
             $p = json_decode($entry->getPayload(), true) ?: [];
             $eventType = $entry->getEventType();
 
-            if (isset($p['sku'])) {
+            if (isset($p['sku']) && (!$hasExplicitMovements || $eventType !== 'STOCK_ADJUSTED')) {
                 $loc = $p['locationId'] ?? 'LOC-DEFAULT';
                 $key = $p['sku'] . '@' . $loc;
                 if (!isset($stockLevels[$key])) {
@@ -199,7 +213,7 @@ class ComplianceLedgerService
         if ($upToTimestamp) {
             $cutoffDate = new DateTime($upToTimestamp);
             $entries = array_filter($entries, function ($e) use ($cutoffDate) {
-                return $e->getTimestamp() <= $cutoffDate;
+                return $e->getCreatedAt() <= $cutoffDate;
             });
         }
 
@@ -207,7 +221,7 @@ class ComplianceLedgerService
             return [
                 'sequenceNumber' => $e->getSequenceNumber(),
                 'eventType' => $e->getEventType(),
-                'timestamp' => $e->getTimestamp()->format(DateTime::ATOM),
+                'timestamp' => $e->getCreatedAt()->format(DateTime::ATOM),
                 'hash' => $e->getCurrentHash(),
                 'previousHash' => $e->getPreviousHash(),
                 'payload' => json_decode($e->getPayload(), true) ?: $e->getPayload()

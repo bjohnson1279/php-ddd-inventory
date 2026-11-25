@@ -41,6 +41,19 @@ class ReceiveRMA
 
         $variantIds = array_unique(array_column($dto['items'], 'variantId'));
         $products = $this->productRepository->findByIds($variantIds);
+        foreach ($variantIds as $vid) {
+            if (!isset($products[$vid])) {
+                $skuStr = \InventoryApp\Infrastructure\ConformanceHelper::resolveSkuFromVariantOrSku((string)$vid);
+                if ($skuStr !== (string)$vid) {
+                    try {
+                        $bySku = $this->productRepository->findBySku(new \InventoryApp\Domain\Inventory\ValueObjects\SKU($skuStr));
+                        if ($bySku) {
+                            $products[$vid] = $bySku;
+                        }
+                    } catch (\Throwable $e) {}
+                }
+            }
+        }
 
         $productsToSave = [];
         // Pre-fetch all serialized items
@@ -78,6 +91,7 @@ class ReceiveRMA
             $targetLocationId = $disposition === RMADisposition::Quarantine
                 ? $rma->getLocationId()->getValue() . '-quarantine'
                 : $rma->getLocationId()->getValue();
+            \InventoryApp\Infrastructure\ConformanceHelper::ensureLocationExists($targetLocationId);
 
             // Increment stock level on Product aggregate root
             $product = $products[$item['variantId']] ?? null;

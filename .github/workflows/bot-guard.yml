@@ -110,7 +110,7 @@ jobs:
           if echo "$MODIFIED_FILES" | grep -E '(package\.json|package-lock\.json)'; then
             if [ -f "package-lock.json" ]; then
               echo "Running npm audit..."
-              npm audit --audit-level=high || true
+              npm audit --audit-level=high
             fi
           fi
 
@@ -119,7 +119,7 @@ jobs:
             if [ -f "Gemfile.lock" ]; then
               echo "Checking Ruby gems for known advisories..."
               if command -v bundle-audit &> /dev/null; then
-                bundle-audit check --update || true
+                bundle-audit check --update
               fi
             fi
           fi
@@ -128,7 +128,7 @@ jobs:
           if echo "$MODIFIED_FILES" | grep -E '(composer\.json|composer\.lock)'; then
             if [ -f "composer.lock" ] && command -v composer &> /dev/null; then
               echo "Running composer audit..."
-              composer audit || true
+              composer audit
             fi
           fi
 
@@ -141,12 +141,14 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    if: github.event_name == 'pull_request' && (contains(github.actor, 'jules') || contains(github.actor, 'sentinel') || contains(github.actor, 'dependabot') || contains(github.actor, 'bolt') || contains(github.actor, 'palette') || contains(github.head_ref, 'sentinel') || contains(github.head_ref, 'jules') || contains(github.head_ref, 'bolt') || contains(github.head_ref, 'palette'))
+    if: github.event.repository.allow_auto_merge == true && github.event_name == 'pull_request' && (contains(github.actor, 'jules') || contains(github.actor, 'sentinel') || contains(github.actor, 'dependabot') || contains(github.actor, 'bolt') || contains(github.actor, 'palette') || contains(github.head_ref, 'sentinel') || contains(github.head_ref, 'jules') || contains(github.head_ref, 'bolt') || contains(github.head_ref, 'palette'))
     steps:
-      - name: Enable Auto-Merge
+      - name: Queue Auto-Merge After Required Checks
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_REPO: ${{ github.repository }}
         run: |
           echo "Enabling squash merge for PR #${{ github.event.pull_request.number }}"
-          # Only use --squash, do NOT use --auto or gh pr review --approve unless branch protection is enforced
-          gh pr merge ${{ github.event.pull_request.number }} -R ${{ github.repository }} --squash || true
+          # Queue the merge; never bypass required checks or approve our own PR.
+          gh pr merge "$PR_NUMBER" --repo "$GH_REPO" --squash --auto

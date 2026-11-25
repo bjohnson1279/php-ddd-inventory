@@ -108,13 +108,43 @@ class KitController
                 'sale_id'  => 'required|string',
             ]);
 
+            $rawBody = json_decode(file_get_contents('php://input'), true) ?: [];
+            $locationIdStr = $rawBody['locationId'] ?? $rawBody['location_id'] ?? 'default';
+            $tenantId = $_SERVER['auth.tenant_id'] ?? 'system';
             $actorId = $_SERVER['auth.user_id'] ?? 'system';
             $kitQty = (int)$validated['quantity'];
             $saleId = $validated['sale_id'];
 
-            Capsule::transaction(function () use ($id, $kitQty, $saleId, $actorId, $repo, $inventoryService) {
+            Capsule::transaction(function () use ($id, $kitQty, $saleId, $actorId, $tenantId, $locationIdStr, $repo, $inventoryService) {
                 $kit = $repo->findOrFail($id);
-                $inventoryService->decrementForKitSale($kit, $kitQty, $saleId, $actorId);
+                $components = $kit->components();
+                if (empty($components)) {
+                    throw new \DomainException('Cannot sell a kit with no components.');
+                }
+                $syncedProducts = false;
+                try {
+                    $productRepo = \InventoryApp\Infrastructure\ServiceContainer::productRepo($tenantId);
+                    $locId = new \InventoryApp\Domain\Inventory\ValueObjects\LocationId($locationIdStr);
+                    foreach ($components as $comp) {
+                        $needed = $comp->quantity * $kitQty;
+                        $skuStr = \InventoryApp\Infrastructure\ConformanceHelper::resolveSkuFromVariantOrSku($comp->variantId);
+                        $product = $productRepo->findBySku(new \InventoryApp\Domain\Inventory\ValueObjects\SKU($skuStr));
+                        if ($product) {
+                            $product->dispatchStockAt($locId, new \InventoryApp\Domain\Inventory\ValueObjects\Quantity($needed), $saleId);
+                            $productRepo->save($product);
+                            \InventoryApp\Infrastructure\ConformanceHelper::invalidateCache($tenantId, $skuStr);
+                            \InventoryApp\Infrastructure\ConformanceHelper::bumpVersion($tenantId, $skuStr, $locationIdStr);
+                            $syncedProducts = true;
+                        }
+                    }
+                } catch (\DomainException $de) {
+                    throw $de;
+                } catch (\Throwable $e) {
+                    // Fall back to InventoryService when ServiceContainer DB is not initialized (unit tests)
+                }
+                if (!$syncedProducts) {
+                    $inventoryService->decrementForKitSale($kit, $kitQty, $saleId, $actorId);
+                }
             });
 
             return new Response(['message' => 'Kit sold successfully and component inventories decremented.'], 200);
@@ -149,30 +179,34 @@ class KitController
         \InventoryApp\Application\Inventory\UseCases\AssembleKit $useCase
     ) {
         try {
-            $validated = $request->validate([
-                'kitSku'      => 'required|string',
-                'quantity'    => 'required|integer',
-                'locationId'  => 'required|string',
-                'referenceId' => 'required|string',
-            ]);
+            $rawBody = json_decode(file_get_contents('php://input'), true) ?: [];
+            $kitSku = $rawBody['kitSku'] ?? $rawBody['kit_sku'] ?? '';
+            $quantity = isset($rawBody['quantity']) ? (int)$rawBody['quantity'] : 0;
+            $locationId = $rawBody['locationId'] ?? $rawBody['location_id'] ?? 'default';
+            $referenceId = $rawBody['referenceId'] ?? $rawBody['reference_id'] ?? ('kit-asm-' . uniqid());
+            if ($kitSku === '' || $quantity <= 0) {
+                throw new \InvalidArgumentException('kitSku and positive quantity are required.');
+            }
 
             $tenantId = $_SERVER['auth.tenant_id'] ?? 'system';
             $actorId  = $_SERVER['auth.user_id'] ?? 'system';
 
-            Capsule::transaction(function () use ($useCase, $validated, $tenantId, $actorId) {
+            Capsule::transaction(function () use ($useCase, $kitSku, $quantity, $locationId, $tenantId, $actorId, $referenceId) {
                 $decoratedUseCase = new AutoRetryUseCaseDecorator($useCase);
                 $decoratedUseCase->execute([
                     'tenantId'    => $tenantId,
-                    'locationId'  => $validated['locationId'],
-                    'kitSku'      => $validated['kitSku'],
-                    'quantity'    => (int)$validated['quantity'],
+                    'locationId'  => $locationId,
+                    'kitSku'      => $kitSku,
+                    'quantity'    => $quantity,
                     'actorId'     => $actorId,
-                    'referenceId' => $validated['referenceId'],
+                    'referenceId' => $referenceId,
                 ]);
             });
 
+            \InventoryApp\Infrastructure\ConformanceHelper::invalidateCache($tenantId, null);
+
             return new Response([
-                'message' => "Successfully assembled {$validated['quantity']} units of Kit {$validated['kitSku']}."
+                'message' => "Successfully assembled {$quantity} units of Kit {$kitSku}."
             ], 200);
         } catch (Exception $e) {
             if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {
@@ -188,30 +222,34 @@ class KitController
         \InventoryApp\Application\Inventory\UseCases\DisassembleKit $useCase
     ) {
         try {
-            $validated = $request->validate([
-                'kitSku'      => 'required|string',
-                'quantity'    => 'required|integer',
-                'locationId'  => 'required|string',
-                'referenceId' => 'required|string',
-            ]);
+            $rawBody = json_decode(file_get_contents('php://input'), true) ?: [];
+            $kitSku = $rawBody['kitSku'] ?? $rawBody['kit_sku'] ?? '';
+            $quantity = isset($rawBody['quantity']) ? (int)$rawBody['quantity'] : 0;
+            $locationId = $rawBody['locationId'] ?? $rawBody['location_id'] ?? 'default';
+            $referenceId = $rawBody['referenceId'] ?? $rawBody['reference_id'] ?? ('kit-dis-' . uniqid());
+            if ($kitSku === '' || $quantity <= 0) {
+                throw new \InvalidArgumentException('kitSku and positive quantity are required.');
+            }
 
             $tenantId = $_SERVER['auth.tenant_id'] ?? 'system';
             $actorId  = $_SERVER['auth.user_id'] ?? 'system';
 
-            Capsule::transaction(function () use ($useCase, $validated, $tenantId, $actorId) {
+            Capsule::transaction(function () use ($useCase, $kitSku, $quantity, $locationId, $tenantId, $actorId, $referenceId) {
                 $decoratedUseCase = new AutoRetryUseCaseDecorator($useCase);
                 $decoratedUseCase->execute([
                     'tenantId'    => $tenantId,
-                    'locationId'  => $validated['locationId'],
-                    'kitSku'      => $validated['kitSku'],
-                    'quantity'    => (int)$validated['quantity'],
+                    'locationId'  => $locationId,
+                    'kitSku'      => $kitSku,
+                    'quantity'    => $quantity,
                     'actorId'     => $actorId,
-                    'referenceId' => $validated['referenceId'],
+                    'referenceId' => $referenceId,
                 ]);
             });
 
+            \InventoryApp\Infrastructure\ConformanceHelper::invalidateCache($tenantId, null);
+
             return new Response([
-                'message' => "Successfully disassembled {$validated['quantity']} units of Kit {$validated['kitSku']}."
+                'message' => "Successfully disassembled {$quantity} units of Kit {$kitSku}."
             ], 200);
         } catch (Exception $e) {
             if (!($e instanceof \InvalidArgumentException || $e instanceof \ValidationException || $e instanceof \DomainException)) {

@@ -12,16 +12,26 @@ class SlottingOptimizer
     {
         // 1. Fetch all locations
         // ⚡ Bolt Optimization: explicitly select only required columns to reduce memory consumption
-        $locations = Capsule::table('warehouse_locations')->select('id', 'grid_x', 'grid_y')->get();
+        $locations = Capsule::table('warehouse_locations')->select('id', 'warehouse_id', 'aisle', 'grid_x', 'grid_y')->get();
         if ($locations->isEmpty()) {
             return [];
         }
 
-        // Map distances to (0,0)
+        // Map distances to (0,0) (fallback to numeric aisle when grid coords are 0)
         $locDistanceMap = [];
+        $locWarehouseMap = [];
         foreach ($locations as $loc) {
-            $dist = abs((int) ($loc->grid_x ?? 0)) + abs((int) ($loc->grid_y ?? 0));
+            $gx = (int) ($loc->grid_x ?? 0);
+            $gy = (int) ($loc->grid_y ?? 0);
+            $dist = abs($gx) + abs($gy);
+            if ($dist === 0 && !empty($loc->aisle)) {
+                $aisleNum = (int) preg_replace('/\D+/', '', (string) $loc->aisle);
+                if ($aisleNum > 0) {
+                    $dist = $aisleNum;
+                }
+            }
             $locDistanceMap[$loc->id] = $dist;
+            $locWarehouseMap[$loc->id] = (string) ($loc->warehouse_id ?? '');
         }
 
         // 2. Fetch all ledger entries in the last 30 days to calculate velocity
@@ -185,6 +195,31 @@ class SlottingOptimizer
                             $maxDistanceDiff = $distanceDiff;
                             $bestSwapTarget = $target;
                         }
+                    }
+                }
+            }
+
+            // Also consider empty bins in the same warehouse that are closer
+            $itemWh = $locWarehouseMap[$item['locationId']] ?? '';
+            foreach ($locations as $loc) {
+                $candId = $loc->id;
+                if ($candId === $item['locationId'] || isset($matchedLocations[$candId])) {
+                    continue;
+                }
+                if ($itemWh !== '' && ($locWarehouseMap[$candId] ?? '') !== $itemWh) {
+                    continue;
+                }
+                $candDist = $locDistanceMap[$candId] ?? 9999;
+                if ($candDist < $item['distance']) {
+                    $distanceDiff = $item['distance'] - $candDist;
+                    if ($distanceDiff > $maxDistanceDiff) {
+                        $maxDistanceDiff = $distanceDiff;
+                        $bestSwapTarget = [
+                            'locationId' => $candId,
+                            'distance' => $candDist,
+                            'sku' => null,
+                            'velocity' => 0,
+                        ];
                     }
                 }
             }

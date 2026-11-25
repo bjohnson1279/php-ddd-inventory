@@ -15,7 +15,7 @@ class LocationId
         }
 
         $trimmed = trim($value);
-        if (!str_starts_with($trimmed, 'LOC-') && count(explode('-', $trimmed)) < 6) {
+        if ($trimmed !== 'default' && !str_ends_with($trimmed, '-quarantine') && !str_starts_with($trimmed, 'LOC-') && count(explode('-', $trimmed)) < 6) {
             throw new InvalidArgumentException("Location ID must start with 'LOC-' or follow coordinate format.");
         }
 

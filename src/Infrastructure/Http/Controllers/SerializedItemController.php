@@ -61,6 +61,7 @@ class SerializedItemController
             $actorId = $_SERVER['auth.user_id'] ?? 'system';
 
             $service->receive($item->serialNumber, $item->tenantId, $validated['location_id'], $validated['purchase_order_id'], $unitCostCents, $actorId);
+            $this->adjustProductStock($item->tenantId, $item->variantId, $validated['location_id'], 1, $validated['purchase_order_id']);
 
             return new Response(['message' => 'Serial item received'], 200);
         } catch (Exception $e) {
@@ -87,6 +88,7 @@ class SerializedItemController
             $actorId = $_SERVER['auth.user_id'] ?? 'system';
 
             $service->sell($item->serialNumber, $item->tenantId, $validated['sale_id'], $actorId);
+            $this->adjustProductStock($item->tenantId, $item->variantId, $item->locationId() ?? 'default', -1, $validated['sale_id']);
 
             return new Response(['message' => 'Serial item sold'], 200);
         } catch (Exception $e) {
@@ -101,9 +103,11 @@ class SerializedItemController
     public function acceptReturn(RequestInterface $request, string $id, SerializedInventoryService $service, SerializedItemRepositoryInterface $repo)
     {
         try {
-            $validated = $request->validate([
-                'return_id' => 'required|string',
-            ]);
+            $body = json_decode(file_get_contents('php://input'), true) ?: [];
+            $returnId = $body['return_id'] ?? $body['returnId'] ?? $body['reference_id'] ?? $body['referenceId'] ?? '';
+            if ($returnId === '') {
+                throw new \InvalidArgumentException('return_id is required.');
+            }
 
             $item = $repo->findById($id);
             if (!$item) {
@@ -112,7 +116,7 @@ class SerializedItemController
 
             $actorId = $_SERVER['auth.user_id'] ?? 'system';
 
-            $service->acceptReturn($item->serialNumber, $item->tenantId, $validated['return_id'], $actorId);
+            $service->acceptReturn($item->serialNumber, $item->tenantId, (string)$returnId, $actorId);
 
             return new Response(['message' => 'Serial item return accepted'], 200);
         } catch (Exception $e) {
@@ -127,10 +131,12 @@ class SerializedItemController
     public function restock(RequestInterface $request, string $id, SerializedInventoryService $service, SerializedItemRepositoryInterface $repo)
     {
         try {
-            $validated = $request->validate([
-                'return_id'                 => 'required|string',
-                'restocked_unit_cost_cents' => 'required|integer',
-            ]);
+            $body = json_decode(file_get_contents('php://input'), true) ?: [];
+            $returnId = $body['return_id'] ?? $body['returnId'] ?? $body['reference_id'] ?? $body['referenceId'] ?? '';
+            if ($returnId === '') {
+                throw new \InvalidArgumentException('return_id is required.');
+            }
+            $restockedCostCents = (int)($body['restocked_unit_cost_cents'] ?? $body['unit_cost_cents'] ?? $body['unitCostCents'] ?? 0);
 
             $item = $repo->findById($id);
             if (!$item) {
@@ -139,7 +145,8 @@ class SerializedItemController
 
             $actorId = $_SERVER['auth.user_id'] ?? 'system';
 
-            $service->restock($item->serialNumber, $item->tenantId, $validated['return_id'], $validated['restocked_unit_cost_cents'], $actorId);
+            $service->restock($item->serialNumber, $item->tenantId, (string)$returnId, $restockedCostCents, $actorId);
+            $this->adjustProductStock($item->tenantId, $item->variantId, $item->locationId() ?? 'default', 1, (string)$returnId);
 
             return new Response(['message' => 'Serial item restocked'], 200);
         } catch (Exception $e) {
@@ -271,11 +278,39 @@ class SerializedItemController
         return [
             'id'            => $item->id,
             'variant_id'    => $item->variantId,
+            'variantId'     => $item->variantId,
             'serial_number' => $item->serialNumber->value,
+            'serialNumber'  => $item->serialNumber->value,
             'tenant_id'     => $item->tenantId,
+            'tenantId'      => $item->tenantId,
             'location_id'   => $item->locationId(),
+            'locationId'    => $item->locationId(),
             'status'        => $item->status()->value,
             'history'       => $history,
         ];
+    }
+
+    private function adjustProductStock(string $tenantId, string $variantId, string $locationId, int $delta, string $reference): void
+    {
+        try {
+            $skuStr = \InventoryApp\Infrastructure\ConformanceHelper::resolveSkuFromVariantOrSku($variantId);
+            \InventoryApp\Infrastructure\ConformanceHelper::ensureLocationExists($locationId);
+            $productRepo = \InventoryApp\Infrastructure\ServiceContainer::productRepo($tenantId);
+            $product = $productRepo->findBySku(new \InventoryApp\Domain\Inventory\ValueObjects\SKU($skuStr));
+            if (!$product) {
+                return;
+            }
+            $locVo = new \InventoryApp\Domain\Inventory\ValueObjects\LocationId($locationId);
+            if ($delta > 0) {
+                $product->receiveStockAt($locVo, new \InventoryApp\Domain\Inventory\ValueObjects\Quantity($delta), $reference);
+            } elseif ($delta < 0) {
+                $product->dispatchStockAt($locVo, new \InventoryApp\Domain\Inventory\ValueObjects\Quantity(abs($delta)), $reference);
+            }
+            $productRepo->save($product);
+            \InventoryApp\Infrastructure\ConformanceHelper::invalidateCache($tenantId, $skuStr);
+            \InventoryApp\Infrastructure\ConformanceHelper::bumpVersion($tenantId, $skuStr, $locationId);
+        } catch (\Throwable $e) {
+            error_log('[SerializedItemController] adjustProductStock failed: ' . $e->getMessage());
+        }
     }
 }

@@ -18,7 +18,10 @@ class RfidController
                 return new Response(['error' => 'Unauthorized'], 403);
             }
 
-            $tags = RfidTagModel::orderBy('created_at', 'desc')->get()->toArray();
+            $tags = array_map(function ($t) {
+                $t['serialNumber'] = $t['serialNumber'] ?? $t['serial_number'] ?? '';
+                return $t;
+            }, RfidTagModel::orderBy('created_at', 'desc')->get()->toArray());
             return new Response(['tags' => $tags], 200);
         } catch (Exception $e) {
             return new Response(['error' => $e->getMessage()], 500);

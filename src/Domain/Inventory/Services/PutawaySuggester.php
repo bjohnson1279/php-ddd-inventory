@@ -43,8 +43,8 @@ class PutawaySuggester
         $hazardAttr = $attrs['hazardClass'] ?? null;
         $velocityAttr = $attrs['velocity'] ?? null;
 
-        // Load all WMS locations
-        $locations = $this->locationRepo->findAll();
+        // Load all WMS locations (reverse so most recently added bins win tie-breakers)
+        $locations = array_reverse($this->locationRepo->findAll());
         if (empty($locations)) {
             return [];
         }

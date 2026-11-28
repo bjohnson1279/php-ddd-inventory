@@ -32,13 +32,14 @@ class POSScanHandler implements IScanHandler
 
     public function handle(string $sku, string $rawScan, array $payload): void
     {
-        if (empty($payload['location_id'])) {
+        $loc = $payload['location_id'] ?? $payload['locationId'] ?? null;
+        if (empty($loc)) {
             throw new InvalidArgumentException('location_id is required for POS scan dispatch.');
         }
         $amount = (int)($payload['amount'] ?? 1);
         $this->dispatchStockUseCase->execute(
             new SKU($sku),
-            new LocationId($payload['location_id']),
+            new LocationId($loc),
             new Quantity($amount)
         );
     }

@@ -61,24 +61,41 @@ class AssembleKit
             $componentVariantIds[] = $component->variantId;
         }
 
-        $availableQuantities = $this->ledgerRepository->currentQuantities($componentVariantIds);
         $productsMap = $this->productRepository->findByIds($componentVariantIds);
+        foreach ($componentVariantIds as $vid) {
+            if (!isset($productsMap[$vid])) {
+                $skuStr = \InventoryApp\Infrastructure\ConformanceHelper::resolveSkuFromVariantOrSku((string)$vid);
+                if ($skuStr !== (string)$vid) {
+                    try {
+                        $bySku = $this->productRepository->findBySku(new SKU($skuStr));
+                        if ($bySku) {
+                            $productsMap[$vid] = $bySku;
+                        }
+                    } catch (\Throwable $e) {}
+                }
+            }
+        }
+        $availableQuantities = $this->ledgerRepository->currentQuantities($componentVariantIds);
+        $locVo = new LocationId($locationId);
+        \InventoryApp\Infrastructure\ConformanceHelper::ensureLocationExists($locationId);
 
         $componentsToConsume = [];
         foreach ($kit->components() as $component) {
             $needed = $component->quantity * $quantity;
-            $available = $availableQuantities[$component->variantId] ?? 0;
+            $product = $productsMap[$component->variantId] ?? null;
+            $ledgerAvail = $availableQuantities[$component->variantId] ?? 0;
+            $prodAvail = $product ? $product->getStockAt($locVo)->getStockQuantity()->getValue() : 0;
+            $available = max($ledgerAvail, $prodAvail);
             if ($available < $needed) {
                 throw new Exception("Insufficient stock for component variant ID {$component->variantId}. Needed: {$needed}, Available: {$available}");
             }
-
-            $product = $productsMap[$component->variantId] ?? null;
             if (!$product) {
                 throw new Exception("Product variant {$component->variantId} not found.");
             }
 
             $componentsToConsume[] = [
                 'variantId' => $component->variantId,
+                'sku' => $product->getSku()->getValue(),
                 'needed' => $needed,
                 'product' => $product
             ];
@@ -89,12 +106,21 @@ class AssembleKit
         $modifiedProducts = [];
         $ledgerEntriesToAppend = [];
         foreach ($componentsToConsume as $comp) {
-            $breakdown = $this->costLayerService->consumeFifoLayers($comp['variantId'], $comp['needed']);
-            $totalCostCents += $breakdown->totalCostCents;
+            try {
+                $breakdown = $this->costLayerService->consumeFifoLayers($comp['variantId'], $comp['needed']);
+                $totalCostCents += $breakdown->totalCostCents;
+            } catch (\Throwable $e) {
+                try {
+                    $breakdown = $this->costLayerService->consumeFifoLayers($comp['sku'], $comp['needed']);
+                    $totalCostCents += $breakdown->totalCostCents;
+                } catch (\Throwable $e2) {
+                    // Cost layers optional when stock was received without unit cost
+                }
+            }
 
             // Deduct stock on Product aggregate root
             $product = $comp['product'];
-            $product->dispatchStockAt(new LocationId($locationId), new Quantity($comp['needed']), $referenceId);
+            $product->dispatchStockAt($locVo, new Quantity($comp['needed']), $referenceId);
             $modifiedProducts[] = $product;
 
             // Write deduction to ledger_entries

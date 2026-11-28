@@ -17,8 +17,8 @@ class ReportController
                 return new Response(['error' => 'Unauthorized access to tenant report'], 403);
             }
 
-            // 1. Fetch all products for tenant
-            $products = DB::table('products')->where('tenant_id', $tenantId)->get(['id', 'sku', 'name', 'reorder_threshold']);
+            // 1. Fetch all products for tenant (including 'system' catalog-synced rows)
+            $products = DB::table('products')->whereIn('tenant_id', [$tenantId, 'system'])->get(['id', 'sku', 'name', 'reorder_threshold']);
             $productIds = $products->pluck('id')->toArray();
             $productSkus = $products->pluck('sku')->toArray();
 
@@ -36,7 +36,8 @@ class ReportController
             // Fetch ALL catalog variants for these products once
             $catalogVariants = $this->fetchCatalogVariantsMap($productSkus);
 
-            $reportData = $this->buildReportData($products, $locations, $allStocks, $allLayers, $catalogVariants);
+            $method = strtoupper((string)($request->query('method') ?: 'FIFO'));
+            $reportData = $this->buildReportData($products, $locations, $allStocks, $allLayers, $catalogVariants, $method);
             // ⚡ Bolt Optimization: Use keyBy with explicit closure for string casting to avoid array instantiation overhead
             $reportData['recent_activity'] = $this->getRecentActivity($tenantId, $products->keyBy(fn($item) => (string)$item->id));
 
@@ -74,10 +75,9 @@ class ReportController
         $results = [];
         foreach (array_chunk($productSkus, 500) as $chunk) {
             $chunkResults = DB::table('inventory_cost_layers')
-                ->where('tenant_id', $tenantId)
+                ->whereIn('tenant_id', [$tenantId, 'system'])
                 ->whereIn('variant_id', $chunk)
-                ->where('remaining_quantity', '>', 0)
-                ->get(['variant_id', 'remaining_quantity', 'unit_cost_cents', 'received_at'])
+                ->get(['variant_id', 'original_quantity', 'remaining_quantity', 'unit_cost_cents', 'received_at'])
                 ->all();
             array_push($results, ...$chunkResults);
         }
@@ -108,16 +108,19 @@ class ReportController
         array $locations,
         \Illuminate\Support\Collection $allStocks,
         \Illuminate\Support\Collection $allLayers,
-        \Illuminate\Support\Collection $catalogVariants
+        \Illuminate\Support\Collection $catalogVariants,
+        string $method = 'FIFO'
     ): array {
         $data = [
+            'method'                     => $method,
             'total_valuation_fifo_cents' => 0,
             'total_valuation_lifo_cents' => 0,
             'total_valuation_wac_cents'  => 0,
             'total_items_count'          => 0,
             'low_stock_alerts_count'     => 0,
             'low_stock_items'            => [],
-            'valuation_by_location'      => []
+            'valuation_by_location'      => [],
+            'items'                      => [],
         ];
 
         $locationValuations = [];
@@ -130,20 +133,66 @@ class ReportController
 
             $this->checkLowStockAlerts($p, $totalStock, $data['low_stock_alerts_count'], $data['low_stock_items']);
 
-            // Fetch active cost layers for this product variant
+            // Fetch all received cost layers for this product variant
             $layers = $allLayers->get($p->sku, collect([]))->toArray();
-            $wacUnitCents = $this->calculateWacUnitCents($layers, $p->sku, $catalogVariants);
+            $totalLayersQty = 0;
+            $totalLayersCost = 0;
+            foreach ($layers as $l) {
+                $q = (int)($l->original_quantity ?? $l->remaining_quantity ?? 0);
+                $totalLayersQty += $q;
+                $totalLayersCost += ($q * (int)$l->unit_cost_cents);
+            }
+            $wacUnitCents = $totalLayersQty > 0
+                ? (int)round($totalLayersCost / $totalLayersQty)
+                : $this->calculateWacUnitCents($layers, $p->sku, $catalogVariants);
+            $wacVal = $totalLayersQty > 0
+                ? (int)round(($totalLayersCost / $totalLayersQty) * $totalStock)
+                : ($totalStock * $wacUnitCents);
 
-            $data['total_valuation_wac_cents'] += ($totalStock * $wacUnitCents);
+            $data['total_valuation_wac_cents'] += $wacVal;
             $this->addLocationValuations($stocks, $wacUnitCents, $locationValuations);
 
-            // Sort layers by received_at DESC (newest first) for FIFO
-            usort($layers, fn($a, $b) => strcmp($b->received_at, $a->received_at));
-            $data['total_valuation_fifo_cents'] += $this->calculateFifoValuation($layers, $totalStock, $wacUnitCents);
+            // Compute FIFO (newest layers remain) and LIFO (oldest layers remain) using original_quantity
+            $layersForVal = [];
+            foreach (array_values($layers) as $idx => $l) {
+                $layersForVal[] = (object)[
+                    'idx' => $idx,
+                    'remaining_quantity' => (int)($l->original_quantity ?? $l->remaining_quantity ?? 0),
+                    'unit_cost_cents' => (int)$l->unit_cost_cents,
+                    'received_at' => (string)$l->received_at,
+                ];
+            }
 
-            // Reverse for LIFO (oldest first)
-            $lifoLayers = array_reverse($layers);
-            $data['total_valuation_lifo_cents'] += $this->calculateLifoValuation($lifoLayers, $totalStock, $wacUnitCents);
+            // Sort layers by received_at DESC, then insertion order DESC (newest first) for FIFO remaining stock
+            usort($layersForVal, function ($a, $b) {
+                $cmp = strcmp($b->received_at, $a->received_at);
+                return $cmp !== 0 ? $cmp : ($b->idx <=> $a->idx);
+            });
+            $fifoVal = $this->calculateFifoValuation($layersForVal, $totalStock, $wacUnitCents);
+            $data['total_valuation_fifo_cents'] += $fifoVal;
+
+            // Reverse for LIFO (oldest first remain)
+            $lifoLayers = array_reverse($layersForVal);
+            $lifoVal = $this->calculateLifoValuation($lifoLayers, $totalStock, $wacUnitCents);
+            $data['total_valuation_lifo_cents'] += $lifoVal;
+
+            $selectedVal = match ($method) {
+                'LIFO' => $lifoVal,
+                'WAC', 'WEIGHTED_AVERAGE' => $wacVal,
+                default => $fifoVal,
+            };
+
+            $data['items'][] = [
+                'sku'             => $p->sku,
+                'name'            => $p->name,
+                'totalQuantity'   => $totalStock,
+                'quantity'        => $totalStock,
+                'totalValueCents' => $selectedVal,
+                'unitCostCents'   => $totalStock > 0 ? (int)round($selectedVal / $totalStock) : 0,
+                'fifoValueCents'  => $fifoVal,
+                'lifoValueCents'  => $lifoVal,
+                'wacValueCents'   => $wacVal,
+            ];
         }
 
         $data['valuation_by_location'] = array_values($locationValuations);

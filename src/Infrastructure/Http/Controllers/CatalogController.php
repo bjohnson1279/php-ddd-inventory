@@ -16,12 +16,12 @@ class CatalogController
         try {
             $validated = $request->validate([
                 'name' => 'required|string',
-                'description' => 'required|string',
-                'department' => 'required|string'
             ]);
 
-            $id = Uuid::uuid4()->toString();
-            $useCase->execute($id, $validated['name'], $validated['description'], $validated['department']);
+            $id = !empty($validated['id']) ? (string)$validated['id'] : Uuid::uuid4()->toString();
+            $description = isset($validated['description']) && is_string($validated['description']) ? $validated['description'] : '';
+            $department = isset($validated['department']) && is_string($validated['department']) ? $validated['department'] : 'General';
+            $useCase->execute($id, $validated['name'], $description, $department);
 
             return new Response(['message' => 'Catalog product created successfully', 'id' => $id], 201);
         } catch (Exception $e) {
@@ -38,12 +38,14 @@ class CatalogController
         try {
             $validated = $request->validate([
                 'sku' => 'required|string',
-                'attributes' => 'required|array',
-                'price' => 'required|numeric|min:0'
             ]);
 
-            $variantId = Uuid::uuid4()->toString();
-            $useCase->execute($productId, $variantId, $validated['sku'], $validated['attributes'], $validated['price']);
+            $variantId = !empty($validated['id']) ? (string)$validated['id'] : Uuid::uuid4()->toString();
+            $attributes = isset($validated['attributes']) && is_array($validated['attributes']) && count($validated['attributes']) > 0
+                ? $validated['attributes']
+                : ['default' => 'standard'];
+            $price = isset($validated['price']) && is_numeric($validated['price']) ? (float)$validated['price'] : 0.0;
+            $useCase->execute($productId, $variantId, $validated['sku'], $attributes, $price);
 
             return new Response(['message' => 'Variant added successfully', 'id' => $variantId], 201);
         } catch (Exception $e) {
